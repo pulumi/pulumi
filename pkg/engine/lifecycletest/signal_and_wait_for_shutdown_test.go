@@ -17,7 +17,6 @@ package lifecycletest
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -193,9 +192,9 @@ func TestSignalAndWaitForShutdownErrorAfterWait(t *testing.T) {
 		if callSignalAndWaitForShutdown {
 			err = monitor.SignalAndWaitForShutdown(context.Background())
 			assert.NoError(t, err)
-			return fmt.Errorf("error in program after signal")
+			return errors.New("error in program after signal")
 		}
-		return fmt.Errorf("error in program without signal")
+		return errors.New("error in program without signal")
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
