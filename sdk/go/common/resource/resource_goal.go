@@ -43,7 +43,8 @@ type Goal struct {
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
-	SourcePosition string // If set, the source location of the resource registration
+	SourcePosition string                // If set, the source location of the resource registration
+	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
 }
 
 // NewGoal allocates a new resource goal state.
@@ -52,6 +53,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
 	replaceOnChanges []string, retainOnDelete *bool, deletedWith URN, sourcePosition string,
+	resourceHooks map[HookType][]string,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,
@@ -73,6 +75,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             deletedWith,
 		SourcePosition:          sourcePosition,
+		ResourceHooks:           resourceHooks,
 	}
 
 	if customTimeouts != nil {
