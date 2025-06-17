@@ -309,8 +309,8 @@ func TestRunCanceled(t *testing.T) {
 	stdout := bytes.Buffer{}
 	stderr := bytes.Buffer{}
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, []io.Writer{&stdout}, []io.Writer{&stderr}, env, "preview", "-s", stackName)
-	t.Logf("stdout = %s", stdout.String())
-	t.Logf("stderr = %s", stderr.String())
+	t.Logf("[%s] stdout = %s", time.Now().Format(time.RFC3339Nano), stdout.String())
+	t.Logf("[%s] stderr = %s", time.Now().Format(time.RFC3339Nano), stderr.String())
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, err, "exit status 0xffffffff")
 		require.Equal(t, 4294967295, code)
