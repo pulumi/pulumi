@@ -102,9 +102,9 @@ type MockBackend struct {
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	SupportsTemplatesF          func() bool
-	ListTemplatesF              func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
-	DownloadTemplateF           func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	SupportsTemplatesF        func() bool
+	ListTemplatesF            func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
 	GetCloudRegistryF         func() (CloudRegistry, error)
 	GetReadOnlyCloudRegistryF func() registry.Registry
 }
