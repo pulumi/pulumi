@@ -924,7 +924,8 @@ Available Templates:
 // --list-templates` without PULUMI_ACCESS_TOKEN set.
 func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-
+	tempdir := t.TempDir()
+	t.Setenv("PULUMI_HOME", tempdir)
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
@@ -957,27 +958,6 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 		SupportsTemplatesF: func() bool { return false },
 		NameF:              func() string { return "mock" },
 	})
-
-	newCmd := NewNewCmd()
-	var stdout, stderr bytes.Buffer
-	newCmd.SetOut(&stdout)
-	newCmd.SetErr(&stderr)
-	newCmd.SetArgs([]string{"--list-templates"})
-	err := newCmd.Execute()
-	require.NoError(t, err)
-
-	// Check that normal templates are there
-	assert.Contains(t, stdout.String(), `
-Available Templates:
-  aiven-go                           A minimal Aiven Go Pulumi program
-`)
-	assert.Equal(t, "", stderr.String())
-}
-
-// We should be able to list the templates even when not logged in.
-// Regression test for https://github.com/pulumi/pulumi/issues/19073
-func TestPulumiNewNotLoggedIn(t *testing.T) {
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
