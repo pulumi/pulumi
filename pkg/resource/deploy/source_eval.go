@@ -152,6 +152,9 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
 	finChan := make(chan error)
+	// We receive from programCompleteChan during shutdown. This channel needs
+	// to be buffered because a program can exit before we are shutting down.
+	programCompleteChan := make(chan error, 1)
 
 	mon, err := newResourceMonitor(
 		src,
@@ -160,6 +163,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		regOutChan,
 		regReadChan,
 		finChan,
+		programCompleteChan,
 		config,
 		configSecretKeys,
 		tracingSpan,
@@ -178,13 +182,14 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		loaderServer: loaderServer,
-		mon:          mon,
-		src:          src,
-		regChan:      regChan,
-		regOutChan:   regOutChan,
-		regReadChan:  regReadChan,
-		finChan:      finChan,
+		loaderServer:        loaderServer,
+		mon:                 mon,
+		src:                 src,
+		regChan:             regChan,
+		regOutChan:          regOutChan,
+		regReadChan:         regReadChan,
+		finChan:             finChan,
+		programCompleteChan: programCompleteChan,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -203,9 +208,10 @@ type evalSourceIterator struct {
 	regOutChan   chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan  chan *readResourceEvent            // the channel that contains read resource requests.
 	// the channel that communicates that no more events will be sent from the program.
-	finChan chan error
-	done    bool // set to true when the evaluation is done.
-	aborted bool // set to true when the iterator is aborted.
+	finChan             chan error
+	programCompleteChan chan error // the channel that communicates program completion.
+	done                bool       // set to true when the evaluation is done.
+	aborted             bool       // set to true when the iterator is aborted.
 }
 
 func (iter *evalSourceIterator) Close() error {
@@ -251,6 +257,11 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		iter.done = true
+		closeErr := iter.Close()
+		// Propagate the error collected on shutdown, unless we had a previous error.
+		if err == nil {
+			err = closeErr
+		}
 		if err != nil {
 			if result.IsBail(err) {
 				logging.V(5).Infof("EvalSourceIterator ended with bail.")
@@ -327,6 +338,8 @@ func (iter *evalSourceIterator) forkRun(
 			logging.V(5).Infof("Program exited with no error")
 		}
 
+		// Signal that the program as exited.
+		iter.programCompleteChan <- err
 		// Signal that the program will not be generating further events. New
 		// SDKs will already have signalled to `iter.finChan` via
 		// `SignalAndWaitForShutdown`, but old SDKs signal completion here when
@@ -670,6 +683,7 @@ type resmon struct {
 	done                   <-chan error                       // a channel that resolves when the server completes.
 	// a channel to signal that no more events will be sent from the program.
 	finChan             chan<- error
+	programCompleteChan <-chan error      // a channel that resolves when the program has exited.
 	waitForShutdownChan chan struct{}     // a channel on which the runtime can wait before shutting down.
 	hasWaiter           atomic.Bool       // a flag to indicate whether something is waiting on `waitForShutdownChan`.
 	opts                EvalSourceOptions // options for the resource monitor.
@@ -702,6 +716,7 @@ func newResourceMonitor(
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
 	finChan chan<- error,
+	programCompleteChan <-chan error,
 	config map[config.Key]string,
 	configSecretKeys []config.Key,
 	tracingSpan opentracing.Span,
@@ -738,6 +753,7 @@ func newResourceMonitor(
 		abortChan:           abortChan,
 		cancel:              cancel,
 		finChan:             finChan,
+		programCompleteChan: programCompleteChan,
 		waitForShutdownChan: make(chan struct{}, 1),
 		opts:                src.opts,
 		callbacks:           map[string]*CallbacksClient{},
@@ -817,9 +833,16 @@ func (rm *resmon) Cancel() error {
 	// By closing `rm.cancel` we cancel all in flight steps and initiate the
 	// graceful shutdown of the server. We won't accept any new connections, but
 	// pending connections will be allowed to complete.
+	//
+	// We need to do this before receiving from `rm.programCompleteChan`,
+	// otherwise we may deadlock: For example a `RegisterResource` call will not
+	// return to the program until we cancel, and we will never write to
+	// `rm.programCompleteChan` unless the program exits.
 	close(rm.cancel)
-	close(rm.waitForShutdownChan) // Signal to the waiting program that we are ready to shutdown.
-	errs := []error{<-rm.done}
+	var err error
+	close(rm.waitForShutdownChan)  // Signal to the program that we are ready to shutdown ...
+	err = <-rm.programCompleteChan // and wait for it to complete.
+	errs := []error{<-rm.done, err}
 	for _, client := range rm.callbacks {
 		errs = append(errs, client.Close())
 	}

@@ -188,7 +188,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer src.Close()
 
 	// Set up a step generator for this deployment.
 	mode := updateMode

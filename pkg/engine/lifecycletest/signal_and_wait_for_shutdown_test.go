@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -66,7 +67,7 @@ func TestSignalAndWaitForShutdown(t *testing.T) {
 
 	// Operation runs to completion even if we don't call WaitForShutdown
 	callSignalAndWaitForShutdown = false
-	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
@@ -120,7 +121,7 @@ func TestSignalAndWaitForShutdownError(t *testing.T) {
 
 	// Operation runs to completion with the expected error even if we don't call WaitForShutdown
 	callSignalAndWaitForShutdown = false
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "oh no")
 }
@@ -169,7 +170,46 @@ func TestSignalAndWaitForShutdownContinueOnError(t *testing.T) {
 
 	// Operation runs to completion with the expected error even if we don't call WaitForShutdown
 	callSignalAndWaitForShutdown = false
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "oh no")
+}
+
+func TestSignalAndWaitForShutdownErrorAfterWait(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	callSignalAndWaitForShutdown := true
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		// assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		assert.NoError(t, err)
+		if callSignalAndWaitForShutdown {
+			err = monitor.SignalAndWaitForShutdown(context.Background())
+			assert.NoError(t, err)
+			return fmt.Errorf("error in program after signal")
+		}
+		return fmt.Errorf("error in program without signal")
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.ErrorContains(t, err, "error in program after signal")
+
+	// Operation runs to completion with the expected error even if we don't call WaitForShutdown
+	callSignalAndWaitForShutdown = false
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "error in program without signal")
 }
