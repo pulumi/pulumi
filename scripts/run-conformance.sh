@@ -9,7 +9,6 @@ ROOT=$(git rev-parse --show-toplevel)
 # that test for each language.
 
 cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run TestLanguage/$1
-exit
 
 cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test ./... -v -count=1 -run TestLanguage/forceTsc=false/$1
 cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test ./... -v -count=1 -run TestLanguage/forceTsc=true/$1
