@@ -55,12 +55,6 @@ type SnapshotPersister interface {
 // of the current plan, and a "new" list of resources, which consists of the resources that were operated upon
 // by the current plan.
 //
-// Important to note is that, although this SnapshotManager is designed to be easily convertible into a thread-safe
-// implementation, the code as it is today is *not thread safe*. In particular, it is not legal for there to be
-// more than one `SnapshotMutation` active at any point in time. This is because this SnapshotManager invalidates
-// the last persisted snapshot in `BeginSnapshot`. This is designed to match existing behavior and will not
-// be the state of things going forward.
-//
 // The resources stored in the `resources` slice are pointers to resource objects allocated by the engine.
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
@@ -104,33 +98,36 @@ const (
 )
 
 type JournalEntry struct {
-	Kind          JournalEntryKind
-	OperationUUID string // The UUID of the operation that this journal entry is associated with.
-	DeleteOld     int
-	DeleteNew     string              // UUID for the delete Operation
-	State         *resource.State     // The resource state associated with this journal entry.
-	result        chan<- error        // The result channel to send the result of the journal entry processing.
-	Operation     *resource.Operation // The operation associated with this journal entry, if any.
+	Kind             JournalEntryKind
+	OperationUUID    string // The UUID of the operation that this journal entry is associated with.
+	DeleteOld        int
+	DeleteNew        string              // UUID for the delete Operation
+	State            *resource.State     // The resource state associated with this journal entry.
+	result           chan<- error        // The result channel to send the result of the journal entry processing.
+	Operation        *resource.Operation // The operation associated with this journal entry, if any.
+	RefreshDeleteURN resource.URN        // The URN of the resource that was deleted by a refresh operation.
 	// If true, this journal entry can be elided and does not need to be written immediately.
 	ElideWrite bool
 }
 
 type JournalEntries []JournalEntry
 
-// TODO: rewrite this comment, it's outdated.
-//
 // If you need to understand what's going on in this file, start here!
 //
-// mutate is the serialization point for reads and writes of the global snapshot state.
-// The given function will be, at the time of its invocation, the only function allowed to
-// mutate state within the SnapshotManager.
+// The snapshot code works on journal entries. Each resource step produces new journal entries
+// for beginning and finishing an operation. These journal entries can then be replayed
+// in conjunction with the immutable base snapshot, to rebuild the new snapshot.
+//
+// Currently the backend only supports saving full snapshots, in which case only one journal
+// entry is allowed to be processed at a time. In the future journal entries will be processed
+// asynchronously in the cloud backend, allowing for better throughput for independent operations..
 //
 // Serialization is performed by pushing the mutator function onto a channel, where another
 // goroutine is polling the channel and executing the mutation functions as they come.
 // This function optionally verifies the integrity of the snapshot before and after mutation.
 //
-// The mutator may indicate that its corresponding checkpoint write may be safely elided by
-// returning `false`. As of this writing, we only elide writes after same steps with no
+// Each journal entyr may indicate that its corresponding checkpoint write may be safely elided by
+// setting the `ElideWrite` fiield. As of this writing, we only elide writes after same steps with no
 // meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
 // are flushed by the next non-elided write or the next call to Close.
 //
@@ -241,7 +238,7 @@ func (sm *SnapshotManager) Rebase(base *deploy.Snapshot) error {
 
 type sameSnapshotMutation struct {
 	manager       *SnapshotManager
-	operationUUID string // The UUID of the operation that this mutation is associated with.
+	operationUUID string
 }
 
 // mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
@@ -389,7 +386,6 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		OperationUUID: ssm.operationUUID,
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
-	journalEntry.DeleteOld = -1 // Default to -1, which means no deletion.
 	if old := step.Old(); old != nil {
 		ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
@@ -423,7 +419,7 @@ func (sm *SnapshotManager) doCreate(step deploy.Step, operationUUID string) (eng
 
 type createSnapshotMutation struct {
 	manager       *SnapshotManager
-	operationUUID string // The UUID of the operation that this mutation is associated with.
+	operationUUID string
 }
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -508,7 +504,7 @@ func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (eng
 
 type deleteSnapshotMutation struct {
 	manager       *SnapshotManager
-	operationUUID string // The UUID of the operation that this mutation is associated with.
+	operationUUID string
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -533,9 +529,6 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 		if !step.Old().PendingReplacement {
 			dsm.manager.markEntryForDeletion(&journalEntry, step.Old())
-			// if err != nil {
-			// 	panic(err)
-			// }
 		}
 	}
 	return dsm.manager.journalMutation(journalEntry)
@@ -561,7 +554,6 @@ type replaceSnapshotMutation struct {
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
 	logging.V(9).Infof("SnapshotManager: replaceSnapshotMutation.End(..., %v)", successful)
-	// TODO: do we actually need to do anything here? Feels weird that this does nothing.
 	return nil
 }
 
@@ -582,7 +574,7 @@ func (sm *SnapshotManager) doRead(step deploy.Step, operationUUID string) (engin
 
 type readSnapshotMutation struct {
 	manager       *SnapshotManager
-	operationUUID string // The UUID of the operation that this mutation is associated with.
+	operationUUID string
 }
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -620,7 +612,7 @@ func (sm *SnapshotManager) doRefresh(step deploy.Step, operationUUID string) (en
 
 type refreshSnapshotMutation struct {
 	manager       *SnapshotManager
-	operationUUID string // The UUID of the operation that this mutation is associated with.
+	operationUUID string
 }
 
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -644,8 +636,8 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		if step.New() != nil {
 			journalEntry.State = step.New()
 		} else {
-			// TODO: is this the right thing to do?
-			rsm.manager.refreshDeletes[step.Old().URN] = true
+			// Store the URN of the resource that was deleted by a refresh operation.
+			journalEntry.RefreshDeleteURN = step.Old().URN
 		}
 	} else {
 		journalEntry.ElideWrite = true
@@ -784,6 +776,9 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 			}
 			if entry.DeleteOld >= 0 {
 				toDelete[entry.DeleteOld] = struct{}{}
+			}
+			if entry.RefreshDeleteURN != "" {
+				sm.refreshDeletes[entry.RefreshDeleteURN] = true
 			}
 		case JournalEntryFailure:
 			delete(incompleteOps, entry.OperationUUID)
