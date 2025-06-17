@@ -362,6 +362,8 @@ type ResourceV3 struct {
 	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
+	// ResourceHooks is a map of hook types to lists of hook names for the given type.
+	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

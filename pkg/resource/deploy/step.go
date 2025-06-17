@@ -292,6 +292,10 @@ func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	if err := s.Deployment().RunHooks(resource.BeforeCreate, s.new, true); err != nil {
+		return resource.StatusOK, nil, err
+	}
+
 	var resourceError error
 	resourceStatus := resource.StatusOK
 
@@ -372,6 +376,10 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// If we have a failure, we should return an empty complete function
 		// and let the Fail method handle the registration.
 		return resourceStatus, nil, resourceError
+	}
+
+	if err := s.Deployment().RunHooks(resource.AfterCreate, s.new, false); err != nil {
+		return resourceStatus, complete, err
 	}
 
 	return resourceStatus, complete, nil
@@ -494,6 +502,10 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	if err := s.Deployment().RunHooks(resource.BeforeDelete, s.old, true); err != nil {
+		return resource.StatusOK, nil, err
+	}
+
 	// Refuse to delete protected resources (unless we're replacing them in
 	// which case we will of checked protect elsewhere)
 	if !s.replacing && s.old.Protect {
@@ -570,6 +582,10 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Lock()
 		s.old.PendingReplacement = true
 		s.old.Lock.Unlock()
+	}
+
+	if err := s.Deployment().RunHooks(resource.AfterDelete, s.old, false); err != nil {
+		return resource.StatusOK, nil, err
 	}
 
 	return resource.StatusOK, func() {}, nil
@@ -717,6 +733,10 @@ func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	if err := s.Deployment().RunHooks(resource.BeforeUpdate, s.new, true); err != nil {
+		return resource.StatusOK, nil, err
+	}
+
 	// Always propagate the ID and timestamps even in previews and refreshes.
 	s.new.Lock.Lock()
 	s.new.ID = s.old.ID
@@ -791,6 +811,11 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// and let the Fail method handle the registration.
 		return resourceStatus, nil, resourceError
 	}
+
+	if err := s.Deployment().RunHooks(resource.AfterUpdate, s.new, false); err != nil {
+		return resourceStatus, nil, err
+	}
+
 	return resourceStatus, complete, nil
 }
 
@@ -1538,7 +1563,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
 		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.ReplaceOnChanges,
-		s.new.RefreshBeforeUpdate, s.new.ViewOf)
+		s.new.RefreshBeforeUpdate, s.new.ViewOf, nil)
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()
