@@ -21,11 +21,25 @@
       "properties": {
         "thing": {
           "$ref": "#/types/foo-bar:index:TopLevel"
+        },
+        "dashed-output": {
+          "type": "string"
+        },
+        "dashed-secret-output": {
+          "type": "string",
+          "secret": true
         }
       },
       "inputProperties": {
         "thing": {
           "$ref": "#/types/foo-bar:index:TopLevel"
+        },
+        "dashed-input": {
+          "type": "string"
+        },
+        "dashed-secret-input":{
+          "type": "string",
+          "secret": true
         }
       },
       "type": "object"

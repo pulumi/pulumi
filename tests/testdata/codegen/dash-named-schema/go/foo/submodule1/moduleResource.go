@@ -15,7 +15,9 @@ import (
 type ModuleResource struct {
 	pulumi.CustomResourceState
 
-	Thing foo.TopLevelPtrOutput `pulumi:"thing"`
+	DashedOutput       pulumi.StringPtrOutput `pulumi:"dashed-output"`
+	DashedSecretOutput pulumi.StringPtrOutput `pulumi:"dashed-secret-output"`
+	Thing              foo.TopLevelPtrOutput  `pulumi:"thing"`
 }
 
 // NewModuleResource registers a new resource with the given unique name, arguments, and options.
@@ -25,6 +27,13 @@ func NewModuleResource(ctx *pulumi.Context,
 		args = &ModuleResourceArgs{}
 	}
 
+	if args.DashedSecretInput != nil {
+		args.DashedSecretInput = pulumi.ToSecret(args.DashedSecretInput).(pulumi.StringPtrInput)
+	}
+	secrets := pulumi.AdditionalSecretOutputs([]string{
+		"dashed-secret-output",
+	})
+	opts = append(opts, secrets)
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
 	err := ctx.RegisterResource("foo-bar:submodule1:ModuleResource", name, args, &resource, opts...)
@@ -58,12 +67,16 @@ func (ModuleResourceState) ElementType() reflect.Type {
 }
 
 type moduleResourceArgs struct {
-	Thing *foo.TopLevel `pulumi:"thing"`
+	DashedInput       *string       `pulumi:"dashed-input"`
+	DashedSecretInput *string       `pulumi:"dashed-secret-input"`
+	Thing             *foo.TopLevel `pulumi:"thing"`
 }
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
-	Thing foo.TopLevelPtrInput
+	DashedInput       pulumi.StringPtrInput
+	DashedSecretInput pulumi.StringPtrInput
+	Thing             foo.TopLevelPtrInput
 }
 
 func (ModuleResourceArgs) ElementType() reflect.Type {
@@ -101,6 +114,14 @@ func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {
 
 func (o ModuleResourceOutput) ToModuleResourceOutputWithContext(ctx context.Context) ModuleResourceOutput {
 	return o
+}
+
+func (o ModuleResourceOutput) DashedOutput() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *ModuleResource) pulumi.StringPtrOutput { return v.DashedOutput }).(pulumi.StringPtrOutput)
+}
+
+func (o ModuleResourceOutput) DashedSecretOutput() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *ModuleResource) pulumi.StringPtrOutput { return v.DashedSecretOutput }).(pulumi.StringPtrOutput)
 }
 
 func (o ModuleResourceOutput) Thing() foo.TopLevelPtrOutput {

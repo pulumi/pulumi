@@ -31,10 +31,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -55,12 +55,17 @@ type typeDetails struct {
 
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
+// It also removes $-prefix if any.
 func Title(s string) string {
 	if s == "" {
 		return ""
 	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
+	if s[0] == '$' {
+		return Title(s[1:])
+	}
+	s = cgstrings.UppercaseFirst(s)
+	s = cgstrings.Unhyphenate(s)
+	return s
 }
 
 func csharpIdentifier(s string) string {
@@ -571,7 +576,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	// Next generate the input property itself. The way this is generated depends on the type of the property:
 	// complex types like lists and maps need a backing field. Secret properties also require a backing field.
 	if needsBackingField {
-		backingFieldName := "_" + prop.Name
+		backingFieldName := "_" + strings.ReplaceAll(prop.Name, "-", "_")
 		requireInitializers := !pt.args || !isInputType(prop.Type)
 		backingFieldType := pt.mod.typeString(codegen.RequiredType(prop), pt.propertyTypeQualifier, true, pt.state, requireInitializers)
 

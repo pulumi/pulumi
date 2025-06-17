@@ -441,7 +441,11 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+		propName := p.Name
+		if strings.Contains(p.Name, "-") {
+			propName = fmt.Sprintf("[%q]", p.Name)
+		}
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, propName, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil
@@ -454,26 +458,35 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
 	for _, p := range properties {
+		propertyRef := fmt.Sprintf("val.%s", p.Name)
+		if strings.Contains(p.Name, "-") {
+			propertyRef = fmt.Sprintf("val[\"%s\"]", p.Name)
+		}
+
 		if p.DefaultValue != nil {
 			dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+			defaults = append(defaults, fmt.Sprintf("%s: (%s) ?? %s", propertyRef, p.Name, dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
 			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
 			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
 			// because val.%arg existed in the input (type system enforced).
 			var compositeObject string
 			if codegen.IsNOptionalInput(p.Type) {
-				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+				compositeObject = fmt.Sprintf("pulumi.output(%s).apply(%s)", propertyRef, funcName)
 			} else {
-				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
+				compositeObject = fmt.Sprintf("%s(%s)", funcName, propertyRef)
 			}
 			if !p.IsRequired() {
-				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+				compositeObject = fmt.Sprintf("(%s ? %s : undefined)", propertyRef, compositeObject)
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
+			propName := p.Name
+			if strings.Contains(p.Name, "-") {
+				propName = fmt.Sprintf("[%q]", p.Name)
+			}
+			defaults = append(defaults, fmt.Sprintf("%s: %s", propName, compositeObject))
 		}
 	}
 
@@ -706,7 +719,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if mod.compatibility == kubernetes20 {
 			propertyType = codegen.RequiredType(prop)
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		propName := prop.Name
+		if strings.Contains(prop.Name, "-") {
+			propName = fmt.Sprintf("[%q]", prop.Name)
+		}
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, propName, mod.typeString(propertyType, false, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -770,11 +787,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults("args." + prop.Name)
+			argRef := "args." + prop.Name
+			if strings.Contains(prop.Name, "-") {
+				argRef = fmt.Sprintf("args[\"%s\"]", prop.Name)
+			}
+
+			argValue := applyDefaults(argRef)
 			if prop.Secret {
-				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
+				propRef := prop.Name
+				if strings.Contains(prop.Name, "-") {
+					propRef = fmt.Sprintf("[\"%s\"]", prop.Name)
+				}
+				arg = fmt.Sprintf("args?.%s ? pulumi.secret(%s) : undefined", propRef, argValue)
 			} else {
-				arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				arg = fmt.Sprintf("args ? %s : undefined", argValue)
 			}
 
 			prefix := "            "
@@ -1026,7 +1052,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				if p.Name == "__self__" {
 					fmt.Fprintf(w, "            \"%s\": this,\n", p.Name)
 				} else {
-					fmt.Fprintf(w, "            \"%[1]s\": args.%[1]s,\n", p.Name)
+					propRef := fmt.Sprintf("args.%s", p.Name)
+					if strings.Contains(p.Name, "-") {
+						propRef = fmt.Sprintf("args[\"%s\"]", p.Name)
+					}
+					fmt.Fprintf(w, "            \"%s\": %s,\n", p.Name, propRef)
 				}
 			}
 		}

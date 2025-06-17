@@ -22,12 +22,36 @@ __all__ = ['ModuleResourceArgs', 'ModuleResource']
 @pulumi.input_type
 class ModuleResourceArgs:
     def __init__(__self__, *,
+                 dashed_input: Optional[pulumi.Input[builtins.str]] = None,
+                 dashed_secret_input: Optional[pulumi.Input[builtins.str]] = None,
                  thing: Optional[pulumi.Input['_root_inputs.TopLevelArgs']] = None):
         """
         The set of arguments for constructing a ModuleResource resource.
         """
+        if dashed_input is not None:
+            pulumi.set(__self__, "dashed_input", dashed_input)
+        if dashed_secret_input is not None:
+            pulumi.set(__self__, "dashed_secret_input", dashed_secret_input)
         if thing is not None:
             pulumi.set(__self__, "thing", thing)
+
+    @property
+    @pulumi.getter(name="dashed-input")
+    def dashed_input(self) -> Optional[pulumi.Input[builtins.str]]:
+        return pulumi.get(self, "dashed_input")
+
+    @dashed_input.setter
+    def dashed_input(self, value: Optional[pulumi.Input[builtins.str]]):
+        pulumi.set(self, "dashed_input", value)
+
+    @property
+    @pulumi.getter(name="dashed-secret-input")
+    def dashed_secret_input(self) -> Optional[pulumi.Input[builtins.str]]:
+        return pulumi.get(self, "dashed_secret_input")
+
+    @dashed_secret_input.setter
+    def dashed_secret_input(self, value: Optional[pulumi.Input[builtins.str]]):
+        pulumi.set(self, "dashed_secret_input", value)
 
     @property
     @pulumi.getter
@@ -45,6 +69,8 @@ class ModuleResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 dashed_input: Optional[pulumi.Input[builtins.str]] = None,
+                 dashed_secret_input: Optional[pulumi.Input[builtins.str]] = None,
                  thing: Optional[pulumi.Input[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]] = None,
                  __props__=None):
         """
@@ -75,6 +101,8 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 dashed_input: Optional[pulumi.Input[builtins.str]] = None,
+                 dashed_secret_input: Optional[pulumi.Input[builtins.str]] = None,
                  thing: Optional[pulumi.Input[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -85,7 +113,13 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+            __props__.__dict__["dashed_input"] = dashed_input
+            __props__.__dict__["dashed_secret_input"] = None if dashed_secret_input is None else pulumi.Output.secret(dashed_secret_input)
             __props__.__dict__["thing"] = thing
+            __props__.__dict__["dashed_output"] = None
+            __props__.__dict__["dashed_secret_output"] = None
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["dashed-secret-output"])
+        opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(ModuleResource, __self__).__init__(
             'foo-bar:submodule1:ModuleResource',
             resource_name,
@@ -108,8 +142,20 @@ class ModuleResource(pulumi.CustomResource):
 
         __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+        __props__.__dict__["dashed_output"] = None
+        __props__.__dict__["dashed_secret_output"] = None
         __props__.__dict__["thing"] = None
         return ModuleResource(resource_name, opts=opts, __props__=__props__)
+
+    @property
+    @pulumi.getter(name="dashed-output")
+    def dashed_output(self) -> pulumi.Output[Optional[builtins.str]]:
+        return pulumi.get(self, "dashed_output")
+
+    @property
+    @pulumi.getter(name="dashed-secret-output")
+    def dashed_secret_output(self) -> pulumi.Output[Optional[builtins.str]]:
+        return pulumi.get(self, "dashed_secret_output")
 
     @property
     @pulumi.getter

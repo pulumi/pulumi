@@ -12,6 +12,12 @@ namespace Pulumi.FooBar.Submodule1
     [FooBarResourceType("foo-bar:submodule1:ModuleResource")]
     public partial class ModuleResource : global::Pulumi.CustomResource
     {
+        [Output("dashed-output")]
+        public Output<string?> DashedOutput { get; private set; } = null!;
+
+        [Output("dashed-secret-output")]
+        public Output<string?> DashedSecretOutput { get; private set; } = null!;
+
         [Output("thing")]
         public Output<Pulumi.FooBar.Outputs.TopLevel?> Thing { get; private set; } = null!;
 
@@ -38,6 +44,10 @@ namespace Pulumi.FooBar.Submodule1
             var defaultOptions = new CustomResourceOptions
             {
                 Version = Utilities.Version,
+                AdditionalSecretOutputs =
+                {
+                    "dashed-secret-output",
+                },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
             // Override the ID if one was specified for consistency with other language SDKs.
@@ -60,6 +70,21 @@ namespace Pulumi.FooBar.Submodule1
 
     public sealed class ModuleResourceArgs : global::Pulumi.ResourceArgs
     {
+        [Input("dashed-input")]
+        public Input<string>? DashedInput { get; set; }
+
+        [Input("dashed-secret-input")]
+        private Input<string>? _dashed_secret_input;
+        public Input<string>? DashedSecretInput
+        {
+            get => _dashed_secret_input;
+            set
+            {
+                var emptySecret = Output.CreateSecret(0);
+                _dashed_secret_input = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+            }
+        }
+
         [Input("thing")]
         public Input<Pulumi.FooBar.Inputs.TopLevelArgs>? Thing { get; set; }
 

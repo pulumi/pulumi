@@ -33,6 +33,8 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
+    public /*out*/ readonly ["dashed-output"]!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly ["dashed-secret-output"]!: pulumi.Output<string | undefined>;
     public readonly thing!: pulumi.Output<outputs.TopLevel | undefined>;
 
     /**
@@ -46,11 +48,19 @@ export class ModuleResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
+            resourceInputs["dashed-input"] = args ? args["dashed-input"] : undefined;
+            resourceInputs["dashed-secret-input"] = args?.["dashed-secret-input"] ? pulumi.secret(args["dashed-secret-input"]) : undefined;
             resourceInputs["thing"] = args ? args.thing : undefined;
+            resourceInputs["dashed-output"] = undefined /*out*/;
+            resourceInputs["dashed-secret-output"] = undefined /*out*/;
         } else {
+            resourceInputs["dashed-output"] = undefined /*out*/;
+            resourceInputs["dashed-secret-output"] = undefined /*out*/;
             resourceInputs["thing"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+        const secretOpts = { additionalSecretOutputs: ["dashed-secret-output"] };
+        opts = pulumi.mergeOptions(opts, secretOpts);
         super(ModuleResource.__pulumiType, name, resourceInputs, opts);
     }
 }
@@ -59,5 +69,7 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
+    ["dashed-input"]?: pulumi.Input<string>;
+    ["dashed-secret-input"]?: pulumi.Input<string>;
     thing?: pulumi.Input<inputs.TopLevelArgs>;
 }

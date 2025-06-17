@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/dotnet,go,nodejs,python
+  description: Support hyphenated property names in language SDKs
