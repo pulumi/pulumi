@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -123,6 +124,98 @@ func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor
 	return &ResourceMonitor{resmon: resmon}
 }
 
+type ResourceHook struct {
+	Name     string
+	callback *pulumirpc.Callback
+}
+
+type ResourceHookBindings struct {
+	BeforeCreate []*ResourceHook
+	AfterCreate  []*ResourceHook
+	BeforeUpdate []*ResourceHook
+	AfterUpdate  []*ResourceHook
+	BeforeDelete []*ResourceHook
+	AfterDelete  []*ResourceHook
+}
+
+type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, outputs resource.PropertyMap) error
+
+func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
+	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
+	for _, hook := range binding.BeforeCreate {
+		m.BeforeCreate = append(m.BeforeCreate, hook.callback)
+	}
+	for _, hook := range binding.AfterCreate {
+		m.AfterCreate = append(m.AfterCreate, hook.callback)
+	}
+	for _, hook := range binding.BeforeUpdate {
+		m.BeforeUpdate = append(m.BeforeUpdate, hook.callback)
+	}
+	for _, hook := range binding.AfterUpdate {
+		m.AfterUpdate = append(m.AfterUpdate, hook.callback)
+	}
+	for _, hook := range binding.BeforeDelete {
+		m.BeforeDelete = append(m.BeforeDelete, hook.callback)
+	}
+	for _, hook := range binding.AfterDelete {
+		m.AfterDelete = append(m.AfterDelete, hook.callback)
+	}
+	return m
+}
+
+func NewHook(monitor *ResourceMonitor, callbacks *CallbackServer,
+	name string, f ResourceHookFunc, onDryRun bool,
+) (*ResourceHook, error) {
+	req, err := prepareHook(callbacks, name, f, onDryRun)
+	if err != nil {
+		return nil, err
+	}
+	err = monitor.RegisterResourceHook(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	return &ResourceHook{
+		Name:     name,
+		callback: req.Callback,
+	}, nil
+}
+
+func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onDryRun bool) (
+	*pulumirpc.RegisterResourceHookRequest, error,
+) {
+	wrapped := func(request []byte) (proto.Message, error) {
+		var req pulumirpc.ResourceHookRequest
+		err := proto.Unmarshal(request, &req)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		outs, err := plugin.UnmarshalProperties(req.Outputs, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), outs); err != nil {
+			return &pulumirpc.ResourceHookResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		return &pulumirpc.ResourceHookResponse{}, nil
+	}
+	callback, err := callbacks.AllocateWithToken(wrapped, name)
+	if err != nil {
+		return nil, err
+	}
+	req := &pulumirpc.RegisterResourceHookRequest{
+		Callback: callback,
+		OnDryRun: onDryRun,
+	}
+	return req, nil
+}
+
 type ResourceOptions struct {
 	Parent                  resource.URN
 	Protect                 *bool
@@ -153,7 +246,8 @@ type ResourceOptions struct {
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
 
-	Transforms []*pulumirpc.Callback
+	Transforms           []*pulumirpc.Callback
+	ResourceHookBindings ResourceHookBindings
 
 	SupportsResultReporting bool
 	PackageRef              string
@@ -254,6 +348,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
+	resourceHooks := opts.ResourceHookBindings.marshal()
+
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -288,6 +384,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
+		Hooks:                      resourceHooks,
 	}
 
 	ctx := context.Background()
@@ -517,6 +614,12 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 
 func (rm *ResourceMonitor) SignalAndWaitForShutdown(ctx context.Context) error {
 	_, err := rm.resmon.SignalAndWaitForShutdown(ctx, &emptypb.Empty{})
+	return err
+}
+
+func (rm *ResourceMonitor) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest,
+) error {
+	_, err := rm.resmon.RegisterResourceHook(ctx, req)
 	return err
 }
 
