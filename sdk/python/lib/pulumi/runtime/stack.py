@@ -19,6 +19,9 @@ Support for automatic stack components.
 import asyncio
 from inspect import isawaitable
 from typing import Any, Callable, Dict, List, Awaitable, Optional
+from google.protobuf import empty_pb2
+import grpc
+
 
 from . import settings
 from .. import log
@@ -39,6 +42,7 @@ from .settings import (
     _shutdown_callbacks,
     _sync_monitor_supports_transforms,
     _sync_monitor_supports_invoke_transforms,
+    get_monitor,
     get_project,
     get_root_resource,
     get_stack,
@@ -48,15 +52,40 @@ from .settings import (
 from .sync_await import _sync_await
 
 
+async def _wait_for_shutdown() -> None:
+    try:
+        monitor = get_monitor()
+        if monitor is None:
+            return
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
+        )
+    except grpc.RpcError as exn:
+        # If we are running against an older version of the CLI,
+        # SignalAndWaitForShutdown might not be implemented. This is mostly
+        # fine, but means that delete hooks do not work. Since we check if the
+        # CLI supports the `resourceHook` feature when registering hooks, it's
+        # fine to ignore the `UNIMPLEMENTED` error here.
+        if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+            log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
+
+
 async def run_pulumi_func(func: Callable[[], None]):
+    ex = None
     try:
         func()
-    finally:
-        await wait_for_rpcs()
-        await _shutdown_callbacks()
-
-        # By now, all tasks have exited and we're good to go.
-        log.debug("run_pulumi_func completed")
+    except Exception as e:  # noqa # We re-raise this below
+        ex = e
+    await wait_for_rpcs()
+    # If func succeeded, let the monitor decide when we should shutdown.
+    if not ex:
+        await _wait_for_shutdown()
+    await _shutdown_callbacks()
+    # By now, all tasks have exited and we're good to go.
+    log.debug("run_pulumi_func completed")
+    if ex:
+        # Re-raise ex so the language runtime can report the error.
+        raise ex
 
 
 async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:

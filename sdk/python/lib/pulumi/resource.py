@@ -32,6 +32,7 @@ from typing import (
     cast,
 )
 from . import _types
+from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
 from .runtime.resource import (
     _pkg_from_type,
@@ -428,6 +429,12 @@ class ResourceOptions:
     This is experimental.
     """
 
+    hooks: Optional[ResourceHookBinding]
+    """
+    Optional resource hooks to bind to this resource. The hooks will be invoked during
+    certain step of the lifecycle of the resource.
+    """
+
     id: Optional["Input[str]"]
     """
     An optional existing ID to load, rather than create.
@@ -485,6 +492,7 @@ class ResourceOptions:
         custom_timeouts: Optional["CustomTimeouts"] = None,
         transformations: Optional[List[ResourceTransformation]] = None,
         transforms: Optional[List[ResourceTransform]] = None,
+        hooks: Optional[ResourceHookBinding] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
@@ -534,6 +542,8 @@ class ResourceOptions:
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
                if specified resource is being deleted as well.
+        :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
+                invoked during certain step of the lifecycle of the resource.
         """
 
         self.parent = parent
@@ -551,6 +561,7 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.transforms = transforms
+        self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
@@ -686,7 +697,7 @@ class ResourceOptions:
             dest.transformations, source.transformations
         )
         dest.transforms = _merge_lists(dest.transforms, source.transforms)
-
+        dest.hooks = ResourceHookBinding.merge(dest.hooks, source.hooks)
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
         dest.delete_before_replace = (
