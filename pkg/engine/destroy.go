@@ -70,7 +70,7 @@ func Destroy(
 func newDestroySource(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context,
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
 ) (deploy.Source, error) {
 	// Like update, we need to gather the set of plugins necessary to delete everything in the snapshot. While we don't
 	// run the program like update does, we still grab the plugins from the program in order to inform the user if their

@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -327,6 +328,8 @@ type Deployment struct {
 	reads *gsync.Map[resource.URN, *resource.State]
 	// the resource status server.
 	resourceStatus *resourceStatusServer
+	// the resource hook registry for this deployment
+	resourceHooks *ResourceHooks
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -498,6 +501,7 @@ func NewDeployment(
 	source Source,
 	localPolicyPackPaths []string,
 	backendClient BackendClient,
+	resourceHooks *ResourceHooks,
 ) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
@@ -553,6 +557,7 @@ func NewDeployment(
 		news:                            newResources,
 		newPlans:                        newResourcePlan(target.Config),
 		reads:                           reads,
+		resourceHooks:                   resourceHooks,
 	}
 
 	// Create a new resource status server for this deployment.
@@ -686,5 +691,32 @@ func (d *Deployment) Close() error {
 		d.resourceStatus = nil
 	}
 
+	return nil
+}
+
+func (d *Deployment) RunHooks(hookType resource.HookType, s *resource.State, canFail bool) error {
+	logging.V(6).Infof("RunHooks %s %t", hookType, canFail)
+	for _, hookName := range s.ResourceHooks[hookType] {
+		hook, err := d.resourceHooks.GetResourceHook(hookName)
+		if err != nil {
+			return fmt.Errorf("hook %q was not registered", hookName)
+		}
+		if d.opts != nil && d.opts.DryRun && !hook.OnDryRun {
+			continue
+		}
+		logging.V(9).Infof("calling hook %q for urn %s", hookName, s.URN)
+		err = hook.Handler(context.Background(), s.URN, s.ID, s.Inputs, s.Outputs)
+		if err != nil {
+			logging.V(6).Infof("hook %q failed: %s", hookName, err)
+			if canFail {
+				return fmt.Errorf("hook %q failed: %w", hookName, err)
+			}
+			// Errors on after hooks report a diagnostic, but do not fail the step.
+			d.Diag().Warningf(&diag.Diag{
+				URN:     s.URN,
+				Message: fmt.Sprintf("hook %q failed: %s", hookName, err),
+			})
+		}
+	}
 	return nil
 }

@@ -99,12 +99,14 @@ func NewEvalSource(
 	plugctx *plugin.Context,
 	runinfo *EvalRunInfo,
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
+	resourceHooks *ResourceHooks,
 	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
+		resourceHooks:       resourceHooks,
 		opts:                opts,
 	}
 }
@@ -113,6 +115,7 @@ type evalSource struct {
 	plugctx             *plugin.Context                                // the plugin context.
 	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
+	resourceHooks       *ResourceHooks                                 // the resource hook registry.
 	opts                EvalSourceOptions                              // options for the evaluation source.
 }
 
@@ -477,7 +480,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, nil, "", ""),
+			nil, nil, nil, "", nil, nil, nil, "", "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -653,6 +656,9 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 	}
 }
 
+// DialOptions returns dial options to be used for the gRPC client.
+type DialOptions func(metadata any) []grpc.DialOption
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
@@ -695,9 +701,10 @@ type resmon struct {
 	stackInvokeTransforms     []TransformInvokeFunction // invoke transformation functions
 	resourceTransformsLock    sync.Mutex
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
+	resourceHooks             *ResourceHooks
 	callbacksLock             sync.Mutex
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
-	grpcDialOptions           func(metadata interface{}) []grpc.DialOption
+	grpcDialOptions           DialOptions
 
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -755,6 +762,7 @@ func newResourceMonitor(
 		waitForShutdownChan: make(chan struct{}, 1),
 		opts:                src.opts,
 		callbacks:           map[string]*CallbacksClient{},
+		resourceHooks:       src.resourceHooks,
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
 		packageRefMap:       map[string]providers.ProviderRequest{},
 		grpcDialOptions:     src.plugctx.DialOptions,
@@ -1640,10 +1648,79 @@ func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
+func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) (ResourceHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap, outputs resource.PropertyMap) error {
+		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
+		mInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return fmt.Errorf("marshaling unputs for resource hook %q: %w", name, err)
+		}
+		mOutputs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return fmt.Errorf("marshaling outputs for resource hook %q: %w", name, err)
+		}
+		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
+			Urn:     string(urn),
+			Id:      string(id),
+			Inputs:  mInputs,
+			Outputs: mOutputs,
+		})
+		if err != nil {
+			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ResourceHook %q call error: %v", name, err)
+			return err
+		}
+		var response pulumirpc.ResourceHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return fmt.Errorf("unmarshaling resource hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ResourceHook %s returned %q", name, response.Error)
+		if response.Error != "" {
+			return errors.New(response.Error)
+		}
+		return nil
+	}, nil
+}
+
 func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
 	*emptypb.Empty, error,
 ) {
-	panic("not implemented")
+	logging.V(6).Infof("RegisterResourceHook %q", req.Name)
+	wrapped, err := rm.wrapResourceHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	hook := ResourceHook{
+		Name:     req.Name,
+		Handler:  wrapped,
+		OnDryRun: req.OnDryRun,
+	}
+	if err := rm.resourceHooks.RegisterResourceHook(hook); err != nil {
+		return &emptypb.Empty{}, err
+	}
+	return &emptypb.Empty{}, nil
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
@@ -2251,6 +2328,39 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
+	// Grab the names for all of the hooks of a given type.
+	getHookNames := func(hookType resource.HookType) []string {
+		names := []string{}
+		hooks := req.GetHooks()
+		if hooks == nil {
+			return names
+		}
+		hooksValue := reflect.ValueOf(hooks)
+		if hooksValue.IsValid() {
+			hooks := reflect.Indirect(hooksValue).FieldByName(string(hookType))
+			if hooks.IsValid() {
+				hooks := hooks.Interface().([]string)
+				names = append(names, hooks...)
+			}
+		}
+		return names
+	}
+
+	resourceHooks := make(map[resource.HookType][]string)
+	for _, hookType := range []resource.HookType{
+		resource.BeforeCreate,
+		resource.AfterCreate,
+		resource.BeforeUpdate,
+		resource.AfterUpdate,
+		resource.BeforeDelete,
+		resource.AfterDelete,
+	} {
+		names := getHookNames(hookType)
+		if len(names) > 0 {
+			resourceHooks[hookType] = names
+		}
+	}
+
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
 	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
@@ -2264,9 +2374,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -2399,7 +2509,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
 			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			sourcePosition, resourceHooks,
 		)
 
 		if goal.Parent != "" {
