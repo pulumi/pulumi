@@ -295,6 +295,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	setSysprocAttrNewProcessGroup(cmd)
 	cmd.Cancel = func() error {
 		err := interruptProcess(cmd.Process)
+		fmt.Printf("[%s] interruptProcess = %s\n", time.Now().Format(time.RFC3339Nano), err)
 		if err != nil {
 			_ = cmd.Process.Kill()
 		}

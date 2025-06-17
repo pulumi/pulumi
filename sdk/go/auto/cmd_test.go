@@ -286,13 +286,15 @@ func TestRunCanceled(t *testing.T) {
 
 	go func() {
 		path := filepath.Join(e.RootPath, "ready")
+		t.Logf("[%s] for range 60 ...", time.Now().Format(time.RFC3339Nano))
 		for range 60 {
 			if _, err := os.Stat(path); err == nil {
-				t.Logf("Found %s", path)
+				t.Logf("[%s] Found %s", time.Now().Format(time.RFC3339Nano), path)
 				break
 			}
 			time.Sleep(1 * time.Second)
 		}
+		t.Logf("[%s] cancel()", time.Now().Format(time.RFC3339Nano))
 		cancel()
 	}()
 
@@ -301,6 +303,7 @@ func TestRunCanceled(t *testing.T) {
 		"PULUMI_BACKEND_URL=" + e.LocalURL(),
 		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
 	}
+	t.Logf("[%s] cmd.Run()", time.Now().Format(time.RFC3339Nano))
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, err, "exit status 0xffffffff")
