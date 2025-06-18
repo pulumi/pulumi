@@ -653,9 +653,14 @@ func (acts *updateActions) OnResourceStepPost(
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			resultOp, ok := step.(interface{ ResultOp() display.StepOp })
-			contract.Assertf(ok, "step should implement ResultOp() for refreshes")
-			op, record = resultOp.ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
@@ -828,9 +833,14 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			resultOp, ok := step.(interface{ ResultOp() display.StepOp })
-			contract.Assertf(ok, "step should implement ResultOp() for refreshes")
-			op, record = resultOp.ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
