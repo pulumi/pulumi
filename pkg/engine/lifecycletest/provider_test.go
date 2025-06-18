@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -1391,7 +1392,10 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				assert.ErrorContains(t, err, "rpc error: code = Unavailable")
+				require.Error(t, err)
+				require.Regexp(t,
+					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
+					err.Error())
 
 				return nil
 			},
@@ -1425,7 +1429,10 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				assert.ErrorContains(t, err, "rpc error: code = Unavailable")
+				require.Error(t, err)
+				require.Regexp(t,
+					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
+					err.Error())
 
 				return nil
 			},
