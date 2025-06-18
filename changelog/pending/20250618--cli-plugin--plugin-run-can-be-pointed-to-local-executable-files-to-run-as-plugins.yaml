@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/plugin
-  description: `plugin run` can be pointed to local executable files to run as plugins
+  description: Allow `plugin run` to run local binary plugins
