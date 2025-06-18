@@ -815,9 +815,8 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.up()
 
             # pulumi refresh
-            refresh_res = stack.refresh(preview_only=True)
-            self.assertEqual(refresh_res.summary.kind, "update")
-            self.assertEqual(refresh_res.summary.result, "succeeded")
+            refresh_res = stack.refresh_preview()
+            self.assertEqual(refresh_res.change_summary, { "same": 1 })
 
             # pulumi destroy
             destroy_res = stack.destroy()

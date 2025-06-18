@@ -562,7 +562,7 @@ class Stack:
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the refresh operation.
-        :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself.
+        :param preview_only: Deprecated, use `refresh_preview` instead. Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param exclude: Specify an exclusive list of resource URNs to ignore.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
@@ -628,6 +628,104 @@ class Stack:
         assert summary is not None
         return RefreshResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
+        )
+
+
+    def refresh_preview(
+        self,
+        parallel: Optional[int] = None,
+        message: Optional[str] = None,
+        target: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        target_dependents: Optional[bool] = None,
+        exclude_dependents: Optional[bool] = None,
+        expect_no_changes: Optional[bool] = None,
+        clear_pending_creates: Optional[bool] = None,
+        color: Optional[str] = None,
+        on_output: Optional[OnOutput] = None,
+        on_event: Optional[OnEvent] = None,
+        show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        run_program: Optional[bool] = None,
+        config_file: Optional[str] = None,
+    ) -> PreviewResult:
+        """
+        Performs a dry-run refresh of the stack, returning pending changes.
+
+        :param parallel: Parallel is the number of resource operations to run in parallel at once.
+                         (1 for no parallelism). Defaults to unbounded (2147483647).
+        :param message: Message (optional) to associate with the refresh operation.
+        :param target: Specify an exclusive list of resource URNs to refresh.
+        :param exclude: Specify an exclusive list of resource URNs to ignore.
+        :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in the Exclude list.
+        :param expect_no_changes: Return an error if any changes occur during this update.
+        :param clear_pending_creates: Clear all pending creates, dropping them from the state.
+        :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
+        :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param run_program: Run the program in the workspace to refresh the stack
+        :param config_file: Path to a Pulumi config file to use for this update.
+        :returns: RefreshResult
+        """
+        extra_args = _parse_extra_args(**locals())
+        args = ["refresh", "--preview-only"]
+
+        if run_program is not None:
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
+
+        args.extend(extra_args)
+        args.extend(self._remote_args())
+
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
+
+        log_file, temp_dir = _create_log_file("refresh")
+        args.extend(["--event-log", log_file])
+        summary_events: List[SummaryEvent] = []
+
+        def on_event_callback(event: EngineEvent) -> None:
+            if event.summary_event:
+                summary_events.append(event.summary_event)
+            if on_event:
+                on_event(event)
+
+        # Start watching logs in a thread
+        stop_event = threading.Event()
+        log_watcher_thread = threading.Thread(
+            target=_watch_logs, args=(log_file, on_event_callback, stop_event)
+        )
+        log_watcher_thread.start()
+
+        try:
+            preview_result = self._run_pulumi_cmd_sync(args, on_output)
+        finally:
+            _cleanup(temp_dir, log_watcher_thread, stop_event)
+
+        if not summary_events:
+            raise RuntimeError("summary event never found")
+
+        return PreviewResult(
+            stdout=preview_result.stdout,
+            stderr=preview_result.stderr,
+            change_summary=summary_events[0].resource_changes,
         )
 
     def rename(
