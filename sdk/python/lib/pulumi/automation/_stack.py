@@ -630,7 +630,6 @@ class Stack:
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
         )
 
-
     def refresh_preview(
         self,
         parallel: Optional[int] = None,
