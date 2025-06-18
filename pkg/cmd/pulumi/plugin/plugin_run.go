@@ -37,7 +37,7 @@ func newPluginRunCmd() *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run NAME[@VERSION] [ARGS]",
+		Use:    "run PATH|NAME[@VERSION] [ARGS]",
 		Args:   cmdutil.MinimumNArgs(1),
 		Hidden: !env.Dev.Value(),
 		Short:  "Run a command on a plugin binary",
