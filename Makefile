@@ -102,8 +102,6 @@ install_cover:: build_cover
 developer_docs::
 	cd developer-docs && make html
 
-install_all:: install
-
 dist::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
