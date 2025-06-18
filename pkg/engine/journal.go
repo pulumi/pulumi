@@ -112,8 +112,9 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpImport, deploy.OpImportReplacement:
 				resources = append(resources, e.Step.New())
 			case deploy.OpRefresh:
-				step, ok := e.Step.(*deploy.RefreshStep)
-				if ok && step.Persisted() {
+				refreshStep, isRefreshStep := e.Step.(*deploy.RefreshStep)
+				viewStep, isViewStep := e.Step.(*deploy.ViewStep)
+				if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
 					} else {
