@@ -7,7 +7,18 @@ scopes:
   backend: [diy, service]
   build: []
   ci: []
-  cli: [about, config, display, engine, import, install, new, plugin, package, state]
+  cli:
+    - about
+    - config
+    - display
+    - engine
+    - env
+    - import
+    - install
+    - new
+    - plugin
+    - package
+    - state
   components: [dotnet, go, java, nodejs, python, yaml]
   docs: []
   engine: []
