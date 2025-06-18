@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Fix destroy with debug option results in `unknown flag --debug` error
