@@ -542,7 +542,9 @@ func TestPluginRunFile(t *testing.T) {
 	require.NoError(t, err, "Building the test provider should work: %s", string(output))
 
 	_, stderr := e.RunCommand("pulumi", "plugin", "run", "--kind=resource", binaryPath, "--", "--help")
-	assert.Contains(t, stderr, "pulumi-resource-testprovider:")
+
+	expect := fmt.Sprintf("Usage of %s:", binaryPath)
+	assert.Contains(t, stderr, expect)
 }
 
 func TestInstall(t *testing.T) {
