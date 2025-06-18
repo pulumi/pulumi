@@ -1015,8 +1015,8 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 	args := slice.Prealloc[string](len(destroyOpts.Target))
 
-	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
 	args = append(args, "destroy")
+	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
