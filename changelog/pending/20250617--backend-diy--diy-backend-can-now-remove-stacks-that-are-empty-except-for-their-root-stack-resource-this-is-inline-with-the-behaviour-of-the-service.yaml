@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: backend/diy
-  description: DIY backend can now remove stacks that are empty except for their root stack resource, this is inline with the behaviour of the service.
+  description: Allow DIY backend to remove stacks that are empty except for their root stack resource, inline with the behaviour of the cloud backend
