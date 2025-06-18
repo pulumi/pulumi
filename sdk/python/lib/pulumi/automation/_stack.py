@@ -562,7 +562,7 @@ class Stack:
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the refresh operation.
-        :param preview_only: Deprecated, use `refresh_preview` instead. Only show a preview of the refresh, but don't perform the refresh itself.
+        :param preview_only: Deprecated, use `preview_refresh` instead. Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param exclude: Specify an exclusive list of resource URNs to ignore.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
@@ -630,7 +630,7 @@ class Stack:
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
         )
 
-    def refresh_preview(
+    def preview_refresh(
         self,
         parallel: Optional[int] = None,
         message: Optional[str] = None,
