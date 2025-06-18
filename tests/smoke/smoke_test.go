@@ -519,8 +519,30 @@ func TestPluginRun(t *testing.T) {
 
 	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
-	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
-	assert.Contains(t, stderr, "flag: help requested")
+}
+
+// Test that we can run a local file plugin via `pulumi plugin run`.
+func TestPluginRunFile(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// build the test provider to a binary
+	providerDir, err := filepath.Abs("../testprovider")
+	require.NoError(t, err)
+	binaryPath := filepath.Join(e.CWD, "pulumi-resource-testprovider")
+	if runtime.GOOS == "windows" {
+		binaryPath += ".exe"
+	}
+
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = providerDir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Building the test provider should work: %s", string(output))
+
+	_, stderr := e.RunCommand("pulumi", "plugin", "run", "--kind=resource", binaryPath, "--", "--help")
+	assert.Contains(t, stderr, "pulumi-resource-testprovider:")
 }
 
 func TestInstall(t *testing.T) {

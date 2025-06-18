@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: `plugin run` can be pointed to local executable files to run as plugins
