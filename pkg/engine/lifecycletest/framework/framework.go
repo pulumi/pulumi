@@ -110,7 +110,16 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	}
 
 	if len(journal.Resources) != len(manager.Resources) {
-		return errors.New("journal and manager resources differ")
+		var journalResources string
+		for _, r := range journal.Resources {
+			journalResources += fmt.Sprintf("%v, ", r.URN)
+		}
+		var managerResources string
+		for _, r := range manager.Resources {
+			managerResources += fmt.Sprintf("%v, ", r.URN)
+		}
+		return fmt.Errorf("journal and manager resources differ, %d in journal, %d in manager",
+			len(journal.Resources), len(manager.Resources))
 	}
 
 	for _, jr := range journal.Resources {
@@ -660,11 +669,11 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			// Don't run validate on the preview step
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				require.Error(t, err)
 				continue
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		var err error

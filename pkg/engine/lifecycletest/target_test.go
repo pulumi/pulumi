@@ -1539,8 +1539,8 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
-			assert.True(t, len(entries) > 0)
+			require.NoError(t, err)
+			require.True(t, len(entries) > 0)
 
 			replaced := make(map[resource.URN]bool)
 			sames := make(map[resource.URN]bool)
@@ -1553,11 +1553,11 @@ func TestReplaceSpecificTargets(t *testing.T) {
 			}
 
 			for _, target := range p.Options.ReplaceTargets.Literals() {
-				assert.Contains(t, replaced, target)
+				require.Contains(t, replaced, target)
 			}
 
 			for _, target := range p.Options.ReplaceTargets.Literals() {
-				assert.NotContains(t, sames, target)
+				require.NotContains(t, sames, target)
 			}
 
 			return err

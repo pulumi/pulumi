@@ -109,7 +109,8 @@ func NewImportDeployment(
 
 	prev := target.Snapshot
 	source := NewErrorSource(projectName)
-	if err := migrateProviders(target, prev, source); err != nil {
+	needsRebase, err := migrateProviders(target, prev, source)
+	if err != nil {
 		return nil, err
 	}
 
@@ -137,6 +138,7 @@ func NewImportDeployment(
 		ctx:                             ctx,
 		opts:                            opts,
 		events:                          events,
+		rebase:                          needsRebase,
 		target:                          target,
 		prev:                            prev,
 		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
