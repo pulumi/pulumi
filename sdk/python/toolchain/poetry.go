@@ -155,13 +155,13 @@ func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPac
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("calling `python -m pip %s`: %w", strings.Join(cmd.Args, " "), err)
+		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	var packages []PythonPackage
 	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
 	if err := jsonDecoder.Decode(&packages); err != nil {
-		return nil, fmt.Errorf("parsing `python -m pip %s` output: %w", strings.Join(cmd.Args, " "), err)
+		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	return packages, nil
