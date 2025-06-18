@@ -85,6 +85,20 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 	return true
 }
 
+func AssertSameStepsUnordered(t *testing.T, expected []StepSummary, actual []deploy.Step) {
+	require.Equal(t, len(expected), len(actual))
+	for _, exp := range expected {
+		found := false
+		for _, act := range actual {
+			if exp.Op == act.Op() && exp.URN == act.URN() {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Expected step %v not found in actual steps.  Actual steps: %v", exp, actual)
+	}
+}
+
 func ExpectDiagMessage(t *testing.T, messagePattern string) lt.ValidateFunc {
 	validate := func(
 		project workspace.Project, target deploy.Target,
