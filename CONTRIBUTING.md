@@ -75,12 +75,10 @@ ulimit -n 5000
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
 1. `make ensure`, which restores/installs any build dependencies
-1. `make build install`, which builds and installs the specified binary at the specified `PULUMI_ROOT`'s `bin` folder
+1. `make build install_all`, which builds and installs the specified binary at the specified `PULUMI_ROOT`'s `bin` folder
 1. `make dist`, which just builds and installs the specified binary
 1. `make`, which builds Pulumi and runs a quick set of tests
 1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
-
-
 
 We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.  Additionally, before running integration tests, be sure to set the environment variable `PULUMI_TEST_ORG` to your pulumi username.
 
