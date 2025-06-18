@@ -124,7 +124,7 @@ type Plugin struct {
 	Stderr io.ReadCloser
 	// Function to wait for the plugin to exit, this will either return the exitcode from the process or an
 	// error if we didn't get a normal process exit.
-	Wait func() (int, error)
+	Wait func(context.Context) (int, error)
 }
 
 type unstructuredOutput struct {
@@ -354,7 +354,7 @@ func newPlugin[T any](
 			// If readerr is just EOF get the actual error from the plugin.
 			if errors.Is(readerr, io.EOF) {
 				var exitcode int
-				exitcode, readerr = plug.Wait()
+				exitcode, readerr = plug.Wait(ctx.baseContext)
 				// If there's no error from waiting, but a non-zero exit code use that as the error.
 				if readerr == nil && exitcode != 0 {
 					readerr = fmt.Errorf("exit status %d", exitcode)
@@ -509,8 +509,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
-			Wait: func() (int, error) {
-				exitcode, err := done.Result(context.TODO())
+			Wait: func(ctx context.Context) (int, error) {
+				exitcode, err := done.Result(ctx)
 				if err != nil {
 					return -1, err
 				}
@@ -595,8 +595,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Stdin:  in,
 		Stdout: stdout,
 		Stderr: stderr,
-		Wait: func() (int, error) {
-			_, err := wait.Promise().Result(ctx.Base())
+		Wait: func(ctx context.Context) (int, error) {
+			_, err := wait.Promise().Result(ctx)
 			if err != nil {
 				// If this is a non-zero exit code, we need to return it.
 				if exiterr, ok := err.(*exec.ExitError); ok {
