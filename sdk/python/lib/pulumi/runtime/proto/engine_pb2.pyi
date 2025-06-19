@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import google.protobuf.descriptor
 import google.protobuf.internal.enum_type_wrapper
@@ -58,7 +59,7 @@ ERROR: LogSeverity.ValueType  # 3
 """a fatal error indicating that the tool should stop processing subsequent resource operations."""
 global___LogSeverity = LogSeverity
 
-@typing_extensions.final
+@typing.final
 class LogRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -93,11 +94,11 @@ class LogRequest(google.protobuf.message.Message):
         streamId: builtins.int = ...,
         ephemeral: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["ephemeral", b"ephemeral", "message", b"message", "severity", b"severity", "streamId", b"streamId", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["ephemeral", b"ephemeral", "message", b"message", "severity", b"severity", "streamId", b"streamId", "urn", b"urn"]) -> None: ...
 
 global___LogRequest = LogRequest
 
-@typing_extensions.final
+@typing.final
 class GetRootResourceRequest(google.protobuf.message.Message):
     """empty."""
 
@@ -109,7 +110,7 @@ class GetRootResourceRequest(google.protobuf.message.Message):
 
 global___GetRootResourceRequest = GetRootResourceRequest
 
-@typing_extensions.final
+@typing.final
 class GetRootResourceResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -121,11 +122,11 @@ class GetRootResourceResponse(google.protobuf.message.Message):
         *,
         urn: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["urn", b"urn"]) -> None: ...
 
 global___GetRootResourceResponse = GetRootResourceResponse
 
-@typing_extensions.final
+@typing.final
 class SetRootResourceRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -137,11 +138,11 @@ class SetRootResourceRequest(google.protobuf.message.Message):
         *,
         urn: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["urn", b"urn"]) -> None: ...
 
 global___SetRootResourceRequest = SetRootResourceRequest
 
-@typing_extensions.final
+@typing.final
 class SetRootResourceResponse(google.protobuf.message.Message):
     """empty."""
 
@@ -153,24 +154,25 @@ class SetRootResourceResponse(google.protobuf.message.Message):
 
 global___SetRootResourceResponse = SetRootResourceResponse
 
-@typing_extensions.final
+@typing.final
 class StartDebuggingRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     CONFIG_FIELD_NUMBER: builtins.int
     MESSAGE_FIELD_NUMBER: builtins.int
+    message: builtins.str
+    """the string to display to the user with instructions on how to connect to the debugger."""
     @property
     def config(self) -> google.protobuf.struct_pb2.Struct:
         """the debug configuration parameters.  These are meant to be in the right format for the DAP protocol to consume."""
-    message: builtins.str
-    """the string to display to the user with instructions on how to connect to the debugger."""
+
     def __init__(
         self,
         *,
         config: google.protobuf.struct_pb2.Struct | None = ...,
         message: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["config", b"config"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "message", b"message"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["config", b"config"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["config", b"config", "message", b"message"]) -> None: ...
 
 global___StartDebuggingRequest = StartDebuggingRequest
