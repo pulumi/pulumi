@@ -11401,7 +11401,8 @@ proto.pulumirpc.ErrorResourceInitFailed.toObject = function(includeInstance, msg
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     reasonsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -11455,6 +11456,10 @@ proto.pulumirpc.ErrorResourceInitFailed.deserializeBinaryFromReader = function(m
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setInputs(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRefreshBeforeUpdate(value);
       break;
     default:
       reader.skipField();
@@ -11513,6 +11518,13 @@ proto.pulumirpc.ErrorResourceInitFailed.serializeBinaryToWriter = function(messa
       4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getRefreshBeforeUpdate();
+  if (f) {
+    writer.writeBool(
+      5,
+      f
     );
   }
 };
@@ -11644,6 +11656,24 @@ proto.pulumirpc.ErrorResourceInitFailed.prototype.clearInputs = function() {
  */
 proto.pulumirpc.ErrorResourceInitFailed.prototype.hasInputs = function() {
   return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * optional bool refresh_before_update = 5;
+ * @return {boolean}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.getRefreshBeforeUpdate = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ErrorResourceInitFailed} returns this
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.setRefreshBeforeUpdate = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

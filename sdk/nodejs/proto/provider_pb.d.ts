@@ -1405,6 +1405,8 @@ export class ErrorResourceInitFailed extends jspb.Message {
     clearInputs(): void;
     getInputs(): google_protobuf_struct_pb.Struct | undefined;
     setInputs(value?: google_protobuf_struct_pb.Struct): ErrorResourceInitFailed;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): ErrorResourceInitFailed;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ErrorResourceInitFailed.AsObject;
@@ -1422,6 +1424,7 @@ export namespace ErrorResourceInitFailed {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         reasonsList: Array<string>,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        refreshBeforeUpdate: boolean,
     }
 }
 
