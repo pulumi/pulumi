@@ -170,7 +170,7 @@ message RegisterResourceRequest {
         repeated Callback after_delete = 6;
     }
 
-    LifecycleHooksBinding lifecycleHooks = 34;
+    optional LifecycleHooksBinding lifecycleHooks = 34;
 }
 
 enum Result {
