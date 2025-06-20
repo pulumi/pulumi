@@ -53,6 +53,7 @@ func NewRefreshCmd() *cobra.Command {
 	var execKind string
 	var execAgent string
 	var stackName string
+	var client string
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -152,7 +153,7 @@ func NewRefreshCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
+				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
 					false, "", cmdStack.ConfigFile, runProgram)
@@ -198,7 +199,7 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
 				return err
 			}
@@ -433,6 +434,10 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	return cmd
 }
