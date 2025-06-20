@@ -1021,6 +1021,8 @@ export class RegisterLifecycleHookRequest extends jspb.Message {
     clearCallback(): void;
     getCallback(): pulumi_callback_pb.Callback | undefined;
     setCallback(value?: pulumi_callback_pb.Callback): RegisterLifecycleHookRequest;
+    getOnDryRun(): boolean;
+    setOnDryRun(value: boolean): RegisterLifecycleHookRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterLifecycleHookRequest.AsObject;
@@ -1035,6 +1037,7 @@ export class RegisterLifecycleHookRequest extends jspb.Message {
 export namespace RegisterLifecycleHookRequest {
     export type AsObject = {
         callback?: pulumi_callback_pb.Callback.AsObject,
+        onDryRun: boolean,
     }
 }
 

@@ -1203,15 +1203,19 @@ class RegisterLifecycleHookRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     CALLBACK_FIELD_NUMBER: builtins.int
+    ON_DRY_RUN_FIELD_NUMBER: builtins.int
     @property
     def callback(self) -> pulumi.callback_pb2.Callback:
         """the callback that the engine can call to run the hook."""
+    on_dry_run: builtins.bool
+    """whether to run the hook on dry runs."""
     def __init__(
         self,
         *,
         callback: pulumi.callback_pb2.Callback | None = ...,
+        on_dry_run: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["callback", b"callback"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["callback", b"callback"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["callback", b"callback", "on_dry_run", b"on_dry_run"]) -> None: ...
 
 global___RegisterLifecycleHookRequest = RegisterLifecycleHookRequest
