@@ -1614,7 +1614,7 @@ func (b *cloudBackend) runEngineAction(
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op, update, token)
+	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1623,7 +1623,9 @@ func (b *cloudBackend) runEngineAction(
 	// will signal all events have been proceed when a value is written to the displayDone channel.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-	go u.RecordAndDisplayEvents(
+
+	go b.recordAndDisplayEvents(
+		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
@@ -1645,8 +1647,8 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var snapshotManager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !dryRun {
-		persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+		persister := b.newSnapshotPersister(ctx, update, tokenSource)
+		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -1717,7 +1719,7 @@ func (b *cloudBackend) runEngineAction(
 	if updateErr != nil {
 		status = apitype.UpdateStatusFailed
 	}
-	completeErr := u.Complete(status)
+	completeErr := b.completeUpdate(ctx, tokenSource, update, status)
 	if completeErr != nil {
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}

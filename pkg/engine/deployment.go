@@ -99,8 +99,6 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
 func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
-	contract.Requiref(u != nil, "u", "must not be nil")
-
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
 	if opName != "" {
@@ -172,15 +170,14 @@ func newDeployment(
 	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
-	contract.Assertf(info.Update != nil, "update info cannot be nil")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
-	proj, target := info.Update.GetProject(), info.Update.GetTarget()
+	proj, target := info.Update.Project, info.Update.Target
 	contract.Assertf(proj != nil, "update project cannot be nil")
 	contract.Assertf(target != nil, "update target cannot be nil")
-	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
+	projinfo := &Projinfo{Proj: proj, Root: info.Update.Root}
 
 	// Decrypt the configuration.
 	config, err := target.Config.Decrypt(target.Decrypter)
@@ -361,7 +358,7 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 
 	// Emit an appropriate prelude event.
 	deployment.Options.Events.preludeEvent(
-		deployment.Options.DryRun, deployment.Ctx.Update.GetTarget().Config)
+		deployment.Options.DryRun, deployment.Ctx.Update.Target.Config)
 
 	// Execute the deployment.
 	start := time.Now()

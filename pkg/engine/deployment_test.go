@@ -31,30 +31,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type updateInfo struct {
-	project workspace.Project
-	target  deploy.Target
-}
-
-func (u *updateInfo) GetRoot() string {
-	return ""
-}
-
-func (u *updateInfo) GetProject() *workspace.Project {
-	return &u.project
-}
-
-func (u *updateInfo) GetTarget() *deploy.Target {
-	return &u.target
-}
-
-func makeUpdateInfo() *updateInfo {
-	return &updateInfo{
-		project: workspace.Project{
+func makeUpdateInfo() UpdateInfo {
+	return UpdateInfo{
+		Root: "",
+		Project: &workspace.Project{
 			Name:    "test",
 			Runtime: workspace.NewProjectRuntimeInfo("test", nil),
 		},
-		target: deploy.Target{Name: tokens.MustParseStackName("test")},
+		Target: &deploy.Target{Name: tokens.MustParseStackName("test")},
 	}
 }
 

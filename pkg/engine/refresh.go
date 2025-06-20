@@ -34,7 +34,6 @@ func Refresh(
 	opts UpdateOptions,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
@@ -57,7 +56,7 @@ func Refresh(
 	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
 	}
 
@@ -135,7 +134,6 @@ func RefreshV2(
 	opts UpdateOptions,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
@@ -159,7 +157,7 @@ func RefreshV2(
 	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
 	}
 
