@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Make it possible for inline automation programs to be used with refresh/destroy
