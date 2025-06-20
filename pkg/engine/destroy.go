@@ -33,7 +33,6 @@ func Destroy(
 	opts UpdateOptions,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	contract.Requiref(!opts.DestroyProgram, "opts.DestroyProgram", "must be false")
 
@@ -54,7 +53,7 @@ func Destroy(
 	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
 	}
 
@@ -140,7 +139,6 @@ func DestroyV2(
 	opts UpdateOptions,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
@@ -163,7 +161,7 @@ func DestroyV2(
 	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
 	}
 

@@ -198,6 +198,16 @@ type Backend interface {
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
+	CheckApply(ctx context.Context, stack Stack) error
+
+	BeginApply(
+		ctx context.Context,
+		kind apitype.UpdateKind,
+		stack Stack,
+		op *UpdateOperation,
+		opts ApplierOptions,
+	) (Application, chan<- engine.Event, <-chan bool, error)
+
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)

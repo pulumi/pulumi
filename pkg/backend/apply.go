@@ -22,6 +22,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -32,6 +33,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
+
+type Application interface {
+	UpdateInfo() engine.UpdateInfo
+
+	Permalink() string
+
+	CreateSnapshotPersister() (SnapshotPersister, error)
+
+	CreateBackendClient() (deploy.BackendClient, error)
+
+	CreateParentSpanContext() (opentracing.SpanContext, error)
+
+	End(
+		start int64,
+		end int64,
+		plan *deploy.Plan,
+		changes sdkDisplay.ResourceChanges,
+		updateErr error,
+	) error
+}
 
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {

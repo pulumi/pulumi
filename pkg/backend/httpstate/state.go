@@ -37,44 +37,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
-type cloudUpdate struct {
-	context context.Context
-	backend *cloudBackend
-
-	update      client.UpdateIdentifier
-	tokenSource *tokenSource
-
-	root   string
-	proj   *workspace.Project
-	target *deploy.Target
-}
-
-func (u *cloudUpdate) GetRoot() string {
-	return u.root
-}
-
-func (u *cloudUpdate) GetProject() *workspace.Project {
-	return u.proj
-}
-
-func (u *cloudUpdate) GetTarget() *deploy.Target {
-	return u.target
-}
-
-func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
-	defer u.tokenSource.Close()
-
-	return u.backend.client.CompleteUpdate(u.context, u.update, status, u.tokenSource)
-}
 
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
 // the update logs or drilling into the timeline of an update.
-func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.Event) error {
-	contract.Assertf(u.tokenSource != nil, "cloud update requires a token source")
+func (b *cloudBackend) recordEngineEvents(
+	ctx context.Context,
+	tokenSource *tokenSource,
+	update client.UpdateIdentifier,
+	startingSeqNumber int,
+	events []engine.Event,
+) error {
+	contract.Assertf(tokenSource != nil, "cloud update requires a token source")
 
 	var apiEvents apitype.EngineEventBatch
 	for idx, event := range events {
@@ -92,52 +66,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 		apiEvents.Events = append(apiEvents.Events, apiEvent)
 	}
 
-	return u.backend.client.RecordEngineEvents(u.context, u.update, apiEvents, u.tokenSource)
-}
-
-// RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
-// posting them to the Pulumi service.
-func (u *cloudUpdate) RecordAndDisplayEvents(
-	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
-	permalink string, events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool,
-) {
-	// We take the channel of engine events and pass them to separate components that will display
-	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
-	// they see a CancelEvent, and when finished, close the "done" channel.
-	displayEvents := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
-	displayEventsDone := make(chan bool)
-
-	persistEvents := make(chan engine.Event, 100)
-	persistEventsDone := make(chan bool)
-
-	// We close our own done channel when both of the dependent components have finished.
-	defer func() {
-		<-displayEventsDone
-		<-persistEventsDone
-		close(done)
-	}()
-
-	// Start the Go-routines for displaying and persisting events.
-	go display.ShowEvents(
-		label, action, stackRef.Name(), op.Proj.Name, permalink,
-		displayEvents, displayEventsDone, opts, isPreview)
-	go persistEngineEvents(
-		u, opts.Debug, /* persist debug events */
-		persistEvents, persistEventsDone)
-
-	for e := range events {
-		displayEvents <- e
-		persistEvents <- e
-
-		// We stop reading from the event stream as soon as we see the CancelEvent,
-		// which will also signal the display/persist components to shutdown too.
-		if e.Type == engine.CancelEvent {
-			break
-		}
-	}
-
-	// Note that we don't return immediately, the defer'd function will block until
-	// the display and persistence go-routines are finished processing events.
+	return b.client.RecordEngineEvents(ctx, update, apiEvents, tokenSource)
 }
 
 func RenewLeaseFunc(
@@ -160,7 +89,7 @@ func RenewLeaseFunc(
 
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
 	update client.UpdateIdentifier, token string,
-) (*cloudUpdate, error) {
+) (engine.UpdateInfo, *tokenSource, error) {
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
 	if token != "" {
@@ -176,7 +105,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 
 		ts, err := newTokenSource(ctx, clockwork.NewRealClock(), token, assumedExpires(), duration, renewLease)
 		if err != nil {
-			return nil, err
+			return engine.UpdateInfo{}, nil, err
 		}
 		tokenSource = ts
 	}
@@ -185,19 +114,27 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	target, err := b.getTarget(ctx, op.SecretsProvider, stackRef,
 		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
-		return nil, err
+		return engine.UpdateInfo{}, nil, err
 	}
 
-	// Construct and return a new update.
-	return &cloudUpdate{
-		context:     ctx,
-		backend:     b,
-		update:      update,
-		tokenSource: tokenSource,
-		root:        op.Root,
-		proj:        op.Proj,
-		target:      target,
-	}, nil
+	info := engine.UpdateInfo{
+		Root:    op.Root,
+		Project: op.Proj,
+		Target:  target,
+	}
+
+	return info, tokenSource, nil
+}
+
+func (b *cloudBackend) completeUpdate(
+	ctx context.Context,
+	tokenSource *tokenSource,
+	update client.UpdateIdentifier,
+	status apitype.UpdateStatus,
+) error {
+	defer tokenSource.Close()
+
+	return b.client.CompleteUpdate(ctx, update, status, tokenSource)
 }
 
 func (b *cloudBackend) getSnapshot(ctx context.Context,
@@ -269,9 +206,13 @@ type engineEventBatch struct {
 
 // persistEngineEvents reads from a channel of engine events and persists them on the
 // Pulumi Service. This is the data that powers the logs display.
-func persistEngineEvents(
-	update *cloudUpdate, persistDebugEvents bool,
-	events <-chan engine.Event, done chan<- bool,
+func (b *cloudBackend) persistEngineEvents(
+	ctx context.Context,
+	tokenSource *tokenSource,
+	update client.UpdateIdentifier,
+	persistDebugEvents bool,
+	events <-chan engine.Event,
+	done chan<- bool,
 ) {
 	// A single update can emit hundreds, if not thousands, or tens of thousands of
 	// engine events. We transmit engine events in large batches to reduce the overhead
@@ -322,7 +263,7 @@ func persistEngineEvents(
 		defer wg.Done()
 
 		for eventBatch := range batchesToTransmit {
-			err := update.recordEngineEvents(eventBatch.sequenceStart, eventBatch.events)
+			err := b.recordEngineEvents(ctx, tokenSource, update, eventBatch.sequenceStart, eventBatch.events)
 			if err != nil {
 				logging.V(3).Infof("error recording engine events: %s", err)
 			}
