@@ -55,6 +55,7 @@ func NewDestroyCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
+	var client string
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -159,7 +160,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
+				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, client, jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
 					targetDependents, "", cmdStack.ConfigFile, runProgram)
@@ -205,7 +206,7 @@ func NewDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
@@ -452,6 +453,10 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	return cmd
 }
