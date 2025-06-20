@@ -8444,7 +8444,8 @@ proto.pulumirpc.RegisterLifecycleHookRequest.prototype.toObject = function(opt_i
  */
 proto.pulumirpc.RegisterLifecycleHookRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    callback: (f = msg.getCallback()) && pulumi_callback_pb.Callback.toObject(includeInstance, f)
+    callback: (f = msg.getCallback()) && pulumi_callback_pb.Callback.toObject(includeInstance, f),
+    onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -8486,6 +8487,10 @@ proto.pulumirpc.RegisterLifecycleHookRequest.deserializeBinaryFromReader = funct
       reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
       msg.setCallback(value);
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setOnDryRun(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8521,6 +8526,13 @@ proto.pulumirpc.RegisterLifecycleHookRequest.serializeBinaryToWriter = function(
       1,
       f,
       pulumi_callback_pb.Callback.serializeBinaryToWriter
+    );
+  }
+  f = message.getOnDryRun();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
     );
   }
 };
@@ -8560,6 +8572,24 @@ proto.pulumirpc.RegisterLifecycleHookRequest.prototype.clearCallback = function(
  */
 proto.pulumirpc.RegisterLifecycleHookRequest.prototype.hasCallback = function() {
   return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional bool on_dry_run = 2;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterLifecycleHookRequest.prototype.getOnDryRun = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterLifecycleHookRequest} returns this
+ */
+proto.pulumirpc.RegisterLifecycleHookRequest.prototype.setOnDryRun = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 

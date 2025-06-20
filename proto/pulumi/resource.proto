@@ -334,4 +334,5 @@ message Parameterization {
 
 message RegisterLifecycleHookRequest {
     Callback callback = 1; // the callback that the engine can call to run the hook.
+    bool on_dry_run = 2; // whether to run the hook on dry runs.
 }
