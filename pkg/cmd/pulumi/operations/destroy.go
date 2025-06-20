@@ -207,9 +207,6 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
