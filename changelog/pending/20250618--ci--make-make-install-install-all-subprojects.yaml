@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: ci
-  description: Make `make install` install all subprojects
