@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/env
-  description: Bump esc to 0.14.3
