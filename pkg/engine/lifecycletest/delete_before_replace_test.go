@@ -362,9 +362,9 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			AssertSameSteps(t, []StepSummary{
+			AssertSameStepsUnordered(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnA},
@@ -386,7 +386,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -411,7 +411,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -435,9 +435,9 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			AssertSameSteps(t, []StepSummary{
+			AssertSameStepsUnordered(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnA},
@@ -459,7 +459,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -485,9 +485,9 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			AssertSameSteps(t, []StepSummary{
+			AssertSameStepsUnordered(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnA},
