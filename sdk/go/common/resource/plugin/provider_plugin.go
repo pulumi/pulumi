@@ -1324,6 +1324,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	var id resource.ID
 	var liveObject *structpb.Struct
+	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
@@ -1337,7 +1338,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		ResourceStatusToken:   req.ResourceStatusToken,
 	})
 	if err != nil {
-		resourceStatus, id, liveObject, _, resourceError = parseError(err)
+		resourceStatus, id, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -1347,6 +1348,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	} else {
 		id = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
+		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
 	if id == "" && !req.Preview {
@@ -1374,16 +1376,11 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 
-	var refreshBeforeUpdate bool
-	if resp != nil {
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
-	}
-
 	return CreateResponse{
 		ID:                  id,
 		Properties:          outs,
 		Status:              resourceStatus,
-		RefreshBeforeUpdate: refreshBeforeUpdate,
+		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1454,6 +1451,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var readID resource.ID
 	var liveObject *structpb.Struct
 	var liveInputs *structpb.Struct
+	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
@@ -1468,7 +1466,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		OldViews:              oldViews,
 	})
 	if err != nil {
-		resourceStatus, readID, liveObject, liveInputs, resourceError = parseError(err)
+		resourceStatus, readID, liveObject, liveInputs, refreshBeforeUpdate, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, err)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -1479,6 +1477,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		readID = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
 		liveInputs = resp.GetInputs()
+		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
 	// If the resource was missing, simply return a nil property map.
@@ -1522,17 +1521,12 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
 
-	var refreshBeforeUpdate bool
-	if resp != nil {
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
-	}
-
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
 		ID:                  readID,
 		Outputs:             newState,
 		Inputs:              newInputs,
-		RefreshBeforeUpdate: refreshBeforeUpdate,
+		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }
 
@@ -1625,6 +1619,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 
 	var liveObject *structpb.Struct
+	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
@@ -1643,7 +1638,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		OldViews:              oldViews,
 	})
 	if err != nil {
-		resourceStatus, _, liveObject, _, resourceError = parseError(err)
+		resourceStatus, _, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -1652,6 +1647,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		// Else it's a `StatusPartialFailure`.
 	} else {
 		liveObject = resp.GetProperties()
+		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
@@ -1673,15 +1669,10 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
-	var refreshBeforeUpdate bool
-	if resp != nil {
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
-	}
-
 	return UpdateResponse{
 		Properties:          outs,
 		Status:              resourceStatus,
-		RefreshBeforeUpdate: refreshBeforeUpdate,
+		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -2220,7 +2211,12 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 // object was created, but app code is continually crashing and the resource never achieves
 // liveness).
 func parseError(err error) (
-	resourceStatus resource.Status, id resource.ID, liveInputs, liveObject *structpb.Struct, resourceErr error,
+	resourceStatus resource.Status,
+	id resource.ID,
+	liveInputs,
+	liveObject *structpb.Struct,
+	refreshBeforeUpdate bool,
+	resourceErr error,
 ) {
 	var responseErr *rpcerror.Error
 	resourceStatus, responseErr = resourceStateAndError(err)
@@ -2234,13 +2230,14 @@ func parseError(err error) (
 			id = resource.ID(initErr.GetId())
 			liveObject = initErr.GetProperties()
 			liveInputs = initErr.GetInputs()
+			refreshBeforeUpdate = initErr.GetRefreshBeforeUpdate()
 			resourceStatus = resource.StatusPartialFailure
 			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
 	}
 
-	return resourceStatus, id, liveObject, liveInputs, resourceErr
+	return resourceStatus, id, liveObject, liveInputs, refreshBeforeUpdate, resourceErr
 }
 
 // InitError represents a failure to initialize a resource, i.e., the resource has been successfully

@@ -1874,6 +1874,7 @@ class ErrorResourceInitFailed(google.protobuf.message.Message):
     PROPERTIES_FIELD_NUMBER: builtins.int
     REASONS_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
+    REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the created resource."""
     @property
@@ -1885,6 +1886,8 @@ class ErrorResourceInitFailed(google.protobuf.message.Message):
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the current inputs to this resource (only applicable for Read)"""
+    refresh_before_update: builtins.bool
+    """Indicates that this resource should always be refreshed prior to updates."""
     def __init__(
         self,
         *,
@@ -1892,9 +1895,10 @@ class ErrorResourceInitFailed(google.protobuf.message.Message):
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         reasons: collections.abc.Iterable[builtins.str] | None = ...,
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        refresh_before_update: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "reasons", b"reasons"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "reasons", b"reasons", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___ErrorResourceInitFailed = ErrorResourceInitFailed
 

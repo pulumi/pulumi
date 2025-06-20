@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: protobuf
+  description: Allow providers to request to --refresh by default from partial failures
