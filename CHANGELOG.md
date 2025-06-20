@@ -1,5 +1,56 @@
 # Changelog
 
+## 3.178.0 (2025-06-20)
+
+
+### Features
+
+- [protobuf] Allow providers to request to --refresh by default from partial failures
+
+
+### Bug Fixes
+
+- [auto/go] Fix destroy with debug option results in `unknown flag --debug` error
+  [#19885](https://github.com/pulumi/pulumi/pull/19885)
+
+- [backend/diy] Allow DIY backend to remove stacks that are empty except for their root stack resource, inline with the behaviour of the cloud backend
+  [#19883](https://github.com/pulumi/pulumi/pull/19883)
+
+- [auto/python] Fix parallelism issue when running inline programs with the automation API
+  [#19855](https://github.com/pulumi/pulumi/pull/19855)
+
+- [cli] Fix `pulumi stack select` unnecessarily fetching stack metadata.
+
+The `pulumi stack select` command now only fetches stack names instead of complete metadata,
+since the selection UI only displays stack names. This significantly improves performance,
+especially for DIY backends where metadata fetching can be slow.
+
+Previously, the command was fetching the same metadata as `pulumi stack ls` (last update time,
+resource count, etc.) but never displaying this information to the user, causing unnecessary
+delays during stack selection.
+  [#19760](https://github.com/pulumi/pulumi/pull/19760)
+
+- [cli/install] Don't consult the registry when `--file` is specified
+  [#19859](https://github.com/pulumi/pulumi/pull/19859)
+
+- [engine] Fix policy pack versions for remediations from python policy packs
+  [#19856](https://github.com/pulumi/pulumi/pull/19856)
+
+- [engine] Fix views with --refresh --run-program
+  [#19877](https://github.com/pulumi/pulumi/pull/19877)
+
+
+### Miscellaneous
+
+- [ci] Make `make install` install all subprojects
+  [#19892](https://github.com/pulumi/pulumi/pull/19892)
+
+- [cli] Update dotnet, java and yaml language runtimes
+  [#19896](https://github.com/pulumi/pulumi/pull/19896)
+
+- [cli/env] Bump esc to 0.14.3
+  [#19886](https://github.com/pulumi/pulumi/pull/19886)
+
 ## 3.177.0 (2025-06-13)
 
 
