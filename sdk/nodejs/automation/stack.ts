@@ -521,13 +521,44 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
         args.push("--exec-kind", kind);
 
         let refResult: CommandResult;
         try {
             refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
+            onExit(didError);
             await cleanUp(logFile, await logPromise);
         }
 
@@ -618,13 +649,44 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
         args.push("--exec-kind", kind);
 
         let desResult: CommandResult;
         try {
             desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
+            onExit(didError);
             await cleanUp(logFile, await logPromise);
         }
 
