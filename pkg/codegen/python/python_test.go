@@ -83,3 +83,49 @@ func TestTokenToModule(t *testing.T) {
 	assert.Equal(t, "module", tokenToModule("pkg:module:Type", nil, nil))
 	assert.Equal(t, "mymodule", tokenToModule("pkg:myModule:Type", nil, nil))
 }
+
+func TestTypecheckerDependency(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		typechecker string
+		expectedDep string
+	}{
+		{
+			name:        "mypy returns versioned dependency",
+			typechecker: "mypy",
+			expectedDep: "mypy>=1.0.0",
+		},
+		{
+			name:        "pyright returns versioned dependency",
+			typechecker: "pyright",
+			expectedDep: "pyright>=1.1.0",
+		},
+		{
+			name:        "empty string returns empty",
+			typechecker: "",
+			expectedDep: "",
+		},
+		{
+			name:        "unknown typechecker returns name only",
+			typechecker: "pylint",
+			expectedDep: "pylint",
+		},
+		{
+			name:        "custom typechecker name",
+			typechecker: "my-custom-checker",
+			expectedDep: "my-custom-checker",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := TypecheckerDependency(tt.typechecker)
+			assert.Equal(t, tt.expectedDep, result)
+		})
+	}
+}

@@ -394,8 +394,8 @@ func GenerateProject(
 	}
 
 	// If a typechecker is given we need to list that in the requirements.txt as well
-	if typechecker != "" {
-		requirementsTxtLines = append(requirementsTxtLines, typechecker)
+	if typecheckerDep := TypecheckerDependency(typechecker); typecheckerDep != "" {
+		requirementsTxtLines = append(requirementsTxtLines, typecheckerDep)
 	}
 
 	// We want the requirements.txt files we generate to be stable, so we sort the

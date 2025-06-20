@@ -1273,3 +1273,119 @@ func TestNoPromptWithYes(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdatePythonRequirementsForTypechecker(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                     string
+		runtime                  string
+		runtimeOptions           map[string]interface{}
+		existingRequirements     string
+		expectedRequirements     string
+		expectRequirementsExists bool
+	}{
+		{
+			name:    "Non-Python project does nothing",
+			runtime: "nodejs",
+			runtimeOptions: map[string]interface{}{
+				"typechecker": "mypy",
+			},
+			expectRequirementsExists: false,
+		},
+		{
+			name:    "Python project without typechecker option does nothing",
+			runtime: "python",
+			runtimeOptions: map[string]interface{}{
+				"toolchain": "pip",
+			},
+			expectRequirementsExists: false,
+		},
+		{
+			name:    "Python project with empty typechecker does nothing",
+			runtime: "python",
+			runtimeOptions: map[string]interface{}{
+				"typechecker": "",
+			},
+			expectRequirementsExists: false,
+		},
+		{
+			name:    "Python project with mypy creates requirements.txt",
+			runtime: "python",
+			runtimeOptions: map[string]interface{}{
+				"typechecker": "mypy",
+			},
+			expectedRequirements:     "mypy>=1.0.0\n",
+			expectRequirementsExists: true,
+		},
+		{
+			name:    "Python project with pyright creates requirements.txt",
+			runtime: "python",
+			runtimeOptions: map[string]interface{}{
+				"typechecker": "pyright",
+			},
+			expectedRequirements:     "pyright>=1.1.0\n",
+			expectRequirementsExists: true,
+		},
+		{
+			name:    "Python project with existing requirements.txt adds mypy",
+			runtime: "python",
+			runtimeOptions: map[string]interface{}{
+				"typechecker": "mypy",
+			},
+			existingRequirements:     "pulumi>=3.0.0\nrequests>=2.25.0\n",
+			expectedRequirements:     "pulumi>=3.0.0\nrequests>=2.25.0\nmypy>=1.0.0\n",
+			expectRequirementsExists: true,
+		},
+		{
+			name:    "Python project with existing mypy dependency skips adding",
+			runtime: "python",
+			runtimeOptions: map[string]interface{}{
+				"typechecker": "mypy",
+			},
+			existingRequirements:     "pulumi>=3.0.0\nmypy==1.2.0\nrequests>=2.25.0\n",
+			expectedRequirements:     "pulumi>=3.0.0\nmypy==1.2.0\nrequests>=2.25.0\n",
+			expectRequirementsExists: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a temporary directory
+			tmpDir := t.TempDir()
+
+			// Create a project with the specified runtime and options
+			proj := &workspace.Project{
+				Name:    tokens.PackageName("test-project"),
+				Runtime: workspace.NewProjectRuntimeInfo(tt.runtime, tt.runtimeOptions),
+			}
+
+			// Create existing requirements.txt if specified
+			requirementsPath := filepath.Join(tmpDir, "requirements.txt")
+			if tt.existingRequirements != "" {
+				err := os.WriteFile(requirementsPath, []byte(tt.existingRequirements), 0o600)
+				require.NoError(t, err)
+			}
+
+			// Call the function under test
+			err := updatePythonRequirementsForTypechecker(proj, tmpDir)
+			require.NoError(t, err)
+
+			// Check if requirements.txt exists
+			_, err = os.Stat(requirementsPath)
+			if tt.expectRequirementsExists {
+				require.NoError(t, err, "requirements.txt should exist")
+
+				// Read the content
+				content, err := os.ReadFile(requirementsPath)
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedRequirements, string(content))
+			} else {
+				require.True(t, os.IsNotExist(err), "requirements.txt should not exist")
+			}
+		})
+	}
+}
