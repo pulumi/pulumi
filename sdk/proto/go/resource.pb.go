@@ -438,12 +438,13 @@ type RegisterResourceRequest struct {
 	// correct ones.
 	// Other SDKs that are correctly specifying alias specs could set this to
 	// true, but it's not necessary.
-	AliasSpecs              bool                                           `protobuf:"varint,28,opt,name=aliasSpecs,proto3" json:"aliasSpecs,omitempty"`
-	SourcePosition          *SourcePosition                                `protobuf:"bytes,29,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                    // the optional source position of the user code that initiated the register.
-	Transforms              []*Callback                                    `protobuf:"bytes,31,rep,name=transforms,proto3" json:"transforms,omitempty"`                            // a list of transforms to apply to the resource before registering it.
-	SupportsResultReporting bool                                           `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
-	PackageRef              string                                         `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
-	LifecycleHooks          *RegisterResourceRequest_LifecycleHooksBinding `protobuf:"bytes,34,opt,name=lifecycleHooks,proto3,oneof" json:"lifecycleHooks,omitempty"`
+	AliasSpecs              bool            `protobuf:"varint,28,opt,name=aliasSpecs,proto3" json:"aliasSpecs,omitempty"`
+	SourcePosition          *SourcePosition `protobuf:"bytes,29,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                    // the optional source position of the user code that initiated the register.
+	Transforms              []*Callback     `protobuf:"bytes,31,rep,name=transforms,proto3" json:"transforms,omitempty"`                            // a list of transforms to apply to the resource before registering it.
+	SupportsResultReporting bool            `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
+	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
+	// The lifecycle hooks that should run at certain points in the resource's lifecycle.
+	LifecycleHooks *RegisterResourceRequest_LifecycleHooksBinding `protobuf:"bytes,34,opt,name=lifecycleHooks,proto3,oneof" json:"lifecycleHooks,omitempty"`
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -1585,6 +1586,7 @@ func (x *TransformInvokeOptions) GetPluginChecksums() map[string][]byte {
 	return nil
 }
 
+// LifecycleHookRequest is the request object for lifecycle hook callbacks in CallbackInvokeRequest.
 type LifecycleHookRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1648,6 +1650,7 @@ func (x *LifecycleHookRequest) GetOutputs() *structpb.Struct {
 	return nil
 }
 
+// LifecycleHookResponse is the response object for lifecycle hook callbacks in CallbackInvokeResponse.
 type LifecycleHookResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

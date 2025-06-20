@@ -467,7 +467,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
     @property
-    def lifecycleHooks(self) -> global___RegisterResourceRequest.LifecycleHooksBinding: ...
+    def lifecycleHooks(self) -> global___RegisterResourceRequest.LifecycleHooksBinding:
+        """The lifecycle hooks that should run at certain points in the resource's lifecycle."""
     def __init__(
         self,
         *,
@@ -1063,6 +1064,8 @@ global___TransformInvokeOptions = TransformInvokeOptions
 
 @typing_extensions.final
 class LifecycleHookRequest(google.protobuf.message.Message):
+    """LifecycleHookRequest is the request object for lifecycle hook callbacks in CallbackInvokeRequest."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     URN_FIELD_NUMBER: builtins.int
@@ -1086,6 +1089,8 @@ global___LifecycleHookRequest = LifecycleHookRequest
 
 @typing_extensions.final
 class LifecycleHookResponse(google.protobuf.message.Message):
+    """LifecycleHookResponse is the response object for lifecycle hook callbacks in CallbackInvokeResponse."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ERROR_FIELD_NUMBER: builtins.int

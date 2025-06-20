@@ -130,7 +130,11 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def RegisterLifecycleHook(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Register a lifecycle hook that can be called by the engine during certain
+        steps of a resource's lifecycle. Since the hook registration includes the
+        hook options, each registration should provide a new callback and not
+        re-use the same callback for multiple registrations.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')

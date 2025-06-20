@@ -66,6 +66,11 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.RegisterLifecycleHookRequest,
         google.protobuf.empty_pb2.Empty,
     ]
+    """Register a lifecycle hook that can be called by the engine during certain
+    steps of a resource's lifecycle. Since the hook registration includes the
+    hook options, each registration should provide a new callback and not
+    re-use the same callback for multiple registrations.
+    """
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
@@ -143,7 +148,12 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.resource_pb2.RegisterLifecycleHookRequest,
         context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty: ...
+    ) -> google.protobuf.empty_pb2.Empty:
+        """Register a lifecycle hook that can be called by the engine during certain
+        steps of a resource's lifecycle. Since the hook registration includes the
+        hook options, each registration should provide a new callback and not
+        re-use the same callback for multiple registrations.
+        """
     
     def RegisterPackage(
         self,

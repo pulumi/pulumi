@@ -39,6 +39,10 @@ service ResourceMonitor {
     // Register an invoke transform for the stack
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
+    // Register a lifecycle hook that can be called by the engine during certain
+    // steps of a resource's lifecycle. Since the hook registration includes the
+    // hook options, each registration should provide a new callback and not
+    // re-use the same callback for multiple registrations.
     rpc RegisterLifecycleHook(RegisterLifecycleHookRequest) returns (google.protobuf.Empty) {}
 
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
@@ -170,6 +174,7 @@ message RegisterResourceRequest {
         repeated Callback after_delete = 6;
     }
 
+    // The lifecycle hooks that should run at certain points in the resource's lifecycle.
     optional LifecycleHooksBinding lifecycleHooks = 34;
 }
 
@@ -294,12 +299,14 @@ message TransformInvokeOptions {
     map<string, bytes> plugin_checksums = 4;
 }
 
+// LifecycleHookRequest is the request object for lifecycle hook callbacks in CallbackInvokeRequest.
 message LifecycleHookRequest {
     string urn = 1;
     string id = 2;
     google.protobuf.Struct outputs = 3;
 }
 
+// LifecycleHookResponse is the response object for lifecycle hook callbacks in CallbackInvokeResponse.
 message LifecycleHookResponse {
     string error = 1;
 }
