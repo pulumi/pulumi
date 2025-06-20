@@ -1119,6 +1119,9 @@ message ErrorResourceInitFailed {
     google.protobuf.Struct properties = 2; // any properties that were computed during updating.
     repeated string reasons = 3;           // error messages associated with initialization failure.
     google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 5;
 }
 
 
