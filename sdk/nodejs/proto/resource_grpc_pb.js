@@ -294,7 +294,11 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
-  registerLifecycleHook: {
+  // Register a lifecycle hook that can be called by the engine during certain
+// steps of a resource's lifecycle. Since the hook registration includes the
+// hook options, each registration should provide a new callback and not
+// re-use the same callback for multiple registrations.
+registerLifecycleHook: {
     path: '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
     requestStream: false,
     responseStream: false,
