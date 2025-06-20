@@ -17,7 +17,7 @@
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resourceTypes from "../resource";
-import { getEngine, rpcKeepAlive } from "../runtime/settings";
+import { excessiveDebugOutput, getEngine, rpcKeepAlive } from "../runtime/settings";
 import { getStore } from "../runtime/state";
 
 let lastLog: Promise<any> = Promise.resolve();
@@ -44,6 +44,9 @@ export function debug(msg: string, resource?: resourceTypes.Resource, streamId?:
     if (engine) {
         return log(engine, engproto.LogSeverity.DEBUG, msg, resource, streamId, ephemeral);
     } else {
+        if (excessiveDebugOutput) {
+            console.log(`debug: [runtime] ${msg}`);
+        }
         return Promise.resolve();
     }
 }
