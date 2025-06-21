@@ -44,7 +44,12 @@ from .rpc import deserialize_properties, serialize_properties
 from ..invoke import InvokeOptions, InvokeTransform
 
 if TYPE_CHECKING:
-    from ..resource import Alias, ResourceOptions, ResourceTransform
+    from ..resource import (
+        Alias,
+        ResourceOptions,
+        ResourceTransform,
+    )
+    from ..resource_hooks import ResourceHook
 
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -236,6 +241,58 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             # Remove the transform since we didn't manage to actually register it.
             self._transforms.pop(transform)
             self._callbacks.pop(callback.token)
+            raise
+
+    def do_register_resource_hook(
+        self, hook: ResourceHook
+    ) -> resource_pb2.RegisterResourceHookRequest:
+        log.debug(f"do_register_resource_hook {hook.name}")
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.ResourceHookRequest = (
+                resource_pb2.ResourceHookRequest.FromString(s)
+            )
+
+            try:
+                from ..resource_hooks import ResourceHookArgs
+
+                maybeAwaitable = hook(
+                    ResourceHookArgs(
+                        urn=request.urn,
+                        id=request.id,
+                        outputs=deserialize_properties(
+                            request.outputs,
+                            keep_unknowns=True,
+                        ),
+                    )
+                )
+                if isinstance(maybeAwaitable, Awaitable):
+                    await maybeAwaitable
+                return resource_pb2.ResourceHookResponse()
+            except Exception as e:  # noqa: BLE001 catch blind exception
+                log.debug(f"Exception while executing hook: {e}")
+                return resource_pb2.ResourceHookResponse(error=str(e))
+
+        self._callbacks[hook.name] = cb
+        callback = callback_pb2.Callback(
+            token=hook.name,
+            target=self._target,
+        )
+        return resource_pb2.RegisterResourceHookRequest(
+            callback=callback,
+            on_dry_run=hook.opts.on_dry_run if hook.opts else False,
+        )
+
+    def register_resource_hook(
+        self, hook: ResourceHook
+    ) -> resource_pb2.RegisterResourceHookRequest:
+        req = self.do_register_resource_hook(hook)
+        try:
+            self._monitor.RegisterResourceHook(req)
+            return req
+        except:
+            # Remove the hook since we didn't manage to actually register it.
+            self._callbacks.pop(req.callback.token)
             raise
 
     def _resource_options(

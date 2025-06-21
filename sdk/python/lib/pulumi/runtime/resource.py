@@ -38,6 +38,7 @@ from .. import _types, log
 from .. import urn as urn_util
 from ..output import Input, Output
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
+from ..resource_hooks import ResourceHook, ResourceHookBinding, ResourceHookFunction
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
 from .rpc import _expand_dependencies
@@ -1003,6 +1004,9 @@ def register_resource(
             else:
                 alias_urns = [alias.urn for alias in resolver.aliases]
 
+            hook_prefix = f"{ty}_{name}"
+            hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -1035,6 +1039,7 @@ def register_resource(
                 transforms=callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
+                hooks=hooks,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1232,3 +1237,44 @@ def _pkg_from_type(ty: str) -> Optional[str]:
     if len(parts) != 3:
         return None
     return parts[0]
+
+
+async def _prepare_resource_hooks(
+    hooks: Optional[ResourceHookBinding],
+    name_prefix: str,
+) -> resource_pb2.RegisterResourceRequest.ResourceHooksBinding:
+    proto = resource_pb2.RegisterResourceRequest.ResourceHooksBinding()
+    if not hooks:
+        return proto
+
+    for hook_type in [
+        "before_create",
+        "after_create",
+        "before_update",
+        "after_update",
+        "before_delete",
+        "after_delete",
+    ]:
+        hooks_for_type: list[Union[ResourceHook, ResourceHookFunction]] = getattr(
+            hooks, hook_type, []
+        )
+        for i, _hook in enumerate(hooks_for_type or []):
+            hook = _hook
+            # Convert callables into ResourceHooks
+            if not isinstance(hook, ResourceHook):
+                # Delete hooks can't be anonymous
+                if hook_type in ("before_delete", "after_delete"):
+                    raise ValueError(
+                        "Delete resource hooks must be ResourceHook instances"
+                    )
+                if not callable(hook):
+                    raise ValueError("Resource hook must be a Callable or ResourceHook")
+                name = f"{name_prefix}_{hook_type}_{i}"
+                hook = ResourceHook(name, hook)
+            # Wait for the hook registration to complete
+            callback = await hook.callback
+            if not callback:
+                raise ValueError("Resource hook callback cannot be None")
+            getattr(proto, hook_type).append(callback)
+
+    return proto
