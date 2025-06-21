@@ -252,10 +252,10 @@ export class RegisterResourceRequest extends jspb.Message {
     getPackageref(): string;
     setPackageref(value: string): RegisterResourceRequest;
 
-    hasLifecyclehooks(): boolean;
-    clearLifecyclehooks(): void;
-    getLifecyclehooks(): RegisterResourceRequest.LifecycleHooksBinding | undefined;
-    setLifecyclehooks(value?: RegisterResourceRequest.LifecycleHooksBinding): RegisterResourceRequest;
+    hasHooks(): boolean;
+    clearHooks(): void;
+    getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
+    setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -305,7 +305,7 @@ export namespace RegisterResourceRequest {
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
         packageref: string,
-        lifecyclehooks?: RegisterResourceRequest.LifecycleHooksBinding.AsObject,
+        hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
     }
 
 
@@ -357,43 +357,43 @@ export namespace RegisterResourceRequest {
         }
     }
 
-    export class LifecycleHooksBinding extends jspb.Message { 
+    export class ResourceHooksBinding extends jspb.Message { 
         clearBeforeCreateList(): void;
         getBeforeCreateList(): Array<pulumi_callback_pb.Callback>;
-        setBeforeCreateList(value: Array<pulumi_callback_pb.Callback>): LifecycleHooksBinding;
+        setBeforeCreateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
         addBeforeCreate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
         clearAfterCreateList(): void;
         getAfterCreateList(): Array<pulumi_callback_pb.Callback>;
-        setAfterCreateList(value: Array<pulumi_callback_pb.Callback>): LifecycleHooksBinding;
+        setAfterCreateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
         addAfterCreate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
         clearBeforeUpdateList(): void;
         getBeforeUpdateList(): Array<pulumi_callback_pb.Callback>;
-        setBeforeUpdateList(value: Array<pulumi_callback_pb.Callback>): LifecycleHooksBinding;
+        setBeforeUpdateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
         addBeforeUpdate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
         clearAfterUpdateList(): void;
         getAfterUpdateList(): Array<pulumi_callback_pb.Callback>;
-        setAfterUpdateList(value: Array<pulumi_callback_pb.Callback>): LifecycleHooksBinding;
+        setAfterUpdateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
         addAfterUpdate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
         clearBeforeDeleteList(): void;
         getBeforeDeleteList(): Array<pulumi_callback_pb.Callback>;
-        setBeforeDeleteList(value: Array<pulumi_callback_pb.Callback>): LifecycleHooksBinding;
+        setBeforeDeleteList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
         addBeforeDelete(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
         clearAfterDeleteList(): void;
         getAfterDeleteList(): Array<pulumi_callback_pb.Callback>;
-        setAfterDeleteList(value: Array<pulumi_callback_pb.Callback>): LifecycleHooksBinding;
+        setAfterDeleteList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
         addAfterDelete(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
 
         serializeBinary(): Uint8Array;
-        toObject(includeInstance?: boolean): LifecycleHooksBinding.AsObject;
-        static toObject(includeInstance: boolean, msg: LifecycleHooksBinding): LifecycleHooksBinding.AsObject;
+        toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
+        static toObject(includeInstance: boolean, msg: ResourceHooksBinding): ResourceHooksBinding.AsObject;
         static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
         static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-        static serializeBinaryToWriter(message: LifecycleHooksBinding, writer: jspb.BinaryWriter): void;
-        static deserializeBinary(bytes: Uint8Array): LifecycleHooksBinding;
-        static deserializeBinaryFromReader(message: LifecycleHooksBinding, reader: jspb.BinaryReader): LifecycleHooksBinding;
+        static serializeBinaryToWriter(message: ResourceHooksBinding, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ResourceHooksBinding;
+        static deserializeBinaryFromReader(message: ResourceHooksBinding, reader: jspb.BinaryReader): ResourceHooksBinding;
     }
 
-    export namespace LifecycleHooksBinding {
+    export namespace ResourceHooksBinding {
         export type AsObject = {
             beforeCreateList: Array<pulumi_callback_pb.Callback.AsObject>,
             afterCreateList: Array<pulumi_callback_pb.Callback.AsObject>,
@@ -881,28 +881,28 @@ export namespace TransformInvokeOptions {
     }
 }
 
-export class LifecycleHookRequest extends jspb.Message { 
+export class ResourceHookRequest extends jspb.Message { 
     getUrn(): string;
-    setUrn(value: string): LifecycleHookRequest;
+    setUrn(value: string): ResourceHookRequest;
     getId(): string;
-    setId(value: string): LifecycleHookRequest;
+    setId(value: string): ResourceHookRequest;
 
     hasOutputs(): boolean;
     clearOutputs(): void;
     getOutputs(): google_protobuf_struct_pb.Struct | undefined;
-    setOutputs(value?: google_protobuf_struct_pb.Struct): LifecycleHookRequest;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): LifecycleHookRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: LifecycleHookRequest): LifecycleHookRequest.AsObject;
+    toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceHookRequest): ResourceHookRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: LifecycleHookRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): LifecycleHookRequest;
-    static deserializeBinaryFromReader(message: LifecycleHookRequest, reader: jspb.BinaryReader): LifecycleHookRequest;
+    static serializeBinaryToWriter(message: ResourceHookRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceHookRequest;
+    static deserializeBinaryFromReader(message: ResourceHookRequest, reader: jspb.BinaryReader): ResourceHookRequest;
 }
 
-export namespace LifecycleHookRequest {
+export namespace ResourceHookRequest {
     export type AsObject = {
         urn: string,
         id: string,
@@ -910,21 +910,21 @@ export namespace LifecycleHookRequest {
     }
 }
 
-export class LifecycleHookResponse extends jspb.Message { 
+export class ResourceHookResponse extends jspb.Message { 
     getError(): string;
-    setError(value: string): LifecycleHookResponse;
+    setError(value: string): ResourceHookResponse;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): LifecycleHookResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: LifecycleHookResponse): LifecycleHookResponse.AsObject;
+    toObject(includeInstance?: boolean): ResourceHookResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceHookResponse): ResourceHookResponse.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: LifecycleHookResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): LifecycleHookResponse;
-    static deserializeBinaryFromReader(message: LifecycleHookResponse, reader: jspb.BinaryReader): LifecycleHookResponse;
+    static serializeBinaryToWriter(message: ResourceHookResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceHookResponse;
+    static deserializeBinaryFromReader(message: ResourceHookResponse, reader: jspb.BinaryReader): ResourceHookResponse;
 }
 
-export namespace LifecycleHookResponse {
+export namespace ResourceHookResponse {
     export type AsObject = {
         error: string,
     }
@@ -1015,26 +1015,26 @@ export namespace Parameterization {
     }
 }
 
-export class RegisterLifecycleHookRequest extends jspb.Message { 
+export class RegisterResourceHookRequest extends jspb.Message { 
 
     hasCallback(): boolean;
     clearCallback(): void;
     getCallback(): pulumi_callback_pb.Callback | undefined;
-    setCallback(value?: pulumi_callback_pb.Callback): RegisterLifecycleHookRequest;
+    setCallback(value?: pulumi_callback_pb.Callback): RegisterResourceHookRequest;
     getOnDryRun(): boolean;
-    setOnDryRun(value: boolean): RegisterLifecycleHookRequest;
+    setOnDryRun(value: boolean): RegisterResourceHookRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RegisterLifecycleHookRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RegisterLifecycleHookRequest): RegisterLifecycleHookRequest.AsObject;
+    toObject(includeInstance?: boolean): RegisterResourceHookRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterResourceHookRequest): RegisterResourceHookRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RegisterLifecycleHookRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RegisterLifecycleHookRequest;
-    static deserializeBinaryFromReader(message: RegisterLifecycleHookRequest, reader: jspb.BinaryReader): RegisterLifecycleHookRequest;
+    static serializeBinaryToWriter(message: RegisterResourceHookRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterResourceHookRequest;
+    static deserializeBinaryFromReader(message: RegisterResourceHookRequest, reader: jspb.BinaryReader): RegisterResourceHookRequest;
 }
 
-export namespace RegisterLifecycleHookRequest {
+export namespace RegisterResourceHookRequest {
     export type AsObject = {
         callback?: pulumi_callback_pb.Callback.AsObject,
         onDryRun: boolean,

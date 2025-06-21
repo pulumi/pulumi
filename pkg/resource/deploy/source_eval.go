@@ -1639,7 +1639,7 @@ func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
-func (rm *resmon) RegisterLifecycleHook(ctx context.Context, req *pulumirpc.RegisterLifecycleHookRequest) (
+func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
 	*emptypb.Empty, error,
 ) {
 	panic("not implemented")

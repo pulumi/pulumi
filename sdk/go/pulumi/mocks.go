@@ -348,7 +348,7 @@ func (m *mockMonitor) RegisterStackInvokeTransform(ctx context.Context, in *pulu
 	panic("not implemented")
 }
 
-func (m *mockMonitor) RegisterLifecycleHook(ctx context.Context, in *pulumirpc.RegisterLifecycleHookRequest,
+func (m *mockMonitor) RegisterResourceHook(ctx context.Context, in *pulumirpc.RegisterResourceHookRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
 	panic("not implemented")
