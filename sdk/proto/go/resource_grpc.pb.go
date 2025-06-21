@@ -33,11 +33,11 @@ type ResourceMonitorClient interface {
 	RegisterStackTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Register an invoke transform for the stack
 	RegisterStackInvokeTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Register a lifecycle hook that can be called by the engine during certain
+	// Register a resource hook that can be called by the engine during certain
 	// steps of a resource's lifecycle. Since the hook registration includes the
 	// hook options, each registration should provide a new callback and not
 	// re-use the same callback for multiple registrations.
-	RegisterLifecycleHook(ctx context.Context, in *RegisterLifecycleHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RegisterResourceHook(ctx context.Context, in *RegisterResourceHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(ctx context.Context, in *RegisterPackageRequest, opts ...grpc.CallOption) (*RegisterPackageResponse, error)
@@ -130,9 +130,9 @@ func (c *resourceMonitorClient) RegisterStackInvokeTransform(ctx context.Context
 	return out, nil
 }
 
-func (c *resourceMonitorClient) RegisterLifecycleHook(ctx context.Context, in *RegisterLifecycleHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *resourceMonitorClient) RegisterResourceHook(ctx context.Context, in *RegisterResourceHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/RegisterLifecycleHook", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/RegisterResourceHook", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,11 +171,11 @@ type ResourceMonitorServer interface {
 	RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error)
 	// Register an invoke transform for the stack
 	RegisterStackInvokeTransform(context.Context, *Callback) (*emptypb.Empty, error)
-	// Register a lifecycle hook that can be called by the engine during certain
+	// Register a resource hook that can be called by the engine during certain
 	// steps of a resource's lifecycle. Since the hook registration includes the
 	// hook options, each registration should provide a new callback and not
 	// re-use the same callback for multiple registrations.
-	RegisterLifecycleHook(context.Context, *RegisterLifecycleHookRequest) (*emptypb.Empty, error)
+	RegisterResourceHook(context.Context, *RegisterResourceHookRequest) (*emptypb.Empty, error)
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(context.Context, *RegisterPackageRequest) (*RegisterPackageResponse, error)
@@ -217,8 +217,8 @@ func (UnimplementedResourceMonitorServer) RegisterStackTransform(context.Context
 func (UnimplementedResourceMonitorServer) RegisterStackInvokeTransform(context.Context, *Callback) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterStackInvokeTransform not implemented")
 }
-func (UnimplementedResourceMonitorServer) RegisterLifecycleHook(context.Context, *RegisterLifecycleHookRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterLifecycleHook not implemented")
+func (UnimplementedResourceMonitorServer) RegisterResourceHook(context.Context, *RegisterResourceHookRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterResourceHook not implemented")
 }
 func (UnimplementedResourceMonitorServer) RegisterPackage(context.Context, *RegisterPackageRequest) (*RegisterPackageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterPackage not implemented")
@@ -383,20 +383,20 @@ func _ResourceMonitor_RegisterStackInvokeTransform_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceMonitor_RegisterLifecycleHook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterLifecycleHookRequest)
+func _ResourceMonitor_RegisterResourceHook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterResourceHookRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceMonitorServer).RegisterLifecycleHook(ctx, in)
+		return srv.(ResourceMonitorServer).RegisterResourceHook(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pulumirpc.ResourceMonitor/RegisterLifecycleHook",
+		FullMethod: "/pulumirpc.ResourceMonitor/RegisterResourceHook",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceMonitorServer).RegisterLifecycleHook(ctx, req.(*RegisterLifecycleHookRequest))
+		return srv.(ResourceMonitorServer).RegisterResourceHook(ctx, req.(*RegisterResourceHookRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -477,8 +477,8 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceMonitor_RegisterStackInvokeTransform_Handler,
 		},
 		{
-			MethodName: "RegisterLifecycleHook",
-			Handler:    _ResourceMonitor_RegisterLifecycleHook_Handler,
+			MethodName: "RegisterResourceHook",
+			Handler:    _ResourceMonitor_RegisterResourceHook_Handler,
 		},
 		{
 			MethodName: "RegisterPackage",

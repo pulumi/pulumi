@@ -39,11 +39,11 @@ service ResourceMonitor {
     // Register an invoke transform for the stack
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
-    // Register a lifecycle hook that can be called by the engine during certain
+    // Register a resource hook that can be called by the engine during certain
     // steps of a resource's lifecycle. Since the hook registration includes the
     // hook options, each registration should provide a new callback and not
     // re-use the same callback for multiple registrations.
-    rpc RegisterLifecycleHook(RegisterLifecycleHookRequest) returns (google.protobuf.Empty) {}
+    rpc RegisterResourceHook(RegisterResourceHookRequest) returns (google.protobuf.Empty) {}
 
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     // Multiple requests are idempotent and guaranteed to return the same result.
@@ -165,7 +165,7 @@ message RegisterResourceRequest {
 
     string packageRef = 33; // a reference from RegisterPackageRequest.
 
-    message LifecycleHooksBinding {
+    message ResourceHooksBinding {
         repeated Callback before_create = 1;
         repeated Callback after_create = 2;
         repeated Callback before_update = 3;
@@ -174,8 +174,8 @@ message RegisterResourceRequest {
         repeated Callback after_delete = 6;
     }
 
-    // The lifecycle hooks that should run at certain points in the resource's lifecycle.
-    optional LifecycleHooksBinding lifecycleHooks = 34;
+    // The resource hooks that should run at certain points in the resource's lifecycle.
+    optional ResourceHooksBinding hooks = 34;
 }
 
 enum Result {
@@ -299,15 +299,15 @@ message TransformInvokeOptions {
     map<string, bytes> plugin_checksums = 4;
 }
 
-// LifecycleHookRequest is the request object for lifecycle hook callbacks in CallbackInvokeRequest.
-message LifecycleHookRequest {
+// ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
+message ResourceHookRequest {
     string urn = 1;
     string id = 2;
     google.protobuf.Struct outputs = 3;
 }
 
-// LifecycleHookResponse is the response object for lifecycle hook callbacks in CallbackInvokeResponse.
-message LifecycleHookResponse {
+// ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
+message ResourceHookResponse {
     string error = 1;
 }
 
@@ -332,7 +332,7 @@ message Parameterization {
     bytes value = 3; // the parameter value for the parameterized package.
 }
 
-message RegisterLifecycleHookRequest {
+message RegisterResourceHookRequest {
     Callback callback = 1; // the callback that the engine can call to run the hook.
     bool on_dry_run = 2; // whether to run the hook on dry runs.
 }

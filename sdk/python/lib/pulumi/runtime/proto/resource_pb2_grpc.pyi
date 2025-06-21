@@ -62,11 +62,11 @@ class ResourceMonitorStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Register an invoke transform for the stack"""
-    RegisterLifecycleHook: grpc.UnaryUnaryMultiCallable[
-        pulumi.resource_pb2.RegisterLifecycleHookRequest,
+    RegisterResourceHook: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterResourceHookRequest,
         google.protobuf.empty_pb2.Empty,
     ]
-    """Register a lifecycle hook that can be called by the engine during certain
+    """Register a resource hook that can be called by the engine during certain
     steps of a resource's lifecycle. Since the hook registration includes the
     hook options, each registration should provide a new callback and not
     re-use the same callback for multiple registrations.
@@ -144,12 +144,12 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     ) -> google.protobuf.empty_pb2.Empty:
         """Register an invoke transform for the stack"""
     
-    def RegisterLifecycleHook(
+    def RegisterResourceHook(
         self,
-        request: pulumi.resource_pb2.RegisterLifecycleHookRequest,
+        request: pulumi.resource_pb2.RegisterResourceHookRequest,
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty:
-        """Register a lifecycle hook that can be called by the engine during certain
+        """Register a resource hook that can be called by the engine during certain
         steps of a resource's lifecycle. Since the hook registration includes the
         hook options, each registration should provide a new callback and not
         re-use the same callback for multiple registrations.

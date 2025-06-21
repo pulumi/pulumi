@@ -91,17 +91,6 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_RegisterLifecycleHookRequest(arg) {
-  if (!(arg instanceof pulumi_resource_pb.RegisterLifecycleHookRequest)) {
-    throw new Error('Expected argument of type pulumirpc.RegisterLifecycleHookRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_RegisterLifecycleHookRequest(buffer_arg) {
-  return pulumi_resource_pb.RegisterLifecycleHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_RegisterPackageRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterPackageRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterPackageRequest');
@@ -122,6 +111,17 @@ function serialize_pulumirpc_RegisterPackageResponse(arg) {
 
 function deserialize_pulumirpc_RegisterPackageResponse(buffer_arg) {
   return pulumi_resource_pb.RegisterPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterResourceHookRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterResourceHookRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceHookRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceHookRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterResourceHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
@@ -294,18 +294,18 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
-  // Register a lifecycle hook that can be called by the engine during certain
+  // Register a resource hook that can be called by the engine during certain
 // steps of a resource's lifecycle. Since the hook registration includes the
 // hook options, each registration should provide a new callback and not
 // re-use the same callback for multiple registrations.
-registerLifecycleHook: {
-    path: '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
+registerResourceHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterResourceHook',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_resource_pb.RegisterLifecycleHookRequest,
+    requestType: pulumi_resource_pb.RegisterResourceHookRequest,
     responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_pulumirpc_RegisterLifecycleHookRequest,
-    requestDeserialize: deserialize_pulumirpc_RegisterLifecycleHookRequest,
+    requestSerialize: serialize_pulumirpc_RegisterResourceHookRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterResourceHookRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

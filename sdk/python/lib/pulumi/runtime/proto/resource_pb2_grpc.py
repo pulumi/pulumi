@@ -58,9 +58,9 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
-        self.RegisterLifecycleHook = channel.unary_unary(
-                '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
-                request_serializer=pulumi_dot_resource__pb2.RegisterLifecycleHookRequest.SerializeToString,
+        self.RegisterResourceHook = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+                request_serializer=pulumi_dot_resource__pb2.RegisterResourceHookRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.RegisterPackage = channel.unary_unary(
@@ -129,8 +129,8 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RegisterLifecycleHook(self, request, context):
-        """Register a lifecycle hook that can be called by the engine during certain
+    def RegisterResourceHook(self, request, context):
+        """Register a resource hook that can be called by the engine during certain
         steps of a resource's lifecycle. Since the hook registration includes the
         hook options, each registration should provide a new callback and not
         re-use the same callback for multiple registrations.
@@ -202,9 +202,9 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
-            'RegisterLifecycleHook': grpc.unary_unary_rpc_method_handler(
-                    servicer.RegisterLifecycleHook,
-                    request_deserializer=pulumi_dot_resource__pb2.RegisterLifecycleHookRequest.FromString,
+            'RegisterResourceHook': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterResourceHook,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterResourceHookRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'RegisterPackage': grpc.unary_unary_rpc_method_handler(
@@ -365,7 +365,7 @@ class ResourceMonitor(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def RegisterLifecycleHook(request,
+    def RegisterResourceHook(request,
             target,
             options=(),
             channel_credentials=None,
@@ -375,8 +375,8 @@ class ResourceMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
-            pulumi_dot_resource__pb2.RegisterLifecycleHookRequest.SerializeToString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+            pulumi_dot_resource__pb2.RegisterResourceHookRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
