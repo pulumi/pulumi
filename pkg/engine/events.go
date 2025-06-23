@@ -312,7 +312,7 @@ type StepEventStateMetadata struct {
 }
 
 func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
-	target := update.GetTarget()
+	target := update.Target
 	var secrets []string
 	if target != nil && target.Config.HasSecureValue() {
 		for k, v := range target.Config {

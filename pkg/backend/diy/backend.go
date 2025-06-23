@@ -1199,7 +1199,7 @@ func (b *diyBackend) apply(
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
+		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
 	}
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -1270,7 +1270,7 @@ func (b *diyBackend) apply(
 		StartTime:   start,
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
-		Config:      update.GetTarget().Config,
+		Config:      update.Target.Config,
 		Result:      backendUpdateResult,
 		EndTime:     end,
 		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to

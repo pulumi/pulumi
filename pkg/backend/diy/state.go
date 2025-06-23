@@ -31,6 +31,7 @@ import (
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
@@ -47,47 +47,26 @@ import (
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
-// update is an implementation of engine.Update backed by diy state.
-type update struct {
-	root    string
-	proj    *workspace.Project
-	target  *deploy.Target
-	backend *diyBackend
-}
-
-func (u *update) GetRoot() string {
-	return u.root
-}
-
-func (u *update) GetProject() *workspace.Project {
-	return u.proj
-}
-
-func (u *update) GetTarget() *deploy.Target {
-	return u.target
-}
-
 func (b *diyBackend) newUpdate(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
 	ref *diyBackendReference,
 	op backend.UpdateOperation,
-) (*update, error) {
+) (engine.UpdateInfo, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, secretsProvider, ref,
 		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
-		return nil, err
+		return engine.UpdateInfo{}, err
 	}
 
 	// Construct and return a new update.
-	return &update{
-		root:    op.Root,
-		proj:    op.Proj,
-		target:  target,
-		backend: b,
+	return engine.UpdateInfo{
+		Root:    op.Root,
+		Project: op.Proj,
+		Target:  target,
 	}, nil
 }
 
