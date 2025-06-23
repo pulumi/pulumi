@@ -182,18 +182,19 @@ from the parameters, as in:
 			plugin := args[0]
 			parameters := args[1:]
 
-			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, plugin, parameters, registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-				b, err := cmdBackend.NonInteractiveCurrentBackend(
-					cmd.Context(), ws, cmdBackend.DefaultLoginManager, proj,
-				)
-				if err == nil && b != nil {
-					return b.GetReadOnlyCloudRegistry(), nil
-				}
-				if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-					return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
-				}
-				return nil, fmt.Errorf("could not get registry backend: %w", err)
-			}))
+			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, plugin, parameters,
+				registry.NewOnDemandRegistry(func() (registry.Registry, error) {
+					b, err := cmdBackend.NonInteractiveCurrentBackend(
+						cmd.Context(), ws, cmdBackend.DefaultLoginManager, proj,
+					)
+					if err == nil && b != nil {
+						return b.GetReadOnlyCloudRegistry(), nil
+					}
+					if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+						return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
+					}
+					return nil, fmt.Errorf("could not get registry backend: %w", err)
+				}))
 			if err != nil {
 				return err
 			}
