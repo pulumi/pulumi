@@ -410,6 +410,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
+				GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
 			})
 
 			// Setup defaultOrg mock
