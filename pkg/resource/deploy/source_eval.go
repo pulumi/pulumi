@@ -683,7 +683,7 @@ type resmon struct {
 	finChan             chan<- error
 	programComplete     *promise.Promise[struct{}] // a promise that resolves when the program has exited.
 	waitForShutdownChan chan struct{}              // a channel on which the runtime can wait before shutting down.
-	hasWaiter           atomic.Bool                // a flag to indicate whether something is waiting on `waitForShutdownChan`.
+	hasWaiter           atomic.Bool                // indicates whether something is waiting on `waitForShutdownChan`.
 	opts                EvalSourceOptions          // options for the resource monitor.
 
 	// the working directory for the resources sent to this monitor.
