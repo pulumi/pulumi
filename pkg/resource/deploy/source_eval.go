@@ -213,9 +213,9 @@ type evalSourceIterator struct {
 	aborted         bool                                // set to true when the iterator is aborted.
 }
 
-func (iter *evalSourceIterator) Close() error {
+func (iter *evalSourceIterator) Cancel(ctx context.Context) error {
 	// Cancel the monitor and reclaim any associated resources.
-	return iter.mon.Cancel()
+	return iter.mon.Cancel(ctx)
 }
 
 func (iter *evalSourceIterator) ResourceMonitor() SourceResourceMonitor {
@@ -827,7 +827,7 @@ func (rm *resmon) Address() string {
 }
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
-func (rm *resmon) Cancel() error {
+func (rm *resmon) Cancel(ctx context.Context) error {
 	// By closing `rm.cancel` we cancel all in flight steps and initiate the
 	// graceful shutdown of the server. We won't accept any new connections, but
 	// pending connections will be allowed to complete.
@@ -837,9 +837,9 @@ func (rm *resmon) Cancel() error {
 	// return to the program until we cancel, and we will never write to
 	// `rm.programCompleteChan` unless the program exits.
 	close(rm.cancel)
-	close(rm.waitForShutdownChan) // Signal to the program that we are ready to shutdown ...
-	_, err := rm.programComplete.Result(context.TODO())
-	errs := []error{<-rm.done, err}
+	close(rm.waitForShutdownChan)                   // Signal to the program that we are ready to shutdown ...
+	_, programErr := rm.programComplete.Result(ctx) // ... and wait for the program to complete.
+	errs := []error{<-rm.done, programErr}
 	for _, client := range rm.callbacks {
 		errs = append(errs, client.Close())
 	}

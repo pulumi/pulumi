@@ -54,7 +54,7 @@ import (
 type mockResmon struct {
 	AddressF func() string
 
-	CancelF func() error
+	CancelF func(ctx context.Context) error
 
 	InvokeF func(ctx context.Context,
 		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
@@ -90,9 +90,9 @@ func (rm *mockResmon) Address() string {
 	panic("not implemented")
 }
 
-func (rm *mockResmon) Cancel() error {
+func (rm *mockResmon) Cancel(ctx context.Context) error {
 	if rm.CancelF != nil {
-		return rm.CancelF()
+		return rm.CancelF(ctx)
 	}
 	panic("not implemented")
 }
@@ -1597,7 +1597,7 @@ func TestResmonCancel(t *testing.T) {
 	}()
 
 	// Cancel always returns nil or a joinErrors.
-	assert.Equal(t, errors.Join(err), rm.Cancel())
+	assert.Equal(t, errors.Join(err), rm.Cancel(context.Background()))
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -1622,27 +1622,29 @@ func TestEvalSourceIterator(t *testing.T) {
 		var called bool
 		iter := &evalSourceIterator{
 			mon: &mockResmon{
-				CancelF: func() error {
+				CancelF: func(context.Context) error {
 					called = true
 					return nil
 				},
 			},
 		}
-		iter.Close()
-		assert.True(t, called)
+		err := iter.Cancel(context.Background())
+		require.NoError(t, err)
+		require.True(t, called)
 	})
 	t.Run("ResourceMonitor", func(t *testing.T) {
 		t.Parallel()
 		var called bool
 		mon := &mockResmon{
-			CancelF: func() error { called = true; return nil },
+			CancelF: func(context.Context) error { called = true; return nil },
 		}
 		iter := &evalSourceIterator{
 			mon: mon,
 		}
-		iter.Close()
-		assert.Equal(t, mon, iter.ResourceMonitor())
-		assert.True(t, called)
+		err := iter.Cancel(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, mon, iter.ResourceMonitor())
+		require.True(t, called)
 	})
 	t.Run("Next", func(t *testing.T) {
 		t.Parallel()
