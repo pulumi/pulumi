@@ -41,7 +41,7 @@ func newPackageInfoCmd() *cobra.Command {
 
 This command shows information about a package, its modules and detailed resource info.
 
-The <provider> argument can be specified in the same way as in 'pulumi package add'.
+The <provider> argument can be specified in the same way as in ` + "`pulumi package add`." + `
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wd, err := os.Getwd()

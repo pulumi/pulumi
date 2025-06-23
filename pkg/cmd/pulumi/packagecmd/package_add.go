@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -122,17 +122,17 @@ The <provider> argument can be specified in one of the following ways:
 - When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to
   resolve a resource plugin first, installing it on-demand, similarly to:
 
-    pulumi plugin install resource PLUGIN [VERSION]
+    ` + "`pulumi plugin install resource PLUGIN [VERSION]`" + `
 
 - When <provider> is specified as a local path, Pulumi executes the provider
   binary to extract its package schema:
 
-    pulumi package add ./my-provider
+    ` + "`pulumi package add ./my-provider`" + `
 
-- When <provider> is a path to a local file with a '.json', '.yml' or '.yaml'
+- When <provider> is a path to a local file with a ` + "`.json`, `.yml` or `.yaml`" + `
   extension, Pulumi package schema is read from it directly:
 
-    pulumi package add ./my/schema.json
+    ` + "`pulumi package add ./my/schema.json`" + `
 
 - When <provider> is a reference to a Git repo, Pulumi clones the repo and
   executes the source. Optionally a version can be specified.  It can either
@@ -141,15 +141,15 @@ The <provider> argument can be specified in one of the following ways:
   default branch is used. Paths can be disambiguated from the repo name by
   appending '.git' to the repo URL, followed by the path to the package:
 
-    pulumi package add example.org/org/repo.git/path[@<version>]
+    ` + "`pulumi package add example.org/org/repo.git/path[@<version>]`" + `
 
 For parameterized providers, parameters may be specified as additional
 arguments. The exact format of parameters is provider-specific; consult the
 provider's documentation for more information. If the parameters include flags
-that begin with dashes, you may need to use '--' to separate the provider name
+that begin with dashes, you may need to use ` + "`--`" + ` to separate the provider name
 from the parameters, as in:
 
-  pulumi package add <provider> -- --provider-parameter-flag value
+  ` + "`pulumi package add <provider> -- --provider-parameter-flag value`" + `
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
