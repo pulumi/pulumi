@@ -726,6 +726,7 @@ export function registerResource(
                 });
             })
             .catch((err) => {
+                log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
                 // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
                 done();
                 throw err;
