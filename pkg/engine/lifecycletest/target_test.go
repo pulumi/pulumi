@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -4659,4 +4660,90 @@ func TestUntargetedSameStepsAcceptDeletedResources(t *testing.T) {
 	// There should just be the one A now (the replacement), and it should not be marked for deletion.
 	require.Equal(t, snap3.Resources[2].URN.Name(), "resA")
 	require.False(t, snap3.Resources[2].Delete, "A should not be deleted")
+}
+
+// TestUntargetedResourceAnalyzer tests that if a resource is removed from a program, but is not targeted it
+// is still sent for stack analysis.
+func TestUntargetedResourceAnalyzer(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	// Operation 1 -- set up an initial state
+	//
+	// We initialise the following resources:
+	//
+	// * A and B
+
+	// Analyzer paths are always absolute paths
+	analyzerPath, err := filepath.Abs("test")
+	require.NoError(t, err)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader(analyzerPath, func(*plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+					// We expect to see resA and resB in the analysis.
+					var foundA, foundB bool
+					for _, res := range resources {
+						if res.URN.Name() == "resA" {
+							foundA = true
+						} else if res.URN.Name() == "resB" {
+							foundB = true
+						}
+					}
+					assert.True(t, foundA, "Expected to find resA in analysis")
+					assert.True(t, foundB, "Expected to find resB in analysis")
+					return nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	skipB := false
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		if !skipB {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+
+	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: host,
+		UpdateOptions: UpdateOptions{
+			LocalPolicyPacks: []LocalPolicyPack{
+				{
+					Path: "test",
+				},
+			},
+		},
+	}
+	snap1, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// The 2 we defined plus the default provider for pkgA.
+	require.Len(t, snap1.Resources, 3)
+
+	// Operation 2 -- run again but skip B but only target A, we should still see B in the analysis.
+	skipB = true
+
+	opts.Targets = deploy.NewUrnTargets([]string{"**resA**"})
+
+	snap2, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, snap1), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// The 2 we defined plus the default provider for pkgA.
+	require.Len(t, snap2.Resources, 3)
 }

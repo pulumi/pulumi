@@ -1,0 +1,14 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=ff01a101-c71a-4652-acd9-04cf315f8517]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=ea337562-1ef8-4884-964a-dac95f5ed818]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>         <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    |local|test  
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
