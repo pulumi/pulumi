@@ -57,8 +57,10 @@ type publishPackageArgs struct {
 
 type packagePublishCmd struct {
 	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
-	extractSchema func(pctx *plugin.Context, packageSource string, args []string, registry registry.Registry) (*schema.Package, *workspace.PackageSpec, error)
-	pluginDir     string
+	extractSchema func(
+		pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+	) (*schema.Package, *workspace.PackageSpec, error)
+	pluginDir string
 }
 
 func newPackagePublishCmd() *cobra.Command {

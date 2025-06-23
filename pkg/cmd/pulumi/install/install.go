@@ -124,18 +124,19 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
-			if err := installPackagesFromProject(pctx, proj, root, registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-				b, err := cmdBackend.NonInteractiveCurrentBackend(
-					cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj,
-				)
-				if err == nil && b != nil {
-					return b.GetReadOnlyCloudRegistry(), nil
-				}
-				if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-					return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
-				}
-				return nil, fmt.Errorf("could not get registry backend: %w", err)
-			})); err != nil {
+			if err := installPackagesFromProject(pctx, proj, root,
+				registry.NewOnDemandRegistry(func() (registry.Registry, error) {
+					b, err := cmdBackend.NonInteractiveCurrentBackend(
+						cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj,
+					)
+					if err == nil && b != nil {
+						return b.GetReadOnlyCloudRegistry(), nil
+					}
+					if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+						return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
+					}
+					return nil, fmt.Errorf("could not get registry backend: %w", err)
+				})); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
 
@@ -195,7 +196,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 // installPackagesFromProject processes packages specified in the Pulumi.yaml file
 // and installs them using similar logic to the 'pulumi package add' command
-func installPackagesFromProject(pctx *plugin.Context, proj *workspace.Project, root string, registry registry.Registry) error {
+func installPackagesFromProject(
+	pctx *plugin.Context, proj *workspace.Project, root string, registry registry.Registry,
+) error {
 	packages := proj.GetPackageSpecs()
 	if len(packages) == 0 {
 		return nil

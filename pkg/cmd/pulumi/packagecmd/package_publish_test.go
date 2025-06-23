@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -420,11 +421,13 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			cmd := &packagePublishCmd{
 				defaultOrg: defaultOrg,
-				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+				extractSchema: func(
+					pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+				) (*schema.Package, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
-						return nil, errors.New("mock schema extraction failed")
+						return nil, nil, errors.New("mock schema extraction failed")
 					}
-					return tt.mockSchema, tt.schemaExtractionErr
+					return tt.mockSchema, nil, tt.schemaExtractionErr
 				},
 				pluginDir: pluginDir,
 			}
@@ -517,8 +520,10 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
-				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
-					return tt.mockSchema, nil
+				extractSchema: func(
+					pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+				) (*schema.Package, *workspace.PackageSpec, error) {
+					return tt.mockSchema, nil, nil
 				},
 			}
 
@@ -575,8 +580,10 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
-				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
-					return validSchema, nil
+				extractSchema: func(
+					pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+				) (*schema.Package, *workspace.PackageSpec, error) {
+					return validSchema, nil, nil
 				},
 			}
 
@@ -612,12 +619,14 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 			return "", nil
 		},
-		extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+		extractSchema: func(
+			pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+		) (*schema.Package, *workspace.PackageSpec, error) {
 			pkg := &schema.Package{
 				Name:    "test-package",
 				Version: &semver.Version{Major: 1, Minor: 0, Patch: 0},
 			}
-			return pkg, nil
+			return pkg, nil, nil
 		},
 	}
 

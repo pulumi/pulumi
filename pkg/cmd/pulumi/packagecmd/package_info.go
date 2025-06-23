@@ -64,18 +64,19 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			pkg, _, err := SchemaFromSchemaSource(pctx, args[0], args[1:], registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-				b, err := cmdBackend.NonInteractiveCurrentBackend(
-					cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
-				)
-				if err == nil && b != nil {
-					return b.GetReadOnlyCloudRegistry(), nil
-				}
-				if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-					return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
-				}
-				return nil, fmt.Errorf("could not get registry backend: %w", err)
-			}))
+			pkg, _, err := SchemaFromSchemaSource(pctx, args[0], args[1:],
+				registry.NewOnDemandRegistry(func() (registry.Registry, error) {
+					b, err := cmdBackend.NonInteractiveCurrentBackend(
+						cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
+					)
+					if err == nil && b != nil {
+						return b.GetReadOnlyCloudRegistry(), nil
+					}
+					if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+						return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
+					}
+					return nil, fmt.Errorf("could not get registry backend: %w", err)
+				}))
 			if err != nil {
 				return err
 			}
