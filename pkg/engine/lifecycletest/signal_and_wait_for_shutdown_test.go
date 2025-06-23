@@ -187,7 +187,6 @@ func TestSignalAndWaitForShutdownErrorAfterWait(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		// assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		assert.NoError(t, err)
 		if callSignalAndWaitForShutdown {
 			err = monitor.SignalAndWaitForShutdown(context.Background())
