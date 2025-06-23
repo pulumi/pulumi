@@ -1206,7 +1206,9 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
     CALLBACK_FIELD_NUMBER: builtins.int
     ON_DRY_RUN_FIELD_NUMBER: builtins.int
     name: builtins.str
-    """the name of the hook."""
+    """The name of the hook. Must be unique within a program, registering the
+    same name twice is an error.
+    """
     @property
     def callback(self) -> pulumi.callback_pb2.Callback:
         """the callback that the engine can call to run the hook."""

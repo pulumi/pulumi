@@ -331,7 +331,9 @@ message Parameterization {
 }
 
 message RegisterResourceHookRequest {
-    string name = 1; // the name of the hook.
+    // The name of the hook. Must be unique within a program, registering the
+    // same name twice is an error.
+    string name = 1;
     Callback callback = 2; // the callback that the engine can call to run the hook.
     bool on_dry_run = 3; // whether to run the hook on dry runs.
 }

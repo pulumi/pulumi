@@ -1895,7 +1895,9 @@ type RegisterResourceHookRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name     string    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                            // the name of the hook.
+	// The name of the hook. Must be unique within a program, registering the
+	// same name twice is an error.
+	Name     string    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Callback *Callback `protobuf:"bytes,2,opt,name=callback,proto3" json:"callback,omitempty"`                    // the callback that the engine can call to run the hook.
 	OnDryRun bool      `protobuf:"varint,3,opt,name=on_dry_run,json=onDryRun,proto3" json:"on_dry_run,omitempty"` // whether to run the hook on dry runs.
 }
