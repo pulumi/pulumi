@@ -12,7 +12,10 @@ class Mocks(pulumi.runtime.Mocks):
 pulumi.runtime.set_mocks(Mocks(), project="project", stack="stack", preview=False)
 
 class TestPackage(unittest.TestCase):
-    def test_should_create_random_resource(self):
-        import pulumi_pkg as pkg  # Assuming 'pkg' is the generated Python SDK for your provider
+    async def test_should_create_random_resource(self):
+        import pulumi_pkg as pkg
         random = pkg.Random("random", length=8)
         assert random is not None
+
+        result = await random.id.promise()
+        assert result == "random_id"
