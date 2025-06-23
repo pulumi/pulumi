@@ -166,12 +166,12 @@ message RegisterResourceRequest {
     string packageRef = 33; // a reference from RegisterPackageRequest.
 
     message ResourceHooksBinding {
-        repeated Callback before_create = 1;
-        repeated Callback after_create = 2;
-        repeated Callback before_update = 3;
-        repeated Callback after_update = 4;
-        repeated Callback before_delete = 5;
-        repeated Callback after_delete = 6;
+        repeated string before_create = 1;
+        repeated string after_create = 2;
+        repeated string before_update = 3;
+        repeated string after_update = 4;
+        repeated string before_delete = 5;
+        repeated string after_delete = 6;
     }
 
     // The resource hooks that should run at certain points in the resource's lifecycle.
@@ -333,6 +333,7 @@ message Parameterization {
 }
 
 message RegisterResourceHookRequest {
-    Callback callback = 1; // the callback that the engine can call to run the hook.
-    bool on_dry_run = 2; // whether to run the hook on dry runs.
+    string name = 1; // the name of the hook.
+    Callback callback = 2; // the callback that the engine can call to run the hook.
+    bool on_dry_run = 3; // whether to run the hook on dry runs.
 }

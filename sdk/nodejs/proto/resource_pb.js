@@ -2592,18 +2592,12 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.toObject 
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject = function(includeInstance, msg) {
   var f, obj = {
-    beforeCreateList: jspb.Message.toObjectList(msg.getBeforeCreateList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance),
-    afterCreateList: jspb.Message.toObjectList(msg.getAfterCreateList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance),
-    beforeUpdateList: jspb.Message.toObjectList(msg.getBeforeUpdateList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance),
-    afterUpdateList: jspb.Message.toObjectList(msg.getAfterUpdateList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance),
-    beforeDeleteList: jspb.Message.toObjectList(msg.getBeforeDeleteList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance),
-    afterDeleteList: jspb.Message.toObjectList(msg.getAfterDeleteList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance)
+    beforeCreateList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
+    afterCreateList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
+    beforeUpdateList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+    afterUpdateList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
+    beforeDeleteList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+    afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2641,33 +2635,27 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.deserializeBinaryFr
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = new pulumi_callback_pb.Callback;
-      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      var value = /** @type {string} */ (reader.readString());
       msg.addBeforeCreate(value);
       break;
     case 2:
-      var value = new pulumi_callback_pb.Callback;
-      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      var value = /** @type {string} */ (reader.readString());
       msg.addAfterCreate(value);
       break;
     case 3:
-      var value = new pulumi_callback_pb.Callback;
-      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      var value = /** @type {string} */ (reader.readString());
       msg.addBeforeUpdate(value);
       break;
     case 4:
-      var value = new pulumi_callback_pb.Callback;
-      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      var value = /** @type {string} */ (reader.readString());
       msg.addAfterUpdate(value);
       break;
     case 5:
-      var value = new pulumi_callback_pb.Callback;
-      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      var value = /** @type {string} */ (reader.readString());
       msg.addBeforeDelete(value);
       break;
     case 6:
-      var value = new pulumi_callback_pb.Callback;
-      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      var value = /** @type {string} */ (reader.readString());
       msg.addAfterDelete(value);
       break;
     default:
@@ -2701,81 +2689,74 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.serializeBinaryToWr
   var f = undefined;
   f = message.getBeforeCreateList();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeRepeatedString(
       1,
-      f,
-      pulumi_callback_pb.Callback.serializeBinaryToWriter
+      f
     );
   }
   f = message.getAfterCreateList();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeRepeatedString(
       2,
-      f,
-      pulumi_callback_pb.Callback.serializeBinaryToWriter
+      f
     );
   }
   f = message.getBeforeUpdateList();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeRepeatedString(
       3,
-      f,
-      pulumi_callback_pb.Callback.serializeBinaryToWriter
+      f
     );
   }
   f = message.getAfterUpdateList();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeRepeatedString(
       4,
-      f,
-      pulumi_callback_pb.Callback.serializeBinaryToWriter
+      f
     );
   }
   f = message.getBeforeDeleteList();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeRepeatedString(
       5,
-      f,
-      pulumi_callback_pb.Callback.serializeBinaryToWriter
+      f
     );
   }
   f = message.getAfterDeleteList();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeRepeatedString(
       6,
-      f,
-      pulumi_callback_pb.Callback.serializeBinaryToWriter
+      f
     );
   }
 };
 
 
 /**
- * repeated Callback before_create = 1;
- * @return {!Array<!proto.pulumirpc.Callback>}
+ * repeated string before_create = 1;
+ * @return {!Array<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getBeforeCreateList = function() {
-  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
-    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 1));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
-*/
+ */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setBeforeCreateList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 1, value);
+  return jspb.Message.setField(this, 1, value || []);
 };
 
 
 /**
- * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {string} value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.Callback}
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addBeforeCreate = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.pulumirpc.Callback, opt_index);
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addBeforeCreate = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
 };
 
 
@@ -2789,31 +2770,30 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearBefo
 
 
 /**
- * repeated Callback after_create = 2;
- * @return {!Array<!proto.pulumirpc.Callback>}
+ * repeated string after_create = 2;
+ * @return {!Array<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getAfterCreateList = function() {
-  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
-    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 2));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
-*/
+ */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setAfterCreateList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 2, value);
+  return jspb.Message.setField(this, 2, value || []);
 };
 
 
 /**
- * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {string} value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.Callback}
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterCreate = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.Callback, opt_index);
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterCreate = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
 };
 
 
@@ -2827,31 +2807,30 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearAfte
 
 
 /**
- * repeated Callback before_update = 3;
- * @return {!Array<!proto.pulumirpc.Callback>}
+ * repeated string before_update = 3;
+ * @return {!Array<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getBeforeUpdateList = function() {
-  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
-    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 3));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
-*/
+ */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setBeforeUpdateList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 3, value);
+  return jspb.Message.setField(this, 3, value || []);
 };
 
 
 /**
- * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {string} value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.Callback}
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addBeforeUpdate = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 3, opt_value, proto.pulumirpc.Callback, opt_index);
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addBeforeUpdate = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
 };
 
 
@@ -2865,31 +2844,30 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearBefo
 
 
 /**
- * repeated Callback after_update = 4;
- * @return {!Array<!proto.pulumirpc.Callback>}
+ * repeated string after_update = 4;
+ * @return {!Array<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getAfterUpdateList = function() {
-  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
-    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 4));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 4));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
-*/
+ */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setAfterUpdateList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 4, value);
+  return jspb.Message.setField(this, 4, value || []);
 };
 
 
 /**
- * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {string} value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.Callback}
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterUpdate = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.pulumirpc.Callback, opt_index);
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterUpdate = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 4, value, opt_index);
 };
 
 
@@ -2903,31 +2881,30 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearAfte
 
 
 /**
- * repeated Callback before_delete = 5;
- * @return {!Array<!proto.pulumirpc.Callback>}
+ * repeated string before_delete = 5;
+ * @return {!Array<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getBeforeDeleteList = function() {
-  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
-    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 5));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
-*/
+ */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setBeforeDeleteList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 5, value);
+  return jspb.Message.setField(this, 5, value || []);
 };
 
 
 /**
- * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {string} value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.Callback}
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addBeforeDelete = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 5, opt_value, proto.pulumirpc.Callback, opt_index);
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addBeforeDelete = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
 };
 
 
@@ -2941,31 +2918,30 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearBefo
 
 
 /**
- * repeated Callback after_delete = 6;
- * @return {!Array<!proto.pulumirpc.Callback>}
+ * repeated string after_delete = 6;
+ * @return {!Array<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getAfterDeleteList = function() {
-  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
-    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 6));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 6));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
-*/
+ */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setAfterDeleteList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 6, value);
+  return jspb.Message.setField(this, 6, value || []);
 };
 
 
 /**
- * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {string} value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.Callback}
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterDelete = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 6, opt_value, proto.pulumirpc.Callback, opt_index);
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterDelete = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 6, value, opt_index);
 };
 
 
@@ -8444,8 +8420,9 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.toObject = function(opt_in
  */
 proto.pulumirpc.RegisterResourceHookRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     callback: (f = msg.getCallback()) && pulumi_callback_pb.Callback.toObject(includeInstance, f),
-    onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+    onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -8483,11 +8460,15 @@ proto.pulumirpc.RegisterResourceHookRequest.deserializeBinaryFromReader = functi
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
+    case 2:
       var value = new pulumi_callback_pb.Callback;
       reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
       msg.setCallback(value);
       break;
-    case 2:
+    case 3:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setOnDryRun(value);
       break;
@@ -8520,10 +8501,17 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.serializeBinary = function
  */
 proto.pulumirpc.RegisterResourceHookRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getName();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
   f = message.getCallback();
   if (f != null) {
     writer.writeMessage(
-      1,
+      2,
       f,
       pulumi_callback_pb.Callback.serializeBinaryToWriter
     );
@@ -8531,7 +8519,7 @@ proto.pulumirpc.RegisterResourceHookRequest.serializeBinaryToWriter = function(m
   f = message.getOnDryRun();
   if (f) {
     writer.writeBool(
-      2,
+      3,
       f
     );
   }
@@ -8539,12 +8527,30 @@ proto.pulumirpc.RegisterResourceHookRequest.serializeBinaryToWriter = function(m
 
 
 /**
- * optional Callback callback = 1;
+ * optional string name = 1;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceHookRequest.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceHookRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceHookRequest.prototype.setName = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional Callback callback = 2;
  * @return {?proto.pulumirpc.Callback}
  */
 proto.pulumirpc.RegisterResourceHookRequest.prototype.getCallback = function() {
   return /** @type{?proto.pulumirpc.Callback} */ (
-    jspb.Message.getWrapperField(this, pulumi_callback_pb.Callback, 1));
+    jspb.Message.getWrapperField(this, pulumi_callback_pb.Callback, 2));
 };
 
 
@@ -8553,7 +8559,7 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.getCallback = function() {
  * @return {!proto.pulumirpc.RegisterResourceHookRequest} returns this
 */
 proto.pulumirpc.RegisterResourceHookRequest.prototype.setCallback = function(value) {
-  return jspb.Message.setWrapperField(this, 1, value);
+  return jspb.Message.setWrapperField(this, 2, value);
 };
 
 
@@ -8571,16 +8577,16 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.clearCallback = function()
  * @return {boolean}
  */
 proto.pulumirpc.RegisterResourceHookRequest.prototype.hasCallback = function() {
-  return jspb.Message.getField(this, 1) != null;
+  return jspb.Message.getField(this, 2) != null;
 };
 
 
 /**
- * optional bool on_dry_run = 2;
+ * optional bool on_dry_run = 3;
  * @return {boolean}
  */
 proto.pulumirpc.RegisterResourceHookRequest.prototype.getOnDryRun = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
 };
 
 
@@ -8589,7 +8595,7 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.getOnDryRun = function() {
  * @return {!proto.pulumirpc.RegisterResourceHookRequest} returns this
  */
 proto.pulumirpc.RegisterResourceHookRequest.prototype.setOnDryRun = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

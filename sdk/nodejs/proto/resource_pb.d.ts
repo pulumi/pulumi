@@ -359,29 +359,29 @@ export namespace RegisterResourceRequest {
 
     export class ResourceHooksBinding extends jspb.Message { 
         clearBeforeCreateList(): void;
-        getBeforeCreateList(): Array<pulumi_callback_pb.Callback>;
-        setBeforeCreateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
-        addBeforeCreate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+        getBeforeCreateList(): Array<string>;
+        setBeforeCreateList(value: Array<string>): ResourceHooksBinding;
+        addBeforeCreate(value: string, index?: number): string;
         clearAfterCreateList(): void;
-        getAfterCreateList(): Array<pulumi_callback_pb.Callback>;
-        setAfterCreateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
-        addAfterCreate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+        getAfterCreateList(): Array<string>;
+        setAfterCreateList(value: Array<string>): ResourceHooksBinding;
+        addAfterCreate(value: string, index?: number): string;
         clearBeforeUpdateList(): void;
-        getBeforeUpdateList(): Array<pulumi_callback_pb.Callback>;
-        setBeforeUpdateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
-        addBeforeUpdate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+        getBeforeUpdateList(): Array<string>;
+        setBeforeUpdateList(value: Array<string>): ResourceHooksBinding;
+        addBeforeUpdate(value: string, index?: number): string;
         clearAfterUpdateList(): void;
-        getAfterUpdateList(): Array<pulumi_callback_pb.Callback>;
-        setAfterUpdateList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
-        addAfterUpdate(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+        getAfterUpdateList(): Array<string>;
+        setAfterUpdateList(value: Array<string>): ResourceHooksBinding;
+        addAfterUpdate(value: string, index?: number): string;
         clearBeforeDeleteList(): void;
-        getBeforeDeleteList(): Array<pulumi_callback_pb.Callback>;
-        setBeforeDeleteList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
-        addBeforeDelete(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+        getBeforeDeleteList(): Array<string>;
+        setBeforeDeleteList(value: Array<string>): ResourceHooksBinding;
+        addBeforeDelete(value: string, index?: number): string;
         clearAfterDeleteList(): void;
-        getAfterDeleteList(): Array<pulumi_callback_pb.Callback>;
-        setAfterDeleteList(value: Array<pulumi_callback_pb.Callback>): ResourceHooksBinding;
-        addAfterDelete(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+        getAfterDeleteList(): Array<string>;
+        setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
+        addAfterDelete(value: string, index?: number): string;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
@@ -395,12 +395,12 @@ export namespace RegisterResourceRequest {
 
     export namespace ResourceHooksBinding {
         export type AsObject = {
-            beforeCreateList: Array<pulumi_callback_pb.Callback.AsObject>,
-            afterCreateList: Array<pulumi_callback_pb.Callback.AsObject>,
-            beforeUpdateList: Array<pulumi_callback_pb.Callback.AsObject>,
-            afterUpdateList: Array<pulumi_callback_pb.Callback.AsObject>,
-            beforeDeleteList: Array<pulumi_callback_pb.Callback.AsObject>,
-            afterDeleteList: Array<pulumi_callback_pb.Callback.AsObject>,
+            beforeCreateList: Array<string>,
+            afterCreateList: Array<string>,
+            beforeUpdateList: Array<string>,
+            afterUpdateList: Array<string>,
+            beforeDeleteList: Array<string>,
+            afterDeleteList: Array<string>,
         }
     }
 
@@ -1016,6 +1016,8 @@ export namespace Parameterization {
 }
 
 export class RegisterResourceHookRequest extends jspb.Message { 
+    getName(): string;
+    setName(value: string): RegisterResourceHookRequest;
 
     hasCallback(): boolean;
     clearCallback(): void;
@@ -1036,6 +1038,7 @@ export class RegisterResourceHookRequest extends jspb.Message {
 
 export namespace RegisterResourceHookRequest {
     export type AsObject = {
+        name: string,
         callback?: pulumi_callback_pb.Callback.AsObject,
         onDryRun: boolean,
     }

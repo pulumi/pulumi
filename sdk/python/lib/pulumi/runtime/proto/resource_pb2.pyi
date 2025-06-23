@@ -323,26 +323,26 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
         @property
-        def before_create(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
-        def after_create(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def after_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
-        def before_update(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def before_update(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
-        def after_update(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def after_update(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
-        def before_delete(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def before_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
-        def after_delete(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def after_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         def __init__(
             self,
             *,
-            before_create: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
-            after_create: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
-            before_update: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
-            after_update: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
-            before_delete: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
-            after_delete: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+            before_create: collections.abc.Iterable[builtins.str] | None = ...,
+            after_create: collections.abc.Iterable[builtins.str] | None = ...,
+            before_update: collections.abc.Iterable[builtins.str] | None = ...,
+            after_update: collections.abc.Iterable[builtins.str] | None = ...,
+            before_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            after_delete: collections.abc.Iterable[builtins.str] | None = ...,
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
 
@@ -1202,8 +1202,11 @@ global___Parameterization = Parameterization
 class RegisterResourceHookRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    NAME_FIELD_NUMBER: builtins.int
     CALLBACK_FIELD_NUMBER: builtins.int
     ON_DRY_RUN_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """the name of the hook."""
     @property
     def callback(self) -> pulumi.callback_pb2.Callback:
         """the callback that the engine can call to run the hook."""
@@ -1212,10 +1215,11 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
     def __init__(
         self,
         *,
+        name: builtins.str = ...,
         callback: pulumi.callback_pb2.Callback | None = ...,
         on_dry_run: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["callback", b"callback"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["callback", b"callback", "on_dry_run", b"on_dry_run"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["callback", b"callback", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
 
 global___RegisterResourceHookRequest = RegisterResourceHookRequest
