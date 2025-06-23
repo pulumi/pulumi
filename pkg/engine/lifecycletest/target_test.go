@@ -4747,3 +4747,105 @@ func TestUntargetedResourceAnalyzer(t *testing.T) {
 	// The 2 we defined plus the default provider for pkgA.
 	require.Len(t, snap2.Resources, 3)
 }
+
+// TestUntargetedRefreshedProviderUpdate is a regression test for
+// https://github.com/pulumi/pulumi/issues/19879. If we refresh a resource that refers to an old provider that
+// isn't registered in the current update we then would hit an assert later on in the analysis phase.
+func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	// Operation 1 -- set up an initial state
+	//
+	// We initialise the following resources:
+	//
+	// * A and B
+
+	// Analyzer paths are always absolute paths
+	analyzerPath, err := filepath.Abs("test")
+	require.NoError(t, err)
+
+	version := "1.0.0"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader(analyzerPath, func(*plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+					// We expect to see resA and resB in the analysis. resA should have the new provider and
+					// resB should have the old provider.
+					var foundA, foundB bool
+					for _, res := range resources {
+						if res.URN.Name() == "resA" {
+							foundA = true
+							expected := "default_" + strings.ReplaceAll(version, ".", "_")
+							assert.Equal(t, expected, res.Provider.Name)
+						} else if res.URN.Name() == "resB" {
+							foundB = true
+							assert.Equal(t, "default_1_0_0", res.Provider.Name)
+						}
+					}
+					assert.True(t, foundA, "Expected to find resA in analysis")
+					assert.True(t, foundB, "Expected to find resB in analysis")
+					return nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	skipB := false
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Version: version,
+		})
+		assert.NoError(t, err)
+
+		if !skipB {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Version: version,
+			})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+
+	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            host,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			LocalPolicyPacks: []LocalPolicyPack{
+				{
+					Path: "test",
+				},
+			},
+		},
+	}
+	snap1, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// The 2 we defined plus the default provider for pkgA.
+	require.Len(t, snap1.Resources, 3)
+
+	// Operation 2 -- run again but skip B but only target A, _but_ also do a refresh (which ignores targets)
+	// we shouldn't get a panic but instead just see the old provider resource for B.
+	skipB = true
+	version = "2.0.0"
+
+	opts.Targets = deploy.NewUrnTargets([]string{"**resA**"})
+	opts.Refresh = true
+
+	snap2, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, snap1), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// The 2 we defined plus the new and old default provider for pkgA
+	require.Len(t, snap2.Resources, 4)
+}
