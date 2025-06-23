@@ -79,6 +79,9 @@ func TestMustExist(t *testing.T) {
 func TestWaitsForFileToExist(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist", t)
 	defer cleanup()
 	tail := tailTest.StartTail("test.txt", Config{})
@@ -91,6 +94,9 @@ func TestWaitsForFileToExist(t *testing.T) {
 
 //nolint:paralleltest // this test is not parallel because it changes the working directory
 func TestWaitsForFileToExistRelativePath(t *testing.T) {
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist-relative", t)
 	defer cleanup()
 
@@ -324,6 +330,8 @@ func TestLocationMiddle(t *testing.T) {
 
 func TestReOpenInotify(t *testing.T) {
 	t.Parallel()
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
 
 	reOpen(t, false)
 }
