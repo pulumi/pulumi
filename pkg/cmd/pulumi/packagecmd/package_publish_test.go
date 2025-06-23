@@ -509,6 +509,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 						},
 					}, nil
 				},
+				GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
 			})
 
 			cmd := &packagePublishCmd{
@@ -548,6 +549,9 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				testutil.MockBackendInstance(t, &backend.MockBackend{
 					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get package registry")
+					},
+					GetReadOnlyCloudRegistryF: func() registry.Registry {
+						return &backend.MockCloudRegistry{}
 					},
 				})
 			},

@@ -118,6 +118,22 @@ type PackageMetadata struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// The visibility of the package.
 	Visibility Visibility `json:"visibility"`
+	// The parameterization of the provider, if any.
+	Parameterization *PackageParameterization `json:"parameterization,omitempty"`
+}
+
+type PackageParameterization struct {
+	BaseProvider ArtifactVersionNameSpec `json:"baseProvider"`
+	Parameter    []byte                  `json:"parameter"`
+}
+
+// ArtifactVersionNameSpec represents an arbitrary artifact version name for
+// serialization.
+type ArtifactVersionNameSpec struct {
+	Name      string         `json:"name"`
+	Publisher string         `json:"publisher"`
+	Source    string         `json:"source"`
+	Version   semver.Version `json:"version"`
 }
 
 type PackageType string
