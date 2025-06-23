@@ -36,6 +36,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1579,19 +1580,20 @@ func TestResmonCancel(t *testing.T) {
 	t.Parallel()
 	done := make(chan error)
 	waitForShutdownChan := make(chan struct{}, 1)
-	programCompleteChan := make(chan error, 1)
+	programComplete := &promise.CompletionSource[struct{}]{}
+
 	rm := &resmon{
 		cancel:              make(chan bool),
 		done:                done,
 		waitForShutdownChan: waitForShutdownChan,
-		programCompleteChan: programCompleteChan,
+		programComplete:     programComplete.Promise(),
 	}
 	err := errors.New("my error")
 
 	go func() {
 		// This ensures that cancel doesn't hang.
-		programCompleteChan <- err // Signal from the program to resmon that it completed.
-		done <- nil                // Signal from the GRPC server to resmon that it is done.
+		programComplete.Reject(err) // Signal from the program to resmon that it completed with the error.
+		done <- nil                 // Signal from the GRPC server to resmon that it is done.
 	}()
 
 	// Cancel always returns nil or a joinErrors.
