@@ -131,9 +131,7 @@ class ResourceMonitorServicer(object):
 
     def RegisterResourceHook(self, request, context):
         """Register a resource hook that can be called by the engine during certain
-        steps of a resource's lifecycle. Since the hook registration includes the
-        hook options, each registration should provide a new callback and not
-        re-use the same callback for multiple registrations.
+        steps of a resource's lifecycle.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
