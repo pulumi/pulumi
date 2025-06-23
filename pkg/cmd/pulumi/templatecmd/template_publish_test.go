@@ -59,13 +59,13 @@ func TestTemplatePublishCmd_Run(t *testing.T) {
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				err = os.WriteFile(path.Join(dir, "index.ts"), []byte(`import * as pulumi from "@pulumi/pulumi";
 
 export const message = "Hello, Pulumi!";
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -88,7 +88,7 @@ export const message = "Hello, Pulumi!";
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -112,7 +112,7 @@ runtime: nodejs
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -131,7 +131,7 @@ runtime: nodejs
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -164,7 +164,7 @@ runtime: nodejs
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -184,7 +184,7 @@ runtime: nodejs
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -204,7 +204,7 @@ runtime: nodejs
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -225,7 +225,7 @@ runtime: nodejs
 
 				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				return dir
@@ -316,7 +316,7 @@ func TestTemplatePublishCmd_BackendErrors(t *testing.T) {
 			tmpDir := t.TempDir()
 			err := os.WriteFile(path.Join(tmpDir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 			require.NoError(t, err)
 
 			tt.setupBackend(t)
@@ -369,7 +369,7 @@ func TestTemplatePublishCmd_Run_ReadProjectError(t *testing.T) {
 	tmpDir := t.TempDir()
 	err := os.WriteFile(path.Join(tmpDir, "Pulumi.yaml"), []byte(`name: test-template
 runtime: nodejs
-`), 0o644)
+`), 0o600)
 	require.NoError(t, err)
 
 	err = cmd.Run(context.Background(), publishTemplateArgs{
@@ -400,21 +400,21 @@ func TestTemplatePublishCmd_ArchiveCreation(t *testing.T) {
 *.log
 .env
 dist/
-`), 0o644)
+`), 0o600)
 				require.NoError(t, err)
 
 				require.NoError(t, os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`
           name: test-template
           runtime: python
-        `), 0o644))
-				require.NoError(t, os.WriteFile(path.Join(dir, "README.md"), []byte("# Test Template"), 0o644))
-				require.NoError(t, os.WriteFile(path.Join(dir, "index.ts"), []byte(`export const message = "Hello";`), 0o644))
+        `), 0o600))
+				require.NoError(t, os.WriteFile(path.Join(dir, "README.md"), []byte("# Test Template"), 0o600))
+				require.NoError(t, os.WriteFile(path.Join(dir, "index.ts"), []byte(`export const message = "Hello";`), 0o600))
 				require.NoError(t, os.Mkdir(path.Join(dir, "node_modules"), 0o755))
-				require.NoError(t, os.WriteFile(path.Join(dir, "node_modules", "package.json"), []byte("{}"), 0o644))
+				require.NoError(t, os.WriteFile(path.Join(dir, "node_modules", "package.json"), []byte("{}"), 0o600))
 				require.NoError(t, os.Mkdir(path.Join(dir, "dist"), 0o755))
-				require.NoError(t, os.WriteFile(path.Join(dir, "dist", "index.js"), []byte("console.log('built');"), 0o644))
-				require.NoError(t, os.WriteFile(path.Join(dir, "debug.log"), []byte("debug info"), 0o644))
-				require.NoError(t, os.WriteFile(path.Join(dir, ".env"), []byte("SECRET=value"), 0o644))
+				require.NoError(t, os.WriteFile(path.Join(dir, "dist", "index.js"), []byte("console.log('built');"), 0o600))
+				require.NoError(t, os.WriteFile(path.Join(dir, "debug.log"), []byte("debug info"), 0o600))
+				require.NoError(t, os.WriteFile(path.Join(dir, ".env"), []byte("SECRET=value"), 0o600))
 
 				return dir
 			},
@@ -440,9 +440,9 @@ dist/
 				require.NoError(t, os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`
           name: test-template
           runtime: python
-        `), 0o644))
-				require.NoError(t, os.WriteFile(path.Join(dir, "__main__.py"), []byte(`import pulumi`), 0o644))
-				require.NoError(t, os.WriteFile(path.Join(dir, "requirements.txt"), []byte("pulumi>=3.0.0"), 0o644))
+        `), 0o600))
+				require.NoError(t, os.WriteFile(path.Join(dir, "__main__.py"), []byte(`import pulumi`), 0o600))
+				require.NoError(t, os.WriteFile(path.Join(dir, "requirements.txt"), []byte("pulumi>=3.0.0"), 0o600))
 				return dir
 			},
 			expectedFiles: []string{

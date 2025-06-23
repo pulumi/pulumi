@@ -28,9 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testTemplateArchiveData = []byte("fake-tar-gz-data")
-)
+var testTemplateArchiveData = []byte("fake-tar-gz-data")
 
 type templateTestCase struct {
 	name             string
@@ -105,6 +103,7 @@ func TestStartTemplatePublish(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			server := tt.setupServer()
 			defer server.Close()
 
@@ -187,6 +186,8 @@ func TestCompleteTemplatePublish(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			server := tt.setupServer()
 			defer server.Close()
 
@@ -200,7 +201,14 @@ func TestCompleteTemplatePublish(t *testing.T) {
 				},
 			}
 
-			err := client.CompleteTemplatePublish(context.Background(), tt.source, tt.publisher, tt.templateName, tt.version, tt.operationID)
+			err := client.CompleteTemplatePublish(
+				context.Background(),
+				tt.source,
+				tt.publisher,
+				tt.templateName,
+				tt.version,
+				tt.operationID,
+			)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -376,6 +384,8 @@ func TestPublishTemplate_Integration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			blobStorage := tt.setupBlobStorage()
 			defer blobStorage.Close()
 			server := tt.setupServer(blobStorage)

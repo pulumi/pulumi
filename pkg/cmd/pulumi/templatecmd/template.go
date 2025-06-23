@@ -15,6 +15,7 @@
 package templatecmd
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -23,10 +24,11 @@ func NewTemplateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "template",
 		Short: "Work with Pulumi templates",
-		Long: `Work with Pulumi templates
+		Long: `[EXPERIMENTAL] Work with Pulumi templates
 
 Publish and manage Pulumi templates.`,
-		Args: cmdutil.NoArgs,
+		Hidden: !env.Experimental.Value(),
+		Args:   cmdutil.NoArgs,
 	}
 	cmd.AddCommand(
 		newTemplatePublishCmd(),
