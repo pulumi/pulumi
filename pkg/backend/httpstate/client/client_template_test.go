@@ -143,7 +143,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 		source        string
 		publisher     string
 		templateName  string
-		version       string
+		version       semver.Version
 		operationID   TemplatePublishOperationID
 		expectedError string
 	}{
@@ -163,7 +163,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			source:       "private",
 			publisher:    "test-publisher",
 			templateName: "test-template",
-			version:      "1.0.0",
+			version:      semver.MustParse("1.0.0"),
 			operationID:  "test-operation-id",
 		},
 		{
@@ -178,7 +178,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			source:        "private",
 			publisher:     "test-publisher",
 			templateName:  "test-template",
-			version:       "1.0.0",
+			version:       semver.MustParse("1.0.0"),
 			operationID:   "test-operation-id",
 			expectedError: "failed to complete template publishing operation",
 		},
@@ -476,7 +476,7 @@ func (r *testCloudRegistry) PublishTemplate(ctx context.Context, op templatePubl
 		return errors.New("upload failed with status " + resp.Status)
 	}
 
-	err = r.cl.CompleteTemplatePublish(ctx, op.Source, op.Publisher, op.Name, op.Version.String(), startResp.OperationID)
+	err = r.cl.CompleteTemplatePublish(ctx, op.Source, op.Publisher, op.Name, op.Version, startResp.OperationID)
 	if err != nil {
 		return err
 	}

@@ -808,7 +808,7 @@ func (m MockTarReader) Tar() *tar.Reader {
 
 type MockCloudRegistry struct {
 	PublishPackageF  func(context.Context, apitype.PackagePublishOp) error
-	PublishTemplateF func(context.Context, TemplatePublishOp) error
+	PublishTemplateF func(context.Context, apitype.TemplatePublishOp) error
 	GetPackageF      func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
@@ -842,7 +842,7 @@ func (mr *MockCloudRegistry) SearchByName(
 	panic("not implemented")
 }
 
-func (mr *MockCloudRegistry) PublishTemplate(ctx context.Context, op TemplatePublishOp) error {
+func (mr *MockCloudRegistry) PublishTemplate(ctx context.Context, op apitype.TemplatePublishOp) error {
 	if mr.PublishTemplateF != nil {
 		return mr.PublishTemplateF(ctx, op)
 	}

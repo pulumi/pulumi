@@ -270,7 +270,7 @@ func publishTemplatePath(source, publisher, name string) string {
 	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions", source, publisher, name)
 }
 
-func completeTemplatePublishPath(source, publisher, name, version string) string {
+func completeTemplatePublishPath(source, publisher, name string, version semver.Version) string {
 	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
@@ -1610,7 +1610,8 @@ func (pc *Client) StartTemplatePublish(
 
 func (pc *Client) CompleteTemplatePublish(
 	ctx context.Context,
-	source, publisher, name, version string,
+	source, publisher, name string,
+	version semver.Version,
 	operationID TemplatePublishOperationID,
 ) error {
 	completeReq := PublishTemplateVersionCompleteRequest{
@@ -1621,6 +1622,37 @@ func (pc *Client) CompleteTemplatePublish(
 	err := pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
 	if err != nil {
 		return fmt.Errorf("failed to complete template publishing operation %q: %w", operationID, err)
+	}
+
+	return nil
+}
+
+func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePublishOp) error {
+	resp, err := pc.StartTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version)
+	if err != nil {
+		return fmt.Errorf("failed to start template publish: %w", err)
+	}
+
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURLs.Archive, input.Archive)
+	if err != nil {
+		return fmt.Errorf("failed to create upload request: %w", err)
+	}
+	putReq.Header.Set("Content-Type", "application/gzip")
+
+	uploadResp, err := pc.do(ctx, putReq)
+	if err != nil {
+		return fmt.Errorf("failed to upload archive: %w", err)
+	} else if uploadResp.StatusCode != http.StatusOK {
+		body, bodyErr := readBody(uploadResp)
+		if bodyErr != nil {
+			return fmt.Errorf("failed to upload archive: %s", uploadResp.Status)
+		}
+		return fmt.Errorf("failed to upload archive: %s - %s", uploadResp.Status, string(body))
+	}
+
+	err = pc.CompleteTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version, resp.OperationID)
+	if err != nil {
+		return fmt.Errorf("failed to complete template publish: %w", err)
 	}
 
 	return nil

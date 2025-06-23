@@ -29,7 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -212,26 +214,6 @@ runtime: nodejs
 			publishErr:  errors.New("publish failed"),
 			expectedErr: "failed to publish template",
 		},
-		{
-			name: "error when version is empty",
-			args: publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "test-template",
-				version:   "",
-			},
-			templateDir: func(t *testing.T) string {
-				t.Helper()
-				dir := t.TempDir()
-
-				err := os.WriteFile(path.Join(dir, "Pulumi.yaml"), []byte(`name: test-template
-runtime: nodejs
-`), 0o600)
-				require.NoError(t, err)
-
-				return dir
-			},
-			expectedErr: "version is required",
-		},
 	}
 
 	for _, tt := range tests {
@@ -242,7 +224,7 @@ runtime: nodejs
 			}
 
 			mockCloudRegistry := &backend.MockCloudRegistry{
-				PublishTemplateF: func(ctx context.Context, op backend.TemplatePublishOp) error {
+				PublishTemplateF: func(ctx context.Context, op apitype.TemplatePublishOp) error {
 					assert.Equal(t, "private", op.Source, "source should be 'private'")
 
 					if tt.args.publisher != "" {
@@ -280,7 +262,8 @@ runtime: nodejs
 				defaultOrg: defaultOrg,
 			}
 
-			err := cmd.Run(context.Background(), tt.args, templateDir)
+			mockCmd := &cobra.Command{}
+			err := cmd.Run(context.Background(), mockCmd, tt.args, templateDir)
 			if tt.expectedErr != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
@@ -327,7 +310,8 @@ runtime: nodejs
 				},
 			}
 
-			err = cmd.Run(context.Background(), publishTemplateArgs{
+			mockCmd := &cobra.Command{}
+			err = cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
 				publisher: "publisher",
 				name:      "test-template",
 				version:   "1.0.0",
@@ -372,7 +356,8 @@ runtime: nodejs
 `), 0o600)
 	require.NoError(t, err)
 
-	err = cmd.Run(context.Background(), publishTemplateArgs{
+	mockCmd := &cobra.Command{}
+	err = cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
 		publisher: "publisher",
 		name:      "test-template",
 		version:   "1.0.0",
@@ -459,7 +444,7 @@ dist/
 			templateDir := tt.setupDir(t)
 
 			mockCloudRegistry := &backend.MockCloudRegistry{
-				PublishTemplateF: func(ctx context.Context, op backend.TemplatePublishOp) error {
+				PublishTemplateF: func(ctx context.Context, op apitype.TemplatePublishOp) error {
 					archiveBytes, err := io.ReadAll(op.Archive)
 					require.NoError(t, err)
 					assert.Greater(t, len(archiveBytes), 0, "archive should not be empty")
@@ -505,7 +490,8 @@ dist/
 				},
 			}
 
-			err := cmd.Run(context.Background(), publishTemplateArgs{
+			mockCmd := &cobra.Command{}
+			err := cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
 				publisher: "testpublisher",
 				name:      "test-template",
 				version:   "1.0.0",

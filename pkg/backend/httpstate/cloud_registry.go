@@ -17,9 +17,7 @@ package httpstate
 import (
 	ctx "context"
 	"errors"
-	"fmt"
 	"iter"
-	"net/http"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -60,35 +58,6 @@ func (r *cloudRegistry) GetPackage(
 	return meta, err
 }
 
-func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op backend.TemplatePublishOp) error {
-	startResp, err := r.cl.StartTemplatePublish(ctx, op.Source, op.Publisher, op.Name, op.Version)
-	if err != nil {
-		return fmt.Errorf("failed to initialize template publish: %w", err)
-	}
-
-	uploadURL := startResp.UploadURLs.Archive
-	req, err := http.NewRequestWithContext(ctx, "PUT", uploadURL, op.Archive)
-	if err != nil {
-		return fmt.Errorf("failed to create upload request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/gzip")
-
-	httpClient := &http.Client{}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to upload archive: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload failed with status %d", resp.StatusCode)
-	}
-
-	err = r.cl.CompleteTemplatePublish(ctx, op.Source, op.Publisher, op.Name, op.Version.String(), startResp.OperationID)
-	if err != nil {
-		return fmt.Errorf("failed to complete template publish: %w", err)
-	}
-
-	return nil
+func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op apitype.TemplatePublishOp) error {
+	return r.cl.PublishTemplate(ctx, op)
 }

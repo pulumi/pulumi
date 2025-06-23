@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -45,8 +46,7 @@ type templatePublishCmd struct {
 }
 
 func newTemplatePublishCmd() *cobra.Command {
-	args := publishTemplateArgs{}
-	var tplPublishCmd templatePublishCmd
+	var args publishTemplateArgs
 
 	cmd := &cobra.Command{
 		Use:   "publish <directory>",
@@ -56,8 +56,8 @@ func newTemplatePublishCmd() *cobra.Command {
 			"This command publishes a template directory to the Pulumi Registry.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			tplPublishCmd.defaultOrg = backend.GetDefaultOrg
-			return tplPublishCmd.Run(ctx, args, cliArgs[0])
+			tplPublishCmd := templatePublishCmd{defaultOrg: backend.GetDefaultOrg}
+			return tplPublishCmd.Run(ctx, cmd, args, cliArgs[0])
 		},
 	}
 
@@ -76,8 +76,9 @@ func newTemplatePublishCmd() *cobra.Command {
 	return cmd
 }
 
-func (cmd *templatePublishCmd) Run(
+func (tplCmd *templatePublishCmd) Run(
 	ctx context.Context,
+	cmd *cobra.Command,
 	args publishTemplateArgs,
 	templateDir string,
 ) error {
@@ -85,9 +86,6 @@ func (cmd *templatePublishCmd) Run(
 		return fmt.Errorf("template directory does not exist: %s", templateDir)
 	}
 
-	if args.version == "" {
-		return errors.New("version is required, please specify --version")
-	}
 	version, err := semver.ParseTolerant(args.version)
 	if err != nil {
 		return fmt.Errorf("invalid version format: %w", err)
@@ -114,7 +112,7 @@ func (cmd *templatePublishCmd) Run(
 	if args.publisher != "" {
 		publisher = args.publisher
 	} else {
-		publisher, err = cmd.defaultOrg(ctx, b, project)
+		publisher, err = tplCmd.defaultOrg(ctx, b, project)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}
@@ -126,7 +124,7 @@ func (cmd *templatePublishCmd) Run(
 		}
 	}
 
-	fmt.Printf("Creating archive from directory: %s\n", templateDir)
+	fmt.Fprintf(cmd.ErrOrStderr(), "Creating archive from directory: %s\n", templateDir)
 	archiveBytes, err := archive.TGZ(templateDir, "", true /*useDefaultExcludes*/)
 	if err != nil {
 		return fmt.Errorf("failed to create archive: %w", err)
@@ -137,13 +135,13 @@ func (cmd *templatePublishCmd) Run(
 		return fmt.Errorf("invalid template name: %w", err)
 	}
 
-	fmt.Printf("Publishing template %s/%s@%s...\n", publisher, args.name, version.String())
-	err = cmd.publishTemplate(ctx, b, publisher, args.name, version, archiveData)
+	fmt.Fprintf(cmd.ErrOrStderr(), "Publishing template %s/%s@%s...\n", publisher, args.name, version.String())
+	err = tplCmd.publishTemplate(ctx, b, publisher, args.name, version, archiveData)
 	if err != nil {
 		return fmt.Errorf("failed to publish template: %w", err)
 	}
 
-	fmt.Printf("Successfully published template %s/%s@%s\n", publisher, args.name, version.String())
+	fmt.Fprintf(cmd.ErrOrStderr(), "Successfully published template %s/%s@%s\n", publisher, args.name, version.String())
 	return nil
 }
 
@@ -159,7 +157,7 @@ func (cmd *templatePublishCmd) publishTemplate(
 		return fmt.Errorf("failed to get cloud registry: %w", err)
 	}
 
-	publishInput := backend.TemplatePublishOp{
+	publishInput := apitype.TemplatePublishOp{
 		Source:    "private",
 		Publisher: publisher,
 		Name:      name,
