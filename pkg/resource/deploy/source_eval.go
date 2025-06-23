@@ -1619,7 +1619,7 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 	return &emptypb.Empty{}, nil
 }
 
-// SignalAndWaitForShutdown lets the resource monitor now that no more events
+// SignalAndWaitForShutdown lets the resource monitor know that no more events
 // will be generated. This call blocks until the resource monitor is finished,
 // which will happen once all the steps have executed. This allows the language
 // runtime to stay running and handle callback requests, even after the user
