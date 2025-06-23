@@ -145,7 +145,7 @@ func (tplCmd *templatePublishCmd) Run(
 	return nil
 }
 
-func (cmd *templatePublishCmd) publishTemplate(
+func (tplCmd *templatePublishCmd) publishTemplate(
 	ctx context.Context,
 	b backend.Backend,
 	publisher, name string,
