@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -52,8 +53,7 @@ func newTemplatePublishCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Publish a template to the Pulumi Registry",
 		Long: "Publish a template to the Pulumi Registry.\n\n" +
-			"This command publishes a template directory to the Pulumi Registry. " +
-			"The directory will be archived as a .tar.gz file and uploaded.",
+			"This command publishes a template directory to the Pulumi Registry.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			tplPublishCmd.defaultOrg = backend.GetDefaultOrg
@@ -70,14 +70,8 @@ func newTemplatePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.publisher, "publisher", "",
 		"The publisher of the template (e.g., 'pulumi'). Defaults to the default organization in your pulumi config.")
-	err := cmd.MarkFlagRequired("version")
-	if err != nil {
-		panic(err)
-	}
-	err = cmd.MarkFlagRequired("name")
-	if err != nil {
-		panic(err)
-	}
+	contract.AssertNoErrorf(cmd.MarkFlagRequired("version"), "Could not mark \"version\" as required")
+	contract.AssertNoErrorf(cmd.MarkFlagRequired("name"), "Could not mark \"name\" as required")
 
 	return cmd
 }
@@ -104,9 +98,16 @@ func (cmd *templatePublishCmd) Run(
 		return fmt.Errorf("failed to determine current project: %w", err)
 	}
 
-	b, err := login(ctx, project)
+	b, err := cmdBackend.CurrentBackend(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project,
+		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
+	}
+
+	_, err = b.GetCloudRegistry()
+	if err != nil {
+		return fmt.Errorf("backend does not support registry operations: %w", err)
 	}
 
 	var publisher string
@@ -172,15 +173,4 @@ func (cmd *templatePublishCmd) publishTemplate(
 	}
 
 	return nil
-}
-
-func login(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
-	b, err := cmdBackend.CurrentBackend(
-		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project,
-		display.Options{Color: cmdutil.GetGlobalColorization()})
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
 }

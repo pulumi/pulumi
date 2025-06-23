@@ -81,7 +81,7 @@ func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op backend.TemplatePubl
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("upload failed with status %d", resp.StatusCode)
 	}
 

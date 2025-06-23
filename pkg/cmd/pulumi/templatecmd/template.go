@@ -27,6 +27,10 @@ func NewTemplateCmd() *cobra.Command {
 		Long: `[EXPERIMENTAL] Work with Pulumi templates
 
 Publish and manage Pulumi templates.`,
+		// NB: the `pulumi template` namespace depends on pulumi-service APIs that
+		// are currently behind `/preview`. The `pulumi template` namespace should
+		// not be made generally available before those APIs are stabilized out of
+		// `/preview`.
 		Hidden: !env.Experimental.Value(),
 		Args:   cmdutil.NoArgs,
 	}
