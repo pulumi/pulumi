@@ -189,7 +189,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		return nil, err
 	}
 	defer func() {
-		// If the context was canceled, we want to return quickly here and not wait for the program to complete.
 		closeErr := src.Cancel(callerCtx)
 		if closeErr != nil {
 			logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
