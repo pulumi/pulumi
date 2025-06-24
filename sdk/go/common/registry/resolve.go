@@ -72,7 +72,7 @@ func ResolvePackageFromName(
 		var pulumiPackageMetadata *apitype.PackageMetadata
 		var privatePackageMetadata []apitype.PackageMetadata
 		var suggested []apitype.PackageMetadata
-		for meta, err := range registry.SearchByName(ctx, &name) {
+		for meta, err := range registry.ListPackages(ctx, &name) {
 			if err != nil {
 				return apitype.PackageMetadata{}, err
 			}

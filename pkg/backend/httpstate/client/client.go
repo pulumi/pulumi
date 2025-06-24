@@ -1671,7 +1671,7 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
-func (pc *Client) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 	url := "/api/preview/registry/packages?limit=499"
 	if name != nil {
 		url += "&name=" + *name
