@@ -100,6 +100,9 @@ type httpCallOptions struct {
 
 	// ErrorResponse is an optional response body for errors.
 	ErrorResponse any
+
+	// If DisableBaseURL is set, don't apply a base URL as a prefix.
+	DisableBaseURL bool
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind

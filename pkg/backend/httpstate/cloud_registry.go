@@ -17,6 +17,7 @@ package httpstate
 import (
 	ctx "context"
 	"errors"
+	"io"
 	"iter"
 	"net/http"
 
@@ -77,4 +78,8 @@ func (r *cloudRegistry) GetTemplate(
 
 func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op apitype.TemplatePublishOp) error {
 	return r.cl.PublishTemplate(ctx, op)
+}
+
+func (r *cloudRegistry) DownloadTemplate(ctx ctx.Context, downloadURL string) (io.ReadCloser, error) {
+	return r.cl.DownloadTemplate(ctx, downloadURL)
 }
