@@ -272,7 +272,7 @@ func NewUpCmd() *cobra.Command {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
-			workspace.TemplateKindPulumiProject)
+			workspace.TemplateKindPulumiProject, env.Global())
 		defer func() {
 			contract.IgnoreError(templateSource.Close())
 		}()

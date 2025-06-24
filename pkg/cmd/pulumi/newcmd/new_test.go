@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -870,6 +872,81 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 			default:
 				return apitype.ListOrgTemplatesResponse{}, fmt.Errorf("unknown org %q", orgName)
 			}
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
+
+	newCmd := NewNewCmd()
+	var stdout, stderr bytes.Buffer
+	newCmd.SetOut(&stdout)
+	newCmd.SetErr(&stderr)
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
+
+	// Check that the normal prefix is still there
+	assert.Contains(t, stdout.String(), `
+Available Templates:
+`)
+	// Check that our org based templates are there
+	assert.Contains(t, stdout.String(), `
+  template-1                         Describe 1
+  template-2                         Describe 2
+`)
+
+	// Check that normal templates are there
+	assertTemplateContains(t, stdout.String(), `
+  aws-csharp                         A minimal AWS C# Pulumi program
+  aws-fsharp                         A minimal AWS F# Pulumi program
+  aws-go                             A minimal AWS Go Pulumi program
+  aws-java                           A minimal AWS Java Pulumi program
+  aws-javascript                     A minimal AWS JavaScript Pulumi program
+  aws-python                         A minimal AWS Python Pulumi program
+  aws-scala                          A minimal AWS Scala Pulumi program
+  aws-typescript                     A minimal AWS TypeScript Pulumi program
+  aws-visualbasic                    A minimal AWS VB.NET Pulumi program
+  aws-yaml                           A minimal AWS Pulumi YAML program
+`)
+	assert.Equal(t, "", stderr.String())
+}
+
+func ref[T any](v T) *T { return &v }
+
+//nolint:paralleltest // Sets a global mock backend
+func TestPulumiNewWithRegistryTemplates(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
+	mockRegistry := &backend.MockCloudRegistry{
+		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			return func(yield func(apitype.TemplateMetadata, error) bool) {
+				if !yield(apitype.TemplateMetadata{
+					Name: "template-1", Description: ref("Describe 1"),
+				}, nil) {
+					return
+				}
+				if !yield(apitype.TemplateMetadata{
+					Name: "template-2", Description: ref("Describe 2"),
+				}, nil) {
+					return
+				}
+			}
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return mockRegistry
 		},
 	}
 	testutil.MockBackendInstance(t, mockBackend)
