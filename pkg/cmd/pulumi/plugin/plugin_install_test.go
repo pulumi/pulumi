@@ -328,12 +328,12 @@ func (r testMockRegistry) GetPackage(
 	panic("GetPackage not implemented")
 }
 
-func (r testMockRegistry) SearchByName(
+func (r testMockRegistry) ListPackages(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
 	if r.searchByName != nil {
 		return r.searchByName(ctx, name)
 	}
 
-	panic("SearchByName not implemented")
+	panic("ListPackages not implemented")
 }

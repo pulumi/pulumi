@@ -38,10 +38,10 @@ func New(sink diag.Sink, store env.Env) registry.Registry {
 	return packageRegistry{client.NewClient(url, "", false /* insecure */, sink)}
 }
 
-func (r packageRegistry) SearchByName(
+func (r packageRegistry) ListPackages(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
-	return r.c.SearchByName(ctx, name)
+	return r.c.ListPackages(ctx, name)
 }
 
 func (r packageRegistry) GetPackage(
