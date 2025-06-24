@@ -29,18 +29,127 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+func (s *Source) getCloudTemplates(
+	ctx context.Context, templateName string,
+	wg *sync.WaitGroup, e env.Env,
+) {
+	if !e.GetBool(env.DisableRegistryResolve) && e.GetBool(env.Experimental) {
+		s.getRegistryTemplates(ctx, e, templateName)
+		return
+	}
+
+	// Use the old org templates based API.
+	//
+	// This path can be removed when we are confident in registry resolution. We will
+	// always need to maintain a way to access templates without the service, but we
+	// should only need to maintain one way to access templates through the service.
+	s.getOrgTemplates(ctx, templateName, wg, e)
+}
+
+func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
+	r := registry.NewOnDemandRegistry(func() (registry.Registry, error) {
+		b, err := cmdBackend.NonInteractiveCurrentBackend(
+			ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
+		)
+		if err == nil && b != nil {
+			return b.GetReadOnlyCloudRegistry(), nil
+		}
+		if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+			return unauthenticatedregistry.New(cmdutil.Diag(), e), nil
+		}
+		return nil, fmt.Errorf("could not get registry backend: %w", err)
+	})
+
+	// Since the templates names displayed here differ from the template names
+	// returned from ListTemplates for VCS backed templates, we need to fetch
+	// all templates and then filter manually.
+	var nameFilter *string
+
+	for template, err := range r.ListTemplates(ctx, nameFilter) {
+		if err != nil {
+			s.addError(fmt.Errorf("could not get template: %w", err))
+			return
+		}
+
+		if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
+			// These template are maintained using https://github.com/pulumi/templates, and are
+			// ingested without going through the Pulumi Cloud.
+			continue
+		}
+
+		t := registryTemplate{template, r, s}
+		if templateName != "" && t.Name() != templateName {
+			continue
+		}
+
+		s.addTemplate(t)
+	}
+}
+
+type registryTemplate struct {
+	t        apitype.TemplateMetadata
+	registry registry.Registry
+	source   *Source
+}
+
+func (r registryTemplate) Name() string {
+	switch r.t.Source {
+	case "github", "gitlab":
+		parts := strings.SplitN(r.t.Name, "/", 3)
+		return parts[len(parts)-1]
+	default:
+		return r.t.Name
+	}
+}
+
+func (r registryTemplate) Description() string {
+	return ""
+}
+
+func (r registryTemplate) ProjectDescription() string {
+	if r.t.Description == nil {
+		return ""
+	}
+	return *r.t.Description
+}
+
+func (r registryTemplate) Error() error { return nil }
+
+func (r registryTemplate) Download(ctx context.Context) (workspace.Template, error) {
+	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
+	if err != nil {
+		return workspace.Template{}, fmt.Errorf("failed to download from %q: %w", r.t.DownloadURL, err)
+	}
+	defer contract.IgnoreClose(templateBytes)
+	templateDir, err := os.MkdirTemp("", "pulumi-template-")
+	if err != nil {
+		return workspace.Template{}, fmt.Errorf("failed to make temporary directory: %w", err)
+	}
+	// Having created a template directory, we now add it to the list of directories to close.
+	r.source.addCloser(func() error { return os.RemoveAll(templateDir) })
+	if err := writeTar(ctx, tar.NewReader(templateBytes), templateDir); err != nil {
+		return workspace.Template{}, err
+	}
+
+	template, err := workspace.LoadTemplate(templateDir)
+	return template, err
+}
+
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
-	wg *sync.WaitGroup,
+	wg *sync.WaitGroup, e env.Env,
 ) {
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
@@ -49,7 +158,7 @@ func (s *Source) getOrgTemplates(
 		return
 	}
 
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, e, project)
 	if err != nil {
 		s.addError(fmt.Errorf("could not get current cloud url: %w", err))
 		return

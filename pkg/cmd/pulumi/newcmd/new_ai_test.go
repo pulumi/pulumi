@@ -25,6 +25,7 @@ import (
 
 //nolint:paralleltest // changes directory
 func TestErrorsOnNonHTTPBackend(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	testutil.MockBackendInstance(t, &backend.MockBackend{
