@@ -77,6 +77,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -523,6 +524,7 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		willPrompt := canPrompt &&
 			((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
 				(!isCurVerDev && oldestAllowedVer.GT(curVer)))
+
 		if willPrompt {
 			lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 		}
@@ -715,13 +717,38 @@ type cachedVersionInfo struct {
 func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersion bool) string {
 	cmd := getUpgradeCommand(isDevVersion)
 
-	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
+	// If the current version is "very old", we'll return a more urgent message. "Very old" is defined as more than 24
+	// minor versions behind when the major versions are the same. Assuming a release cadence of on average 1 minor
+	// version per week, this translates to roughly 6 months. Note that we don't consider major version differences, since
+	// it's hard to know what we'd want to do in those cases. E.g. it might be that a new version of Pulumi is radically
+	// different, rather than "just improved", and so we don't want to warn about that.
+	prefix := "A new version of Pulumi is available."
+
+	minorDiff := diffMinorVersions(current, latest)
+	if minorDiff > 24 {
+		prefix = colors.SpecAttention +
+			"You are running a very old version of Pulumi and should upgrade as soon as possible." + colors.Reset
+	}
+
+	msg := fmt.Sprintf("%s To upgrade from version '%s' to '%s', ", prefix, current, latest)
 	if cmd != "" {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
+}
+
+// diffMinorVersions compares two semver versions.
+//   - If the major versions of the two versions are the same, it returns the difference in their minor versions. This
+//     difference will be a positive number if v2 is greater than v1 and a negative number if v1 is greater than v2.
+//   - If the major versions differ, it returns 0.
+func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
+	if v1.Major != v2.Major {
+		return 0
+	}
+
+	return (int64)(v2.Minor - v1.Minor) //nolint:gosec
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
