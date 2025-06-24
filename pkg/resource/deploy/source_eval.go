@@ -1654,7 +1654,9 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		return nil, err
 	}
 
-	return func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap, outputs resource.PropertyMap) error {
+	return func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
+		outputs resource.PropertyMap,
+	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		mInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 			KeepUnknowns:     true,
