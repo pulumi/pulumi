@@ -1070,20 +1070,28 @@ class ResourceHookRequest(google.protobuf.message.Message):
 
     URN_FIELD_NUMBER: builtins.int
     ID_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
     OUTPUTS_FIELD_NUMBER: builtins.int
     urn: builtins.str
+    """the urn of the resource for which the hook is called."""
     id: builtins.str
+    """the optional urn of the resource for which the hook is called."""
     @property
-    def outputs(self) -> google.protobuf.struct_pb2.Struct: ...
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked inputs of the resource."""
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional outputs of the resource."""
     def __init__(
         self,
         *,
         urn: builtins.str = ...,
         id: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
         outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["outputs", b"outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "outputs", b"outputs", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "outputs", b"outputs", "urn", b"urn"]) -> None: ...
 
 global___ResourceHookRequest = ResourceHookRequest
 
@@ -1095,6 +1103,7 @@ class ResourceHookResponse(google.protobuf.message.Message):
 
     ERROR_FIELD_NUMBER: builtins.int
     error: builtins.str
+    """an optional error message to return from the hook."""
     def __init__(
         self,
         *,

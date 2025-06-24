@@ -299,14 +299,15 @@ message TransformInvokeOptions {
 
 // ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
 message ResourceHookRequest {
-    string urn = 1;
-    string id = 2;
-    google.protobuf.Struct outputs = 3;
+    string urn = 1; // the urn of the resource for which the hook is called.
+    string id = 2; // the optional urn of the resource for which the hook is called.
+    google.protobuf.Struct inputs = 3; // the optional checked inputs of the resource.
+    google.protobuf.Struct outputs = 4; // the optional outputs of the resource.
 }
 
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
 message ResourceHookResponse {
-    string error = 1;
+    string error = 1; // an optional error message to return from the hook.
 }
 
 message RegisterPackageRequest {

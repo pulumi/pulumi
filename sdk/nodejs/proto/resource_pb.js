@@ -7463,6 +7463,7 @@ proto.pulumirpc.ResourceHookRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     id: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -7511,6 +7512,11 @@ proto.pulumirpc.ResourceHookRequest.deserializeBinaryFromReader = function(msg, 
     case 3:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setInputs(value);
+      break;
+    case 4:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOutputs(value);
       break;
     default:
@@ -7556,10 +7562,18 @@ proto.pulumirpc.ResourceHookRequest.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getOutputs();
+  f = message.getInputs();
   if (f != null) {
     writer.writeMessage(
       3,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getOutputs();
+  if (f != null) {
+    writer.writeMessage(
+      4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -7604,10 +7618,10 @@ proto.pulumirpc.ResourceHookRequest.prototype.setId = function(value) {
 
 
 /**
- * optional google.protobuf.Struct outputs = 3;
+ * optional google.protobuf.Struct inputs = 3;
  * @return {?proto.google.protobuf.Struct}
  */
-proto.pulumirpc.ResourceHookRequest.prototype.getOutputs = function() {
+proto.pulumirpc.ResourceHookRequest.prototype.getInputs = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
     jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
 };
@@ -7617,8 +7631,45 @@ proto.pulumirpc.ResourceHookRequest.prototype.getOutputs = function() {
  * @param {?proto.google.protobuf.Struct|undefined} value
  * @return {!proto.pulumirpc.ResourceHookRequest} returns this
 */
-proto.pulumirpc.ResourceHookRequest.prototype.setOutputs = function(value) {
+proto.pulumirpc.ResourceHookRequest.prototype.setInputs = function(value) {
   return jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.clearInputs = function() {
+  return this.setInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.hasInputs = function() {
+  return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional google.protobuf.Struct outputs = 4;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.getOutputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+*/
+proto.pulumirpc.ResourceHookRequest.prototype.setOutputs = function(value) {
+  return jspb.Message.setWrapperField(this, 4, value);
 };
 
 
@@ -7636,7 +7687,7 @@ proto.pulumirpc.ResourceHookRequest.prototype.clearOutputs = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ResourceHookRequest.prototype.hasOutputs = function() {
-  return jspb.Message.getField(this, 3) != null;
+  return jspb.Message.getField(this, 4) != null;
 };
 
 
