@@ -113,6 +113,17 @@ function deserialize_pulumirpc_RegisterPackageResponse(buffer_arg) {
   return pulumi_resource_pb.RegisterPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterResourceHookRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterResourceHookRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceHookRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceHookRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterResourceHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
@@ -280,6 +291,19 @@ registerStackInvokeTransform: {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_Callback,
     requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Register a resource hook that can be called by the engine during certain
+// steps of a resource's lifecycle.
+registerResourceHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterResourceHookRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterResourceHookRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterResourceHookRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

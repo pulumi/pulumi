@@ -252,6 +252,11 @@ export class RegisterResourceRequest extends jspb.Message {
     getPackageref(): string;
     setPackageref(value: string): RegisterResourceRequest;
 
+    hasHooks(): boolean;
+    clearHooks(): void;
+    getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
+    setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): RegisterResourceRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResourceRequest): RegisterResourceRequest.AsObject;
@@ -300,6 +305,7 @@ export namespace RegisterResourceRequest {
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
         packageref: string,
+        hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
     }
 
 
@@ -348,6 +354,53 @@ export namespace RegisterResourceRequest {
             create: string,
             update: string,
             pb_delete: string,
+        }
+    }
+
+    export class ResourceHooksBinding extends jspb.Message { 
+        clearBeforeCreateList(): void;
+        getBeforeCreateList(): Array<string>;
+        setBeforeCreateList(value: Array<string>): ResourceHooksBinding;
+        addBeforeCreate(value: string, index?: number): string;
+        clearAfterCreateList(): void;
+        getAfterCreateList(): Array<string>;
+        setAfterCreateList(value: Array<string>): ResourceHooksBinding;
+        addAfterCreate(value: string, index?: number): string;
+        clearBeforeUpdateList(): void;
+        getBeforeUpdateList(): Array<string>;
+        setBeforeUpdateList(value: Array<string>): ResourceHooksBinding;
+        addBeforeUpdate(value: string, index?: number): string;
+        clearAfterUpdateList(): void;
+        getAfterUpdateList(): Array<string>;
+        setAfterUpdateList(value: Array<string>): ResourceHooksBinding;
+        addAfterUpdate(value: string, index?: number): string;
+        clearBeforeDeleteList(): void;
+        getBeforeDeleteList(): Array<string>;
+        setBeforeDeleteList(value: Array<string>): ResourceHooksBinding;
+        addBeforeDelete(value: string, index?: number): string;
+        clearAfterDeleteList(): void;
+        getAfterDeleteList(): Array<string>;
+        setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
+        addAfterDelete(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
+        static toObject(includeInstance: boolean, msg: ResourceHooksBinding): ResourceHooksBinding.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ResourceHooksBinding, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ResourceHooksBinding;
+        static deserializeBinaryFromReader(message: ResourceHooksBinding, reader: jspb.BinaryReader): ResourceHooksBinding;
+    }
+
+    export namespace ResourceHooksBinding {
+        export type AsObject = {
+            beforeCreateList: Array<string>,
+            afterCreateList: Array<string>,
+            beforeUpdateList: Array<string>,
+            afterUpdateList: Array<string>,
+            beforeDeleteList: Array<string>,
+            afterDeleteList: Array<string>,
         }
     }
 
@@ -828,6 +881,61 @@ export namespace TransformInvokeOptions {
     }
 }
 
+export class ResourceHookRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): ResourceHookRequest;
+    getId(): string;
+    setId(value: string): ResourceHookRequest;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceHookRequest): ResourceHookRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceHookRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceHookRequest;
+    static deserializeBinaryFromReader(message: ResourceHookRequest, reader: jspb.BinaryReader): ResourceHookRequest;
+}
+
+export namespace ResourceHookRequest {
+    export type AsObject = {
+        urn: string,
+        id: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
+export class ResourceHookResponse extends jspb.Message { 
+    getError(): string;
+    setError(value: string): ResourceHookResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceHookResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceHookResponse): ResourceHookResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceHookResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceHookResponse;
+    static deserializeBinaryFromReader(message: ResourceHookResponse, reader: jspb.BinaryReader): ResourceHookResponse;
+}
+
+export namespace ResourceHookResponse {
+    export type AsObject = {
+        error: string,
+    }
+}
+
 export class RegisterPackageRequest extends jspb.Message { 
     getName(): string;
     setName(value: string): RegisterPackageRequest;
@@ -910,6 +1018,35 @@ export namespace Parameterization {
         name: string,
         version: string,
         value: Uint8Array | string,
+    }
+}
+
+export class RegisterResourceHookRequest extends jspb.Message { 
+    getName(): string;
+    setName(value: string): RegisterResourceHookRequest;
+
+    hasCallback(): boolean;
+    clearCallback(): void;
+    getCallback(): pulumi_callback_pb.Callback | undefined;
+    setCallback(value?: pulumi_callback_pb.Callback): RegisterResourceHookRequest;
+    getOnDryRun(): boolean;
+    setOnDryRun(value: boolean): RegisterResourceHookRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterResourceHookRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterResourceHookRequest): RegisterResourceHookRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterResourceHookRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterResourceHookRequest;
+    static deserializeBinaryFromReader(message: RegisterResourceHookRequest, reader: jspb.BinaryReader): RegisterResourceHookRequest;
+}
+
+export namespace RegisterResourceHookRequest {
+    export type AsObject = {
+        name: string,
+        callback?: pulumi_callback_pb.Callback.AsObject,
+        onDryRun: boolean,
     }
 }
 
