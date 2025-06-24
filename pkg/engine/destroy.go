@@ -16,11 +16,14 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -67,11 +70,42 @@ func Destroy(
 	})
 }
 
+func getDeleteHooks(target *deploy.Target) map[resource.URN][]string {
+	if target == nil || target.Snapshot == nil {
+		return nil
+	}
+	hooks := map[resource.URN][]string{}
+	for _, res := range target.Snapshot.Resources {
+		before, ok := res.ResourceHooks[resource.BeforeDelete]
+		if ok {
+			hooks[res.URN] = before
+		}
+		after, ok := res.ResourceHooks[resource.AfterDelete]
+		if ok {
+			hooks[res.URN] = append(hooks[res.URN], after...)
+		}
+	}
+	return hooks
+}
+
 func newDestroySource(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
 ) (deploy.Source, error) {
+	// First we check if any of the resouces have delete hooks. If hooks are
+	// present, we error out as we can't run the hooks without the program.
+	deleteHooks := getDeleteHooks(target)
+	if len(deleteHooks) > 0 {
+		for k, v := range deleteHooks {
+			hookNames := strings.Join(v, ", ")
+			plugctx.Diag.Errorf(diag.Message(k,
+				"Resource has delete hooks registered, but the program is not running. Hooks: "+hookNames))
+		}
+		//revive:disable-next-line:error-strings // This error message is user facing.
+		return nil, errors.New("You must run with the `--run-program` flag to use delete hooks during destroy.")
+	}
+
 	// Like update, we need to gather the set of plugins necessary to delete everything in the snapshot. While we don't
 	// run the program like update does, we still grab the plugins from the program in order to inform the user if their
 	// program has updates to plugins that will not be used as part of the destroy operation. In the event that there is
