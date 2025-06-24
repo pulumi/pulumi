@@ -2403,19 +2403,16 @@ func TestTargetUntargetedParent(t *testing.T) {
 			assert.NoError(t, err)
 
 			resp, err := monitor.RegisterResource("component", "parent", false)
+			require.NoError(t, err)
 
-			if err == nil {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-					Parent: resp.URN,
-					Inputs: inputs,
-				})
-				if expectError {
-					assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-				} else {
-					assert.NoError(t, err)
-				}
+			_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+				Parent: resp.URN,
+				Inputs: inputs,
+			})
+			if expectError {
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 			} else {
-				assert.ErrorContains(t, err, "zzzresource monitor shut down while waiting on step's done channel")
+				assert.NoError(t, err)
 			}
 
 			return nil
