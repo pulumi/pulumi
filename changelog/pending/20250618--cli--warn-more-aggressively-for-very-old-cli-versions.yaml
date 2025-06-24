@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Warn more aggressively for very old CLI versions

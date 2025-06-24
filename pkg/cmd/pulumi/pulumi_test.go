@@ -695,3 +695,210 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	require.Nil(t, stillNilDiag)
 	require.Nil(t, alwaysNilDiag)
 }
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
+	// Arrange.
+	realVersion := version.Version
+	t.Cleanup(func() {
+		version.Version = realVersion
+	})
+	version.Version = "v1.0.0"
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v2.0.3",
+				"oldestWithoutWarning": "v2.2.0",
+				"latestDevVersion": "v2.0.0-12-gdeadbeef"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	uncached := checkForUpdate(ctx, srv.URL, nil)
+	cached := checkForUpdate(ctx, srv.URL, nil)
+	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+
+	// Store an expired last prompt timesamp
+	expiredTime := time.Now().Add(-25 * time.Hour)
+	info, err := readVersionInfo()
+	require.NoError(t, err)
+	info.LastPromptTimeStampMS = expiredTime.UnixMilli()
+	require.NoError(t, cacheVersionInfo(info))
+
+	expired := checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 4, callCount, "should call API every time")
+
+	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '2.0.3'")
+
+	require.Nil(t, cached)
+	require.Nil(t, cachedAgain)
+
+	require.Contains(t, expired.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '2.0.3'")
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
+	// Arrange.
+	realVersion := version.Version
+	t.Cleanup(func() {
+		version.Version = realVersion
+	})
+	version.Version = "v1.0.0"
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.40.3",
+				"oldestWithoutWarning": "v1.40.0",
+				"latestDevVersion": "v1.40.0-12-gdeadbeef"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	uncached := checkForUpdate(ctx, srv.URL, nil)
+	cached := checkForUpdate(ctx, srv.URL, nil)
+	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+
+	// Store an expired last prompt timesamp
+	expiredTime := time.Now().Add(-25 * time.Hour)
+	info, err := readVersionInfo()
+	require.NoError(t, err)
+	info.LastPromptTimeStampMS = expiredTime.UnixMilli()
+	require.NoError(t, cacheVersionInfo(info))
+
+	expired := checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 4, callCount, "should call API every time")
+
+	require.Contains(t, uncached.Message, "You are running a very old version of Pulumi")
+	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '1.40.3'")
+
+	require.Nil(t, cached)
+	require.Nil(t, cachedAgain)
+
+	require.Contains(t, expired.Message, "You are running a very old version of Pulumi")
+	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '1.40.3'")
+}
+
+func TestDiffVersions(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		v1        string
+		v2        string
+		minorDiff int64
+	}{
+		{
+			v1:        "1.0.0",
+			v2:        "1.0.0",
+			minorDiff: 0,
+		},
+		{
+			v1:        "1.0.0",
+			v2:        "1.0.1",
+			minorDiff: 0,
+		},
+		{
+			v1:        "1.0.0",
+			v2:        "1.1.0",
+			minorDiff: 1,
+		},
+		{
+			v1:        "1.0.0",
+			v2:        "1.20.0",
+			minorDiff: 20,
+		},
+		{
+			v1:        "1.10.0",
+			v2:        "1.20.0",
+			minorDiff: 10,
+		},
+		{
+			v1:        "1.0.0",
+			v2:        "2.0.0",
+			minorDiff: 0,
+		},
+		{
+			v1:        "3.0.0",
+			v2:        "2.0.0",
+			minorDiff: 0,
+		},
+		{
+			v1:        "1.0.0",
+			v2:        "0.9.9",
+			minorDiff: 0,
+		},
+		{
+			v1:        "1.0.0",
+			v2:        "1.0.0-rc.1",
+			minorDiff: 0,
+		},
+		{
+			v1:        "1.40.0",
+			v2:        "1.20.0",
+			minorDiff: -20,
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+
+		t.Run(c.v1+" vs "+c.v2, func(t *testing.T) {
+			t.Parallel()
+
+			v1, err := semver.ParseTolerant(c.v1)
+			require.NoError(t, err)
+
+			v2, err := semver.ParseTolerant(c.v2)
+			require.NoError(t, err)
+
+			minorDiff := diffMinorVersions(v1, v2)
+
+			require.Equal(t, c.minorDiff, minorDiff)
+		})
+	}
+}
