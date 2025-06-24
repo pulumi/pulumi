@@ -69,6 +69,17 @@ class ResourceMonitorStub:
     """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     Multiple requests are idempotent and guaranteed to return the same result.
     """
+    SignalAndWaitForShutdown: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """SignalAndWaitForShutdown lets the resource monitor know that no more
+    events will be generated. This call blocks until the resource monitor is
+    finished, which will happen once all the steps have executed. This allows
+    the language runtime to stay running and handle callback requests, even
+    after the user program has completed. Runtime SDKs should call this after
+    executing the user's program. This can only be called once.
+    """
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
@@ -131,6 +142,19 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.resource_pb2.RegisterPackageResponse:
         """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
         Multiple requests are idempotent and guaranteed to return the same result.
+        """
+    
+    def SignalAndWaitForShutdown(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty:
+        """SignalAndWaitForShutdown lets the resource monitor know that no more
+        events will be generated. This call blocks until the resource monitor is
+        finished, which will happen once all the steps have executed. This allows
+        the language runtime to stay running and handle callback requests, even
+        after the user program has completed. Runtime SDKs should call this after
+        executing the user's program. This can only be called once.
         """
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
