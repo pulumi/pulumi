@@ -1639,6 +1639,12 @@ func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
+func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
+	*emptypb.Empty, error,
+) {
+	panic("not implemented")
+}
+
 // inheritFromParent returns a new goal that inherits from the given parent goal.
 // Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
