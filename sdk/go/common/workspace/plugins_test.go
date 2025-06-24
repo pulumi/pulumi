@@ -43,6 +43,69 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPluginNameRegexp(t *testing.T) {
+	t.Parallel()
+
+	type expect struct{ Source, Publisher, Name string }
+	tests := []struct {
+		input    string
+		expected *expect
+	}{
+		{
+			input:    "",
+			expected: nil,
+		},
+		{
+			input:    "plain",
+			expected: &expect{Name: "plain"},
+		},
+		{
+			input:    "publisher/name",
+			expected: &expect{Publisher: "publisher", Name: "name"},
+		},
+		{
+			input:    "source/publisher/name",
+			expected: &expect{Source: "source", Publisher: "publisher", Name: "name"},
+		},
+		{
+			input:    "extra/source/publisher/name",
+			expected: nil,
+		},
+		{
+			input:    "long-name",
+			expected: &expect{Name: "long-name"},
+		},
+		{
+			input:    "./some/path",
+			expected: nil,
+		},
+		{
+			input:    "/leading/slash",
+			expected: nil,
+		},
+		{
+			input:    "../file",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+
+			match := PluginNameRegexp.FindStringSubmatch(tt.input)
+			if match == nil {
+				require.Nil(t, tt.expected)
+				return
+			}
+
+			assert.Equal(t, tt.expected.Name, match[PluginNameRegexp.SubexpIndex("Name")], "Name")
+			assert.Equal(t, tt.expected.Publisher, match[PluginNameRegexp.SubexpIndex("Publisher")], "Publisher")
+			assert.Equal(t, tt.expected.Source, match[PluginNameRegexp.SubexpIndex("Source")], "Source")
+		})
+	}
+}
+
 func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 	t.Parallel()
 
