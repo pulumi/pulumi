@@ -1,0 +1,2 @@
+{"sequence":0,"timestamp":0,"diagnosticEvent":{"urn":"urn:pulumi:test::test::pkgA:m:typA::resA","prefix":"\u003c{%fg 1%}\u003eerror: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eResource has delete hooks registered, but the program is not running. Hooks: myHook\u003c{%reset%}\u003e\n","color":"raw","severity":"error"}}
+{"sequence":0,"timestamp":0,"cancelEvent":{}}
