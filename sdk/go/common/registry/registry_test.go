@@ -40,7 +40,7 @@ func (r mockRegistry) GetPackage(
 	return r.getPackage(ctx, source, publisher, name, version)
 }
 
-func (r mockRegistry) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+func (r mockRegistry) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 	return r.searchByName(ctx, name)
 }
 

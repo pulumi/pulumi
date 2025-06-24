@@ -567,7 +567,7 @@ func TestGetPackage(t *testing.T) {
 	})
 }
 
-func TestSearchByName(t *testing.T) {
+func TestListPackages(t *testing.T) {
 	t.Parallel()
 
 	t.Run("no-continuation-token", func(t *testing.T) {
@@ -610,10 +610,10 @@ func TestSearchByName(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		// Call SearchByName and collect results
+		// Call ListPackages and collect results
 		searchName := "my-package"
 		searchResults := []apitype.PackageMetadata{}
-		for pkg, err := range mockClient.SearchByName(context.Background(), &searchName) {
+		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}
@@ -707,7 +707,7 @@ func TestSearchByName(t *testing.T) {
 
 		searchName := "my-package"
 		searchResults := []apitype.PackageMetadata{}
-		for pkg, err := range mockClient.SearchByName(context.Background(), &searchName) {
+		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}

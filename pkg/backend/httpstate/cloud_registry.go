@@ -42,10 +42,10 @@ func (r *cloudRegistry) PublishPackage(ctx ctx.Context, op apitype.PackagePublis
 	return r.cl.PublishPackage(ctx, op)
 }
 
-func (r *cloudRegistry) SearchByName(
+func (r *cloudRegistry) ListPackages(
 	ctx ctx.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
-	return r.cl.SearchByName(ctx, name)
+	return r.cl.ListPackages(ctx, name)
 }
 
 func (r *cloudRegistry) GetPackage(
