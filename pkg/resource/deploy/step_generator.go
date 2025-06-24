@@ -2019,6 +2019,9 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		for _, step := range steps {
 			if _, has := allowedResourcesToDelete[step.URN()]; has {
 				filtered = append(filtered, step)
+			} else {
+				// Add this step to the deployment.news so that it shows up in analysis.
+				sg.deployment.news.Store(step.URN(), step.Old())
 			}
 		}
 
@@ -2030,6 +2033,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		for _, step := range steps {
 			if _, has := forbiddenResourcesToDelete[step.URN()]; !has {
 				filtered = append(filtered, step)
+			} else {
+				sg.deployment.news.Store(step.URN(), step.Old())
 			}
 		}
 
@@ -2808,46 +2813,57 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {
-	var resources []plugin.AnalyzerStackResource
-	sg.deployment.news.Range(func(urn resource.URN, v *resource.State) bool {
-		goal, ok := sg.deployment.goals.Load(urn)
-		contract.Assertf(ok, "failed to load goal for %s", urn)
-		resource := plugin.AnalyzerStackResource{
-			AnalyzerResource: plugin.AnalyzerResource{
-				URN:  v.URN,
-				Type: v.Type,
-				Name: v.URN.Name(),
-				// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
-				// to verify the final stack is in a compliant state.
-				Properties: v.Outputs,
-				Options: plugin.AnalyzerResourceOptions{
-					Protect:                 v.Protect,
-					IgnoreChanges:           goal.IgnoreChanges,
-					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-					Aliases:                 v.GetAliases(),
-					CustomTimeouts:          v.CustomTimeouts,
-					Parent:                  v.Parent,
-				},
-			},
-			Parent:               v.Parent,
-			Dependencies:         v.Dependencies,
-			PropertyDependencies: v.PropertyDependencies,
-		}
-		providerResource := sg.getProviderResource(v.URN, v.Provider)
-		if providerResource != nil {
-			resource.Provider = &plugin.AnalyzerProviderResource{
-				URN:        providerResource.URN,
-				Type:       providerResource.Type,
-				Name:       providerResource.URN.Name(),
-				Properties: providerResource.Inputs,
-			}
-		}
-		resources = append(resources, resource)
-		return true
-	})
-
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
+
+	var resources []plugin.AnalyzerStackResource
+	// Don't bother building the resources slice if there are no analyzers.
+	if len(analyzers) != 0 {
+		sg.deployment.news.Range(func(urn resource.URN, v *resource.State) bool {
+			goal, ok := sg.deployment.goals.Load(urn)
+			// It's possible that we might not have a goal for this resource, e.g. if it was resource never
+			// registered, but also skipped from deletion by --targets or --excludes. In that case we won't
+			// have a goal, but the resource is still in the stack.
+			var deleteBeforeReplace *bool
+			if ok {
+				deleteBeforeReplace = goal.DeleteBeforeReplace
+			}
+
+			resource := plugin.AnalyzerStackResource{
+				AnalyzerResource: plugin.AnalyzerResource{
+					URN:  v.URN,
+					Type: v.Type,
+					Name: v.URN.Name(),
+					// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
+					// to verify the final stack is in a compliant state.
+					Properties: v.Outputs,
+					Options: plugin.AnalyzerResourceOptions{
+						Protect:                 v.Protect,
+						IgnoreChanges:           v.IgnoreChanges,
+						DeleteBeforeReplace:     deleteBeforeReplace,
+						AdditionalSecretOutputs: v.AdditionalSecretOutputs,
+						Aliases:                 v.GetAliases(),
+						CustomTimeouts:          v.CustomTimeouts,
+						Parent:                  v.Parent,
+					},
+				},
+				Parent:               v.Parent,
+				Dependencies:         v.Dependencies,
+				PropertyDependencies: v.PropertyDependencies,
+			}
+			providerResource := sg.getProviderResource(v.URN, v.Provider)
+			if providerResource != nil {
+				resource.Provider = &plugin.AnalyzerProviderResource{
+					URN:        providerResource.URN,
+					Type:       providerResource.Type,
+					Name:       providerResource.URN.Name(),
+					Properties: providerResource.Inputs,
+				}
+			}
+			resources = append(resources, resource)
+			return true
+		})
+	}
+
 	for _, analyzer := range analyzers {
 		diagnostics, err := analyzer.AnalyzeStack(resources)
 		if err != nil {
