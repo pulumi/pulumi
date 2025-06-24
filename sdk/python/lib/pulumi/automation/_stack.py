@@ -339,7 +339,7 @@ class Stack:
             args.append("--plan")
             args.append(plan)
 
-        if run_program is not None:Add commentMore actions
+        if run_program is not None:
             if run_program:
                 args.append("--run-program=true")
             else:
