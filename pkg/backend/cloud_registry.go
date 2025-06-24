@@ -25,4 +25,6 @@ type CloudRegistry interface {
 	registry.Registry
 	// PublishPackage publishes a package to the registry.
 	PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error
+	// PublishTemplate publishes a template to the registry.
+	PublishTemplate(ctx context.Context, op apitype.TemplatePublishOp) error
 }

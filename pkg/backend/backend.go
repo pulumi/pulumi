@@ -260,7 +260,7 @@ type Backend interface {
 	// should return a non-nil error when GetCloudRegistry is called.
 	//
 	// CloudRegistry is a superset of [registry.Registry] that supports publishing
-	// packages.
+	// packages and templates.
 	GetCloudRegistry() (CloudRegistry, error)
 
 	// GetReadOnlyCloudRegistry retusn a [registry.Registry] object tied to this

@@ -57,3 +57,7 @@ func (r *cloudRegistry) GetPackage(
 	}
 	return meta, err
 }
+
+func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op apitype.TemplatePublishOp) error {
+	return r.cl.PublishTemplate(ctx, op)
+}
