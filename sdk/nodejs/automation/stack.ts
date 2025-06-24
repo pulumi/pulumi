@@ -229,6 +229,13 @@ Event: ${line}\n${e.toString()}`);
             if (opts.attachDebugger) {
                 args.push("--attach-debugger");
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -375,6 +382,13 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.attachDebugger) {
                 args.push("--attach-debugger");
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
             }
             applyGlobalOpts(opts, args);
         }
@@ -1485,6 +1499,11 @@ export interface UpOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1590,6 +1609,11 @@ export interface PreviewOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
