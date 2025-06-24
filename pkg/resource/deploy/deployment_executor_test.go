@@ -208,7 +208,7 @@ type iterator struct {
 	closed bool
 }
 
-func (iter *iterator) Close() error {
+func (iter *iterator) Cancel(context.Context) error {
 	iter.closed = true
 	return nil
 }

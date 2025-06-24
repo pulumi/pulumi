@@ -36,6 +36,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -53,7 +54,7 @@ import (
 type mockResmon struct {
 	AddressF func() string
 
-	CancelF func() error
+	CancelF func(ctx context.Context) error
 
 	InvokeF func(ctx context.Context,
 		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
@@ -89,9 +90,9 @@ func (rm *mockResmon) Address() string {
 	panic("not implemented")
 }
 
-func (rm *mockResmon) Cancel() error {
+func (rm *mockResmon) Cancel(ctx context.Context) error {
 	if rm.CancelF != nil {
-		return rm.CancelF()
+		return rm.CancelF(ctx)
 	}
 	panic("not implemented")
 }
@@ -1578,19 +1579,25 @@ func TestEvalSource(t *testing.T) {
 func TestResmonCancel(t *testing.T) {
 	t.Parallel()
 	done := make(chan error)
+	waitForShutdownChan := make(chan struct{}, 1)
+	programComplete := &promise.CompletionSource[struct{}]{}
+
 	rm := &resmon{
-		cancel: make(chan bool, 10),
-		done:   done,
+		cancel:              make(chan bool),
+		done:                done,
+		waitForShutdownChan: waitForShutdownChan,
+		programComplete:     programComplete.Promise(),
 	}
 	err := errors.New("my error")
 
 	go func() {
 		// This ensures that cancel doesn't hang.
-		done <- err
+		programComplete.Reject(err) // Signal from the program to resmon that it completed with the error.
+		done <- nil                 // Signal from the GRPC server to resmon that it is done.
 	}()
 
 	// Cancel always returns nil or a joinErrors.
-	assert.Equal(t, errors.Join(err), rm.Cancel())
+	assert.Equal(t, errors.Join(err), rm.Cancel(context.Background()))
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -1615,27 +1622,29 @@ func TestEvalSourceIterator(t *testing.T) {
 		var called bool
 		iter := &evalSourceIterator{
 			mon: &mockResmon{
-				CancelF: func() error {
+				CancelF: func(context.Context) error {
 					called = true
 					return nil
 				},
 			},
 		}
-		iter.Close()
-		assert.True(t, called)
+		err := iter.Cancel(context.Background())
+		require.NoError(t, err)
+		require.True(t, called)
 	})
 	t.Run("ResourceMonitor", func(t *testing.T) {
 		t.Parallel()
 		var called bool
 		mon := &mockResmon{
-			CancelF: func() error { called = true; return nil },
+			CancelF: func(context.Context) error { called = true; return nil },
 		}
 		iter := &evalSourceIterator{
 			mon: mon,
 		}
-		iter.Close()
-		assert.Equal(t, mon, iter.ResourceMonitor())
-		assert.True(t, called)
+		err := iter.Cancel(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, mon, iter.ResourceMonitor())
+		require.True(t, called)
 	})
 	t.Run("Next", func(t *testing.T) {
 		t.Parallel()
@@ -2023,7 +2032,7 @@ func TestInvoke(t *testing.T) {
 					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2086,7 +2095,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2158,7 +2167,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2260,7 +2269,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2343,7 +2352,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2424,7 +2433,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
