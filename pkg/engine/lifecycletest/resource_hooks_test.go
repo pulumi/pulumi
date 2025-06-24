@@ -76,7 +76,8 @@ func TestResourceHooks(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap) error {
+			outputs resource.PropertyMap,
+		) error {
 			hookCalled = true
 			expectedInputs := map[string]any{
 				"a": "A",
@@ -139,7 +140,8 @@ func TestResourceHookDryRun(t *testing.T) {
 
 		// Create hook that runs on a dry run (and non-dry run)
 		funTrue := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap) error {
+			outputs resource.PropertyMap,
+		) error {
 			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			if info.DryRun {
 				hookTrueCalledOnDryRun = true
@@ -153,7 +155,8 @@ func TestResourceHookDryRun(t *testing.T) {
 
 		// Create hook that does not run on a dry run
 		funFalse := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap) error {
+			outputs resource.PropertyMap,
+		) error {
 			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			if info.DryRun {
 				assert.Fail(t, "The hook should not have been called")
@@ -207,7 +210,8 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap) error {
+			outputs resource.PropertyMap,
+		) error {
 			hookCalled = true
 			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			return errors.New("Oh no")
@@ -274,7 +278,8 @@ func TestResourceHookAfterDelete(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap) error {
+			outputs resource.PropertyMap,
+		) error {
 			hookCalled = true
 			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			return nil
@@ -338,7 +343,8 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap) error {
+			outputs resource.PropertyMap,
+		) error {
 			hookCalled = true
 			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			return errors.New("Oh no")
