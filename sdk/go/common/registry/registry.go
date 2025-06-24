@@ -39,6 +39,7 @@ type Registry interface {
 	GetPackage(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
+
 	// Retrieve a list of packages.
 	//
 	// If name is non-nil, it will filter to accessible packages that exactly match
@@ -47,6 +48,18 @@ type Registry interface {
 	// Implementations of ListPackages should return an empty iterator and nil if
 	// there are no matching packages in the Registry.
 	ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+
+	// GetTemplate is a preview API, and should not be used without an approved EOL
+	// plan for deprecation. The safest way to do this is to flag functionality behind
+	// `PULUMI_EXPERIMENTAL`, which removes any backwards comparability requirements.
+	GetTemplate(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+
+	// ListTemplates is a preview API, and should not be used without an approved EOL
+	// plan for deprecation. The safest way to do this is to flag functionality behind
+	// `PULUMI_EXPERIMENTAL`, which removes any backwards comparability requirements.
+	ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
 }
 
 type registryKey struct{}
@@ -92,4 +105,26 @@ func (r *onDemandRegistry) ListPackages(
 		}
 	}
 	return impl.ListPackages(ctx, name)
+}
+
+func (r *onDemandRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return apitype.TemplateMetadata{}, err
+	}
+	return impl.GetTemplate(ctx, source, publisher, name, version)
+}
+
+func (r *onDemandRegistry) ListTemplates(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	impl, err := r.factory()
+	if err != nil {
+		return func(consumer func(apitype.TemplateMetadata, error) bool) {
+			consumer(apitype.TemplateMetadata{}, err)
+		}
+	}
+	return impl.ListTemplates(ctx, name)
 }

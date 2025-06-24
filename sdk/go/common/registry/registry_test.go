@@ -31,7 +31,12 @@ type mockRegistry struct {
 	getPackage func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
-	searchByName func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	listPackages func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+
+	getTemplate func(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+	listTemplates func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
 }
 
 func (r mockRegistry) GetPackage(
@@ -41,7 +46,17 @@ func (r mockRegistry) GetPackage(
 }
 
 func (r mockRegistry) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-	return r.searchByName(ctx, name)
+	return r.listPackages(ctx, name)
+}
+
+func (r mockRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	return r.getTemplate(ctx, source, publisher, name, version)
+}
+
+func (r mockRegistry) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+	return r.listTemplates(ctx, name)
 }
 
 func TestOnDemandRegistry(t *testing.T) {
