@@ -625,9 +625,49 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi refresh
-        const refRes = await stack.refresh({ userAgent, previewOnly: true });
-        assert.strictEqual(refRes.summary.kind, "update");
-        assert.strictEqual(refRes.summary.result, "succeeded");
+        const refRes = await stack.previewRefresh({ userAgent, });
+        assert.deepStrictEqual(refRes.changeSummary, { same: 1 });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`previews a refresh with resources without executing it`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                  class MyResource extends ComponentResource {
+                    constructor(name: string, opts?: ComponentResourceOptions) {
+                      super("my:module:MyResource", name, {}, opts);
+                    }
+                  }
+                  new MyResource("res");
+                  return {};
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi refresh
+        const refRes = await stack.previewRefresh({ userAgent, });
+        assert.deepStrictEqual(refRes.changeSummary, { same: 2 });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
     });
