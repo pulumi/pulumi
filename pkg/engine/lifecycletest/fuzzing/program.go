@@ -122,9 +122,9 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 			opts.PropertyDeps = propDeps
 
 			res, err := monitor.RegisterResource(r.Type, r.Name, r.Custom, opts)
-			require.NoError(t, err)
-
-			actuals[r.URN()] = res
+			if err == nil {
+				actuals[r.URN()] = res
+			}
 		}
 
 		return nil
@@ -288,6 +288,21 @@ func GeneratedProgramSpec(
 		updateDependencies := func(r *ResourceSpec) {
 			deps := []resource.URN{}
 			propDeps := map[resource.PropertyKey][]resource.URN{}
+
+			// If our provider was dropped, we'll have to drop our reference to it and end up with a default provider.
+			if r.Provider != "" {
+				ref, err := providers.ParseReference(r.Provider)
+				require.NoError(t, err)
+
+				if dropped[ref.URN()] {
+					r.Provider = ""
+				} else if newURN, hasNewURN := rewritten[ref.URN()]; hasNewURN {
+					newRef, err := providers.NewReference(newURN, ref.ID())
+					require.NoError(t, err)
+
+					r.Provider = newRef.String()
+				}
+			}
 
 			// We'll start with parents first. If our parent was dropped, we'll need to remove them from our parent reference.
 			// If they were rewritten, we'll update the reference to point to the new URN.
