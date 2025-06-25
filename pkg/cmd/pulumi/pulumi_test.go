@@ -378,6 +378,23 @@ func TestGetCLIMetadata(t *testing.T) {
 				"Flags":   "--bool --string",
 			},
 		},
+		{
+			name: "longer command path",
+			cmd: (func() *cobra.Command {
+				parent := &cobra.Command{Use: "parent"}
+				err := parent.Execute()
+				require.NoError(t, err)
+
+				cmd := &cobra.Command{Use: "multiple-set"}
+				parent.AddCommand(cmd)
+
+				return cmd
+			})(),
+			metadata: map[string]string{
+				"Command": "parent multiple-set",
+				"Flags":   "",
+			},
+		},
 	}
 
 	for _, c := range cases {
