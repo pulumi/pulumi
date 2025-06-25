@@ -559,7 +559,7 @@ func getCLIMetadata(cmd *cobra.Command) map[string]string {
 		return nil
 	}
 
-	command := cmd.Name()
+	command := cmd.CommandPath()
 
 	var flags strings.Builder
 	i := 0
