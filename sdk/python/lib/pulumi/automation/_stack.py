@@ -679,7 +679,7 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :param run_program: Run the program in the workspace to refresh the stack
         :param config_file: Path to a Pulumi config file to use for this update.
-        :returns: RefreshResult
+        :returns: PreviewResult
         """
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--preview-only"]
