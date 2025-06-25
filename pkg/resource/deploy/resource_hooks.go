@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -32,50 +32,39 @@ type ResourceHookFunction func(
 	outputs resource.PropertyMap,
 ) error
 
-// ResourceHook represents a resource hook with it's handler and options.
+// ResourceHook represents a resource hook with it's (wrapped) callback and options.
 type ResourceHook struct {
 	Name     string
-	Handler  ResourceHookFunction
+	Callback ResourceHookFunction
 	OnDryRun bool
 }
 
 // ResourceHooks is a registry of all resource hooks provided by a program.
 type ResourceHooks struct {
-	resourceHooksLock sync.Mutex
-	resourceHooks     map[string]ResourceHook
+	resourceHooks *gsync.Map[string, ResourceHook]
 }
 
 func NewResourceHooks(dialOptions DialOptions) *ResourceHooks {
-	return &ResourceHooks{}
+	return &ResourceHooks{
+		resourceHooks: &gsync.Map[string, ResourceHook]{},
+	}
 }
 
 func (l *ResourceHooks) RegisterResourceHook(hook ResourceHook) error {
 	if hook.Name == "" {
 		return errors.New("resource hook name cannot be empty")
 	}
-
-	l.resourceHooksLock.Lock()
-	defer l.resourceHooksLock.Unlock()
-
-	if _, has := l.resourceHooks[hook.Name]; has {
+	if _, has := l.resourceHooks.Load(hook.Name); has {
 		return fmt.Errorf("resource hook already registered for name %q", hook.Name)
 	}
-
-	if l.resourceHooks == nil {
-		l.resourceHooks = make(map[string]ResourceHook)
-	}
-	l.resourceHooks[hook.Name] = hook
-
+	l.resourceHooks.Store(hook.Name, hook)
 	return nil
 }
 
 func (l *ResourceHooks) GetResourceHook(name string) (ResourceHook, error) {
-	l.resourceHooksLock.Lock()
-	defer l.resourceHooksLock.Unlock()
-
-	if hook, has := l.resourceHooks[name]; has {
-		return hook, nil
+	hook, has := l.resourceHooks.Load(name)
+	if !has {
+		return ResourceHook{}, fmt.Errorf("resource hook not registered for %s", name)
 	}
-
-	return ResourceHook{}, fmt.Errorf("resource hook not registered for %s", name)
+	return hook, nil
 }
