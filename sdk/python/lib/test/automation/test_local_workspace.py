@@ -838,8 +838,33 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.up()
 
             # pulumi destroy
-            destroy_res = stack.destroy(preview_only=True)
-            self.assertEqual(destroy_res.summary.kind, "update")
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 1})
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_destroy_with_resource(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi destroy
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 2})
+
+            # a second preview should produce the same result
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 2})
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)
