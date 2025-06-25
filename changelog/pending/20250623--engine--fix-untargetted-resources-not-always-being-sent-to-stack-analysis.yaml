@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Fix untargetted resources not always being sent to stack analysis
+  description: Fix untargeted resources not always being sent to stack analysis
