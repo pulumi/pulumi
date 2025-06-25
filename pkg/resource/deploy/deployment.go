@@ -694,8 +694,12 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-func (d *Deployment) RunHooks(hookType resource.HookType, s *resource.State, canFail bool) error {
-	logging.V(6).Infof("RunHooks %s %t", hookType, canFail)
+// RunHooks runs all the hooks on the given state for the given hook type. If
+// `isBeforeHook` is set to true, a hook that returns an error will cause an
+// error return. If `isBeforeHook` is false, a hook returning an error will
+// only generate a warning.
+func (d *Deployment) RunHooks(hookType resource.HookType, s *resource.State, isBeforeHook bool) error {
+	logging.V(6).Infof("RunHooks %s %t", hookType, isBeforeHook)
 	for _, hookName := range s.ResourceHooks[hookType] {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
 		if err != nil {
@@ -705,10 +709,10 @@ func (d *Deployment) RunHooks(hookType resource.HookType, s *resource.State, can
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, s.URN)
-		err = hook.Handler(context.Background(), s.URN, s.ID, s.Inputs, s.Outputs)
+		err = hook.Callback(context.Background(), s.URN, s.ID, s.Inputs, s.Outputs)
 		if err != nil {
 			logging.V(6).Infof("hook %q failed: %s", hookName, err)
-			if canFail {
+			if isBeforeHook {
 				return fmt.Errorf("hook %q failed: %w", hookName, err)
 			}
 			// Errors on after hooks report a diagnostic, but do not fail the step.
