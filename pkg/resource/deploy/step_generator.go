@@ -1293,12 +1293,10 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 					// This provider hasn't been registered yet. This happens when a user changes the default
 					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15704
 					// for more information.
-					var providerResource *resource.State
-					for _, r := range sg.deployment.olds {
-						if r.URN == ref.URN() && r.ID == ref.ID() {
-							providerResource = r
-							break
-						}
+					providerResource := sg.deployment.olds[ref.URN()]
+					if providerResource != nil && providerResource.ID != ref.ID() {
+						// If it's the wrong ID then don't report a match
+						providerResource = nil
 					}
 					if providerResource == nil {
 						return nil, false, fmt.Errorf("could not find provider %v in old state", ref)
@@ -2818,6 +2816,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 	var resources []plugin.AnalyzerStackResource
 	// Don't bother building the resources slice if there are no analyzers.
 	if len(analyzers) != 0 {
+		var err error
 		sg.deployment.news.Range(func(urn resource.URN, v *resource.State) bool {
 			goal, ok := sg.deployment.goals.Load(urn)
 			// It's possible that we might not have a goal for this resource, e.g. if it was resource never
@@ -2828,7 +2827,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 				deleteBeforeReplace = goal.DeleteBeforeReplace
 			}
 
-			resource := plugin.AnalyzerStackResource{
+			res := plugin.AnalyzerStackResource{
 				AnalyzerResource: plugin.AnalyzerResource{
 					URN:  v.URN,
 					Type: v.Type,
@@ -2850,18 +2849,52 @@ func (sg *stepGenerator) AnalyzeResources() error {
 				Dependencies:         v.Dependencies,
 				PropertyDependencies: v.PropertyDependencies,
 			}
-			providerResource := sg.getProviderResource(v.URN, v.Provider)
+			// N.B. This feels very unideal but I can't find a better way to check this. When we get here
+			// there is a chance that we'll have a resource in `news` but _won't_ have it's matching provider.
+			// This can happen in a targeted run where the untargeted resource is removed from the program
+			// and is the only resource using the given provider (common case is where every other resource is
+			// using a new version of the provider).
+			// See https://github.com/pulumi/pulumi/issues/19879 for a case of this.
+			var providerResource *resource.State
+			if v.Provider != "" {
+				var ref providers.Reference
+				ref, err = providers.ParseReference(v.Provider)
+				contract.AssertNoErrorf(err, "failed to parse provider reference")
+				var has bool
+				providerResource, has = sg.providers[ref.URN()]
+				if !has {
+					// This provider hasn't been registered yet. This happens when a user changes the default
+					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15732
+					// for more information.
+					providerResource = sg.deployment.olds[ref.URN()]
+					if providerResource != nil && providerResource.ID != ref.ID() {
+						// If it's the wrong ID then don't report a match
+						providerResource = nil
+					}
+					if providerResource == nil {
+						// Return a more friendly error to the user explaining this isn't supported.
+						err = fmt.Errorf("provider %s for resource %s has not been registered yet, this is "+
+							"due to a change of providers mixed with --target. "+
+							"Change your program back to the original providers", ref, urn)
+						return false
+					}
+				}
+			}
+
 			if providerResource != nil {
-				resource.Provider = &plugin.AnalyzerProviderResource{
+				res.Provider = &plugin.AnalyzerProviderResource{
 					URN:        providerResource.URN,
 					Type:       providerResource.Type,
 					Name:       providerResource.URN.Name(),
 					Properties: providerResource.Inputs,
 				}
 			}
-			resources = append(resources, resource)
+			resources = append(resources, res)
 			return true
 		})
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, analyzer := range analyzers {
