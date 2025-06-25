@@ -2817,8 +2817,8 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	impossibleDependents := map[resource.URN]bool{}
 	// We can't just use sg.urns here because a resource may have started registration but not yet have been
 	// processed, so instead we have to iterate all the operation maps
-	for _, m := range []*map[resource.URN]bool{&sg.reads, &sg.creates, &sg.sames, &sg.updates, &sg.deletes, &sg.replaces} {
-		for urn := range *m {
+	for _, m := range []map[resource.URN]bool{sg.reads, sg.creates, sg.sames, sg.updates, sg.deletes, sg.replaces} {
+		for urn := range m {
 			impossibleDependents[urn] = true
 		}
 	}
