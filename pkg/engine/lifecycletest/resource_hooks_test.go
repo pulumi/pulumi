@@ -391,3 +391,130 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
+
+// Test that we run a BeforeUpdate hook that's coming in on the *new* state, but
+// pass the values of the *old* state to the hook callback.
+func TestResourceHookBeforeUpdate(t *testing.T) {
+	t.Parallel()
+
+	createOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+		"baz":  24,
+	})
+	updateOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "updated",
+		"baz":  24,
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: createOutputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: updateOutputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	isUpdate := false
+	hookCalled := false
+	inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		shouldNotBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
+			outputs resource.PropertyMap,
+		) error {
+			require.Fail(t, "Hook should not be called")
+			return nil
+		}
+		shouldNotBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true)
+		require.NoError(t, err)
+
+		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
+			outputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			expectedInputs := map[string]any{
+				"foo":  "bar",
+				"frob": "baz",
+			}
+			require.Equal(t, expectedInputs, inputs.Mappable(), "Hook receieves the old inputs")
+
+			return nil
+		}
+		shouldBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldBeCalled", shouldBeCalled, true)
+		require.NoError(t, err)
+
+		// On the first run through the program, we'll register `shouldNotBeCalledHook` as a BeforeUpdate hook
+		// for the resource.
+		hooks := []*deploytest.ResourceHook{shouldNotBeCalledHook}
+		if isUpdate {
+			// On the second run through, we switch to another hook. We expect this hook to be called during
+			// the update.
+			hooks = []*deploytest.ResourceHook{shouldBeCalledHook}
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				BeforeUpdate: hooks,
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.False(t, hookCalled)
+
+	// change the inputs
+	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "updated",
+	})
+	// and use the new hook
+	isUpdate = true
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.True(t, hookCalled)
+}
