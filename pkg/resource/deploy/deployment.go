@@ -694,13 +694,12 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-// RunHooks runs all the hooks on the given state for the given hook type. If
-// `isBeforeHook` is set to true, a hook that returns an error will cause an
-// error return. If `isBeforeHook` is false, a hook returning an error will
-// only generate a warning.
-func (d *Deployment) RunHooks(hookType resource.HookType, s *resource.State, isBeforeHook bool) error {
-	logging.V(6).Infof("RunHooks %s %t", hookType, isBeforeHook)
-	for _, hookName := range s.ResourceHooks[hookType] {
+// RunHooks runs all the hooks on the given state. If `isBeforeHook` is set to
+// true, a hook that returns an error will cause an error return. If
+// `isBeforeHook` is false, a hook returning an error will only generate a
+// warning.
+func (d *Deployment) RunHooks(hooks []string, s *resource.State, isBeforeHook bool) error {
+	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
 		if err != nil {
 			return fmt.Errorf("hook %q was not registered", hookName)

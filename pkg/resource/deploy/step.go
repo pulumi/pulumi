@@ -292,7 +292,7 @@ func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(resource.BeforeCreate, s.new, true); err != nil {
+	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.BeforeCreate], s.new, true); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -378,7 +378,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(resource.AfterCreate, s.new, false); err != nil {
+	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterCreate], s.new, false); err != nil {
 		return resourceStatus, complete, err
 	}
 
@@ -502,7 +502,7 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(resource.BeforeDelete, s.old, true); err != nil {
+	if err := s.Deployment().RunHooks(s.old.ResourceHooks[resource.BeforeDelete], s.old, true); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -584,7 +584,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	if err := s.Deployment().RunHooks(resource.AfterDelete, s.old, false); err != nil {
+	if err := s.Deployment().RunHooks(s.old.ResourceHooks[resource.AfterDelete], s.old, false); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -733,7 +733,7 @@ func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(resource.BeforeUpdate, s.new, true); err != nil {
+	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.BeforeUpdate], s.old, true); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -812,7 +812,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(resource.AfterUpdate, s.new, false); err != nil {
+	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterUpdate], s.new, false); err != nil {
 		return resourceStatus, nil, err
 	}
 
