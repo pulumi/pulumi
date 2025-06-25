@@ -1293,12 +1293,10 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 					// This provider hasn't been registered yet. This happens when a user changes the default
 					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15704
 					// for more information.
-					var providerResource *resource.State
-					for _, r := range sg.deployment.olds {
-						if r.URN == ref.URN() && r.ID == ref.ID() {
-							providerResource = r
-							break
-						}
+					providerResource := sg.deployment.olds[ref.URN()]
+					if providerResource != nil && providerResource.ID != ref.ID() {
+						// If it's the wrong ID then don't report a match
+						providerResource = nil
 					}
 					if providerResource == nil {
 						return nil, false, fmt.Errorf("could not find provider %v in old state", ref)
@@ -2868,11 +2866,10 @@ func (sg *stepGenerator) AnalyzeResources() error {
 					// This provider hasn't been registered yet. This happens when a user changes the default
 					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15732
 					// for more information.
-					for _, r := range sg.deployment.olds {
-						if r.URN == ref.URN() && r.ID == ref.ID() {
-							providerResource = r
-							break
-						}
+					providerResource := sg.deployment.olds[ref.URN()]
+					if providerResource != nil && providerResource.ID != ref.ID() {
+						// If it's the wrong ID then don't report a match
+						providerResource = nil
 					}
 					if providerResource == nil {
 						// Return a more friendly error to the user explaining this isn't supported.
