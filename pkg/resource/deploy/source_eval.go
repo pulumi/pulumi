@@ -1718,13 +1718,11 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 	}
 	hook := ResourceHook{
 		Name:     req.Name,
-		Handler:  wrapped,
+		Callback: wrapped,
 		OnDryRun: req.OnDryRun,
 	}
-	if err := rm.resourceHooks.RegisterResourceHook(hook); err != nil {
-		return &emptypb.Empty{}, err
-	}
-	return &emptypb.Empty{}, nil
+	err = rm.resourceHooks.RegisterResourceHook(hook)
+	return nil, err
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
