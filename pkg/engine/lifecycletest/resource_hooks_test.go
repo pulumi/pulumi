@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,13 +82,13 @@ func TestResourceHooks(t *testing.T) {
 				"a": "A",
 				"c": "C",
 			}
-			assert.Equal(t, expectedInputs, inputs.Mappable(), "Hook receieves the checked inputs")
+			require.Equal(t, expectedInputs, inputs.Mappable(), "Hook receieves the checked inputs")
 			expectedOutputs := map[string]any{
 				"a": "A",
 				"b": "B",
 				"c": "C",
 			}
-			assert.Equal(t, expectedOutputs, outputs.Mappable())
+			require.Equal(t, expectedOutputs, outputs.Mappable())
 			return nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -103,7 +102,7 @@ func TestResourceHooks(t *testing.T) {
 				AfterCreate: []*deploytest.ResourceHook{myHook},
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -114,10 +113,10 @@ func TestResourceHooks(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.True(t, hookCalled)
-	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
-	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.True(t, hookCalled)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
 func TestResourceHookDryRun(t *testing.T) {
@@ -142,7 +141,7 @@ func TestResourceHookDryRun(t *testing.T) {
 		funTrue := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
 			outputs resource.PropertyMap,
 		) error {
-			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			if info.DryRun {
 				hookTrueCalledOnDryRun = true
 			} else {
@@ -157,9 +156,9 @@ func TestResourceHookDryRun(t *testing.T) {
 		funFalse := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
 			outputs resource.PropertyMap,
 		) error {
-			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			if info.DryRun {
-				assert.Fail(t, "The hook should not have been called")
+				require.Fail(t, "The hook should not have been called")
 			} else {
 				hookFalseCalled = true
 			}
@@ -174,7 +173,7 @@ func TestResourceHookDryRun(t *testing.T) {
 				AfterCreate: []*deploytest.ResourceHook{myHookTrue, myHookFalse},
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -185,12 +184,12 @@ func TestResourceHookDryRun(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.True(t, hookTrueCalledOnDryRun, "hook true should have been called on dry run")
-	assert.True(t, hookTrueCalled, "hook true should have been called")
-	assert.True(t, hookFalseCalled, "hook false should have been called")
-	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
-	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.True(t, hookTrueCalledOnDryRun, "hook true should have been called on dry run")
+	require.True(t, hookTrueCalled, "hook true should have been called")
+	require.True(t, hookFalseCalled, "hook false should have been called")
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
 func TestResourceHookBeforeCreateError(t *testing.T) {
@@ -213,7 +212,7 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 			outputs resource.PropertyMap,
 		) error {
 			hookCalled = true
-			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			return errors.New("Oh no")
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -251,13 +250,13 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 				}
 			}
 
-			assert.True(t, sawFailure, "There should be an error diagnostic for `resAB`")
+			require.True(t, sawFailure, "There should be an error diagnostic for `resAB`")
 			return err
 		},
 	}}
 	snap := p.Run(t, nil)
-	assert.True(t, hookCalled)
-	assert.Len(t, snap.Resources, 1)
+	require.True(t, hookCalled)
+	require.Len(t, snap.Resources, 1)
 }
 
 func TestResourceHookAfterDelete(t *testing.T) {
@@ -281,7 +280,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 			outputs resource.PropertyMap,
 		) error {
 			hookCalled = true
-			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			return nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -293,11 +292,11 @@ func TestResourceHookAfterDelete(t *testing.T) {
 					AfterDelete: []*deploytest.ResourceHook{myHook},
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
@@ -311,7 +310,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
@@ -346,7 +345,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 			outputs resource.PropertyMap,
 		) error {
 			hookCalled = true
-			assert.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			return errors.New("Oh no")
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -358,11 +357,11 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 					BeforeDelete: []*deploytest.ResourceHook{myHook},
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
@@ -376,7 +375,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
