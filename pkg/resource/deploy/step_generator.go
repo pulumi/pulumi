@@ -2866,7 +2866,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 					// This provider hasn't been registered yet. This happens when a user changes the default
 					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15732
 					// for more information.
-					providerResource := sg.deployment.olds[ref.URN()]
+					providerResource = sg.deployment.olds[ref.URN()]
 					if providerResource != nil && providerResource.ID != ref.ID() {
 						// If it's the wrong ID then don't report a match
 						providerResource = nil
