@@ -20,6 +20,7 @@ import {
     getResource,
     readResource,
     registerResource,
+    registerResourceHook,
     registerResourceOutputs,
     SourcePosition,
 } from "./runtime/resource";
@@ -809,6 +810,12 @@ export interface ResourceOptions {
      */
     deletedWith?: Resource;
 
+    /**
+     * Optional resource hooks to bind to this resource. The hooks will be
+     * invoked during certain step of the lifecycle of the resource.
+     */
+    hooks?: ResourceHookBinding;
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }
@@ -985,6 +992,144 @@ export interface CustomResourceOptions extends ResourceOptions {
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
+}
+
+/**
+ * ResourceHook is a named hook that can be registered as a resource hook.
+ */
+export class ResourceHook {
+    /**
+     * The unqiue name of the resource hook.
+     */
+    public name: string;
+    /**
+     * The function that will be called when the resource hook is triggered.
+     */
+    public handler: ResourceHookFunction;
+    /**
+     * Run the hook during dry run (preview) operations. Defaults to false.
+     */
+    public opts?: ResourceHookOptions;
+
+    /**
+     * Tracks the registration of the resource hook. The promise will resolve
+     * once the hook has been registered, or reject if any error occurs.
+     *
+     * @internal
+     */
+    public __registered: Promise<void>;
+
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * @internal
+     */
+    public readonly __pulumiResourceHook: boolean = true;
+
+    constructor(name: string, handler: ResourceHookFunction, opts?: ResourceHookOptions) {
+        this.name = name;
+        this.handler = handler;
+        this.opts = opts;
+        this.__registered = registerResourceHook(this);
+    }
+
+    public static isInstance(obj: any): obj is ResourceHook {
+        return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
+    }
+}
+
+/**
+ * Options for registering a resource hook.
+ */
+export interface ResourceHookOptions {
+    /**
+     * Run the hook during dry run (preview) operations. Defaults to false.
+     */
+    onDryRun?: boolean;
+}
+
+/**
+ * ResourceHookArgs represents the arguments passed to a resource hook
+ * Depending on the hook type, only some of the new/old inputs/outputs are set.
+ *
+ * | Hook Type     | old_inputs | new_inputs | old_outputs | new_outputs |
+ * | ------------- | ---------- | ---------- | ----------- | ----------- |
+ * | before_create |            | ✓          |             |             |
+ * | after_create  |            | ✓          |             | ✓           |
+ * | before_update | ✓          | ✓          | ✓           |             |
+ * | after_update  | ✓          | ✓          | ✓           | ✓           |
+ * | before_delete | ✓          |            | ✓           |             |
+ * | after_delete  | ✓          |            | ✓           |             |
+ */
+export interface ResourceHookArgs {
+    /**
+     * The URN of the resource that triggered the hook.
+     */
+    urn: URN;
+    /**
+     * The ID of the resource that triggered the hook.
+     */
+    id: ID;
+    /**
+     * The new inputs of the resource that triggered the hook.
+     */
+    newInputs?: Record<string, any>;
+    /**
+     * The old inputs of the resource that triggered the hook.
+     */
+    oldInputs?: Record<string, any>;
+    /**
+     * The new outputs of the resource that triggered the hook.
+     */
+    newOutputs?: Record<string, any>;
+    /**
+     * The old outputs of the resource that triggered the hook.
+     */
+    oldOutputs?: Record<string, any>;
+}
+
+/**
+ * ResourceHookFunction is a function that can be registered as a resource hook.
+ */
+export type ResourceHookFunction = (args: ResourceHookArgs) => void | Promise<void>;
+
+/**
+ * Binds {@link ResourceHook} instances to a resource. The resource hooks will
+ * be invoked during certain step of the lifecycle of the resource.
+ *
+ * `before_${action}` hooks that raise an exception cause the action to fail.
+ * `after_${action}` hooks that raise an exception will log a warning, but do
+ * not cause the action or the deployment to fail.
+ *
+ * When running `pulumi destroy`, `before_delete` and `after_delete` resource
+ * hooks require the operation to run with `--run-program`, to ensure that the
+ * program which defines the hooks is available.
+ */
+export interface ResourceHookBinding {
+    /**
+     * Hooks to be invoked before the resource is created.
+     */
+    beforeCreate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked after the resource is created.
+     */
+    afterCreate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked before the resource is updated.
+     */
+    beforeUpdate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked after the resource is updated.
+     */
+    afterUpdate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked before the resource is deleted.
+     */
+    beforeDelete?: Array<ResourceHook>;
+    /**
+     * Hooks to be invoked after the resource is deleted.
+     */
+    afterDelete?: Array<ResourceHook>;
 }
 
 /**
@@ -1349,7 +1494,32 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             continue;
         }
 
+        if (key === "hooks") {
+            continue;
+        }
+
         dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
+    }
+
+    if (dest.hooks || source.hooks) {
+        const hookTypes = [
+            "beforeCreate",
+            "afterCreate",
+            "beforeUpdate",
+            "afterUpdate",
+            "beforeDelete",
+            "afterDelete",
+        ] as const;
+        for (const hookType of hookTypes) {
+            const destHooks = dest?.hooks?.[hookType];
+            const sourceHooks = source?.hooks?.[hookType];
+            if (destHooks || sourceHooks) {
+                if (!dest.hooks) {
+                    dest.hooks = {};
+                }
+                dest.hooks[hookType] = merge(destHooks, sourceHooks, /*alwaysCreateArray:*/ false);
+            }
+        }
     }
 
     // Now, if we are left with a .providers that is just a single key/value pair, then
