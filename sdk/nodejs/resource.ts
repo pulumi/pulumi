@@ -20,6 +20,7 @@ import {
     getResource,
     readResource,
     registerResource,
+    registerResourceHook,
     registerResourceOutputs,
     SourcePosition,
 } from "./runtime/resource";
@@ -809,6 +810,12 @@ export interface ResourceOptions {
      */
     deletedWith?: Resource;
 
+    /**
+     * If set, the resource hooks to bind to this resource. The hooks will be invoked during certain steps of the
+     * lifecycle of the resource.
+     */
+    hooks?: ResourceHookBinding;
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }
@@ -985,6 +992,62 @@ export interface CustomResourceOptions extends ResourceOptions {
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
+}
+
+export class ResourceHook {
+    public name: string;
+    public handler: ResourceHookFunction;
+    public onDryRun: boolean;
+
+    /**
+     * Tracks the registration of the resource hook. The promise will resolve
+     * once the hook has been registered, or reject if any error occurs.
+     *
+     * @internal
+     */
+    public __registered: Promise<void>;
+
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * @internal
+     */
+    public readonly __pulumiResourceHook: boolean = true;
+
+    constructor(name: string, handler: ResourceHookFunction, opts?: ResourceHookOptions) {
+        this.name = name;
+        this.handler = handler;
+        this.onDryRun = opts?.onDryRun || false;
+        this.__registered = registerResourceHook(this);
+    }
+
+    public static isInstance(obj: any): obj is ResourceHook {
+        return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
+    }
+}
+
+export interface ResourceHookOptions {
+    onDryRun?: boolean;
+}
+
+export interface ResourceHookArgs {
+    urn: URN;
+    id: ID;
+    newInputs?: Record<string, any>;
+    oldInputs?: Record<string, any>;
+    newOutputs?: Record<string, any>;
+    oldOutputs?: Record<string, any>;
+}
+
+export type ResourceHookFunction = (args: ResourceHookArgs) => void | Promise<void>;
+
+export interface ResourceHookBinding {
+    beforeCreate?: Array<ResourceHookFunction | ResourceHook>;
+    afterCreate?: Array<ResourceHookFunction | ResourceHook>;
+    beforeUpdate?: Array<ResourceHookFunction | ResourceHook>;
+    afterUpdate?: Array<ResourceHookFunction | ResourceHook>;
+    beforeDelete?: Array<ResourceHook>;
+    afterDelete?: Array<ResourceHook>;
 }
 
 /**
@@ -1349,7 +1412,32 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             continue;
         }
 
+        if (key === "hooks") {
+            continue;
+        }
+
         dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
+    }
+
+    if (dest.hooks || source.hooks) {
+        const hookTypes = [
+            "beforeCreate",
+            "afterCreate",
+            "beforeUpdate",
+            "afterUpdate",
+            "beforeDelete",
+            "afterDelete",
+        ] as const;
+        for (const hookType of hookTypes) {
+            const destHooks = dest?.hooks?.[hookType];
+            const sourceHooks = source?.hooks?.[hookType];
+            if (destHooks || sourceHooks) {
+                if (!dest.hooks) {
+                    dest.hooks = {};
+                }
+                dest.hooks[hookType] = merge(destHooks, sourceHooks, /*alwaysCreateArray:*/ false);
+            }
+        }
     }
 
     // Now, if we are left with a .providers that is just a single key/value pair, then
