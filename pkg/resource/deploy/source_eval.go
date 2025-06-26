@@ -33,6 +33,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1656,33 +1657,62 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		return nil, err
 	}
 
-	return func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-		outputs resource.PropertyMap,
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
-		mInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
-		if err != nil {
-			return fmt.Errorf("marshaling unputs for resource hook %q: %w", name, err)
+		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
+			}
 		}
-		mOutputs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
-		if err != nil {
-			return fmt.Errorf("marshaling outputs for resource hook %q: %w", name, err)
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
+			}
+		}
+		if newOutputs != nil {
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
+			}
 		}
 		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
-			Urn:     string(urn),
-			Id:      string(id),
-			Inputs:  mInputs,
-			Outputs: mOutputs,
+			Urn:        string(urn),
+			Id:         string(id),
+			NewInputs:  mNewInputs,
+			OldInputs:  mOldInputs,
+			NewOutputs: mNewOutputs,
+			OldOutputs: mOldOutputs,
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)

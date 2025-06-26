@@ -33,7 +33,81 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResourceHooks(t *testing.T) {
+// By default hooks do not run on dry runs. Using the `OnDryRun` option makes them run on dry run.
+func TestResourceHookDryRun(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hookTrueCalledOnDryRun := false
+	hookTrueCalled := false
+	hookFalseCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		// Create hook that runs on a dry run (and non-dry run)
+		funTrue := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			if info.DryRun {
+				hookTrueCalledOnDryRun = true
+			} else {
+				hookTrueCalled = true
+			}
+			return nil
+		}
+		myHookTrue, err := deploytest.NewHook(monitor, callbacks, "myHookTrue", funTrue, true)
+		require.NoError(t, err)
+
+		// Create hook that does not run on a dry run
+		funFalse := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			if info.DryRun {
+				require.Fail(t, "The hook should not have been called")
+			} else {
+				hookFalseCalled = true
+			}
+			return nil
+		}
+		myHookFalse, err := deploytest.NewHook(monitor, callbacks, "myHookFalse", funFalse, false)
+		require.NoError(t, err)
+
+		// Register a resource with both hooks
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{myHookTrue, myHookFalse},
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	require.True(t, hookTrueCalledOnDryRun, "hook true should have been called on dry run")
+	require.True(t, hookTrueCalled, "hook true should have been called")
+	require.True(t, hookFalseCalled, "hook false should have been called")
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+}
+
+func TestResourceHooksAfterCreate(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -74,21 +148,23 @@ func TestResourceHooks(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
 			expectedInputs := map[string]any{
 				"a": "A",
 				"c": "C",
 			}
-			require.Equal(t, expectedInputs, inputs.Mappable(), "Hook receieves the checked inputs")
+			require.Equal(t, expectedInputs, newInputs.Mappable(), "Hook receives the checked inputs")
+			require.Nil(t, oldInputs, "there are no old inputs for creates")
 			expectedOutputs := map[string]any{
 				"a": "A",
 				"b": "B",
 				"c": "C",
 			}
-			require.Equal(t, expectedOutputs, outputs.Mappable())
+			require.Equal(t, expectedOutputs, newOutputs.Mappable())
+			require.Nil(t, oldOutputs, "there are no old outputs for creates")
 			return nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -119,79 +195,7 @@ func TestResourceHooks(t *testing.T) {
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
-func TestResourceHookDryRun(t *testing.T) {
-	t.Parallel()
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
-		}),
-	}
-
-	hookTrueCalledOnDryRun := false
-	hookTrueCalled := false
-	hookFalseCalled := false
-
-	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		callbacks, err := deploytest.NewCallbacksServer()
-		require.NoError(t, err)
-		defer func() { require.NoError(t, callbacks.Close()) }()
-
-		// Create hook that runs on a dry run (and non-dry run)
-		funTrue := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
-		) error {
-			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
-			if info.DryRun {
-				hookTrueCalledOnDryRun = true
-			} else {
-				hookTrueCalled = true
-			}
-			return nil
-		}
-		myHookTrue, err := deploytest.NewHook(monitor, callbacks, "myHookTrue", funTrue, true)
-		require.NoError(t, err)
-
-		// Create hook that does not run on a dry run
-		funFalse := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
-		) error {
-			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
-			if info.DryRun {
-				require.Fail(t, "The hook should not have been called")
-			} else {
-				hookFalseCalled = true
-			}
-			return nil
-		}
-		myHookFalse, err := deploytest.NewHook(monitor, callbacks, "myHookFalse", funFalse, false)
-		require.NoError(t, err)
-
-		// Register a resource with both hooks
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ResourceHookBindings: deploytest.ResourceHookBindings{
-				AfterCreate: []*deploytest.ResourceHook{myHookTrue, myHookFalse},
-			},
-		})
-		require.NoError(t, err)
-		return nil
-	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-	}
-	p.Steps = []lt.TestStep{{Op: Update}}
-	snap := p.Run(t, nil)
-
-	require.True(t, hookTrueCalledOnDryRun, "hook true should have been called on dry run")
-	require.True(t, hookTrueCalled, "hook true should have been called")
-	require.True(t, hookFalseCalled, "hook false should have been called")
-	require.Len(t, snap.Resources, 2)
-	require.Equal(t, snap.Resources[0].URN.Name(), "default")
-	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
-}
-
+// Before hooks that return an error cause the step to fail.
 func TestResourceHookBeforeCreateError(t *testing.T) {
 	t.Parallel()
 
@@ -208,8 +212,8 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
@@ -276,8 +280,8 @@ func TestResourceHookAfterDelete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
@@ -341,8 +345,8 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		fun := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
@@ -440,8 +444,11 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		shouldNotBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
+		// We create the resource with this hook as a `beforeUpdate` hook, and
+		// then update the resource to use a dfifferent hook. We expect this
+		// hook to not be called during the update.
+		shouldNotBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			require.Fail(t, "Hook should not be called")
 			return nil
@@ -449,17 +456,28 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		shouldNotBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true)
 		require.NoError(t, err)
 
-		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-			outputs resource.PropertyMap,
+		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
-			expectedInputs := map[string]any{
+			expectedNewInputs := map[string]any{
+				"foo":  "bar",
+				"frob": "updated",
+			}
+			require.Equal(t, expectedNewInputs, newInputs.Mappable(), "Hook receieves the new inputs")
+			expectedOldInputs := map[string]any{
 				"foo":  "bar",
 				"frob": "baz",
 			}
-			require.Equal(t, expectedInputs, inputs.Mappable(), "Hook receieves the old inputs")
-
+			require.Equal(t, expectedOldInputs, oldInputs.Mappable(), "Hook receieves the old inputs")
+			expectedOldOutputs := map[string]any{
+				"foo":  "bar",
+				"frob": "baz",
+				"baz":  float64(24),
+			}
+			require.Equal(t, expectedOldOutputs, oldOutputs.Mappable(), "Hook receieves the old outputs")
+			require.Nil(t, newOutputs, "there are no new outputs for before update hooks")
 			return nil
 		}
 		shouldBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldBeCalled", shouldBeCalled, true)
