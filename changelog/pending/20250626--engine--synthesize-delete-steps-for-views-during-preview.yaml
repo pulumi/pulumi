@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Synthesize delete steps for views during preview

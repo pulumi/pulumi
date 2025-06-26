@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Add `SignalAndWaitForShutdown` RPC call

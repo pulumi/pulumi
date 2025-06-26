@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Add `preview_refresh` to allow dry-runs of `refresh` commands
