@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Do not assume that package sources without file path prefixes (`./`, `../`) are file paths

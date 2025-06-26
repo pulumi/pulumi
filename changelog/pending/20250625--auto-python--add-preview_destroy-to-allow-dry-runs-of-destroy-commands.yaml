@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Add `preview_destroy` to allow dry-runs of `destroy` commands

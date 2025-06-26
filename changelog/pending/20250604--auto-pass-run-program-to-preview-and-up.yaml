@@ -1,4 +1,0 @@
-changes:
-  - type: feat
-    scope: auto
-    description: Support providing runProgram to `preview` and `up` in auto sdk

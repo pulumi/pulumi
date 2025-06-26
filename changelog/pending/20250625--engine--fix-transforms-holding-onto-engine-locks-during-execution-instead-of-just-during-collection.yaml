@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix transforms holding onto engine locks during execution, instead of just during collection
