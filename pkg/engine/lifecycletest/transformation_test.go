@@ -1036,7 +1036,7 @@ func TestTransformOrdering(t *testing.T) {
 		},
 	}
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
-	assert.Equal(t, 2, len(snap.Resources))
+	require.NotNil(t, snap)
+	require.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, implicitProvider, snap.Resources[1].Provider)
 }
