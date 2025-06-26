@@ -1989,8 +1989,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		PluginChecksums:         req.GetPluginChecksums(),
 	}
 
-	// This might be a resource registation for a resource that another process requested to be constructed. If so we'll
-	// have saved the pending transforms for this and we should use those rather than what is on the request.
+	// This might be a resource registation for a resource that another process requested to be constructed.
+	// If so we'll have saved the pending transforms for this and we should use those rather than what is on
+	// the request. ourTransforms is the list of transforms declared on _this_ resource, we save it later to
+	// the resourceTransforms map. transforms is a collected list of _all_ transforms that need to run on this
+	// resource, including those from parents and the stack.
+	var ourTransforms []TransformFunction
 	var transforms []TransformFunction
 	pendingKey := fmt.Sprintf("%s::%s::%s", parent, t, name)
 	err = func() error {
@@ -1998,34 +2002,27 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defer rm.pendingTransformsLock.Unlock()
 
 		if pending, ok := rm.pendingTransforms[pendingKey]; ok {
-			transforms = pending
+			delete(rm.pendingTransforms, pendingKey) // Remove the pending transforms, we don't need them again.
+			ourTransforms = pending
 		} else {
-			transforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
+			ourTransforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
 			if err != nil {
 				return err
 			}
 			// We only need to save this for remote calls
-			if remote && len(transforms) > 0 {
-				rm.pendingTransforms[pendingKey] = transforms
+			if remote && len(ourTransforms) > 0 {
+				// Make a copy of the slice here, otherwise later appends will modify what we save here.
+				rm.pendingTransforms[pendingKey] = ourTransforms
 			}
 		}
+		// Copy our transforms into the transforms slice, so we can run them later.
+		transforms = append(transforms, ourTransforms...)
 		return nil
 	}()
 	if err != nil {
 		return nil, err
 	}
-
-	// Before we calculate anything else run the transformations. First run the transforms for this resource,
-	// then it's parents etc etc
-	for _, transform := range transforms {
-		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
-		if err != nil {
-			return nil, err
-		}
-		props = newProps
-		opts = newOpts
-	}
-	// Lookup our parents transformations and run those
+	// Lookup our parents transformations and add those to the list of transforms to run.
 	err = func() error {
 		// Function exists to scope the lock
 		rm.resourceTransformsLock.Lock()
@@ -2035,15 +2032,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		current := parent
 		for current != "" {
-			if transforms, ok := rm.resourceTransforms[current]; ok {
-				for _, transform := range transforms {
-					newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
-					if err != nil {
-						return err
-					}
-					props = newProps
-					opts = newOpts
-				}
+			if parentTransforms, ok := rm.resourceTransforms[current]; ok {
+				transforms = append(transforms, parentTransforms...)
 			}
 			current = rm.parents[current]
 		}
@@ -2052,25 +2042,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-
-	// Then lock the stack transformations and run all of those
-	err = func() error {
+	// Then lock the stack transformations and collect all of those
+	func() {
 		// Function exists to scope the lock
 		rm.stackTransformsLock.Lock()
 		defer rm.stackTransformsLock.Unlock()
 
-		for _, transform := range rm.stackTransforms {
-			newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
-			if err != nil {
-				return err
-			}
-			props = newProps
-			opts = newOpts
-		}
-		return nil
+		transforms = append(transforms, rm.stackTransforms...)
 	}()
-	if err != nil {
-		return nil, err
+
+	// Before we calculate anything else run the transformations. First run the transforms for this resource,
+	// then it's parents, then the stack
+	for _, transform := range transforms {
+		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
+		if err != nil {
+			return nil, err
+		}
+		props = newProps
+		opts = newOpts
 	}
 
 	// We handle updating the providers map to include the providers field of the parent if
@@ -2441,7 +2430,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()
-			rm.resourceTransforms[result.State.URN] = transforms
+			rm.resourceTransforms[result.State.URN] = ourTransforms
 		}()
 		if !custom {
 			func() {
