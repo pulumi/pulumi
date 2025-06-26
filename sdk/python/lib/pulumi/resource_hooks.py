@@ -56,8 +56,12 @@ class ResourceHookArgs:
 
     def __repr__(self):
         return (
-            f"ResourceHookArgs(urn={self.urn}, id={self.id}, new_inputs={self.new_inputs}, "
-            + f"old_inputs={self.old_inputs}, new_outputs={self.new_outputs}, old_outputs={self.old_outputs})"
+            f"ResourceHookArgs(urn={self.urn}, "
+            + f"id={self.id}, "
+            + f"new_inputs={self.new_inputs}, "
+            + f"old_inputs={self.old_inputs}, "
+            + f"new_outputs={self.new_outputs}, "
+            + f"old_outputs={self.old_outputs})"
         )
 
 
@@ -76,6 +80,9 @@ class ResourceHookOptions:
 
     def __init__(self, on_dry_run: bool = False):
         self.on_dry_run = on_dry_run
+
+    def __repr__(self):
+        return f"ResourceHookOptions(on_dry_run={self.on_dry_run})"
 
 
 class ResourceHook:
@@ -112,7 +119,7 @@ class ResourceHook:
         return self.func(args)
 
     def __repr__(self) -> str:
-        return f"ResourceHook(name={self.name}, func={self.func})"
+        return f"ResourceHook(name={self.name}, func={self.func}, opts={self.opts})"
 
 
 class ResourceHookBinding:
@@ -160,12 +167,12 @@ class ResourceHookBinding:
 
     def __repr__(self):
         return (
-            f"<ResourceHookBinding before_create={self.before_create}, "
+            f"ResourceHookBinding(before_create={self.before_create}, "
             + f"after_create={self.after_create}, "
             + f"before_update={self.before_update}, "
             + f"after_update={self.after_update}, "
             + f"before_delete={self.before_delete}, "
-            + f"after_delete={self.after_delete}>"
+            + f"after_delete={self.after_delete})"
         )
 
     def _copy(self):
