@@ -28,8 +28,10 @@ type ResourceHookFunction func(
 	ctx context.Context,
 	urn resource.URN,
 	id resource.ID,
-	inputs resource.PropertyMap,
-	outputs resource.PropertyMap,
+	newInputs resource.PropertyMap,
+	oldInputs resource.PropertyMap,
+	newOutputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap,
 ) error
 
 // ResourceHook represents a resource hook with it's (wrapped) callback and options.
