@@ -10,12 +10,33 @@ from .runtime.settings import (
 
 
 class ResourceHookArgs:
+    """
+    ResourceHookArgs represents the arguments passed to a resource hook.
+
+    Depending on the hook type, only some of the new/old inputs/outputs are set.
+
+    | Hook Type     | old_inputs | new_inputs | old_outputs | new_outputs |
+    | ------------- | ---------- | ---------- | ----------- | ----------- |
+    | before_create |            | ✓          |             |             |
+    | after_create  |            | ✓          |             | ✓           |
+    | before_update | ✓          | ✓          | ✓           |             |
+    | after_update  | ✓          | ✓          | ✓           | ✓           |
+    | before_delete | ✓          |            | ✓           |             |
+    | after_delete  | ✓          |            | ✓           |             |
+    """
+
     urn: str
+    """The URN of the resource that triggered the hook."""
     id: str
+    """The ID of the resource that triggered the hook."""
     new_inputs: Optional[Mapping[str, Any]] = None
+    """The new inputs of the resource that triggered the hook."""
     old_inputs: Optional[Mapping[str, Any]] = None
+    """The old inputs of the resource that triggered the hook."""
     new_outputs: Optional[Mapping[str, Any]] = None
+    """The new outputs of the resource that triggered the hook."""
     old_outputs: Optional[Mapping[str, Any]] = None
+    """The old outputs of the resource that triggered the hook."""
 
     def __init__(
         self,
@@ -44,9 +65,12 @@ ResourceHookFunction = Callable[
     [ResourceHookArgs],
     Union[None, Awaitable[None]],
 ]
+"""ResourceHookFunction is a function that can be registered as a resource hook."""
 
 
 class ResourceHookOptions:
+    """Options for registering a resource hook."""
+
     on_dry_run: bool
     """Run the hook during dry run operations. Defaults to False."""
 
@@ -55,6 +79,8 @@ class ResourceHookOptions:
 
 
 class ResourceHook:
+    """ResourceHook is a named hook that can be registered as a resource hook."""
+
     name: str
     func: ResourceHookFunction
     opts: Optional[ResourceHookOptions] = None
@@ -91,8 +117,8 @@ class ResourceHook:
 
 class ResourceHookBinding:
     """
-    Binds :class:`ResourceHook`s to a resource. The resource hooks will be
-    invoked during certain step of the lifecycle of the resource.
+    Binds :class:`ResourceHook` instances to a resource. The resource hooks will
+    be invoked during certain step of the lifecycle of the resource.
 
     `before_${action}` hooks that raise an exception cause the action to fail.
     `after_${action}` hooks that raise an exception will log a warning, but do
@@ -133,7 +159,14 @@ class ResourceHookBinding:
         self.after_delete = after_delete
 
     def __repr__(self):
-        return f"<ResourceHookBinding before_create={self.before_create}, after_create={self.after_create}, before_update={self.before_update}, after_update={self.after_update}, before_delete={self.before_delete}, after_delete={self.after_delete}>"
+        return (
+            f"<ResourceHookBinding before_create={self.before_create}, "
+            + f"after_create={self.after_create}, "
+            + f"before_update={self.before_update}, "
+            + f"after_update={self.after_update}, "
+            + f"before_delete={self.before_delete}, "
+            + f"after_delete={self.after_delete}>"
+        )
 
     def _copy(self):
         out = copy.copy(self)
