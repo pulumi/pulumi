@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/plugin
-  description: Allow `plugin run` to run local binary plugins
