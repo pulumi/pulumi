@@ -625,7 +625,7 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi refresh
-        const refRes = await stack.previewRefresh({ userAgent, });
+        const refRes = await stack.previewRefresh({ userAgent });
         assert.deepStrictEqual(refRes.changeSummary, { same: 1 });
 
         // pulumi destroy
@@ -643,13 +643,13 @@ describe("LocalWorkspace", () => {
                 stackName,
                 projectName,
                 program: async () => {
-                  class MyResource extends ComponentResource {
-                    constructor(name: string, opts?: ComponentResourceOptions) {
-                      super("my:module:MyResource", name, {}, opts);
+                    class MyResource extends ComponentResource {
+                        constructor(name: string, opts?: ComponentResourceOptions) {
+                            super("my:module:MyResource", name, {}, opts);
+                        }
                     }
-                  }
-                  new MyResource("res");
-                  return {};
+                    new MyResource("res");
+                    return {};
                 },
             },
             withTestBackend({}, "inline_node"),
@@ -661,7 +661,7 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi refresh
-        const refRes = await stack.previewRefresh({ userAgent, });
+        const refRes = await stack.previewRefresh({ userAgent });
         assert.deepStrictEqual(refRes.changeSummary, { same: 2 });
 
         // pulumi destroy
