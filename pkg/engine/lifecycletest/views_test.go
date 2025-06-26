@@ -2395,3 +2395,106 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 }
+
+// TestViewsDestroyPreview ensures delete steps for views are synthesized during
+// destroy previews.
+func TestViewsDestroyPreview(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": req.Properties["foo"],
+								},
+								Outputs: resource.PropertyMap{
+									"result": req.Properties["foo"],
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.CreateResponse{
+						ID:         "new-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+			},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resources.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	// Run a destroy preview and ensure we got a delete event for the view.
+	_, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, _ error) error {
+			var viewDeletePreEventFound, summaryEventFound bool
+			for _, e := range events {
+				//nolint:exhaustive // We intentionally do not handle all event types here.
+				switch e.Type {
+				case ResourcePreEvent:
+					payload := e.Payload().(ResourcePreEventPayload)
+					if payload.Metadata.URN.Name() == "resA-child" {
+						viewDeletePreEventFound = true
+					}
+				case SummaryEvent:
+					summaryEventFound = true
+					payload := e.Payload().(SummaryEventPayload)
+					assert.Equal(t, display.ResourceChanges{
+						deploy.OpDelete: 2,
+					}, payload.ResourceChanges)
+				}
+			}
+			assert.True(t, viewDeletePreEventFound, "view delete event found")
+			assert.True(t, summaryEventFound, "summary event found")
+
+			return nil
+		}, "1")
+	require.NoError(t, err)
+}
