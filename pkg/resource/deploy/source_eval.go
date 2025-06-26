@@ -1456,11 +1456,12 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			name, typ, custom, parent, props, opts)
 
 		mopts := plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			WorkingDirectory: rm.workingDirectory,
+			KeepUnknowns:       true,
+			KeepSecrets:        true,
+			KeepResources:      true,
+			KeepOutputValues:   true,
+			WorkingDirectory:   rm.workingDirectory,
+			ComputeAssetHashes: true,
 		}
 
 		mprops, err := plugin.MarshalProperties(props, mopts)
