@@ -293,7 +293,7 @@ func (s *CreateStep) Logical() bool                                { return !s.r
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.BeforeCreate], true,
-		s.new.ID, s.new.URN, s.new.Inputs, nil, s.new.Outputs, nil); err != nil {
+		s.new.ID, s.new.URN, s.new.Inputs, nil, nil, nil); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
