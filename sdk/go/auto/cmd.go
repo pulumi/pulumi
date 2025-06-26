@@ -279,6 +279,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	cmd := exec.CommandContext(ctx, p.command, args...) //nolint:gosec
 	cmd.Dir = workdir
 	env := append(os.Environ(), additionalEnv...)
+	env = append(env, "PULUMI_AUTOMATION_API=true")
 	if filepath.IsAbs(p.command) {
 		pulumiBin := filepath.Dir(p.command)
 		env = fixupPath(env, pulumiBin)

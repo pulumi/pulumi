@@ -201,7 +201,11 @@ class PulumiCommand:
         # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
         if "--non-interactive" not in args:
             args.append("--non-interactive")
-        env = {**os.environ, **additional_env}
+        env = {
+            **os.environ,
+            **additional_env,
+            "PULUMI_AUTOMATION_API": "true",
+        }
         if os.path.isabs(self.command):
             env = _fixup_path(env, os.path.dirname(self.command))
         cmd = [self.command]
