@@ -698,7 +698,9 @@ func (d *Deployment) Close() error {
 // true, a hook that returns an error will cause an error return. If
 // `isBeforeHook` is false, a hook returning an error will only generate a
 // warning.
-func (d *Deployment) RunHooks(hooks []string, s *resource.State, isBeforeHook bool) error {
+func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID, urn resource.URN,
+	newInputs, oldInput, newOutputs, oldOutputs resource.PropertyMap,
+) error {
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
 		if err != nil {
@@ -707,8 +709,8 @@ func (d *Deployment) RunHooks(hooks []string, s *resource.State, isBeforeHook bo
 		if d.opts != nil && d.opts.DryRun && !hook.OnDryRun {
 			continue
 		}
-		logging.V(9).Infof("calling hook %q for urn %s", hookName, s.URN)
-		err = hook.Callback(context.Background(), s.URN, s.ID, s.Inputs, s.Outputs)
+		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
+		err = hook.Callback(context.Background(), urn, id, newInputs, oldInput, newOutputs, oldOutputs)
 		if err != nil {
 			logging.V(6).Infof("hook %q failed: %s", hookName, err)
 			if isBeforeHook {
@@ -716,7 +718,7 @@ func (d *Deployment) RunHooks(hooks []string, s *resource.State, isBeforeHook bo
 			}
 			// Errors on after hooks report a diagnostic, but do not fail the step.
 			d.Diag().Warningf(&diag.Diag{
-				URN:     s.URN,
+				URN:     urn,
 				Message: fmt.Sprintf("hook %q failed: %s", hookName, err),
 			})
 		}

@@ -138,8 +138,8 @@ type ResourceHookBindings struct {
 	AfterDelete  []*ResourceHook
 }
 
-type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, inputs resource.PropertyMap,
-	outputs resource.PropertyMap) error
+type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID,
+	newInputs, oldInpts, newOutputs, oldOutputs resource.PropertyMap) error
 
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
 	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
@@ -189,25 +189,52 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
-		inputs, err := plugin.UnmarshalProperties(req.Inputs, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unmarshaling inputs: %w", err)
+		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		if req.NewInputs != nil {
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
+			}
 		}
-		outputs, err := plugin.UnmarshalProperties(req.Outputs, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unmarshaling outputs: %w", err)
+		if req.OldInputs != nil {
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
+			}
 		}
-		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), inputs, outputs); err != nil {
+		if req.NewOutputs != nil {
+			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
+			}
+		}
+		if req.OldOutputs != nil {
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, plugin.MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepOutputValues: true,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
+			}
+		}
+		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
 			return &pulumirpc.ResourceHookResponse{
 				Error: err.Error(),
 			}, nil
