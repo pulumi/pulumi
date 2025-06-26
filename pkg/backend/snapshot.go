@@ -20,11 +20,11 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/exp/slices"
 
-	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -78,7 +78,9 @@ type SnapshotManager struct {
 	// The journal entries for this plan, which are used to replay the journal and produce a snapshot.
 	journalEntries JournalEntries
 
-	newResources gsync.Map[*resource.State, string]
+	newResources gsync.Map[*resource.State, uint64]
+
+	operationIDCounter atomic.Uint64 // A counter used to generate unique operation IDs for journal entries.
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -97,11 +99,13 @@ const (
 	JournalEntryOutputs JournalEntryKind = 4
 )
 
+type OperationID int
+
 type JournalEntry struct {
 	Kind             JournalEntryKind
-	OperationUUID    string // The UUID of the operation that this journal entry is associated with.
+	OperationID      uint64 // The ID of the operation that this journal entry is associated with.
 	DeleteOld        int
-	DeleteNew        string              // UUID for the delete Operation
+	DeleteNew        uint64              // ID for the delete Operation
 	State            *resource.State     // The resource state associated with this journal entry.
 	result           chan<- error        // The result channel to send the result of the journal entry processing.
 	Operation        *resource.Operation // The operation associated with this journal entry, if any.
@@ -126,7 +130,7 @@ type JournalEntries []JournalEntry
 // goroutine is polling the channel and executing the mutation functions as they come.
 // This function optionally verifies the integrity of the snapshot before and after mutation.
 //
-// Each journal entyr may indicate that its corresponding checkpoint write may be safely elided by
+// Each journal entry may indicate that its corresponding checkpoint write may be safely elided by
 // setting the `ElideWrite` fiield. As of this writing, we only elide writes after same steps with no
 // meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
 // are flushed by the next non-elided write or the next call to Close.
@@ -173,9 +177,9 @@ func (sm *SnapshotManager) markEntryForDeletion(journalEntry *JournalEntry, toDe
 			}
 		}
 	}
-	sm.newResources.Range(func(res *resource.State, uuid string) bool {
+	sm.newResources.Range(func(res *resource.State, id uint64) bool {
 		if res == toDelete {
-			journalEntry.DeleteNew = uuid
+			journalEntry.DeleteNew = id
 			return false
 		}
 		return true
@@ -189,30 +193,27 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	contract.Requiref(step != nil, "step", "cannot be nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
-	operationUUID, err := uuid.NewV4()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate operation UUID: %w", err)
-	}
+	operationID := sm.operationIDCounter.Add(1)
 
 	switch step.Op() {
 	case deploy.OpSame:
-		return sm.doSame(step, operationUUID.String())
+		return sm.doSame(step, operationID)
 	case deploy.OpCreate, deploy.OpCreateReplacement:
-		return sm.doCreate(step, operationUUID.String())
+		return sm.doCreate(step, operationID)
 	case deploy.OpUpdate:
-		return sm.doUpdate(step, operationUUID.String())
+		return sm.doUpdate(step, operationID)
 	case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-		return sm.doDelete(step, operationUUID.String())
+		return sm.doDelete(step, operationID)
 	case deploy.OpReplace:
-		return sm.doReplace(step, operationUUID.String())
+		return sm.doReplace(step, operationID)
 	case deploy.OpRead, deploy.OpReadReplacement:
-		return sm.doRead(step, operationUUID.String())
+		return sm.doRead(step, operationID)
 	case deploy.OpRefresh:
-		return sm.doRefresh(step, operationUUID.String())
+		return sm.doRefresh(step, operationID)
 	case deploy.OpRemovePendingReplace:
-		return sm.doRemovePendingReplace(step, operationUUID.String())
+		return sm.doRemovePendingReplace(step, operationID)
 	case deploy.OpImport, deploy.OpImportReplacement:
-		return sm.doImport(step, operationUUID.String())
+		return sm.doImport(step, operationID)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -237,8 +238,8 @@ func (sm *SnapshotManager) Rebase(base *deploy.Snapshot) error {
 // the snapshot in `snap`. See the comments in `snap` for more details.
 
 type sameSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 // mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
@@ -358,18 +359,18 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	return false
 }
 
-func (sm *SnapshotManager) doSame(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doSame(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doSame(%s)", step.URN())
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		State:         step.New(),
-		ElideWrite:    true,
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		State:       step.New(),
+		ElideWrite:  true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &sameSnapshotMutation{sm, operationUUID}, nil
+	return &sameSnapshotMutation{sm, operationID}, nil
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -382,9 +383,9 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: ssm.operationUUID,
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: ssm.operationID,
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
 	if old := step.Old(); old != nil {
 		ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
@@ -393,7 +394,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	sameStep, isSameStep := step.(*deploy.SameStep)
 	if !isSameStep || !sameStep.IsSkippedCreate() {
 		journalEntry.State = step.New()
-		ssm.manager.newResources.Store(step.New(), ssm.operationUUID)
+		ssm.manager.newResources.Store(step.New(), ssm.operationID)
 	}
 
 	if successful && isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
@@ -403,23 +404,23 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	return ssm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doCreate(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doCreate(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeCreating)
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		Operation:     &op,
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		Operation:   &op,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &createSnapshotMutation{sm, operationUUID}, nil
+	return &createSnapshotMutation{sm, operationID}, nil
 }
 
 type createSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -430,12 +431,12 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: csm.operationUUID,
-		State:         step.New(),
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: csm.operationID,
+		State:       step.New(),
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
-	csm.manager.newResources.Store(step.New(), csm.operationUUID)
+	csm.manager.newResources.Store(step.New(), csm.operationID)
 	if old := step.Old(); old != nil && old.PendingReplacement {
 		csm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
@@ -443,24 +444,24 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return csm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doUpdate(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doUpdate(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeUpdating)
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		Operation:     &op,
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		Operation:   &op,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &updateSnapshotMutation{sm, operationUUID}, nil
+	return &updateSnapshotMutation{sm, operationID}, nil
 }
 
 type updateSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -471,40 +472,40 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: usm.operationUUID,
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: usm.operationID,
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
 	if successful {
 		if old := step.Old(); old != nil {
 			usm.manager.markEntryForDeletion(&journalEntry, step.Old())
 		}
 		journalEntry.State = step.New()
-		usm.manager.newResources.Store(step.New(), usm.operationUUID)
+		usm.manager.newResources.Store(step.New(), usm.operationID)
 	}
 	return usm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doDelete(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
 	op := resource.NewOperation(step.Old(), resource.OperationTypeDeleting)
 	journalEntry := JournalEntry{
-		Kind:          JournalEntryBegin,
-		DeleteOld:     -1, // Default to -1, which means no deletion.
-		OperationUUID: operationUUID,
-		Operation:     &op,
+		Kind:        JournalEntryBegin,
+		DeleteOld:   -1, // Default to -1, which means no deletion.
+		OperationID: operationID,
+		Operation:   &op,
 	}
 
 	err := sm.journalMutation(journalEntry)
 	if err != nil {
 		return nil, err
 	}
-	return &deleteSnapshotMutation{sm, operationUUID}, nil
+	return &deleteSnapshotMutation{sm, operationID}, nil
 }
 
 type deleteSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -515,9 +516,9 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: dsm.operationUUID,
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: dsm.operationID,
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
 	if successful {
 		contract.Assertf(
@@ -534,22 +535,22 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return dsm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doReplace(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doReplace(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doReplace(%s)", step.URN())
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		ElideWrite:    true,
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		ElideWrite:  true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &replaceSnapshotMutation{sm, operationUUID}, nil
+	return &replaceSnapshotMutation{sm, operationID}, nil
 }
 
 type replaceSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -557,24 +558,24 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 	return nil
 }
 
-func (sm *SnapshotManager) doRead(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doRead(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeReading)
 	journalEntry := JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		Operation:     &op,
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		Operation:   &op,
 	}
 	err := sm.journalMutation(journalEntry)
 	if err != nil {
 		return nil, err
 	}
-	return &readSnapshotMutation{sm, operationUUID}, nil
+	return &readSnapshotMutation{sm, operationID}, nil
 }
 
 type readSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -585,34 +586,34 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: rsm.operationUUID,
-		State:         step.New(),
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: rsm.operationID,
+		State:       step.New(),
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
-	rsm.manager.newResources.Store(step.New(), rsm.operationUUID)
+	rsm.manager.newResources.Store(step.New(), rsm.operationID)
 	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
 		rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
 	return rsm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doRefresh(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doRefresh(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRefresh(%s)", step.URN())
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		State:         step.New(),
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		State:       step.New(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &refreshSnapshotMutation{sm, operationUUID}, nil
+	return &refreshSnapshotMutation{sm, operationID}, nil
 }
 
 type refreshSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -624,9 +625,9 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: rsm.operationUUID,
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: rsm.operationID,
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
 	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
 	if old := step.Old(); isRefreshStep && refreshStep.Persisted() && old != nil && rsm.manager.baseSnapshot != nil {
@@ -647,20 +648,20 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 }
 
 func (sm *SnapshotManager) doRemovePendingReplace(
-	step deploy.Step, operationUUID string,
+	step deploy.Step, operationID uint64,
 ) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		State:         step.Old(),
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		State:       step.Old(),
 	})
-	return &removePendingReplaceSnapshotMutation{sm, operationUUID}, err
+	return &removePendingReplaceSnapshotMutation{sm, operationID}, err
 }
 
 type removePendingReplaceSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -668,9 +669,9 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 	contract.Requiref(step.Op() == deploy.OpRemovePendingReplace, "step.Op",
 		"must be %q, got %q", deploy.OpRemovePendingReplace, step.Op())
 	journalEntry := JournalEntry{
-		Kind:          JournalEntrySuccess,
-		OperationUUID: rsm.operationUUID,
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        JournalEntrySuccess,
+		OperationID: rsm.operationID,
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
 	if step.Old() != nil {
 		rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
@@ -678,24 +679,24 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 	return rsm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doImport(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doImport(step deploy.Step, operationID uint64) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
 	err := sm.journalMutation(JournalEntry{
-		Kind:          JournalEntryBegin,
-		OperationUUID: operationUUID,
-		Operation:     &op,
+		Kind:        JournalEntryBegin,
+		OperationID: operationID,
+		Operation:   &op,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &importSnapshotMutation{sm, operationUUID}, nil
+	return &importSnapshotMutation{sm, operationID}, nil
 }
 
 type importSnapshotMutation struct {
-	manager       *SnapshotManager
-	operationUUID string
+	manager     *SnapshotManager
+	operationID uint64
 }
 
 func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -707,12 +708,12 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 		kind = JournalEntryFailure
 	}
 	journalEntry := JournalEntry{
-		Kind:          kind,
-		OperationUUID: ism.operationUUID,
-		State:         step.New(),
-		DeleteOld:     -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: ism.operationID,
+		State:       step.New(),
+		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
-	ism.manager.newResources.Store(step.New(), ism.operationUUID)
+	ism.manager.newResources.Store(step.New(), ism.operationID)
 	return ism.manager.journalMutation(journalEntry)
 }
 
@@ -753,24 +754,24 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 	newResources := make([]*resource.State, 0, len(sm.resources))
 	toDelete := make(map[int]struct{})
-	newToDelete := make(map[string]struct{})
+	newToDelete := make(map[uint64]struct{})
 	for _, entry := range sm.journalEntries {
-		if entry.Kind == JournalEntrySuccess && entry.DeleteNew != "" {
+		if entry.Kind == JournalEntrySuccess && entry.DeleteNew != 0 {
 			newToDelete[entry.DeleteNew] = struct{}{}
 		}
 	}
 
-	incompleteOps := make(map[string]JournalEntry)
+	incompleteOps := make(map[uint64]JournalEntry)
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sm.journalEntries {
 		switch entry.Kind {
 		case JournalEntryBegin:
-			incompleteOps[entry.OperationUUID] = entry
+			incompleteOps[entry.OperationID] = entry
 		case JournalEntrySuccess:
-			delete(incompleteOps, entry.OperationUUID)
+			delete(incompleteOps, entry.OperationID)
 			// If this is a success, we need to add the resource to the list of resources.
-			_, del := newToDelete[entry.OperationUUID]
+			_, del := newToDelete[entry.OperationID]
 			if entry.State != nil && !del {
 				newResources = append(newResources, entry.State)
 			}
@@ -781,7 +782,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 				sm.refreshDeletes[entry.RefreshDeleteURN] = true
 			}
 		case JournalEntryFailure:
-			delete(incompleteOps, entry.OperationUUID)
+			delete(incompleteOps, entry.OperationID)
 			// TODO: what do we need to do in the failure case?
 		case JournalEntryOutputs:
 			// Nothing to do here, this is just a marker that outputs were registered.
