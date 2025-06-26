@@ -887,15 +887,25 @@ export class ResourceHookRequest extends jspb.Message {
     getId(): string;
     setId(value: string): ResourceHookRequest;
 
-    hasInputs(): boolean;
-    clearInputs(): void;
-    getInputs(): google_protobuf_struct_pb.Struct | undefined;
-    setInputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+    hasNewInputs(): boolean;
+    clearNewInputs(): void;
+    getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewInputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
 
-    hasOutputs(): boolean;
-    clearOutputs(): void;
-    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
-    setOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+    hasOldInputs(): boolean;
+    clearOldInputs(): void;
+    getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldInputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+
+    hasNewOutputs(): boolean;
+    clearNewOutputs(): void;
+    getNewOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
@@ -911,8 +921,10 @@ export namespace ResourceHookRequest {
     export type AsObject = {
         urn: string,
         id: string,
-        inputs?: google_protobuf_struct_pb.Struct.AsObject,
-        outputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

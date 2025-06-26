@@ -1070,28 +1070,38 @@ class ResourceHookRequest(google.protobuf.message.Message):
 
     URN_FIELD_NUMBER: builtins.int
     ID_FIELD_NUMBER: builtins.int
-    INPUTS_FIELD_NUMBER: builtins.int
-    OUTPUTS_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NEW_OUTPUTS_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the urn of the resource for which the hook is called."""
     id: builtins.str
     """the optional urn of the resource for which the hook is called."""
     @property
-    def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the optional checked inputs of the resource."""
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked new inputs of the resource."""
     @property
-    def outputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the optional outputs of the resource."""
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked old inputs of the resource."""
+    @property
+    def new_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional new outputs of the resource."""
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional old outputs of the resource."""
     def __init__(
         self,
         *,
         urn: builtins.str = ...,
         id: builtins.str = ...,
-        inputs: google.protobuf.struct_pb2.Struct | None = ...,
-        outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "outputs", b"outputs", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "urn", b"urn"]) -> None: ...
 
 global___ResourceHookRequest = ResourceHookRequest
 
