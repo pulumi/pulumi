@@ -234,7 +234,8 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
+		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id),
+			newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
 			return &pulumirpc.ResourceHookResponse{
 				Error: err.Error(),
 			}, nil
