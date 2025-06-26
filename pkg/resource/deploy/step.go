@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -500,7 +501,13 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	if s.deployment.opts.DryRun {
-		// Do nothing in preview
+		// Do nothing in preview other than synthesize and publish delete view steps for any views of this resource.
+		// We do this because when not running a preview the provider's Delete is responsible for publishing delete
+		// view steps so the provider can properly report partial failures, but during preview we don't call Delete
+		// on the provider, so we synthesize the view delete steps here for display purposes.
+		if err := s.publishSynthesizedViewSteps(); err != nil {
+			return resource.StatusOK, nil, err
+		}
 	} else if s.old.External {
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	} else if s.old.RetainOnDelete {
@@ -566,6 +573,34 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	return resource.StatusOK, func() {}, nil
+}
+
+// publishSynthesizedViewSteps synthesizes delete view steps for any views of the resource
+// and publishes those view steps.
+func (s *DeleteStep) publishSynthesizedViewSteps() error {
+	oldViews := s.deployment.oldViews[s.old.URN]
+	if len(oldViews) == 0 {
+		return nil
+	}
+
+	// Synthesize delete view steps for any views.
+	deleteViewSteps := slice.Map(oldViews, func(res *resource.State) Step {
+		return NewViewStep(s.deployment, OpDelete, resource.StatusOK, "", res, nil, nil, nil, nil, "", false)
+	})
+
+	// Reserve a token.
+	_, tokenInfo, err := s.deployment.resourceStatus.reserveToken(
+		s.URN(), false /*refresh*/, false /*persisted*/)
+	if err != nil {
+		return err
+	}
+
+	// Publish the synthesized delete steps.
+	if err := s.deployment.resourceStatus.publishViewSteps(tokenInfo, deleteViewSteps); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DeleteStep) Fail() {
