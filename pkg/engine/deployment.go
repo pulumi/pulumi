@@ -160,7 +160,7 @@ type deploymentOptions struct {
 type deploymentSourceFunc func(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(
@@ -205,10 +205,12 @@ func newDeployment(
 		cancelFunc()
 	}()
 
+	resourceHooks := deploy.NewResourceHooks(plugctx.DialOptions)
+
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx)
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -242,7 +244,7 @@ func newDeployment(
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
 			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
-			localPolicyPackPaths, ctx.BackendClient)
+			localPolicyPackPaths, ctx.BackendClient, resourceHooks)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(
 			cancelCtx,
