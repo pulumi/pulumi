@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.180.0
+	github.com/pulumi/pulumi/sdk/v3 v3.181.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/mod v0.25.0
 	google.golang.org/grpc v1.72.1

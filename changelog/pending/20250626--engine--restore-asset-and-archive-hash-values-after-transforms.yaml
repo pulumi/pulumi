@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Restore asset and archive hash values after transforms
