@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.181.0 (2025-06-27)
+
+### Features
+
+- [auto/nodejs] Add `previewRefresh` to allow dry-runs of `refresh` commands
+  [#19948](https://github.com/pulumi/pulumi/pull/19948)
+
+- [auto] Support providing runProgram to `preview` and `up` in auto sdk
+  [#19729](https://github.com/pulumi/pulumi/pull/19729)
+
+- [cli] Warn more aggressively for very old CLI versions
+  [#19894](https://github.com/pulumi/pulumi/pull/19894)
+
+- [cli] Add `pulumi template publish` experimental command to publish templates to the Pulumi Registry
+  [#19864](https://github.com/pulumi/pulumi/pull/19864)
+
+- [cli/plugin] Allow `plugin run` to run local binary plugins
+  [#19903](https://github.com/pulumi/pulumi/pull/19903)
+
+- [auto/python] Add `preview_refresh` to allow dry-runs of `refresh` commands
+  [#19900](https://github.com/pulumi/pulumi/pull/19900)
+
+- [auto/python] Add `preview_destroy` to allow dry-runs of `destroy` commands
+  [#19947](https://github.com/pulumi/pulumi/pull/19947)
+
+- [engine] Add `SignalAndWaitForShutdown` RPC call
+  [#19837](https://github.com/pulumi/pulumi/pull/19837)
+
+- [engine] Add lifecycle protobuf definitions
+  [#19746](https://github.com/pulumi/pulumi/pull/19746)
+
+
+### Bug Fixes
+
+- [engine] Restore asset and archive hash values after transforms
+  [#19960](https://github.com/pulumi/pulumi/pull/19960)
+
+- [cli] Make it possible for inline automation programs to be used with refresh/destroy
+  [#19916](https://github.com/pulumi/pulumi/pull/19916)
+
+- [cli] Do not assume that package sources without file path prefixes (`./`, `../`) are file paths
+  [#19930](https://github.com/pulumi/pulumi/pull/19930)
+
+- [engine] Fix untargeted resources not always being sent to stack analysis
+  [#19943](https://github.com/pulumi/pulumi/pull/19943)
+  [#19926](https://github.com/pulumi/pulumi/pull/19926)
+
+- [engine] Fix a panic when mixing --target, --refresh, and provider upgrades
+  [#19935](https://github.com/pulumi/pulumi/pull/19935)
+
+- [engine] Fix transforms holding onto engine locks during execution, instead of just during collection
+  [#19950](https://github.com/pulumi/pulumi/pull/19950)
+
+- [engine] Synthesize delete steps for views during preview
+  [#19952](https://github.com/pulumi/pulumi/pull/19952)
+
+- [sdk/nodejs] Fix the use of parameterised packages and mocks
+  [#19917](https://github.com/pulumi/pulumi/pull/19917)
+
 ## 3.180.0 (2025-06-26)
 
 

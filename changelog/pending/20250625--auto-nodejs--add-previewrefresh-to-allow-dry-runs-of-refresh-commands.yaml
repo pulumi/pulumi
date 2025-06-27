@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Add `previewRefresh` to allow dry-runs of `refresh` commands
