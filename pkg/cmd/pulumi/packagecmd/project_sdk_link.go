@@ -872,7 +872,6 @@ type Provider struct {
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-
 ) (Provider, *workspace.PackageSpec, error) {
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
