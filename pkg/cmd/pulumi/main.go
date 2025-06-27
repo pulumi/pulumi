@@ -61,7 +61,7 @@ func main() {
 
 	pulumiCmd, cleanup := NewPulumiCmd()
 
-	if err := pulumiCmd.Execute(); err != nil {
+	if err := pulumiCmd.ExecuteContext(commandContext()); err != nil {
 		cmd.DisplayErrorMessage(err)
 		cleanup()
 		os.Exit(-1)

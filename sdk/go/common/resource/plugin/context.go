@@ -178,3 +178,22 @@ func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
 	}()
 	return &newCtx
 }
+
+// See [serveOptionsContextKey].
+type serveOptionsContextKeyType int
+
+// The value used as the context key for TracingOptions.
+const serveOptionsContextKey serveOptionsContextKeyType = 0
+
+// If non-nil, configures custom gRPC serve options. Similar to [DialOptions].
+func (ctx *Context) ServeOptions() []grpc.ServerOption {
+	if opts, ok := ctx.baseContext.Value(serveOptionsContextKey).(func(*Context) []grpc.ServerOption); ok {
+		return opts(ctx)
+	}
+	return nil
+}
+
+// Sets up options for [Context.ServeOptions].
+func WithServeOptions(ctx context.Context, opts func(*Context) []grpc.ServerOption) context.Context {
+	return context.WithValue(ctx, serveOptionsContextKey, opts)
+}
