@@ -51,6 +51,7 @@ from pulumi.errors import (
     InputPropertiesError,
     InputPropertyError,
     InputPropertyErrorDetails,
+    RunError,
 )
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -126,6 +127,8 @@ class ProviderServicer(ResourceProviderServicer):
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
+            if isinstance(e, RunError):
+                raise
             if isinstance(e, InputPropertiesError):
                 status = self.create_grpc_invalid_properties_status(e.message, e.errors)
                 await context.abort_with_status(status)
