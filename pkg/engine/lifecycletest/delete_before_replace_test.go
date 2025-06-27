@@ -16,7 +16,9 @@ package lifecycletest
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
@@ -794,4 +796,144 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
+}
+
+// Regression test for a DBR issue with parallel diff. Given two resources A and B where B depends on A, if we
+// re-register them such that they no longer depend on each other but A is deleteBeforeReplace, we need to
+// guarantee that delete(B) happens before delete(A).
+func TestDBRParallel(t *testing.T) {
+	t.Parallel()
+
+	// We're going to run this test twice, first time we'll ensure diff(A) returns first, second time we'll ensure
+	// diff(B) returns first.
+	for _, first := range []string{"resA", "resB"} {
+		t.Run(first, func(t *testing.T) {
+			t.Parallel()
+
+			// We're going to assert that we always delete B before A
+			seenDeleteB := false
+			diffCalled := false
+			var waitForDiff sync.WaitGroup
+			waitForDiff.Add(1)
+
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+							if req.URN.Name() == "resB" {
+								seenDeleteB = true
+							}
+							if req.URN.Name() == "resA" {
+								assert.True(t, seenDeleteB)
+							}
+							return plugin.DeleteResponse{
+								Status: resource.StatusOK,
+							}, nil
+						},
+						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+							// If we're re-creating B ensure it was deleted first
+							if diffCalled && req.URN.Name() == "resB" {
+								assert.True(t, seenDeleteB)
+							}
+							return plugin.CreateResponse{
+								ID:         "created-id",
+								Properties: req.Properties,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+						DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+							diffCalled = true
+							// Make sure we always return diff for the first resource first
+							defer func() {
+								if req.URN.Name() == first {
+									waitForDiff.Done()
+								} else {
+									// Wait for the other diff to be done then wait a second more to ensure
+									// it triggers the event first.
+									waitForDiff.Wait()
+									time.Sleep(time.Second)
+								}
+							}()
+
+							if !req.OldInputs["A"].DeepEquals(req.NewInputs["A"]) {
+								return plugin.DiffResult{
+									ReplaceKeys:         []resource.PropertyKey{"A"},
+									DeleteBeforeReplace: true,
+								}, nil
+							}
+							return plugin.DiffResult{}, nil
+						},
+					}, nil
+				}),
+			}
+
+			var program func(monitor *deploytest.ResourceMonitor) error
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				return program(monitor)
+			})
+
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			options := lt.TestUpdateOptions{
+				UpdateOptions: UpdateOptions{
+					ParallelDiff: true,
+					Parallel:     2,
+				},
+				T:                t,
+				HostF:            hostF,
+				SkipDisplayTests: true,
+			}
+			p := &lt.TestPlan{}
+
+			project := p.GetProject()
+
+			// First update just create the two resources.
+			program = func(monitor *deploytest.ResourceMonitor) error {
+				respA, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"}),
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
+					Inputs:       resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"}),
+					Dependencies: []resource.URN{respA.URN},
+					PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
+				})
+				assert.NoError(t, err)
+
+				return nil
+			}
+			snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+			require.NoError(t, err)
+			assert.Len(t, snap.Resources, 3)
+
+			// Update A to trigger a replace with deleteBeforeReplace set, register B in parallel with no dependencies on A.
+			program = func(monitor *deploytest.ResourceMonitor) error {
+				var wg sync.WaitGroup
+				wg.Add(2)
+
+				go func() {
+					_, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
+						Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "bar"}),
+					})
+					assert.NoError(t, err)
+					wg.Done()
+				}()
+
+				go func() {
+					_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
+						Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "bar"}),
+					})
+					assert.NoError(t, err)
+					wg.Done()
+				}()
+
+				wg.Wait()
+				return nil
+			}
+
+			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
+			require.NoError(t, err)
+			assert.Len(t, snap.Resources, 3)
+		})
+	}
 }
