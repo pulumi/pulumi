@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -482,4 +483,160 @@ func (r *testCloudRegistry) PublishTemplate(ctx context.Context, op templatePubl
 	}
 
 	return nil
+}
+
+func TestListTemplates(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a mock response with template metadata
+		desc1 := "First template"
+		desc2 := "Second template"
+		expectedTemplates := []apitype.TemplateMetadata{
+			{
+				Name:        "my-template-1",
+				Publisher:   "my-publisher",
+				Source:      "my-source",
+				Description: &desc1,
+				Language:    "go",
+				Visibility:  apitype.VisibilityPrivate,
+			},
+			{
+				Name:        "my-template-2",
+				Publisher:   "my-publisher",
+				Source:      "my-source",
+				Description: &desc2,
+				Language:    "typescript",
+				Visibility:  apitype.VisibilityPrivate,
+			},
+		}
+
+		mockResponse := apitype.ListTemplatesResponse{
+			Templates: expectedTemplates,
+		}
+
+		// Set up mock server
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "/api/preview/registry/templates?limit=499")
+			assert.Equal(t, "GET", req.Method)
+
+			data, err := json.Marshal(mockResponse)
+			require.NoError(t, err)
+			return string(data)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		// Call ListTemplates and collect results
+		searchName := "my-template"
+		searchResults := []apitype.TemplateMetadata{}
+		for tmpl, err := range mockClient.ListTemplates(context.Background(), &searchName) {
+			require.NoError(t, err)
+			searchResults = append(searchResults, tmpl)
+		}
+		assert.Equal(t, expectedTemplates, searchResults)
+	})
+
+	t.Run("with-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		// First page response
+		desc1 := "First template"
+		desc2 := "Second template"
+		desc3 := "Third template"
+		firstPageTemplates := []apitype.TemplateMetadata{
+			{
+				Name:        "my-template-1",
+				Publisher:   "my-publisher",
+				Source:      "my-source",
+				Description: &desc1,
+				Language:    "go",
+				Visibility:  apitype.VisibilityPrivate,
+			},
+		}
+
+		secondPageTemplates := []apitype.TemplateMetadata{
+			{
+				Name:        "my-template-2",
+				Publisher:   "my-publisher",
+				Source:      "my-source",
+				Description: &desc2,
+				Language:    "typescript",
+				Visibility:  apitype.VisibilityPrivate,
+			},
+		}
+
+		thirdPageTemplates := []apitype.TemplateMetadata{
+			{
+				Name:        "my-template-3",
+				Publisher:   "my-publisher",
+				Source:      "my-source",
+				Description: &desc3,
+				Language:    "python",
+				Visibility:  apitype.VisibilityPrivate,
+			},
+		}
+
+		// Track which request is being made
+		requestCount := 0
+
+		// Set up mock server
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, "GET", req.Method)
+
+			var responseData []byte
+			var err error
+
+			switch requestCount {
+			case 0:
+				assert.Equal(t, "/api/preview/registry/templates?limit=499&name=my-template", req.URL.String())
+				assert.NotContains(t, "continuationToken", req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
+					Templates:         firstPageTemplates,
+					ContinuationToken: ptr("next-page-token-1"),
+				})
+				require.NoError(t, err)
+			case 1:
+				assert.Equal(t,
+					"/api/preview/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
+					req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
+					Templates:         secondPageTemplates,
+					ContinuationToken: ptr("next-page-token-2"),
+				})
+				require.NoError(t, err)
+			case 2:
+				assert.Equal(t,
+					"/api/preview/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
+					req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
+					Templates: thirdPageTemplates,
+				})
+				require.NoError(t, err)
+			}
+
+			requestCount++
+			return string(responseData)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		searchName := "my-template"
+		searchResults := []apitype.TemplateMetadata{}
+		for tmpl, err := range mockClient.ListTemplates(context.Background(), &searchName) {
+			require.NoError(t, err)
+			searchResults = append(searchResults, tmpl)
+		}
+
+		expectedTemplates := append(append(firstPageTemplates, secondPageTemplates...), thirdPageTemplates...)
+		assert.Equal(t, expectedTemplates, searchResults)
+		assert.Equal(t, 3, requestCount) // Ensure all three requests were made
+	})
 }

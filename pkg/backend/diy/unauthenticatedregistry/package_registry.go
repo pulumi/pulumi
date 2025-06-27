@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"net/http"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -28,27 +29,43 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
 
-type packageRegistry struct{ c *client.Client }
+type registryClient struct{ c *client.Client }
 
 func New(sink diag.Sink, store env.Env) registry.Registry {
 	url := "https://api.pulumi.com"
 	if override := store.GetString(env.APIURL); override != "" {
 		url = override
 	}
-	return packageRegistry{client.NewClient(url, "", false /* insecure */, sink)}
+	return registryClient{client.NewClient(url, "", false /* insecure */, sink)}
 }
 
-func (r packageRegistry) ListPackages(
+func (r registryClient) ListPackages(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
 	return r.c.ListPackages(ctx, name)
 }
 
-func (r packageRegistry) GetPackage(
+func (r registryClient) GetPackage(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
 	meta, err := r.c.GetPackage(ctx, source, publisher, name, version)
 	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == 404 {
+		return meta, backenderr.NotFoundError{Err: err}
+	}
+	return meta, err
+}
+
+func (r registryClient) ListTemplates(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	return r.c.ListTemplates(ctx, name)
+}
+
+func (r registryClient) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	meta, err := r.c.GetTemplate(ctx, source, publisher, name, version)
+	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err

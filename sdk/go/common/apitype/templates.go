@@ -16,9 +16,41 @@ package apitype
 
 import (
 	"io"
+	"time"
 
 	"github.com/blang/semver"
 )
+
+// TemplateMetadata represents a template query, as returned by the service's registry
+// APIs.
+type TemplateMetadata struct {
+	Name        string  `json:"name"`
+	Publisher   string  `json:"publisher"`
+	Source      string  `json:"source"`
+	DisplayName string  `json:"displayName"`
+	Description *string `json:"description,omitempty"`
+	// The language that the template is in.
+	Language string `json:"language"`
+	// ReadmeURL is just a pre-signed URL, derived from the artifact key.
+	ReadmeURL string `json:"readmeURL"`
+	// An URL, valid for at least 5 minutes that you can retrieve the full download
+	// bundle for your template.
+	//
+	// The bundle will be a .tar.gz.
+	DownloadURL string `json:"downloadURL"`
+	// A link to the hosting repository.
+	//
+	// Non-VCS backed templates do not have a repo slug as of now.
+	RepoSlug   *string           `json:"repoSlug,omitempty"`
+	Visibility Visibility        `json:"visibility"`
+	UpdatedAt  time.Time         `json:"updatedAt"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
+}
+
+type ListTemplatesResponse struct {
+	Templates         []TemplateMetadata `json:"templates"`
+	ContinuationToken *string            `json:"continuationToken,omitempty"`
+}
 
 // A pulumi template remote where the source URL contains
 // a valid Pulumi.yaml file.

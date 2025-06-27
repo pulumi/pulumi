@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -129,8 +130,8 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: testMockRegistry{
-			searchByName: func(
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(
 				ctx context.Context, name *string,
 			) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
@@ -181,8 +182,8 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: testMockRegistry{
-			getPackage: func(
+		registry: &backend.MockCloudRegistry{
+			GetPackageF: func(
 				_ context.Context, source, publisher, name string, version *semver.Version,
 			) (apitype.PackageMetadata, error) {
 				switch version.String() {
@@ -193,7 +194,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 					return apitype.PackageMetadata{}, nil
 				}
 			},
-			searchByName: func(
+			ListPackagesF: func(
 				ctx context.Context, name *string,
 			) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
@@ -240,8 +241,8 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
 			},
-			registry: testMockRegistry{
-				searchByName: func(
+			registry: &backend.MockCloudRegistry{
+				ListPackagesF: func(
 					ctx context.Context, name *string,
 				) iter.Seq2[apitype.PackageMetadata, error] {
 					return func(yield func(apitype.PackageMetadata, error) bool) {}
@@ -263,8 +264,8 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
 			},
-			registry: testMockRegistry{
-				searchByName: func(
+			registry: &backend.MockCloudRegistry{
+				ListPackagesF: func(
 					ctx context.Context, name *string,
 				) iter.Seq2[apitype.PackageMetadata, error] {
 					return func(yield func(apitype.PackageMetadata, error) bool) {}
@@ -291,7 +292,7 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 			require.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: testMockRegistry{ /* empty registry will fail when used */ },
+		registry: &backend.MockCloudRegistry{ /* empty registry will fail when used */ },
 		file:     "./pulumi-resource-some-file.tar.gz", // This is a flag: --file
 		installPluginSpec: func(
 			_ context.Context, _ string,
@@ -310,30 +311,4 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	}
 
 	assert.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
-}
-
-type testMockRegistry struct {
-	getPackage func(
-		ctx context.Context, source, publisher, name string, version *semver.Version,
-	) (apitype.PackageMetadata, error)
-	searchByName func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
-}
-
-func (r testMockRegistry) GetPackage(
-	ctx context.Context, source, publisher, name string, version *semver.Version,
-) (apitype.PackageMetadata, error) {
-	if r.getPackage != nil {
-		return r.getPackage(ctx, source, publisher, name, version)
-	}
-	panic("GetPackage not implemented")
-}
-
-func (r testMockRegistry) ListPackages(
-	ctx context.Context, name *string,
-) iter.Seq2[apitype.PackageMetadata, error] {
-	if r.searchByName != nil {
-		return r.searchByName(ctx, name)
-	}
-
-	panic("ListPackages not implemented")
 }

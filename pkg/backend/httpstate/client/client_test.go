@@ -394,7 +394,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 	})
 }
 
-func TestListTemplates(t *testing.T) {
+func TestListOrgTemplates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 

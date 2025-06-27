@@ -18,6 +18,7 @@ import (
 	ctx "context"
 	"errors"
 	"iter"
+	"net/http"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -53,6 +54,22 @@ func (r *cloudRegistry) GetPackage(
 ) (apitype.PackageMetadata, error) {
 	meta, err := r.cl.GetPackage(ctx, source, publisher, name, version)
 	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == 404 {
+		return meta, backenderr.NotFoundError{Err: err}
+	}
+	return meta, err
+}
+
+func (r *cloudRegistry) ListTemplates(
+	ctx ctx.Context, name *string,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	return r.cl.ListTemplates(ctx, name)
+}
+
+func (r *cloudRegistry) GetTemplate(
+	ctx ctx.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	meta, err := r.cl.GetTemplate(ctx, source, publisher, name, version)
+	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err
