@@ -295,7 +295,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
-				metadata := getCLIMetadata(cmd)
+				metadata := getCLIMetadata(cmd, os.Environ())
 				go func() {
 					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
@@ -554,7 +554,7 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 }
 
 // getCLIMetadata returns a map of metadata about the given CLI command.
-func getCLIMetadata(cmd *cobra.Command) map[string]string {
+func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
 	if cmd == nil {
 		return nil
 	}
@@ -573,9 +573,19 @@ func getCLIMetadata(cmd *cobra.Command) map[string]string {
 		}
 	})
 
+	env := []string{}
+	for _, e := range environ {
+		parts := strings.Split(e, "=")
+		if len(parts) == 2 && strings.HasPrefix(parts[0], "PULUMI_") {
+			env = append(env, parts[0])
+		}
+	}
+	envString := strings.Join(env, " ")
+
 	metadata := map[string]string{
-		"Command": command,
-		"Flags":   flags.String(),
+		"Command":     command,
+		"Flags":       flags.String(),
+		"Environment": envString,
 	}
 
 	return metadata

@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go,nodejs,python
+  description: Add PULUMI_AUTOMATION_API
