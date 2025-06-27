@@ -29,6 +29,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
+
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 )
 
 type DebugInterceptor struct {
@@ -45,11 +47,18 @@ type LogOptions struct {
 	Metadata interface{}
 }
 
-// Each LogFile should have a unique instance of DebugInterceptor for proper locking.
+var interceptors gsync.Map[string, *DebugInterceptor]
+
 func NewDebugInterceptor(opts DebugInterceptorOptions) (*DebugInterceptor, error) {
 	if opts.LogFile == "" {
 		return nil, errors.New("logFile cannot be empty")
 	}
+
+	// Reuse an instance if found in the global cache.
+	if interceptor, ok := interceptors.Load(opts.LogFile); ok {
+		return interceptor, nil
+	}
+
 	i := &DebugInterceptor{logFile: opts.LogFile}
 
 	if opts.Mutex != nil {
@@ -57,6 +66,9 @@ func NewDebugInterceptor(opts DebugInterceptorOptions) (*DebugInterceptor, error
 	} else {
 		i.mutex = &sync.Mutex{}
 	}
+
+	// Store the instance in the global cache.
+	interceptors.Store(opts.LogFile, i)
 
 	return i, nil
 }
