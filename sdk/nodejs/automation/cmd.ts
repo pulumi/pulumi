@@ -171,16 +171,18 @@ export class PulumiCommand {
             args.push("--non-interactive");
         }
 
+        const env = { ...additionalEnv };
         // Prepend the folder where the CLI is installed to the path to ensure
         // we pickup the matching bundled plugins.
         if (path.isAbsolute(this.command)) {
             const pulumiBin = path.dirname(this.command);
             const sep = os.platform() === "win32" ? ";" : ":";
             const envPath = pulumiBin + sep + (additionalEnv["PATH"] || process.env.PATH);
-            additionalEnv["PATH"] = envPath;
+            env["PATH"] = envPath;
         }
+        env["PULUMI_AUTOMATION_API"] = "true";
 
-        return exec(this.command, args, cwd, additionalEnv, onOutput, onError, signal);
+        return exec(this.command, args, cwd, env, onOutput, onError, signal);
     }
 }
 

@@ -301,12 +301,14 @@ func TestGetCLIMetadata(t *testing.T) {
 	cases := []struct {
 		name     string
 		cmd      *cobra.Command
+		environ  []string
 		metadata map[string]string
 	}{
 		{
 			name:     "nil",
 			cmd:      nil,
 			metadata: nil,
+			environ:  nil,
 		},
 		{
 			name: "no set flags",
@@ -316,9 +318,11 @@ func TestGetCLIMetadata(t *testing.T) {
 				cmd.Flags().String("string", "", "string flag")
 				return cmd
 			})(),
+			environ: []string{},
 			metadata: map[string]string{
-				"Command": "no-set",
-				"Flags":   "",
+				"Command":     "no-set",
+				"Flags":       "",
+				"Environment": "",
 			},
 		},
 		{
@@ -336,8 +340,9 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command": "one-set",
-				"Flags":   "--bool",
+				"Command":     "one-set",
+				"Flags":       "--bool",
+				"Environment": "",
 			},
 		},
 		{
@@ -355,8 +360,9 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command": "one-set",
-				"Flags":   "--string",
+				"Command":     "one-set",
+				"Flags":       "--string",
+				"Environment": "",
 			},
 		},
 		{
@@ -374,8 +380,9 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command": "multiple-set",
-				"Flags":   "--bool --string",
+				"Command":     "multiple-set",
+				"Flags":       "--bool --string",
+				"Environment": "",
 			},
 		},
 		{
@@ -391,8 +398,39 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command": "parent multiple-set",
-				"Flags":   "",
+				"Command":     "parent multiple-set",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "no valid PULUMI_ env variables",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "version"}
+				err := cmd.Execute()
+				require.NoError(t, err)
+				return cmd
+			})(),
+			environ: []string{"PULUMICOPILOT=true", "OTHER_FLAG=true", "PULUMI_NO_EQUALS_SIGN"},
+			metadata: map[string]string{
+				"Command":     "version",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "has valid PULUMI_ env variables",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "version"}
+				err := cmd.Execute()
+				require.NoError(t, err)
+				return cmd
+			})(),
+			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
+			metadata: map[string]string{
+				"Command":     "version",
+				"Flags":       "",
+				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
 			},
 		},
 	}
@@ -404,7 +442,7 @@ func TestGetCLIMetadata(t *testing.T) {
 			t.Parallel()
 
 			// Act.
-			metadata := getCLIMetadata(c.cmd)
+			metadata := getCLIMetadata(c.cmd, c.environ)
 
 			// Assert.
 			require.Equal(t, c.metadata, metadata)
