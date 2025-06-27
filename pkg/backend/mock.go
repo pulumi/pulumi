@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"io"
 	"iter"
 	"slices"
 	"strings"
@@ -816,7 +817,8 @@ type MockCloudRegistry struct {
 	GetTemplateF  func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
-	ListTemplatesF func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	ListTemplatesF    func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	DownloadTemplateF func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 var _ CloudRegistry = (*MockCloudRegistry)(nil)
@@ -869,4 +871,11 @@ func (mr *MockCloudRegistry) PublishTemplate(ctx context.Context, op apitype.Tem
 		return mr.PublishTemplateF(ctx, op)
 	}
 	panic("not implemented: MockCloudRegistry.PublishTemplate")
+}
+
+func (mr *MockCloudRegistry) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	if mr.DownloadTemplateF != nil {
+		return mr.DownloadTemplateF(ctx, downloadURL)
+	}
+	panic("not implemented: MockCloudRegistry.DownloadTemplate")
 }

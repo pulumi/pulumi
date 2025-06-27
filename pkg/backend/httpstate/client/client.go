@@ -29,6 +29,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -167,10 +168,23 @@ func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, r
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
-	respObj interface{}, opts httpCallOptions,
+func (pc *Client) restCallWithOptions(
+	ctx context.Context, method, path string, queryObj, reqObj,
+	respObj any, opts httpCallOptions,
 ) error {
-	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
+	apiURL := pc.apiURL
+	apiToken := pc.apiToken
+	if opts.DisableBaseURL {
+		// If the token this client is equipped with is not targeted at the API
+		// endpoint this client is designated for, don't send sensitive
+		// information.
+		if !strings.HasPrefix(path, pc.apiURL) {
+			apiToken = ""
+		}
+		apiURL = path
+		path = ""
+	}
+	return pc.restClient.Call(ctx, pc.diag, apiURL, method, path, queryObj, reqObj, respObj, apiToken, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -1690,6 +1704,17 @@ func (pc *Client) GetTemplate(
 	var resp apitype.TemplateMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
+}
+
+func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	var bytes io.ReadCloser
+	header := make(http.Header, 1)
+	header.Add("Accept", "application/x-tar")
+	err := pc.restCallWithOptions(ctx, "GET", downloadURL, nil, nil, &bytes, httpCallOptions{
+		DisableBaseURL: true,
+		Header:         header,
+	})
+	return bytes, err
 }
 
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
