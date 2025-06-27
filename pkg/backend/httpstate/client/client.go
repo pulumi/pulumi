@@ -1592,6 +1592,8 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	return nil
 }
 
+// StartTemplatePublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
 func (pc *Client) StartTemplatePublish(
 	ctx context.Context,
 	source, publisher, name string,
@@ -1608,6 +1610,8 @@ func (pc *Client) StartTemplatePublish(
 	return &resp, nil
 }
 
+// CompleteTemplatePublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
 func (pc *Client) CompleteTemplatePublish(
 	ctx context.Context,
 	source, publisher, name string,
@@ -1627,6 +1631,8 @@ func (pc *Client) CompleteTemplatePublish(
 	return nil
 }
 
+// PublishTemplate is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
 func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePublishOp) error {
 	resp, err := pc.StartTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version)
 	if err != nil {
@@ -1671,6 +1677,21 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
+// GetTemplate is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	v := "latest"
+	if version != nil {
+		v = version.String()
+	}
+	url := fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
+	var resp apitype.TemplateMetadata
+	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+	return resp, err
+}
+
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 	url := "/api/preview/registry/packages?limit=499"
 	if name != nil {
@@ -1691,6 +1712,40 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 				return
 			}
 			for _, v := range resp.Packages {
+				if !f(v, nil) {
+					return
+				}
+			}
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
+}
+
+// ListTemplates is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+	url := "/api/preview/registry/templates?limit=499"
+	if name != nil {
+		url += "&name=" + *name
+	}
+
+	var continuationToken *string
+	return func(f func(apitype.TemplateMetadata, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "&continuationToken=" + *continuationToken
+			}
+			var resp apitype.ListTemplatesResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.TemplateMetadata{}, err)
+				return
+			}
+			for _, v := range resp.Templates {
 				if !f(v, nil) {
 					return
 				}

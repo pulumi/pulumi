@@ -813,6 +813,10 @@ type MockCloudRegistry struct {
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
 	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	GetTemplateF  func(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+	ListTemplatesF func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
 }
 
 var _ CloudRegistry = (*MockCloudRegistry)(nil)
@@ -838,6 +842,24 @@ func (mr *MockCloudRegistry) ListPackages(
 ) iter.Seq2[apitype.PackageMetadata, error] {
 	if mr.ListPackagesF != nil {
 		return mr.ListPackagesF(ctx, name)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockCloudRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	if mr.GetTemplateF != nil {
+		return mr.GetTemplateF(ctx, source, publisher, name, version)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockCloudRegistry) ListTemplates(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	if mr.ListTemplatesF != nil {
+		return mr.ListTemplatesF(ctx, name)
 	}
 	panic("not implemented")
 }

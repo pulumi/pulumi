@@ -316,7 +316,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("single/private-precedence", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				assert.Equal(t, "aws", *name)
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return private match first
@@ -349,7 +349,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("single/pulumi-match", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// No private match, only pulumi/pulumi
 					yield(apitype.PackageMetadata{
@@ -372,7 +372,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("single/no-matches-with-suggestions", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return some suggestions but no exact matches
 					if !yield(apitype.PackageMetadata{
@@ -409,7 +409,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		t.Parallel()
 		desiredVersion := semver.MustParse("1.5.0")
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
 						Source:    "pulumi",
@@ -444,7 +444,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		t.Parallel()
 		desiredVersion := semver.MustParse("999.0.0")
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
 						Source:    "pulumi",
@@ -475,7 +475,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		t.Parallel()
 		searchErr := errors.New("search failed")
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{}, searchErr)
 				}
@@ -490,7 +490,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("single/multiple-suggestions", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return multiple non-matching packages
 					if !yield(apitype.PackageMetadata{
@@ -530,7 +530,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("single/ambiguous-resolution", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return multiple non-matching packages
 					if !yield(apitype.PackageMetadata{
@@ -570,7 +570,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("single/very-ambiguous-resolution", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return multiple non-matching packages
 					if !yield(apitype.PackageMetadata{
@@ -624,7 +624,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("invalid/empty-string", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				// Empty string gets treated as single identifier, but no matches will be found
 				assert.Equal(t, "", *name)
 				return func(yield func(apitype.PackageMetadata, error) bool) {
@@ -685,7 +685,7 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("nil-version/single-part", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
 						Source:    "pulumi",
