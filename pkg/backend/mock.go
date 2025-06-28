@@ -352,6 +352,20 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
+func (be *MockBackend) CheckApply(ctx context.Context, stack Stack) error {
+	panic("not implemented")
+}
+
+func (be *MockBackend) BeginApply(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	stack Stack,
+	op *UpdateOperation,
+	opts ApplierOptions,
+) (Application, *deploy.Target, chan<- engine.Event, <-chan bool, error) {
+	panic("not implemented")
+}
+
 func (be *MockBackend) GetHistory(ctx context.Context,
 	stackRef StackReference,
 	pageSize int,

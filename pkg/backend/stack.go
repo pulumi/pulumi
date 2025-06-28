@@ -17,13 +17,19 @@ package backend
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
+	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -88,6 +94,175 @@ func UpdateStack(
 	events chan<- engine.Event,
 ) (display.ResourceChanges, error) {
 	return s.Backend().Update(ctx, s, op, events)
+}
+
+// ApplyStack applies a given operation to the passed stack.
+func ApplyStack(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	stack Stack,
+	op UpdateOperation,
+	opts ApplierOptions,
+	events chan<- engine.Event,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	resetKeepRunning := nosleep.KeepRunning()
+	defer resetKeepRunning()
+
+	b := stack.Backend()
+
+	err := b.CheckApply(ctx, stack)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stackRef := stack.Ref()
+	actionLabel := ActionLabel(kind, opts.DryRun)
+
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != backendDisplay.DisplayWatch {
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stackRef)
+	}
+
+	// Begin the apply on the backend.
+	app, target, appEvents, appEventsDone, err := b.BeginApply(ctx, kind, stack, &op, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	update := engine.UpdateInfo{
+		Root:    op.Root,
+		Project: op.Proj,
+		Target:  target,
+	}
+
+	// Create a separate event channel to power the display. We'll pipe all events we receive from the engine to this
+	// channel in order to render things as they happen.
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+	go backendDisplay.ShowEvents(
+		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, app.Permalink(),
+		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+
+	// Create the channel on which we'll receive events from the engine and kick off a Goroutine to forward them on to
+	// appropriate listeners:
+	//   - the display, as initialized above
+	//   - the backend, if BeginApply returned an appEvents channel
+	//	 - the caller, if the caller provided an events channel
+	engineEvents := make(chan engine.Event)
+
+	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	eventsDone := make(chan bool)
+	go func() {
+		for e := range engineEvents {
+			displayEvents <- e
+
+			if appEvents != nil {
+				appEvents <- e
+			}
+
+			if events != nil {
+				events <- e
+			}
+		}
+
+		// When the engine closes the channel, notify display and backend-specific listeners that we're done. Presently, we
+		// don't have a use case for notifying the caller since the current contract is that no more events will be sent
+		// once this function returns.
+		close(displayEvents)
+		if appEvents != nil {
+			close(appEvents)
+		}
+
+		close(eventsDone)
+	}()
+
+	// Create the management machinery. We only need a snapshot manager if we're doing an update.
+	var manager *SnapshotManager
+	if kind != apitype.PreviewUpdate && !opts.DryRun {
+		persister, err := app.CreateSnapshotPersister()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting snapshot persister: %w", err)
+		}
+
+		manager = NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
+	}
+
+	backendClient, err := app.CreateBackendClient()
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating backend client: %w", err)
+	}
+
+	engineCtx := &engine.Context{
+		Cancel:          scope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: manager,
+		BackendClient:   backendClient,
+	}
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		engineCtx.ParentSpan = parentSpan.Context()
+	}
+
+	// Invoke the engine to actually perform the operation.
+	start := time.Now().Unix()
+	var plan *deploy.Plan
+	var changes display.ResourceChanges
+	var updateErr error
+	switch kind {
+	case apitype.PreviewUpdate:
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
+	case apitype.UpdateUpdate:
+		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+	case apitype.ResourceImportUpdate:
+		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+	case apitype.RefreshUpdate:
+		if op.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
+	case apitype.DestroyUpdate:
+		if op.Opts.Engine.DestroyProgram {
+			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
+	case apitype.StackImportUpdate, apitype.RenameUpdate:
+		contract.Failf("unexpected %s event", kind)
+	default:
+		contract.Failf("Unrecognized update kind: %s", kind)
+	}
+	end := time.Now().Unix()
+
+	// Wait for the display to finish showing all the events.
+	<-displayDone
+
+	scope.Close() // Don't take any cancellations anymore, we're shutting down.
+	close(engineEvents)
+	if manager != nil {
+		err = manager.Close()
+		// If the snapshot manager failed to close, we should return that error. Even though all the parts of the operation
+		// have potentially succeeded, a snapshotting failure is likely to rear its head on the next operation/invocation
+		// (e.g. an invalid snapshot that fails integrity checks, or a failure to write that means the snapshot is
+		// incomplete). Reporting now should make debugging and reporting easier.
+		if err != nil {
+			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
+		}
+	}
+
+	// We have already waited for the display to finish. Before continuing further, wait also for any backend-specific
+	// and caller event processors to finish.
+	<-eventsDone
+	if appEventsDone != nil {
+		<-appEventsDone
+	}
+
+	// Perform any backend-specific completion steps, such as writing stack history or metadata.
+	err = app.End(start, end, plan, changes, updateErr)
+	if err != nil {
+		return plan, changes, err
+	}
+
+	return plan, changes, nil
 }
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).

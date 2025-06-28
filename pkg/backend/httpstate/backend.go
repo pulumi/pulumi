@@ -31,7 +31,6 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
@@ -45,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -1167,14 +1165,14 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return b.apply(
+	return backend.ApplyStack(
 		ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b, events)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, backend.ApplyStack, b, events)
 }
 
 // IsExplainPreviewEnabled implements the "explainer" interface.
@@ -1273,12 +1271,12 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, err := backend.ApplyStack(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, backend.ApplyStack, b, nil)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1292,11 +1290,11 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, err := backend.ApplyStack(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, backend.ApplyStack, b, nil)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1310,17 +1308,175 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, err := backend.ApplyStack(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, backend.ApplyStack, b, nil)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
 ) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
+	return backend.Watch(ctx, b, stk, op, backend.ApplyStack, paths)
+}
+
+func (b *cloudBackend) CheckApply(
+	ctx context.Context,
+	stack backend.Stack,
+) error {
+	return nil
+}
+
+func (b *cloudBackend) BeginApply(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	stack backend.Stack,
+	op *backend.UpdateOperation,
+	opts backend.ApplierOptions,
+) (backend.Application, *deploy.Target, chan<- engine.Event, <-chan bool, error) {
+	// Create an update object to persist results.
+	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	// Create a channel which we can return and receive engine events on. We'll forward these events to the backend for
+	// persistence and service-side operations like viewing stacks in the cloud console. Additionally, if Copilot is
+	// enabled, we'll capture them in an array to render error explanations and the like later on.
+	appEvents := make(chan engine.Event, 100)
+	appEventsDone := make(chan bool)
+
+	var renderEvents []engine.Event
+	copilotEnabled := false
+
+	if b.isCopilotFeaturesEnabled(op.Opts.Display) {
+		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
+			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
+		} else {
+			copilotEnabled = true
+		}
+	}
+
+	persistEvents := make(chan engine.Event, 100)
+	persistEventsDone := make(chan bool)
+
+	go func() {
+		for e := range appEvents {
+			persistEvents <- e
+
+			// Do not send internal events to the copilot summary as they are not displayed to the user either.
+			// We can skip Ephemeral events as well as we want to display the "final" output.
+			if copilotEnabled && !e.Internal() && !e.Ephemeral() {
+				renderEvents = append(renderEvents, e)
+			}
+		}
+
+		<-persistEventsDone
+		close(appEventsDone)
+		b.renderAndSummarizeOutput(ctx, kind, stack, *op, renderEvents, update, updateMeta, opts.DryRun)
+	}()
+
+	// Display messages from the backend if present.
+	if len(updateMeta.messages) > 0 {
+		for _, msg := range updateMeta.messages {
+			m := diag.RawMessage("", msg.Message)
+			switch msg.Severity {
+			case apitype.MessageSeverityError:
+				cmdutil.Diag().Errorf(m)
+			case apitype.MessageSeverityWarning:
+				cmdutil.Diag().Warningf(m)
+			case apitype.MessageSeverityInfo:
+				cmdutil.Diag().Infof(m)
+			default:
+				// Fallback on Info if we don't recognize the severity.
+				cmdutil.Diag().Infof(m)
+				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+			}
+		}
+		fmt.Print("\n")
+	}
+
+	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+
+	target, tokenSource, err := b.newUpdate(ctx, stack.Ref(), *op, update, updateMeta.leaseToken)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	go b.persistEngineEvents(
+		ctx, tokenSource, update,
+		op.Opts.Display.Debug, /* persist debug events */
+		persistEvents, persistEventsDone)
+
+	a := &cloudApplication{
+		ctx: ctx,
+
+		b:  b,
+		op: op,
+
+		permalink:   permalink,
+		tokenSource: tokenSource,
+		update:      update,
+	}
+
+	return a, target, appEvents, appEventsDone, err
+}
+
+// cloudApplication implements the backend.Application interface for the cloud backend.
+type cloudApplication struct {
+	// The context in which the application is running.
+	ctx context.Context
+
+	// The cloud backend associated with this application.
+	b *cloudBackend
+
+	// The update operation associated with this application.
+	op *backend.UpdateOperation
+
+	// A permalink to a cloud console view of the update.
+	permalink string
+
+	// A token source for the update, used to authenticate requests.
+	tokenSource *tokenSource
+
+	// The update identifier for the current update.
+	update client.UpdateIdentifier
+}
+
+var _ backend.Application = (*cloudApplication)(nil)
+
+func (a *cloudApplication) Permalink() string {
+	return a.permalink
+}
+
+func (a *cloudApplication) CreateSnapshotPersister() (backend.SnapshotPersister, error) {
+	persister := a.b.newSnapshotPersister(a.ctx, a.update, a.tokenSource)
+	return persister, nil
+}
+
+func (a *cloudApplication) CreateBackendClient() (deploy.BackendClient, error) {
+	return httpstateBackendClient{backend: backend.NewBackendClient(a.b, a.op.SecretsProvider)}, nil
+}
+
+func (a *cloudApplication) End(
+	start int64,
+	end int64,
+	plan *deploy.Plan,
+	changes sdkDisplay.ResourceChanges,
+	updateErr error,
+) error {
+	// Mark the update as complete.
+	status := apitype.UpdateStatusSucceeded
+	if updateErr != nil {
+		status = apitype.UpdateStatusFailed
+	}
+	completeErr := a.b.completeUpdate(a.ctx, a.tokenSource, a.update, status)
+	if completeErr != nil {
+		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
+	}
+
+	return updateErr
 }
 
 func (b *cloudBackend) Search(
@@ -1517,88 +1673,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	}, nil
 }
 
-// apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) apply(
-	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	resetKeepRunning := nosleep.KeepRunning()
-	defer resetKeepRunning()
-
-	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
-		// Print a banner so it's clear this is going to the cloud.
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
-	}
-
-	// Create an update object to persist results.
-	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if b.isCopilotFeaturesEnabled(op.Opts.Display) {
-		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
-			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
-		} else {
-			originalEvents := events
-			// New var as we need a bidirectional channel type to be able to read from it.
-			eventsChannel := make(chan engine.Event)
-			events = eventsChannel
-
-			var renderEvents []engine.Event
-			done := make(chan bool)
-			go func() {
-				for e := range eventsChannel {
-					// Forward all events from the engine to the original channel.
-					// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
-					if originalEvents != nil {
-						originalEvents <- e
-					}
-					// Do not send internal events to the copilot summary as they are not displayed to the user either.
-					// We can skip Ephemeral events as well as we want to display the "final" output.
-					if e.Internal() || e.Ephemeral() {
-						continue
-					}
-					renderEvents = append(renderEvents, e)
-				}
-				done <- true
-			}()
-			defer func() {
-				close(eventsChannel)
-				<-done
-				b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
-			}()
-		}
-	}
-
-	// Display messages from the backend if present.
-	if len(updateMeta.messages) > 0 {
-		for _, msg := range updateMeta.messages {
-			m := diag.RawMessage("", msg.Message)
-			switch msg.Severity {
-			case apitype.MessageSeverityError:
-				cmdutil.Diag().Errorf(m)
-			case apitype.MessageSeverityWarning:
-				cmdutil.Diag().Warningf(m)
-			case apitype.MessageSeverityInfo:
-				cmdutil.Diag().Infof(m)
-			default:
-				// Fallback on Info if we don't recognize the severity.
-				cmdutil.Diag().Infof(m)
-				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
-			}
-		}
-		fmt.Print("\n")
-	}
-
-	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
-}
-
 // getPermalink returns a link to the update in the Pulumi Console.
 func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int, preview bool) string {
 	base := b.cloudConsoleStackPath(update.StackIdentifier)
@@ -1606,125 +1680,6 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 	}
 	return b.CloudConsoleURL(base, "previews", update.UpdateID)
-}
-
-func (b *cloudBackend) runEngineAction(
-	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	contract.Assertf(token != "", "persisted actions require a token")
-	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// displayEvents renders the event to the console and Pulumi service. The processor for the
-	// will signal all events have been proceed when a value is written to the displayDone channel.
-	displayEvents := make(chan engine.Event)
-	displayDone := make(chan bool)
-
-	go b.recordAndDisplayEvents(
-		ctx, tokenSource, update,
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
-		displayEvents, displayDone, op.Opts.Display, dryRun)
-
-	// The engineEvents channel receives all events from the engine, which we then forward onto other
-	// channels for actual processing. (displayEvents and callerEventsOpt.)
-	engineEvents := make(chan engine.Event)
-	eventsDone := make(chan bool)
-	go func() {
-		for e := range engineEvents {
-			displayEvents <- e
-			if callerEventsOpt != nil {
-				callerEventsOpt <- e
-			}
-		}
-
-		close(eventsDone)
-	}()
-
-	// We only need a snapshot manager if we're doing an update.
-	var snapshotManager *backend.SnapshotManager
-	if kind != apitype.PreviewUpdate && !dryRun {
-		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
-	}
-
-	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
-	// return error conditions, because we will do so below after waiting for the display channels to close.
-	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
-	engineCtx := &engine.Context{
-		Cancel:          cancellationScope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: snapshotManager,
-		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
-	}
-	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
-		engineCtx.ParentSpan = parentSpan.Context()
-	}
-
-	var plan *deploy.Plan
-	var changes sdkDisplay.ResourceChanges
-	var updateErr error
-	switch kind {
-	case apitype.PreviewUpdate:
-		plan, changes, updateErr = engine.Update(u, engineCtx, op.Opts.Engine, true)
-	case apitype.UpdateUpdate:
-		plan, changes, updateErr = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
-	case apitype.ResourceImportUpdate:
-		_, changes, updateErr = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
-	case apitype.RefreshUpdate:
-		if op.Opts.Engine.RefreshProgram {
-			_, changes, updateErr = engine.RefreshV2(u, engineCtx, op.Opts.Engine, dryRun)
-		} else {
-			_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
-		}
-	case apitype.DestroyUpdate:
-		if op.Opts.Engine.DestroyProgram {
-			_, changes, updateErr = engine.DestroyV2(u, engineCtx, op.Opts.Engine, dryRun)
-		} else {
-			_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
-		}
-	case apitype.StackImportUpdate, apitype.RenameUpdate:
-		contract.Failf("unexpected %s event", kind)
-	default:
-		contract.Failf("Unrecognized update kind: %s", kind)
-	}
-
-	// Wait for dependent channels to finish processing engineEvents before closing.
-	<-displayDone
-	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
-	close(engineEvents)
-	if snapshotManager != nil {
-		err = snapshotManager.Close()
-		// If the snapshot manager failed to close, we should return that error.
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
-		}
-	}
-
-	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
-	// has exited before proceeding
-	<-eventsDone
-	close(displayEvents)
-
-	// Mark the update as complete.
-	status := apitype.UpdateStatusSucceeded
-	if updateErr != nil {
-		status = apitype.UpdateStatusFailed
-	}
-	completeErr := b.completeUpdate(ctx, tokenSource, update, status)
-	if completeErr != nil {
-		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
-	}
-
-	return plan, changes, updateErr
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
