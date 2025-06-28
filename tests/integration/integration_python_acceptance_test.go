@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -707,6 +707,67 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 		"virtualenv": "mytestenv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+func TestNewPythonTypecheckerOption(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows")
+	}
+
+	tests := []struct {
+		name           string
+		runtimeOptions string
+		expected       map[string]interface{}
+	}{
+		{
+			name:           "pip with mypy",
+			runtimeOptions: "toolchain=pip,typechecker=mypy",
+			expected: map[string]interface{}{
+				"toolchain":   "pip",
+				"typechecker": "mypy",
+				"virtualenv":  "venv",
+			},
+		},
+		{
+			name:           "poetry with pyright",
+			runtimeOptions: "toolchain=poetry,typechecker=pyright",
+			expected: map[string]interface{}{
+				"toolchain":   "poetry",
+				"typechecker": "pyright",
+			},
+		},
+		{
+			name:           "uv with none",
+			runtimeOptions: "toolchain=uv,typechecker=none",
+			expected: map[string]interface{}{
+				"toolchain":   "uv",
+				"typechecker": "none",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS != "windows" {
+				t.Parallel()
+			}
+
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
+				"--name", "test_project",
+				"--description", "A python test with typechecker",
+				"--stack", "test",
+				"--runtime-options", tt.runtimeOptions,
+			)
+
+			integration.CheckRuntimeOptions(t, e.RootPath, tt.expected)
+		})
+	}
 }
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
