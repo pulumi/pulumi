@@ -37,7 +37,10 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 		Short: "Display the current logged-in user",
 		Long: "Display the current logged-in user\n" +
 			"\n" +
-			"Displays the username of the currently logged in user.",
+			"Displays the username of the currently logged in user.\n" +
+			"\n" +
+			"When the current token is a Pulumi Cloud team token or an organization token, " +
+			"the command will return the name of the organization with which the token is associated.",
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
