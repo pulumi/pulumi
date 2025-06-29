@@ -40,7 +40,6 @@ func TestParseImportFile_errors(t *testing.T) {
 			desc: "missing everything",
 			give: importFile{Resources: []importSpec{{}}},
 			wantErrs: []string{
-				"3 errors occurred",
 				"resource 0 has no type",
 				"resource 0 has no name",
 				"resource 0 has no ID",
@@ -54,7 +53,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"2 errors occurred",
 				"resource 'thing' has no type",
 				"resource 'thing' has no name",
 			},
@@ -67,7 +65,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"2 errors occurred",
 				"resource 'foo' has no type",
 				"resource 'foo' has no ID",
 			},
@@ -83,7 +80,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"1 error occurred",
 				"resource 'foo' has no type",
 			},
 		},
@@ -98,7 +94,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"1 error occurred",
 				"resource 'bar' of type 'foo:bar:baz' has no name",
 			},
 		},
@@ -113,7 +108,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"1 error occurred",
 				"resource 'foo' of type 'foo:bar:baz' has no ID",
 			},
 		},
@@ -130,7 +124,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"1 error occurred",
 				"the parent 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable'",
 			},
 		},
@@ -147,7 +140,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"1 error occurred",
 				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable'",
 			},
 		},
@@ -164,7 +156,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"1 error occurred",
 				"could not parse version 'not-a-semver' for resource 'thing' of type 'foo:bar:baz'",
 			},
 		},
@@ -238,7 +229,6 @@ func TestParseImportFile_errors(t *testing.T) {
 				Component: true,
 			}}},
 			wantErrs: []string{
-				"1 error occurred",
 				"resource 'comp' of type 'foo:bar:baz' has an ID, but is marked as a component",
 			},
 		},

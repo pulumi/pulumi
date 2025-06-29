@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 )
 
@@ -61,11 +60,11 @@ func SpecificArgs(argNames []string) cobra.PositionalArgs {
 		if len(args) > len(argNames) {
 			return fmt.Errorf("too many arguments: got %d, expected %d", len(args), len(argNames))
 		} else if len(args) < len(argNames) {
-			var result error
+			var errs []error
 			for i := len(args); i < len(argNames); i++ {
-				result = multierror.Append(result, fmt.Errorf("missing required argument: %s", argNames[i]))
+				errs = append(errs, fmt.Errorf("missing required argument: %s", argNames[i]))
 			}
-			return result
+			return errors.Join(errs...)
 		}
 		return nil
 	})

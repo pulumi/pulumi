@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/esc/eval"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -521,7 +520,7 @@ func ValidateProject(raw interface{}) error {
 
 	notAllowedRe := regexp.MustCompile(`'(\w[a-zA-Z0-9_]*)' not allowed$`)
 
-	var errs *multierror.Error
+	var errs []error
 	var appendError func(err *jsonschema.ValidationError)
 	appendError = func(err *jsonschema.ValidationError) {
 		if err.InstanceLocation != "" && err.Message != "" {
@@ -553,7 +552,7 @@ func ValidateProject(raw interface{}) error {
 					}
 				}
 			}
-			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", msg))
+			errs = append(errs, errorf("#"+err.InstanceLocation, "%v", msg))
 		}
 		for _, err := range err.Causes {
 			appendError(err)
@@ -561,7 +560,7 @@ func ValidateProject(raw interface{}) error {
 	}
 	appendError(validationError)
 
-	return errs
+	return errors.Join(errs...)
 }
 
 // maxValidationAttributeDistance is the maximum Levenshtein distance we'll

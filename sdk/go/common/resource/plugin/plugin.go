@@ -31,7 +31,6 @@ import (
 	"syscall"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -573,18 +572,18 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 
 		// We failed to clean up the process within the allocated time.  Shut it down forcibly.
-		var result *multierror.Error
+		var errs []error
 
 		if err := cmdutil.KillChildren(cmd.Process.Pid); err != nil {
-			result = multierror.Append(result, err)
+			errs = append(errs, err)
 		}
 
 		// IDEA: consider a more graceful termination than just SIGKILL.
 		if err := cmd.Process.Kill(); err != nil {
-			result = multierror.Append(result, err)
+			errs = append(errs, err)
 		}
 
-		return result.ErrorOrNil()
+		return errors.Join(errs...)
 	})
 
 	return &Plugin{
