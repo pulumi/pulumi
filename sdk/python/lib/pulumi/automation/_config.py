@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import MutableMapping
+from typing import MutableMapping, Optional
 
 _SECRET_SENTINEL = "[secret]"
 
@@ -36,3 +36,59 @@ class ConfigValue:
 
 ConfigMap = MutableMapping[str, ConfigValue]
 """ConfigMap is a map of string to ConfigValue."""
+
+
+class ConfigOptions:
+    """
+    ConfigOptions is used to configure config operations.
+
+    Args:
+        path: When True, treats config keys containing dots as paths in a nested object.
+
+        config_file: Optional path to a specific config file to use instead of the stack's
+                     default config file.
+        show_secrets: When True, secret values will be shown in plaintext rather than as
+                      the value "[secret]".
+    """
+
+    path: bool
+    config_file: Optional[str]
+    show_secrets: bool
+
+    def __init__(
+        self,
+        path: bool = False,
+        config_file: Optional[str] = None,
+        show_secrets: bool = False,
+    ):
+        self.path = path
+        self.config_file = config_file
+        self.show_secrets = show_secrets
+
+
+class GetAllConfigOptions:
+    """
+    GetAllConfigOptions is used to configure get all config operations.
+
+    Args:
+        path: When True, treats config keys containing dots as paths in a nested object.
+              This requires Pulumi CLI version 3.95 or higher.
+        config_file: Optional path to a specific config file to use instead of the stack's
+                     default config file.
+        show_secrets: When True, secret values will be shown in plaintext rather than as
+                      the value "[secret]".
+    """
+
+    path: bool
+    config_file: Optional[str]
+    show_secrets: bool
+
+    def __init__(
+        self,
+        path: bool = False,
+        config_file: Optional[str] = None,
+        show_secrets: bool = False,
+    ):
+        self.path = path
+        self.config_file = config_file
+        self.show_secrets = show_secrets
