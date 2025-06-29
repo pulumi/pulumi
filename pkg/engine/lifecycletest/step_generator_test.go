@@ -39,16 +39,19 @@ func TestDuplicateURN(t *testing.T) {
 		}),
 	}
 
+	seenErrors := 0
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.Error(t, err)
+		seenErrors++
 
 		// Reads use the same URN namespace as register so make sure this also errors
 		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
 		assert.Error(t, err)
+		seenErrors++
 
 		return nil
 	})
@@ -61,6 +64,7 @@ func TestDuplicateURN(t *testing.T) {
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Error(t, err)
+	assert.Equal(t, 2, seenErrors)
 }
 
 // TestDuplicateAlias tests that multiple new resources may not claim to be aliases for the same old resource.
