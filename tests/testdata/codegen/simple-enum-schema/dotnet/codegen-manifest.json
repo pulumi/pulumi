@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    "Config/Config.cs",
+    "Config/README.md",
     "Enums.cs",
     "Inputs/ContainerArgs.cs",
     "Outputs/Container.cs",
