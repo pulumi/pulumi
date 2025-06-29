@@ -9,9 +9,9 @@ import * as enums from "../types/enums";
 import * as utilities from "../utilities";
 
 export interface ContainerArgs {
-    brightness?: pulumi.Input<enums.ContainerBrightness>;
-    color?: pulumi.Input<enums.ContainerColor | string>;
-    material?: pulumi.Input<string>;
+    brightness?: pulumi.Input<enums.ContainerBrightness | undefined | null>;
+    color?: pulumi.Input<pulumi.Input<enums.ContainerColor> | pulumi.Input<string> | undefined | null>;
+    material?: pulumi.Input<string | undefined | null>;
     size: pulumi.Input<enums.ContainerSize>;
 }
 /**

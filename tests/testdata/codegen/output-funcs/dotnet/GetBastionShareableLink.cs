@@ -81,14 +81,14 @@ namespace Pulumi.Mypkg
         public Input<string> ResourceGroupName { get; set; } = null!;
 
         [Input("vms")]
-        private InputList<Inputs.BastionShareableLinkArgs>? _vms;
+        private Input<ImmutableArray<Input<Inputs.BastionShareableLinkArgs>>>? _vms;
 
         /// <summary>
         /// List of VM references.
         /// </summary>
-        public InputList<Inputs.BastionShareableLinkArgs> Vms
+        public Input<ImmutableArray<Input<Inputs.BastionShareableLinkArgs>>> Vms
         {
-            get => _vms ?? (_vms = new InputList<Inputs.BastionShareableLinkArgs>());
+            get => _vms ?? (_vms = new Input<ImmutableArray<Input<Inputs.BastionShareableLinkArgs>>>());
             set => _vms = value;
         }
 

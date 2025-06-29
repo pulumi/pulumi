@@ -14,8 +14,8 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// Create a bucket and expose a website index document
 		siteBucket, err := s3.NewBucket(ctx, "siteBucket", &s3.BucketArgs{
-			Website: &s3.BucketWebsiteArgs{
-				IndexDocument: pulumi.String("index.html"),
+			Website: &*s3.BucketWebsiteArgs{
+				IndexDocument: "index.html",
 			},
 		})
 		if err != nil {

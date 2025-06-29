@@ -24,24 +24,24 @@ MYPY = False
 
 if not MYPY:
     class ConfigArgsDict(TypedDict):
-        foo: NotRequired[pulumi.Input[builtins.str]]
+        foo: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     ConfigArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class ConfigArgs:
     def __init__(__self__, *,
-                 foo: Optional[pulumi.Input[builtins.str]] = None):
+                 foo: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         if foo is not None:
             pulumi.set(__self__, "foo", foo)
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input[builtins.str]]:
+    def foo(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input[builtins.str]]):
+    def foo(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "foo", value)
 
 

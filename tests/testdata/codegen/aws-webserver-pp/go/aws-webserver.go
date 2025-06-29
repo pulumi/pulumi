@@ -10,12 +10,12 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// Create a new security group for port 80.
 		securityGroup, err := ec2.NewSecurityGroup(ctx, "securityGroup", &ec2.SecurityGroupArgs{
-			Ingress: ec2.SecurityGroupIngressArray{
-				&ec2.SecurityGroupIngressArgs{
+			Ingress: []ec2.SecurityGroupIngressArgs{
+				{
 					Protocol: pulumi.String("tcp"),
 					FromPort: pulumi.Int(0),
 					ToPort:   pulumi.Int(0),
-					CidrBlocks: pulumi.StringArray{
+					CidrBlocks: []pulumi.String{
 						pulumi.String("0.0.0.0/0"),
 					},
 				},
@@ -44,15 +44,15 @@ func main() {
 		}
 		// Create a simple web server using the startup script for the instance.
 		server, err := ec2.NewInstance(ctx, "server", &ec2.InstanceArgs{
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("web-server-www"),
 			},
-			InstanceType: pulumi.String(ec2.InstanceType_T2_Micro),
-			SecurityGroups: pulumi.StringArray{
+			InstanceType: ec2.InstanceType_T2_Micro,
+			SecurityGroups: []pulumi.String{
 				securityGroup.Name,
 			},
 			Ami:      pulumi.String(ami.Id),
-			UserData: pulumi.String("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"),
+			UserData: "#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n",
 		})
 		if err != nil {
 			return err

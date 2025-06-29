@@ -52,7 +52,7 @@ namespace Pulumi.Example
         }
 
         [Input("foo")]
-        public Input<Pulumi.Example.Resource>? Foo { get; set; }
+        public Input<Pulumi.Example.Resource?>? Foo { get; set; }
 
         public OtherResourceArgs()
         {

@@ -13,7 +13,7 @@ namespace Pulumi.Credentials.Inputs
     public sealed class SharedArgs : global::Pulumi.ResourceArgs
     {
         [Input("foo")]
-        public Input<string>? Foo { get; set; }
+        public Input<string?>? Foo { get; set; }
 
         public SharedArgs()
         {

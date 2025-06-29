@@ -63,18 +63,18 @@ namespace Pulumi.Credentials
         public Input<Pulumi.Credentials.HashKind> Hash { get; set; } = null!;
 
         [Input("password")]
-        private Input<string>? _password;
+        private Input<string?>? _password;
 
         /// <summary>
         /// The password. It is very secret.
         /// </summary>
-        public Input<string>? Password
+        public Input<string?>? Password
         {
             get => _password;
             set
             {
                 var emptySecret = Output.CreateSecret(0);
-                _password = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+                _password = Output.Tuple<Input<string?>?, int>(value, emptySecret).Apply(t => t.Item1);
             }
         }
 

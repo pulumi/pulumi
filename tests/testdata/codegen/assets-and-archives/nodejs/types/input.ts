@@ -6,7 +6,7 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 export interface TypeWithAssetsArgs {
-    archive?: pulumi.Input<pulumi.asset.Archive>;
+    archive?: pulumi.Input<pulumi.asset.Archive | undefined | null>;
     asset: pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive>;
     plainArchive: pulumi.asset.Archive;
     plainAsset?: pulumi.asset.Asset | pulumi.asset.Archive;

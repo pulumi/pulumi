@@ -24,17 +24,17 @@ func NewProvider(ctx *pulumi.Context,
 
 	if args.Name == nil {
 		if d := internal.GetEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
-			args.Name = pulumi.StringPtr(d.(string))
+			args.Name = *string(d.(string))
 		}
 	}
 	if args.Populated == nil {
 		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvBool, "WORLD_POPULATED"); d != nil {
-			args.Populated = pulumi.BoolPtr(d.(bool))
+			args.Populated = *bool(d.(bool))
 		}
 	}
 	if args.RadiusKm == nil {
 		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
-			args.RadiusKm = pulumi.Float64Ptr(d.(float64))
+			args.RadiusKm = *float64(d.(float64))
 		}
 	}
 	opts = internal.PkgResourceDefaultOpts(opts)

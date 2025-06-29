@@ -22,7 +22,7 @@ __all__ = ['ModuleResourceArgs', 'ModuleResource']
 @pulumi.input_type
 class ModuleResourceArgs:
     def __init__(__self__, *,
-                 thing: Optional[pulumi.Input['_root_inputs.TopLevelArgs']] = None):
+                 thing: Optional[pulumi.Input[Optional['_root_inputs.TopLevelArgs']]] = None):
         """
         The set of arguments for constructing a ModuleResource resource.
         """
@@ -31,11 +31,11 @@ class ModuleResourceArgs:
 
     @property
     @pulumi.getter
-    def thing(self) -> Optional[pulumi.Input['_root_inputs.TopLevelArgs']]:
+    def thing(self) -> Optional[pulumi.Input[Optional['_root_inputs.TopLevelArgs']]]:
         return pulumi.get(self, "thing")
 
     @thing.setter
-    def thing(self, value: Optional[pulumi.Input['_root_inputs.TopLevelArgs']]):
+    def thing(self, value: Optional[pulumi.Input[Optional['_root_inputs.TopLevelArgs']]]):
         pulumi.set(self, "thing", value)
 
 
@@ -45,7 +45,7 @@ class ModuleResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 thing: Optional[pulumi.Input[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]] = None,
+                 thing: Optional[pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]]] = None,
                  __props__=None):
         """
         Create a ModuleResource resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 thing: Optional[pulumi.Input[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]] = None,
+                 thing: Optional[pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

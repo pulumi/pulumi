@@ -62,5 +62,5 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    bar?: pulumi.Input<string>;
+    bar?: pulumi.Input<string | undefined | null>;
 }
