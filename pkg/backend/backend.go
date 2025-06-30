@@ -198,9 +198,6 @@ type Backend interface {
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
-	// CheckApply checks if the given stack can be applied on the given backend, returning an error if it cannot.
-	CheckApply(ctx context.Context, stack Stack) error
-
 	// BeginApply begins applying an operation to the given stack on the backend. It returns:
 	//   - an Application that can be used to drive and complete backend-specific parts of the operation later on
 	//   - a Target that contains information about the stack and the configuration that will be used

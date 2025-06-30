@@ -1321,13 +1321,6 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, backend.ApplyStack, paths)
 }
 
-func (b *cloudBackend) CheckApply(
-	ctx context.Context,
-	stack backend.Stack,
-) error {
-	return nil
-}
-
 func (b *cloudBackend) BeginApply(
 	ctx context.Context,
 	kind apitype.UpdateKind,

@@ -1140,22 +1140,6 @@ func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, backend.ApplyStack, paths)
 }
 
-func (b *diyBackend) CheckApply(
-	ctx context.Context,
-	stack backend.Stack,
-) error {
-	diyStackRef, err := b.getReference(stack.Ref())
-	if err != nil {
-		return err
-	}
-
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
-	}
-
-	return err
-}
-
 func (b *diyBackend) BeginApply(
 	ctx context.Context,
 	kind apitype.UpdateKind,
@@ -1166,6 +1150,10 @@ func (b *diyBackend) BeginApply(
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
 		return nil, nil, nil, nil, err
+	}
+
+	if currentProjectContradictsWorkspace(diyStackRef) {
+		return nil, nil, nil, nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
 	}
 
 	target, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, *op)

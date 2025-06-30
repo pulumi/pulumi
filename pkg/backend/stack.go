@@ -110,11 +110,6 @@ func ApplyStack(
 
 	b := stack.Backend()
 
-	err := b.CheckApply(ctx, stack)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	stackRef := stack.Ref()
 	actionLabel := ActionLabel(kind, opts.DryRun)
 
