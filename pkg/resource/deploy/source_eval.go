@@ -2306,27 +2306,46 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
-		constructResult, err := provider.Construct(ctx, plugin.ConstructRequest{
-			Info:    rm.constructInfo,
-			Type:    t,
-			Name:    name,
-			Parent:  parent,
-			Inputs:  props,
-			Options: options,
-		})
-		if err != nil {
-			var rpcError error
-			rpcError, ok := rpcerror.FromError(err)
-			if !ok {
-				rpcError = err
-			}
-			message := errorToMessage(rpcError, props)
-			rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
+		// Run construct in a go routine so we can react to a cancellation on rm.cancel.
+		var constructResult plugin.ConstructResult
+		constructDone := make(chan error)
+		go func() {
+			constructResult, err = provider.Construct(ctx, plugin.ConstructRequest{
+				Info:    rm.constructInfo,
+				Type:    t,
+				Name:    name,
+				Parent:  parent,
+				Inputs:  props,
+				Options: options,
+			})
+			if err != nil {
+				var rpcError error
+				rpcError, ok := rpcerror.FromError(err)
+				if !ok {
+					rpcError = err
+				}
+				message := errorToMessage(rpcError, props)
+				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
-			rm.abortChan <- true
-			<-rm.cancel
-			return nil, rpcerror.New(codes.Unknown, "resource monitor shut down")
+				rm.abortChan <- true
+				constructDone <- rpcerror.New(codes.Unknown, "resource monitor shut down")
+			}
+			close(constructDone)
+		}()
+
+		select {
+		case err := <-constructDone:
+			if err != nil {
+				logging.V(5).Infof("ResourceMonitor.RegisterResource construct returned an error, name=%s err=%s",
+					name, err)
+				return nil, err
+			}
+		case <-rm.cancel:
+			logging.V(5).Infof("ResourceMonitor.RegisterResource construct canceled, name=%s", name)
+			return nil, rpcerror.New(codes.Unavailable,
+				"resource monitor shut down while waiting for construct to complete")
 		}
+
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
