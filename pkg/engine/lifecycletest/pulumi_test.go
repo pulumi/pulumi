@@ -4500,6 +4500,7 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	t.Parallel()
 
 	constructCalled := false
+	done := make(chan struct{})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -4519,8 +4520,9 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 					})
 					require.Error(t, err)
 					constructCalled = true
-					// Hang indefinitely - this simulates a Construct call that doesn't return
-					select {}
+					// Hang until we end the test
+					<-done
+					return plugin.ConstructResponse{}, err
 				},
 			}, nil
 		}),
@@ -4546,4 +4548,5 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
 	require.True(t, constructCalled)
+	close(done)
 }
