@@ -1,0 +1,19 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+<{%fg 5%}>Loading policy packs...<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>refresh<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_2_0_0 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_2_0_0 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Policies:<{%reset%}>
+    ✅ <{%fg 5%}>|local|test@v<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

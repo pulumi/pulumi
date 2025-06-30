@@ -1,0 +1,4 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

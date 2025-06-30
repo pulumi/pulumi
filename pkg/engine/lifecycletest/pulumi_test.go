@@ -1090,9 +1090,7 @@ func TestStackReference(t *testing.T) {
 			return err
 		},
 	}}
-	p.Options.SkipDisplayTests = true
 	p.Run(t, old)
-	p.Options.SkipDisplayTests = false
 
 	// Test that unknown stacks are handled appropriately.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
@@ -4460,9 +4458,8 @@ func TestParallelDiff(t *testing.T) {
 				// Need at least two workers for this
 				Parallel: 2,
 			},
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 

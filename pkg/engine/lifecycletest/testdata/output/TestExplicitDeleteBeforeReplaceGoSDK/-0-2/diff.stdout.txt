@@ -1,0 +1,25 @@
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+<{%reset%}><{%reset%}>    <{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>        [id=a914a018-090b-4e93-8a34-168203dd2033]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
+<{%reset%}><{%reset%}>    <{%fg 9%}>--pkgA:m:typA: (delete-replaced)
+<{%fg 9%}>        [id=1e0ef63f-675a-4458-85df-334adb312e9b]
+<{%reset%}><{%fg 9%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 9%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::a914a018-090b-4e93-8a34-168203dd2033]
+<{%reset%}><{%fg 9%}>        foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}>    <{%fg 13%}>+-pkgA:m:typA: (replace)
+<{%reset%}>        [id=1e0ef63f-675a-4458-85df-334adb312e9b]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::a914a018-090b-4e93-8a34-168203dd2033]
+<{%reset%}><{%fg 3%}>      ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>    <{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%reset%}>        [id=1e0ef63f-675a-4458-85df-334adb312e9b]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::a914a018-090b-4e93-8a34-168203dd2033]
+<{%reset%}><{%fg 3%}>      ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

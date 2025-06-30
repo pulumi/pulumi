@@ -2353,9 +2353,8 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 

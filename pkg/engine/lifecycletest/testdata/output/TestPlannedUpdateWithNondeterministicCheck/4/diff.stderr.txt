@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: properties changed: ++name[{resA2457841b}!={resA8588d981}]<{%reset%}>
