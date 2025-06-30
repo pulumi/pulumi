@@ -1470,6 +1470,15 @@ func (pc *Client) ExplainPreviewWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
+func (pc *Client) GenerateStackReportWithCopilot(
+	ctx context.Context,
+	stack StackIdentifier,
+	baseURL string,
+) (string, error) {
+	request := createGenerateStackReportRequest(stack, baseURL)
+	return pc.callCopilot(ctx, request)
+}
+
 func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (string, error) {
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {

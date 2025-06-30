@@ -40,8 +40,9 @@ type CopilotCloudContext struct {
 type CopilotSkill string
 
 const (
-	SkillSummarizeUpdate CopilotSkill = "summarizeUpdate"
-	SkillExplainPreview  CopilotSkill = "explainPreview"
+	SkillSummarizeUpdate     CopilotSkill = "summarizeUpdate"
+	SkillExplainPreview      CopilotSkill = "explainPreview"
+	SkillGenerateStackReport CopilotSkill = "generateStackReport"
 )
 
 // SummarizeUpdateRequest
@@ -84,6 +85,20 @@ type CopilotExplainPreviewParams struct {
 type CopilotExplainPreviewDetails struct {
 	Kind string `json:"kind"` // The kind of update that is being explained. e.g. update, refresh, destroy, etc.
 }
+
+// GenerateStackReportRequest
+
+type CopilotGenerateStackReportRequest struct {
+	CopilotRequest
+	DirectSkillCall CopilotGenerateStackReportSkill `json:"directSkillCall"`
+}
+
+type CopilotGenerateStackReportSkill struct {
+	Skill  CopilotSkill                     `json:"skill"` // Always "generateStackReport"
+	Params CopilotGenerateStackReportParams `json:"params"`
+}
+
+type CopilotGenerateStackReportParams struct{}
 
 // Responses
 
