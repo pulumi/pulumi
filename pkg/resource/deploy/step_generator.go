@@ -1903,7 +1903,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		return nil, err
 	}
 
-	filter := func(res *resource.State) bool {
+	isTargeted := func(res *resource.State) bool {
 		if allowedResourcesToDelete != nil {
 			_, has := allowedResourcesToDelete[res.URN]
 			return has
@@ -1925,7 +1925,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				continue
 			}
 
-			if filter(res) {
+			if isTargeted(res) {
 				// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 				if res.Delete {
 					// The below assert is commented-out because it's believed to be wrong.
@@ -1987,7 +1987,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	// We also need to delete all the new resources that we created/updated/samed if this is a destroy
 	// operation.
 	for _, res := range sg.toDelete {
-		if filter(res) {
+		if isTargeted(res) {
 			sg.deletes[res.URN] = true
 			oldViews := sg.deployment.GetOldViews(res.URN)
 			steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
