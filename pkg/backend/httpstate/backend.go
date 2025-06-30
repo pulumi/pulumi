@@ -1157,22 +1157,27 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	return newRef, nil
 }
 
-func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, events chan<- engine.Event,
+func (b *cloudBackend) Preview(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return backend.ApplyStack(
-		ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.ApplyStack(ctx, apitype.PreviewUpdate, op, cfg, opts, events)
 }
 
-func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, events chan<- engine.Event,
+func (b *cloudBackend) Update(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, backend.ApplyStack, b, events)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, op, cfg, backend.ApplyStack, b, events)
 }
 
 // IsExplainPreviewEnabled implements the "explainer" interface.
@@ -1213,7 +1218,8 @@ func (b *cloudBackend) Explain(
 	ctx context.Context,
 	stackRef backend.StackReference,
 	kind apitype.UpdateKind,
-	op backend.UpdateOperation,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
 	events []engine.Event,
 ) (string, error) {
 	renderer := display.NewCaptureProgressEvents(
@@ -1237,7 +1243,7 @@ func (b *cloudBackend) Explain(
 		return "", err
 	}
 
-	displayOpts := op.Opts.Display
+	displayOpts := cfg.Opts.Display
 	display.RenderCopilotThinking(displayOpts)
 	orgID := stackID.Owner
 	summary, err := b.client.ExplainPreviewWithCopilot(ctx, orgID, string(kind), output)
@@ -1258,78 +1264,86 @@ func (b *cloudBackend) Explain(
 	return formattedSummary, nil
 }
 
-func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import,
+func (b *cloudBackend) Import(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, error) {
-	op.Imports = imports
+	cfg.Imports = imports
 
-	if op.Opts.PreviewOnly {
+	if cfg.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
 			DryRun:   true,
 			ShowLink: true,
 		}
 
-		op.Opts.Engine.GeneratePlan = false
+		cfg.Opts.Engine.GeneratePlan = false
 		_, changes, err := backend.ApplyStack(
-			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.ResourceImportUpdate, op, cfg, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, backend.ApplyStack, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, op, cfg, backend.ApplyStack, b, nil)
 }
 
-func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+func (b *cloudBackend) Refresh(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
 ) (sdkDisplay.ResourceChanges, error) {
-	if op.Opts.PreviewOnly {
+	if cfg.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
 			DryRun:   true,
 			ShowLink: true,
 		}
 
-		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := backend.ApplyStack(
-			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
+		cfg.Opts.Engine.GeneratePlan = false
+		_, changes, err := backend.ApplyStack(ctx, apitype.RefreshUpdate, op, cfg, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, backend.ApplyStack, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, op, cfg, backend.ApplyStack, b, nil)
 }
 
-func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+func (b *cloudBackend) Destroy(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
 ) (sdkDisplay.ResourceChanges, error) {
-	if op.Opts.PreviewOnly {
+	if cfg.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
 			DryRun:   true,
 			ShowLink: true,
 		}
 
-		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := backend.ApplyStack(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+		cfg.Opts.Engine.GeneratePlan = false
+		_, changes, err := backend.ApplyStack(ctx, apitype.DestroyUpdate, op, cfg, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, backend.ApplyStack, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, op, cfg, backend.ApplyStack, b, nil)
 }
 
-func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
+func (b *cloudBackend) Watch(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	paths []string,
 ) error {
-	return backend.Watch(ctx, b, stk, op, backend.ApplyStack, paths)
+	return backend.Watch(ctx, b, op, cfg, backend.ApplyStack, paths)
 }
 
 func (b *cloudBackend) BeginApply(
 	ctx context.Context,
 	kind apitype.UpdateKind,
-	stack backend.Stack,
-	op *backend.UpdateOperation,
+	op *backend.StackUpdateOperation,
+	cfg *backend.UpdateConfiguration,
 	opts backend.ApplierOptions,
 ) (backend.Application, *deploy.Target, chan<- engine.Event, <-chan bool, error) {
 	// Create an update object to persist results.
-	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
+	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, op, cfg, opts.DryRun)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -1343,7 +1357,7 @@ func (b *cloudBackend) BeginApply(
 	var renderEvents []engine.Event
 	copilotEnabled := false
 
-	if b.isCopilotFeaturesEnabled(op.Opts.Display) {
+	if b.isCopilotFeaturesEnabled(cfg.Opts.Display) {
 		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
 			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
 		} else {
@@ -1367,7 +1381,7 @@ func (b *cloudBackend) BeginApply(
 
 		<-persistEventsDone
 		close(appEventsDone)
-		b.renderAndSummarizeOutput(ctx, kind, stack, *op, renderEvents, update, updateMeta, opts.DryRun)
+		b.renderAndSummarizeOutput(ctx, kind, *op, *cfg, renderEvents, update, updateMeta, opts.DryRun)
 	}()
 
 	// Display messages from the backend if present.
@@ -1392,14 +1406,14 @@ func (b *cloudBackend) BeginApply(
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
 
-	target, tokenSource, err := b.newUpdate(ctx, stack.Ref(), *op, update, updateMeta.leaseToken)
+	target, tokenSource, err := b.newUpdate(ctx, op.Stack.Ref(), *op, update, updateMeta.leaseToken)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
 	go b.persistEngineEvents(
 		ctx, tokenSource, update,
-		op.Opts.Display.Debug, /* persist debug events */
+		cfg.Opts.Display.Debug, /* persist debug events */
 		persistEvents, persistEventsDone)
 
 	a := &cloudApplication{
@@ -1425,7 +1439,7 @@ type cloudApplication struct {
 	b *cloudBackend
 
 	// The update operation associated with this application.
-	op *backend.UpdateOperation
+	op *backend.StackUpdateOperation
 
 	// A permalink to a cloud console view of the update.
 	permalink string
@@ -1513,11 +1527,17 @@ func (b *cloudBackend) PromptAI(
 }
 
 func (b *cloudBackend) renderAndSummarizeOutput(
-	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation,
-	events []engine.Event, update client.UpdateIdentifier, updateMeta updateMetadata, dryRun bool,
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	events []engine.Event,
+	update client.UpdateIdentifier,
+	updateMeta updateMetadata,
+	dryRun bool,
 ) {
 	renderer := display.NewCaptureProgressEvents(
-		stack.Ref().Name(),
+		op.Stack.Ref().Name(),
 		op.Proj.Name,
 		display.Options{
 			ShowResourceChanges: true,
@@ -1529,10 +1549,10 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 
 	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
-		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), op.Stack.Ref(), cfg.Opts.Display)
 		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 		// if we can't generate a summary.
-		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
+		display.RenderCopilotErrorSummary(summary, err, cfg.Opts.Display, permalink)
 	}
 }
 
@@ -1574,11 +1594,14 @@ type updateMetadata struct {
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
-	op *backend.UpdateOperation, dryRun bool,
+	ctx context.Context,
+	action apitype.UpdateKind,
+	op *backend.StackUpdateOperation,
+	cfg *backend.UpdateConfiguration,
+	dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
 	// Once we start an update we want to keep the machine from sleeping.
-	stackRef := stack.Ref()
+	stackRef := op.Stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -1589,11 +1612,11 @@ func (b *cloudBackend) createAndStartUpdate(
 			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
-		Message:     op.M.Message,
-		Environment: op.M.Environment,
+		Message:     cfg.M.Message,
+		Environment: cfg.M.Environment,
 	}
 	update, updateDetails, err := b.client.CreateUpdate(
-		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
+		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, cfg.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
@@ -1611,13 +1634,13 @@ func (b *cloudBackend) createAndStartUpdate(
 	// which is much closer to being the "correct" place for this stuff.
 	//
 	for _, policy := range updateDetails.RequiredPolicies {
-		op.Opts.Engine.RequiredPolicies = append(
-			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
+		cfg.Opts.Engine.RequiredPolicies = append(
+			cfg.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
+	tags, err := backend.GetMergedStackTags(ctx, op.Stack, op.Root, op.Proj, op.StackConfiguration.Config)
 	if err != nil {
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
@@ -1647,13 +1670,13 @@ func (b *cloudBackend) createAndStartUpdate(
 	if isCopilotEnabled {
 		if env.SuppressCopilotLink.Value() {
 			// Copilot is enabled in user's org, but the environment variable to suppress the link to Copilot is set.
-			op.Opts.Display.ShowLinkToCopilot = false
+			cfg.Opts.Display.ShowLinkToCopilot = false
 			continuationString = " but the environment variable PULUMI_SUPPRESS_COPILOT_LINK" +
 				" suppresses the link to Copilot in diagnostics"
 		}
 	} else {
-		op.Opts.Display.ShowLinkToCopilot = false
-		op.Opts.Display.ShowCopilotFeatures = false
+		cfg.Opts.Display.ShowLinkToCopilot = false
+		cfg.Opts.Display.ShowCopilotFeatures = false
 		copilotEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",

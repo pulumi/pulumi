@@ -87,8 +87,12 @@ func RenewLeaseFunc(
 	}
 }
 
-func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
-	update client.UpdateIdentifier, token string,
+func (b *cloudBackend) newUpdate(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	op backend.StackUpdateOperation,
+	update client.UpdateIdentifier,
+	token string,
 ) (*deploy.Target, *tokenSource, error) {
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource

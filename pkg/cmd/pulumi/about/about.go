@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/shirou/gopsutil/v3/host"
@@ -137,7 +138,17 @@ func getSummaryAbout(
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			// TODO(multistack) comment these arguments
+			&sync.Mutex{},
+			nil,
+			false,
+			nil,
+			nil,
+		)
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {

@@ -183,20 +183,44 @@ type Backend interface {
 
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(
-		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+		ctx context.Context,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+		events chan<- engine.Event,
 	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	Update(
+		ctx context.Context,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+		events chan<- engine.Event,
 	) (sdkDisplay.ResourceChanges, error)
 	// Import imports resources into a stack.
-	Import(ctx context.Context, stack Stack, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
+	Import(
+		ctx context.Context,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+		imports []deploy.Import,
+	) (sdkDisplay.ResourceChanges, error)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	Refresh(
+		ctx context.Context,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+	) (sdkDisplay.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	Destroy(
+		ctx context.Context,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+	) (sdkDisplay.ResourceChanges, error)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
-	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
+	Watch(
+		ctx context.Context,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+		paths []string,
+	) error
 
 	// BeginApply begins applying an operation to the given stack on the backend. It returns:
 	//   - an Application that can be used to drive and complete backend-specific parts of the operation later on
@@ -207,8 +231,8 @@ type Backend interface {
 	BeginApply(
 		ctx context.Context,
 		kind apitype.UpdateKind,
-		stack Stack,
-		op *UpdateOperation,
+		op *StackUpdateOperation,
+		cfg *UpdateConfiguration,
 		opts ApplierOptions,
 	) (Application, *deploy.Target, chan<- engine.Event, <-chan bool, error)
 
@@ -319,19 +343,16 @@ type SpecificDeploymentExporter interface {
 }
 
 // UpdateOperation is a complete stack update operation (preview, update, import, refresh, or destroy).
-type UpdateOperation struct {
+type StackUpdateOperation struct {
+	Stack              Stack
 	Proj               *workspace.Project
 	Root               string
-	Imports            []deploy.Import
-	M                  *UpdateMetadata
-	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
 	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
-	Scopes             CancellationScopeSource
 }
 
-// StackConfiguration holds the configuration for a stack and it's associated decrypter.
+// StackConfiguration holds the configuration for a stack and its associated decrypter.
 type StackConfiguration struct {
 	// List of ESC environments imported by the stack being updated.
 	EnvironmentImports []string
@@ -339,6 +360,13 @@ type StackConfiguration struct {
 	Environment esc.Value
 	Config      config.Map
 	Decrypter   config.Decrypter
+}
+
+type UpdateConfiguration struct {
+	Imports []deploy.Import
+	M       *UpdateMetadata
+	Opts    UpdateOptions
+	Scopes  CancellationScopeSource
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.

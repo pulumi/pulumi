@@ -158,15 +158,16 @@ func NewWatchCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 			}
 
-			err = backend.WatchStack(ctx, s, backend.UpdateOperation{
+			err = backend.WatchStack(ctx, backend.StackUpdateOperation{
 				Proj:               proj,
 				Root:               root,
-				M:                  m,
-				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             backend.CancellationScopes,
+			}, backend.UpdateConfiguration{
+				M:      m,
+				Opts:   opts,
+				Scopes: backend.CancellationScopes,
 			}, pathArray)
 
 			switch {

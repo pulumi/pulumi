@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
@@ -106,6 +107,7 @@ func NewInstallCmd() *cobra.Command {
 				nil,
 				cmdutil.Diag(),
 				cmdutil.Diag(),
+				&sync.Mutex{},
 				nil,
 				false,
 				span,

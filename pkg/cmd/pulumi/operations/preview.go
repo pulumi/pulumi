@@ -498,15 +498,17 @@ func NewPreviewCmd() *cobra.Command {
 				importFilePromise = buildImportFile(events)
 			}
 
-			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
+			plan, changes, res := backend.PreviewStack(ctx, backend.StackUpdateOperation{
+				Stack:              s,
 				Proj:               proj,
 				Root:               root,
-				M:                  m,
-				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             backend.CancellationScopes,
+			}, backend.UpdateConfiguration{
+				M:      m,
+				Opts:   opts,
+				Scopes: backend.CancellationScopes,
 			}, events)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more

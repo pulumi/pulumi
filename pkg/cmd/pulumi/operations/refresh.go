@@ -303,15 +303,17 @@ func NewRefreshCmd() *cobra.Command {
 				RefreshProgram:            runProgram,
 			}
 
-			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
+			changes, err := backend.RefreshStack(ctx, backend.StackUpdateOperation{
+				Stack:              s,
 				Proj:               proj,
 				Root:               root,
-				M:                  m,
-				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             backend.CancellationScopes,
+			}, backend.UpdateConfiguration{
+				M:      m,
+				Opts:   opts,
+				Scopes: backend.CancellationScopes,
 			})
 
 			switch {

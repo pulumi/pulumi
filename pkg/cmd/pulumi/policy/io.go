@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -61,6 +62,7 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 		nil,
 		cmdutil.Diag(),
 		cmdutil.Diag(),
+		&sync.Mutex{},
 		nil,
 		false,
 		span,

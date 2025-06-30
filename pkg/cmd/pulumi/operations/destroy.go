@@ -304,15 +304,17 @@ func NewDestroyCmd() *cobra.Command {
 				DestroyProgram:            runProgram,
 			}
 
-			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
+			_, destroyErr := backend.DestroyStack(ctx, backend.StackUpdateOperation{
+				Stack:              s,
 				Proj:               proj,
 				Root:               root,
-				M:                  m,
-				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             backend.CancellationScopes,
+			}, backend.UpdateConfiguration{
+				M:      m,
+				Opts:   opts,
+				Scopes: backend.CancellationScopes,
 			})
 
 			if destroyErr == nil && protectedCount > 0 && !jsonDisplay {

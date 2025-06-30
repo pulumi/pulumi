@@ -40,8 +40,13 @@ import (
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
-func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
-	apply Applier, paths []string,
+func Watch(
+	ctx context.Context,
+	b Backend,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	apply Applier,
+	paths []string,
 ) error {
 	opts := ApplierOptions{
 		DryRun:   false,
@@ -50,12 +55,12 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 
 	startTime := time.Now()
 
-	color := op.Opts.Display.Color
+	color := cfg.Opts.Display.Color
 
 	go func() {
 		shown := map[operations.LogEntry]bool{}
 		for {
-			logs, err := b.GetLogs(ctx, op.SecretsProvider, stack, op.StackConfiguration, operations.LogQuery{
+			logs, err := b.GetLogs(ctx, op.SecretsProvider, op.Stack, op.StackConfiguration, operations.LogQuery{
 				StartTime: &startTime,
 			})
 			if err != nil {
@@ -86,7 +91,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	fmt.Printf(color.Colorize(
 		colors.SpecHeadline+"👀 Watch mode enabled. "+colors.Reset+colors.Magenta+
 			"Make an edit to %s and save to deploy.\n"+colors.Reset),
-		stack.Ref().FullyQualifiedName())
+		op.Stack.Ref().FullyQualifiedName())
 
 	for range events {
 		fmt.Print(color.Colorize(
@@ -94,7 +99,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 				colors.Reset + colors.Magenta + "Deploying changes...\n" + colors.Reset))
 
 		// Perform the update operation
-		_, changes, err := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		_, changes, err := apply(ctx, apitype.UpdateUpdate, op, cfg, opts, nil)
 
 		// Display the kinds of updates performed.
 		var opKinds []string

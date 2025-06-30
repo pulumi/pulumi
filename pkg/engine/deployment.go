@@ -248,50 +248,55 @@ func (b *deploymentBuilder) enqueue(
 }
 
 func (b *deploymentBuilder) build() (*deployment, error) {
-	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(b.opts.LocalPolicyPacks)
+	// localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(b.opts.LocalPolicyPacks)
 
-	deplOpts := &deploy.Options{
-		ParallelDiff:              b.opts.ParallelDiff,
-		DryRun:                    b.opts.DryRun,
-		Parallel:                  b.opts.Parallel,
-		Refresh:                   b.opts.Refresh,
-		RefreshOnly:               b.opts.isRefresh,
-		RefreshProgram:            b.opts.RefreshProgram,
-		DestroyProgram:            b.opts.DestroyProgram,
-		ReplaceTargets:            b.opts.ReplaceTargets,
-		Targets:                   b.opts.Targets,
-		Excludes:                  b.opts.Excludes,
-		TargetDependents:          b.opts.TargetDependents,
-		ExcludeDependents:         b.opts.ExcludeDependents,
-		UseLegacyDiff:             b.opts.UseLegacyDiff,
-		UseLegacyRefreshDiff:      b.opts.UseLegacyRefreshDiff,
-		DisableResourceReferences: b.opts.DisableResourceReferences,
-		DisableOutputValues:       b.opts.DisableOutputValues,
-		GeneratePlan:              b.opts.GeneratePlan,
-		ContinueOnError:           b.opts.ContinueOnError,
-		Autonamer:                 b.opts.Autonamer,
-	}
+	//deplOpts := &deploy.Options{
+	//	ParallelDiff:              b.opts.ParallelDiff,
+	//	DryRun:                    b.opts.DryRun,
+	//	Parallel:                  b.opts.Parallel,
+	//	Refresh:                   b.opts.Refresh,
+	//	RefreshOnly:               b.opts.isRefresh,
+	//	RefreshProgram:            b.opts.RefreshProgram,
+	//	DestroyProgram:            b.opts.DestroyProgram,
+	//	ReplaceTargets:            b.opts.ReplaceTargets,
+	//	Targets:                   b.opts.Targets,
+	//	Excludes:                  b.opts.Excludes,
+	//	TargetDependents:          b.opts.TargetDependents,
+	//	ExcludeDependents:         b.opts.ExcludeDependents,
+	//	UseLegacyDiff:             b.opts.UseLegacyDiff,
+	//	UseLegacyRefreshDiff:      b.opts.UseLegacyRefreshDiff,
+	//	DisableResourceReferences: b.opts.DisableResourceReferences,
+	//	DisableOutputValues:       b.opts.DisableOutputValues,
+	//	GeneratePlan:              b.opts.GeneratePlan,
+	//	ContinueOnError:           b.opts.ContinueOnError,
+	//	Autonamer:                 b.opts.Autonamer,
+	//}
 
 	plugctxs := plugin.NewContexts(b.plugctxs)
-
-	depl, err := deploy.NewDeployment(
-		b.opts.Diag,
-		b.opts.debugTraceMutex,
-		plugctxs,
-		deplOpts, actions, target.Snapshot, opts.Plan, source,
-		localPolicyPackPaths, ctx.BackendClient)
-	if err != nil {
-		contract.IgnoreClose(plugctxs)
-		return nil, err
+	if plugctxs == nil {
+		return nil, nil
 	}
 
-	return &deployment{
-		Ctx:        info,
-		Plugctx:    plugctx,
-		Deployment: depl,
-		Actions:    actions,
-		Options:    opts,
-	}, nil
+	return nil, nil
+
+	//depl, err := deploy.NewDeployment(
+	//	b.opts.Diag,
+	//	b.opts.debugTraceMutex,
+	//	plugctxs,
+	//	deplOpts, actions, target.Snapshot, opts.Plan, source,
+	//	localPolicyPackPaths, ctx.BackendClient)
+	//if err != nil {
+	//	contract.IgnoreClose(plugctxs)
+	//	return nil, err
+	//}
+
+	//return &deployment{
+	//	Ctx:        info,
+	//	Plugctx:    plugctx,
+	//	Deployment: depl,
+	//	Actions:    actions,
+	//	Options:    opts,
+	//}, nil
 }
 
 // newDeployment creates a new deployment with the given context and options.
@@ -301,7 +306,6 @@ func newDeployment(
 	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
-	contract.Assertf(info.Update != nil, "update info cannot be nil")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
 	// Create an appropriate set of event listeners.
@@ -335,7 +339,7 @@ func newDeployment(
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
 	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
-	plugctxs := plugin.NewContexts(map[resource.StackReference]*plugin.Context{
+	plugctxs := plugin.NewContexts(map[resource.AbsoluteStackReference]*plugin.Context{
 		target.StackReference(): plugctx,
 	})
 

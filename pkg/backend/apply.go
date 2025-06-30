@@ -67,15 +67,27 @@ type ApplierOptions struct {
 }
 
 // Applier applies the changes specified by this update operation against the target stack.
-type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+type Applier func(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	opts ApplierOptions,
+	events chan<- engine.Event,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
 // Explainer provides a contract for explaining changes that will be made to the stack.
 // For Pulumi Cloud, this is a Copilot explainer.
 type Explainer interface {
 	// Explain returns a human-readable explanation of the changes that will be made to the stack.
-	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
-		events []engine.Event) (string, error)
+	Explain(
+		ctx context.Context,
+		stackRef StackReference,
+		kind apitype.UpdateKind,
+		op StackUpdateOperation,
+		cfg UpdateConfiguration,
+		events []engine.Event,
+	) (string, error)
 	// IsExplainPreviewEnabled returns whether the explainer is enabled for the given project.
 	IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool
 }
@@ -112,8 +124,13 @@ const (
 	details response = "details"
 )
 
-func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, explainer Explainer,
+func PreviewThenPrompt(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	apply Applier,
+	explainer Explainer,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -150,18 +167,18 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	plan, changes, err := apply(ctx, kind, op, cfg, opts, eventsChannel)
 	if err != nil {
 		close(eventsChannel)
 		return plan, changes, err
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
-	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
+	if cfg.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
 		// If we're running in experimental mode then return the plan generated, else discard it. The user may
 		// be explicitly setting a plan but that's handled higher up the call stack.
-		if !op.Opts.Engine.Experimental {
+		if !cfg.Opts.Engine.Experimental {
 			plan = nil
 		}
 		return plan, changes, nil
@@ -169,7 +186,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 	stats := computeUpdateStats(events)
 
-	infoPrefix := "\b" + op.Opts.Display.Color.Colorize(colors.SpecWarning+"info: "+colors.Reset)
+	infoPrefix := "\b" + cfg.Opts.Display.Color.Colorize(colors.SpecWarning+"info: "+colors.Reset)
 	if kind != apitype.UpdateUpdate {
 		// If not an update, we can skip displaying warnings
 	} else if stats.numNonStackResources == 0 {
@@ -191,19 +208,26 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
+	plan, err = confirmBeforeUpdating(ctx, kind, op.Stack.Ref(), op, cfg, events, plan, explainer)
 	close(eventsChannel)
 	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
-func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
-	events []engine.Event, plan *deploy.Plan, explainer Explainer,
+func confirmBeforeUpdating(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	stackRef StackReference,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	events []engine.Event,
+	plan *deploy.Plan,
+	explainer Explainer,
 	// askOpts is used for testing to control stdin/stdout
 	askOpts ...survey.AskOpt,
 ) (*deploy.Plan, error) {
 	for {
-		opts := op.Opts
+		opts := cfg.Opts
 		var response string
 
 		surveycore.DisableColor = true
@@ -278,9 +302,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		if response == explainChoice {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
 
-			explanation, err := explainer.Explain(ctx, stackRef, kind, op, events)
+			explanation, err := explainer.Explain(ctx, stackRef, kind, op, cfg, events)
 
-			stdout := op.Opts.Display.Stdout
+			stdout := cfg.Opts.Display.Stdout
 			if stdout == nil {
 				stdout = os.Stdout
 			}
@@ -299,21 +323,27 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 	}
 }
 
-func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
+func PreviewThenPromptThenExecute(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	apply Applier,
+	explainer Explainer,
+	events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
-	if !op.Opts.SkipPreview {
+	if !cfg.Opts.SkipPreview {
 		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
 		// but because plans are mutated as they're checked we need to clone it here.
 		// We want to use the original plan because a program could be non-deterministic and have a plan of
 		// operations P0, the update preview could return P1, and then the actual update could run P2, were P1 < P2 < P0.
 		var originalPlan *deploy.Plan
-		if op.Opts.Engine.Plan != nil {
-			originalPlan = op.Opts.Engine.Plan.Clone()
+		if cfg.Opts.Engine.Plan != nil {
+			originalPlan = cfg.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
+		plan, changes, err := PreviewThenPrompt(ctx, kind, op, cfg, apply, explainer)
 		if err != nil || kind == apitype.PreviewUpdate {
 			return changes, err
 		}
@@ -321,11 +351,11 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
 		// newly generated plan
 		if originalPlan != nil {
-			op.Opts.Engine.Plan = originalPlan
+			cfg.Opts.Engine.Plan = originalPlan
 		} else if plan != nil {
-			op.Opts.Engine.Plan = plan
+			cfg.Opts.Engine.Plan = plan
 		} else {
-			op.Opts.Engine.Plan = nil
+			cfg.Opts.Engine.Plan = nil
 		}
 	}
 
@@ -337,8 +367,8 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	}
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
-	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, events)
+	cfg.Opts.Engine.GeneratePlan = false
+	_, changes, res := apply(ctx, kind, op, cfg, opts, events)
 	return changes, res
 }
 

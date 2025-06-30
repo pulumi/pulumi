@@ -205,15 +205,17 @@ func NewUpAllCmd() *cobra.Command {
 			opts.Engine.Plan = p
 		}
 
-		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
+		changes, err := backend.UpdateStack(ctx, backend.StackUpdateOperation{
+			Stack:              s,
 			Proj:               proj,
 			Root:               root,
-			M:                  m,
-			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
-			Scopes:             backend.CancellationScopes,
+		}, backend.UpdateConfiguration{
+			M:      m,
+			Opts:   opts,
+			Scopes: backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:

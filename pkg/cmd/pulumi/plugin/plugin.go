@@ -15,6 +15,8 @@
 package plugin
 
 import (
+	"sync"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -62,7 +64,17 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(
+		projinfo,
+		nil,
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		&sync.Mutex{},
+		nil,
+		false,
+		nil,
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +103,19 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, nil, false, nil, nil)
+	_, _, ctx, err := engine.ProjectInfoContext(
+		projinfo,
+		nil,
+		d,
+		d,
+		// TODO(multistack): Check all the debugTrace mutexes. For this one specifically, should resolvePlugins and
+		// getProjectPlugins take as an argument for situations where they are both called?
+		&sync.Mutex{},
+		nil,
+		false,
+		nil,
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -394,6 +395,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			nil,
 			cmdutil.Diag(),
 			cmdutil.Diag(),
+			&sync.Mutex{},
 			nil,
 			false,
 			span,
@@ -455,6 +457,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			nil,
 			cmdutil.Diag(),
 			cmdutil.Diag(),
+			&sync.Mutex{},
 			nil,
 			false,
 			span,

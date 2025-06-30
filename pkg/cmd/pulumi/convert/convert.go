@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -478,7 +479,18 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, ctx, err := engine.ProjectInfoContext(
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			// TODO(multistack) comment
+			&sync.Mutex{},
+			nil,
+			false,
+			nil,
+			nil,
+		)
 		if err != nil {
 			return err
 		}

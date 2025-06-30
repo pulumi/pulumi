@@ -1027,127 +1027,143 @@ func (b *diyBackend) PackPolicies(
 	return errors.New("DIY backend does not support resource policy")
 }
 
-func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, events chan<- engine.Event,
+func (b *diyBackend) Preview(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return backend.ApplyStack(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.ApplyStack(ctx, apitype.PreviewUpdate, op, cfg, opts, events)
 }
 
-func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, events chan<- engine.Event,
+func (b *diyBackend) Update(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, op.Stack.Ref())
 	if err != nil {
 		return nil, err
 	}
-	defer b.Unlock(ctx, stack.Ref())
+	defer b.Unlock(ctx, op.Stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(
 		ctx,
 		apitype.UpdateUpdate,
-		stack,
 		op,
+		cfg,
 		backend.ApplyStack,
 		nil,
 		events)
 }
 
-func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import,
+func (b *diyBackend) Import(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, op.Stack.Ref())
 	if err != nil {
 		return nil, err
 	}
-	defer b.Unlock(ctx, stack.Ref())
+	defer b.Unlock(ctx, op.Stack.Ref())
 
-	op.Imports = imports
+	cfg.Imports = imports
 
-	if op.Opts.PreviewOnly {
+	if cfg.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
 			DryRun:   true,
 			ShowLink: true,
 		}
 
-		op.Opts.Engine.GeneratePlan = false
+		cfg.Opts.Engine.GeneratePlan = false
 		_, changes, err := backend.ApplyStack(
-			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.ResourceImportUpdate, op, cfg, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, backend.ApplyStack, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, op, cfg, backend.ApplyStack, nil, nil)
 }
 
-func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+func (b *diyBackend) Refresh(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, op.Stack.Ref())
 	if err != nil {
 		return nil, err
 	}
-	defer b.Unlock(ctx, stack.Ref())
+	defer b.Unlock(ctx, op.Stack.Ref())
 
-	if op.Opts.PreviewOnly {
+	if cfg.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
 			DryRun:   true,
 			ShowLink: true,
 		}
 
-		op.Opts.Engine.GeneratePlan = false
+		cfg.Opts.Engine.GeneratePlan = false
 		_, changes, err := backend.ApplyStack(
-			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.RefreshUpdate, op, cfg, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, backend.ApplyStack, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, op, cfg, backend.ApplyStack, nil, nil)
 }
 
-func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+func (b *diyBackend) Destroy(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, op.Stack.Ref())
 	if err != nil {
 		return nil, err
 	}
-	defer b.Unlock(ctx, stack.Ref())
+	defer b.Unlock(ctx, op.Stack.Ref())
 
-	if op.Opts.PreviewOnly {
+	if cfg.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
 			DryRun:   true,
 			ShowLink: true,
 		}
 
-		op.Opts.Engine.GeneratePlan = false
+		cfg.Opts.Engine.GeneratePlan = false
 		_, changes, err := backend.ApplyStack(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, op, cfg, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, backend.ApplyStack, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, op, cfg, backend.ApplyStack, nil, nil)
 }
 
-func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
+func (b *diyBackend) Watch(
+	ctx context.Context,
+	op backend.StackUpdateOperation,
+	cfg backend.UpdateConfiguration,
+	paths []string,
 ) error {
-	return backend.Watch(ctx, b, stk, op, backend.ApplyStack, paths)
+	return backend.Watch(ctx, b, op, cfg, backend.ApplyStack, paths)
 }
 
 func (b *diyBackend) BeginApply(
 	ctx context.Context,
 	kind apitype.UpdateKind,
-	stack backend.Stack,
-	op *backend.UpdateOperation,
+	op *backend.StackUpdateOperation,
+	cfg *backend.UpdateConfiguration,
 	opts backend.ApplierOptions,
 ) (backend.Application, *deploy.Target, chan<- engine.Event, <-chan bool, error) {
-	diyStackRef, err := b.getReference(stack.Ref())
+	diyStackRef, err := b.getReference(op.Stack.Ref())
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -1167,6 +1183,7 @@ func (b *diyBackend) BeginApply(
 		b:    b,
 		kind: kind,
 		op:   op,
+		cfg:  cfg,
 		opts: opts,
 
 		ref:    diyStackRef,
@@ -1181,7 +1198,8 @@ type diyApplication struct {
 
 	b    *diyBackend
 	kind apitype.UpdateKind
-	op   *backend.UpdateOperation
+	op   *backend.StackUpdateOperation
+	cfg  *backend.UpdateConfiguration
 	opts backend.ApplierOptions
 
 	ref    *diyBackendReference
@@ -1220,8 +1238,8 @@ func (a *diyApplication) End(
 	info := backend.UpdateInfo{
 		Kind:        a.kind,
 		StartTime:   start,
-		Message:     a.op.M.Message,
-		Environment: a.op.M.Environment,
+		Message:     a.cfg.M.Message,
+		Environment: a.cfg.M.Environment,
 		Config:      a.config,
 		Result:      backendUpdateResult,
 		EndTime:     end,
@@ -1253,7 +1271,7 @@ func (a *diyApplication) End(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !a.op.Opts.Display.SuppressPermalink && a.opts.ShowLink && !a.op.Opts.Display.JSONDisplay {
+	if !a.cfg.Opts.Display.SuppressPermalink && a.opts.ShowLink && !a.cfg.Opts.Display.JSONDisplay {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -1280,7 +1298,7 @@ func (a *diyApplication) End(
 		}
 
 		if link != "" {
-			fmt.Printf(a.op.Opts.Display.Color.Colorize(
+			fmt.Printf(a.cfg.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
 					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 		}

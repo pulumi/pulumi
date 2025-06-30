@@ -22,6 +22,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -237,15 +238,17 @@ func NewUpCmd() *cobra.Command {
 			opts.Engine.Plan = p
 		}
 
-		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
+		changes, err := backend.UpdateStack(ctx, backend.StackUpdateOperation{
+			Stack:              s,
 			Proj:               proj,
 			Root:               root,
-			M:                  m,
-			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
-			Scopes:             backend.CancellationScopes,
+		}, backend.UpdateConfiguration{
+			M:      m,
+			Opts:   opts,
+			Scopes: backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
@@ -406,7 +409,17 @@ func NewUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			&sync.Mutex{},
+			nil,
+			false,
+			nil,
+			nil,
+		)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -471,15 +484,17 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
+		changes, err := backend.UpdateStack(ctx, backend.StackUpdateOperation{
+			Stack:              s,
 			Proj:               proj,
 			Root:               root,
-			M:                  m,
-			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
-			Scopes:             backend.CancellationScopes,
+		}, backend.UpdateConfiguration{
+			M:      m,
+			Opts:   opts,
+			Scopes: backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:

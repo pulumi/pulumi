@@ -83,18 +83,38 @@ type MockBackend struct {
 	GetGHAppIntegrationF            func(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
 	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
 	CurrentUserF                    func() (string, []string, *workspace.TokenInformation, error)
-	PreviewF                        func(context.Context, Stack,
-		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF func(context.Context, Stack,
-		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, error)
-	RefreshF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	DestroyF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	WatchF func(context.Context, Stack,
-		UpdateOperation, []string) error
+	PreviewF                        func(
+		context.Context,
+		StackUpdateOperation,
+		UpdateConfiguration,
+	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	UpdateF func(
+		context.Context,
+		StackUpdateOperation,
+		UpdateConfiguration,
+	) (sdkDisplay.ResourceChanges, error)
+	ImportF func(
+		context.Context,
+		StackUpdateOperation,
+		UpdateConfiguration,
+		[]deploy.Import,
+	) (sdkDisplay.ResourceChanges, error)
+	RefreshF func(
+		context.Context,
+		StackUpdateOperation,
+		UpdateConfiguration,
+	) (sdkDisplay.ResourceChanges, error)
+	DestroyF func(
+		context.Context,
+		StackUpdateOperation,
+		UpdateConfiguration,
+	) (sdkDisplay.ResourceChanges, error)
+	WatchF func(
+		context.Context,
+		StackUpdateOperation,
+		UpdateConfiguration,
+		[]string,
+	) error
 	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
 
@@ -298,56 +318,72 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation, events chan<- engine.Event,
+func (be *MockBackend) Preview(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	if be.PreviewF != nil {
-		return be.PreviewF(ctx, stack, op)
+		return be.PreviewF(ctx, op, cfg)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Update(ctx context.Context, stack Stack,
-	op UpdateOperation, events chan<- engine.Event,
+func (be *MockBackend) Update(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	if be.UpdateF != nil {
-		return be.UpdateF(ctx, stack, op)
+		return be.UpdateF(ctx, op, cfg)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Import(ctx context.Context, stack Stack,
-	op UpdateOperation, imports []deploy.Import,
+func (be *MockBackend) Import(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, error) {
 	if be.ImportF != nil {
-		return be.ImportF(ctx, stack, op, imports)
+		return be.ImportF(ctx, op, cfg, imports)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
-	op UpdateOperation,
+func (be *MockBackend) Refresh(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
 ) (sdkDisplay.ResourceChanges, error) {
 	if be.RefreshF != nil {
-		return be.RefreshF(ctx, stack, op)
+		return be.RefreshF(ctx, op, cfg)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
-	op UpdateOperation,
+func (be *MockBackend) Destroy(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
 ) (sdkDisplay.ResourceChanges, error) {
 	if be.DestroyF != nil {
-		return be.DestroyF(ctx, stack, op)
+		return be.DestroyF(ctx, op, cfg)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Watch(ctx context.Context, stack Stack,
-	op UpdateOperation, paths []string,
+func (be *MockBackend) Watch(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	paths []string,
 ) error {
 	if be.WatchF != nil {
-		return be.WatchF(ctx, stack, op, paths)
+		return be.WatchF(ctx, op, cfg, paths)
 	}
 	panic("not implemented")
 }
@@ -359,8 +395,8 @@ func (be *MockBackend) CheckApply(ctx context.Context, stack Stack) error {
 func (be *MockBackend) BeginApply(
 	ctx context.Context,
 	kind apitype.UpdateKind,
-	stack Stack,
-	op *UpdateOperation,
+	op *StackUpdateOperation,
+	cfg *UpdateConfiguration,
 	opts ApplierOptions,
 ) (Application, *deploy.Target, chan<- engine.Event, <-chan bool, error) {
 	panic("not implemented")

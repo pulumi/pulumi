@@ -51,7 +51,7 @@ func (b *diyBackend) newUpdate(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
 	ref *diyBackendReference,
-	op backend.UpdateOperation,
+	op backend.StackUpdateOperation,
 ) (*deploy.Target, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 

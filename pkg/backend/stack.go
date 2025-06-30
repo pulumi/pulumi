@@ -79,47 +79,62 @@ func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackRefer
 // PreviewStack previews changes to this stack.
 func PreviewStack(
 	ctx context.Context,
-	s Stack,
-	op UpdateOperation,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
 	events chan<- engine.Event,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	return s.Backend().Preview(ctx, s, op, events)
+	return op.Stack.Backend().Preview(ctx, op, cfg, events)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(
 	ctx context.Context,
-	s Stack,
-	op UpdateOperation,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
 	events chan<- engine.Event,
 ) (display.ResourceChanges, error) {
-	return s.Backend().Update(ctx, s, op, events)
+	return op.Stack.Backend().Update(ctx, op, cfg, events)
 }
 
 // ApplyStack applies a given operation to the passed stack.
 func ApplyStack(
 	ctx context.Context,
 	kind apitype.UpdateKind,
-	stack Stack,
-	op UpdateOperation,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	opts ApplierOptions,
+	events chan<- engine.Event,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	return ApplyStacks(ctx, kind, []StackUpdateOperation{op}, cfg, opts, events)
+}
+
+// ApplyStacks applies the given operations to the passed stacks in a single deployment.
+func ApplyStacks(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	sops []StackUpdateOperation,
+	cfg UpdateConfiguration,
 	opts ApplierOptions,
 	events chan<- engine.Event,
 ) (*deploy.Plan, display.ResourceChanges, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
 
+	stack := sops[0].Stack
+	op := sops[0]
+
 	b := stack.Backend()
 
 	stackRef := stack.Ref()
 	actionLabel := ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != backendDisplay.DisplayWatch {
-		fmt.Printf(op.Opts.Display.Color.Colorize(
+	if !cfg.Opts.Display.JSONDisplay && cfg.Opts.Display.Type != backendDisplay.DisplayWatch {
+		fmt.Printf(cfg.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stackRef)
 	}
 
 	// Begin the apply on the backend.
-	app, target, appEvents, appEventsDone, err := b.BeginApply(ctx, kind, stack, &op, opts)
+	app, target, appEvents, appEventsDone, err := b.BeginApply(ctx, kind, &op, &cfg, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -136,7 +151,7 @@ func ApplyStack(
 	displayDone := make(chan bool)
 	go backendDisplay.ShowEvents(
 		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, app.Permalink(),
-		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+		displayEvents, displayDone, cfg.Opts.Display, opts.DryRun)
 
 	// Create the channel on which we'll receive events from the engine and kick off a Goroutine to forward them on to
 	// appropriate listeners:
@@ -145,7 +160,7 @@ func ApplyStack(
 	//	 - the caller, if the caller provided an events channel
 	engineEvents := make(chan engine.Event)
 
-	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	scope := cfg.Scopes.NewScope(engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		for e := range engineEvents {
@@ -204,22 +219,22 @@ func ApplyStack(
 	var updateErr error
 	switch kind {
 	case apitype.PreviewUpdate:
-		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
+		plan, changes, updateErr = engine.Update(update, engineCtx, cfg.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Update(update, engineCtx, cfg.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
-		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+		_, changes, updateErr = engine.Import(update, engineCtx, cfg.Opts.Engine, cfg.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		if op.Opts.Engine.RefreshProgram {
-			_, changes, updateErr = engine.RefreshV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		if cfg.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(update, engineCtx, cfg.Opts.Engine, opts.DryRun)
 		} else {
-			_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+			_, changes, updateErr = engine.Refresh(update, engineCtx, cfg.Opts.Engine, opts.DryRun)
 		}
 	case apitype.DestroyUpdate:
-		if op.Opts.Engine.DestroyProgram {
-			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		if cfg.Opts.Engine.DestroyProgram {
+			_, changes, updateErr = engine.DestroyV2(update, engineCtx, cfg.Opts.Engine, opts.DryRun)
 		} else {
-			_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+			_, changes, updateErr = engine.Destroy(update, engineCtx, cfg.Opts.Engine, opts.DryRun)
 		}
 	case apitype.StackImportUpdate, apitype.RenameUpdate:
 		contract.Failf("unexpected %s event", kind)
@@ -261,26 +276,42 @@ func ApplyStack(
 }
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).
-func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
+func ImportStack(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
 	imports []deploy.Import,
 ) (display.ResourceChanges, error) {
-	return s.Backend().Import(ctx, s, op, imports)
+	return op.Stack.Backend().Import(ctx, op, cfg, imports)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
-	return s.Backend().Refresh(ctx, s, op)
+func RefreshStack(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+) (display.ResourceChanges, error) {
+	return op.Stack.Backend().Refresh(ctx, op, cfg)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
-	return s.Backend().Destroy(ctx, s, op)
+func DestroyStack(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+) (display.ResourceChanges, error) {
+	return op.Stack.Backend().Destroy(ctx, op, cfg)
 }
 
 // WatchStack watches the projects working directory for changes and automatically updates the
 // active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) error {
-	return s.Backend().Watch(ctx, s, op, paths)
+func WatchStack(
+	ctx context.Context,
+	op StackUpdateOperation,
+	cfg UpdateConfiguration,
+	paths []string,
+) error {
+	return op.Stack.Backend().Watch(ctx, op, cfg, paths)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
