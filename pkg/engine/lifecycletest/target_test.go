@@ -656,8 +656,12 @@ func destroySpecificTargets(
 
 			deleted := make(map[resource.URN]bool)
 			for _, entry := range entries {
-				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
-				deleted[entry.Step.URN()] = true
+				if entry.Step.Op() == deploy.OpDelete {
+					deleted[entry.Step.URN()] = true
+				} else {
+					// If its not deleted it must be a same.
+					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+				}
 			}
 
 			for _, target := range p.Options.Targets.Literals() {
@@ -1783,8 +1787,11 @@ func destroySpecificTargetsWithChildren(
 
 			deleted := make(map[resource.URN]bool)
 			for _, entry := range entries {
-				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
-				deleted[entry.Step.URN()] = true
+				if entry.Step.Op() == deploy.OpDelete {
+					deleted[entry.Step.URN()] = true
+				} else {
+					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+				}
 			}
 
 			for _, target := range p.Options.Targets.Literals() {

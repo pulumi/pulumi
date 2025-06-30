@@ -466,7 +466,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// At this point we have generated the set of resources above that we would normally want to
 		// delete.  However, if the user provided -target's we will only actually delete the specific
 		// resources that are in the set explicitly asked for.
-		deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
+		sameSteps, deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
 		if err != nil {
@@ -474,6 +474,13 @@ func (ex *deploymentExecutor) performPostSteps(
 			return err
 		}
 
+		// Execute all the same steps together. TODO: We _could_ parallelize these if we worked out the
+		// dependency graph between them, but for now we just run them serially, same steps are guaranteed to
+		// be fast.
+		tok := ex.stepExec.ExecuteSerial(sameSteps)
+		tok.Wait(ctx)
+
+		// Then schedule the deletions
 		deleteChains := ex.stepGen.ScheduleDeletes(deleteSteps)
 
 		// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
