@@ -1812,7 +1812,7 @@ func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
 	if aliased {
 		urn = alias
 	}
-	return !sg.sames[urn] && !sg.updates[urn] && !sg.replaces[urn] && !sg.reads[urn] && !sg.refreshes[urn]
+	return sg.sames[urn] || sg.updates[urn] || sg.replaces[urn] || sg.reads[urn] || sg.refreshes[urn]
 	// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 	// delete steps for the same URN if the old checkpoint contained pending deletes.
 }
@@ -1832,7 +1832,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 				continue
 			}
 
-			if sg.isOperatedOn(res.URN) {
+			if !sg.isOperatedOn(res.URN) {
 				// We also keep track of dependents as we find them in order to exclude
 				// transitive dependents as well.
 				var add bool
@@ -1959,7 +1959,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
 					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
-				} else if sg.isOperatedOn(res.URN) {
+				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
 					if !res.PendingReplacement {
