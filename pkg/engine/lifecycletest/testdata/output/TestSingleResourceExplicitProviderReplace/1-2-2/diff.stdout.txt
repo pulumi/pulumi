@@ -1,9 +1,9 @@
 <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=a3f7735c-a202-4f88-bcb9-7b26ca4e8671]
+<{%fg 1%}>    [id=ec659231-7c22-40c3-b297-fdd162270e04]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::616b7eb2-c9b1-4824-a585-76566c7d9af0]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::42c56c20-c7af-4554-bb6b-a4efc6f60b30]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=616b7eb2-c9b1-4824-a585-76566c7d9af0]
+<{%fg 1%}>    [id=42c56c20-c7af-4554-bb6b-a4efc6f60b30]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>

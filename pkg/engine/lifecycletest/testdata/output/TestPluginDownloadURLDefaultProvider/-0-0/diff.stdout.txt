@@ -1,9 +1,8 @@
 <{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_get.pulumi.com]
-<{%reset%}><{%fg 2%}>    pluginDownloadURL: <{%reset%}><{%fg 2%}>"get.pulumi.com"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA::Foo: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA::Foo::foo]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_get.pulumi.com::1ffe2ba7-7148-4524-a798-5d16f2a43170]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_get.pulumi.com::cc99b11e-f373-4ad7-9963-cc52ab27f262]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
 

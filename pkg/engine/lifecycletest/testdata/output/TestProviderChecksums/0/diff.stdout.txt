@@ -1,8 +1,5 @@
 <{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%fg 2%}>    pluginChecksums: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>        windows-x64: <{%reset%}><{%fg 2%}>"0001020304"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>

@@ -1,4 +1,7 @@
-<{%fg 1%}>- pkgA:m:typA: (delete)
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=08bae117-49b7-45be-aa1e-15631f7239d3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
 <{%fg 1%}>    [id=created-id]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

@@ -1,23 +1,23 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=da9b29e6-f397-461d-b999-344dc005d554]
+<{%reset%}>    [id=15bdbb12-210e-4280-9ceb-34b1341142e0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
-<{%reset%}>    name      : <{%reset%}><{%reset%}>"testingBase"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>    version   : <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}>    name   : <{%reset%}><{%reset%}>"testingBase"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::da9b29e6-f397-461d-b999-344dc005d554]
-<{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
-<{%reset%}>    [id=db2e3385-bc6b-46b5-b459-5060c9d4b77d]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
-<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
-<{%reset%}>    name      : <{%reset%}><{%reset%}>"testingExt"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>    version   : <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::15bdbb12-210e-4280-9ceb-34b1341142e0]
 <{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::db2e3385-bc6b-46b5-b459-5060c9d4b77d]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::8259bf71-aa34-4019-8f9e-5530973263de]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
+<{%reset%}>    [id=8259bf71-aa34-4019-8f9e-5530973263de]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    name   : <{%reset%}><{%reset%}>"testingExt"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
 

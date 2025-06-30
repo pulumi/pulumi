@@ -1,12 +1,12 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=8185d432-fabd-4b49-b505-13466935d36c]
+<{%reset%}>    [id=13798eb7-7d67-49b6-992f-9495bf899470]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
 <{%reset%}><{%reset%}>    <{%fg 2%}>= pkgA:m:typA: (import)
 <{%reset%}>        [id=imported-id]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::8185d432-fabd-4b49-b505-13466935d36c]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::13798eb7-7d67-49b6-992f-9495bf899470]
 <{%reset%}><{%reset%}>        baz : <{%reset%}><{%reset%}>2<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        foo : <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        frob: <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>

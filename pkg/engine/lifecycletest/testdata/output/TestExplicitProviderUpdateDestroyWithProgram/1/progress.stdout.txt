@@ -4,10 +4,10 @@
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA prov <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~version<{%reset%}><{%reset%}>]
  <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA prov <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~version<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA prov <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA prov <{%fg 1%}>deleted<{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 

@@ -2,13 +2,13 @@
 
 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA default_1_0_0_http_/example.com <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
- <{%reset%}>  <{%reset%}> pulumi:providers:pkgA default_1_0_0_http_/example.com <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:providers:pkgA default_1_0_0_http_/example.com <{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%reset%}><{%reset%}> 
- <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgExt default_0_5_0 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
- <{%reset%}>  <{%reset%}> pulumi:providers:pkgExt default_0_5_0 <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgExt:m:typA resB <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgExt default_0_5_0 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgExt:m:typA resB <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:providers:pkgExt default_0_5_0 <{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged

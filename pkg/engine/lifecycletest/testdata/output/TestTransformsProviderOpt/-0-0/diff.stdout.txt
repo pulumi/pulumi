@@ -4,23 +4,23 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::implicit]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::explicitProvider]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::184c1653-9a92-4c76-bb98-d6a727d0639e]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::08c3ce7c-0648-4ce0-8af0-09dc6e1b1d35]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::implicitProvider]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::b6a46835-b483-45ea-936a-d052533e88a9]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::8e86d169-4bce-4f0b-b344-f7cd77714ca6]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::explicitProvidersMap]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::184c1653-9a92-4c76-bb98-d6a727d0639e]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::08c3ce7c-0648-4ce0-8af0-09dc6e1b1d35]
 <{%reset%}><{%reset%}><{%fg 2%}>+ xmy:component:resource: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::xmy:component:resource::component]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::xmy:component:resource$pkgA:m:typA::parentedResource]
-<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::b6a46835-b483-45ea-936a-d052533e88a9]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::08c3ce7c-0648-4ce0-8af0-09dc6e1b1d35]
 <{%reset%}><{%reset%}><{%fg 2%}>+ ymy:component:resource: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::ymy:component:resource::another-component]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::ymy:component:resource$pkgA:m:typA::parentedResource]
-<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::b6a46835-b483-45ea-936a-d052533e88a9]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::8e86d169-4bce-4f0b-b344-f7cd77714ca6]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 9 created<{%reset%}>
 

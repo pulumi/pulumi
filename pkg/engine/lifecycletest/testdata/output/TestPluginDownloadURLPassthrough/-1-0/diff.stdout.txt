@@ -1,12 +1,10 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=487726bd-c700-4105-ba46-39225b2857b9]
+<{%reset%}>    [id=dd4f2839-1051-46d4-a39e-00d12d7c6535]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
-<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
-<{%reset%}>    pluginDownloadURL: <{%reset%}><{%reset%}>"get.pulumi.com/${VERSION}"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=bee00bb9-438f-4c49-8864-c3ba9f197034]
+<{%reset%}>    [id=22ec44ff-cfe0-45d9-a6b6-bdeda0c4c3a2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::487726bd-c700-4105-ba46-39225b2857b9]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::dd4f2839-1051-46d4-a39e-00d12d7c6535]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
 

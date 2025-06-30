@@ -4,14 +4,13 @@
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgA:m:typA resB <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
- <{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%reset%}><{%reset%}> 
- <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%reset%}><{%reset%}> 

@@ -1,13 +1,13 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=63e18bd8-9097-4611-a15c-84bdba0962dd]
+<{%reset%}>    [id=b0a7cb99-53da-42e3-b3fc-61862bf0428b]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=83634ab0-2294-4dbc-a65d-91ecaca9b4cc]
+<{%fg 1%}>    [id=eb13804d-f9e9-45a5-90c9-eb53d6fc4dfe]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=8384474b-afcc-466f-ae54-2e43b3a15f77]
+<{%reset%}>    [id=e94e9d65-509d-4ff0-a1f7-31a1ea1ae55b]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"

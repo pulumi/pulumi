@@ -7,12 +7,12 @@
  <{%fg 3%}>~ <{%reset%}> pkgA:index:typA target <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 2%}>+foo<{%reset%}><{%reset%}>]
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgB default_2_0_0 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgB default_2_0_0 <{%fg 2%}>created<{%reset%}> 
- <{%bold%}><{%reset%}>  <{%reset%}> pkgB:index:typA unrelated <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::f38f7c6c-2466-408a-924c-9a0b75d4b575 for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet, this is due to a change of providers mixed with --target. Change your program back to the original providers<{%reset%}>
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgB:index:typA unrelated <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::c9acb55f-41a4-44f9-9f5d-ca3c5c2f7d6c for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet, this is due to a change of providers mixed with --target. Change your program back to the original providers<{%reset%}>
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test <{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgB:index:typA unrelated <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pkgB:index:typA (unrelated):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>provider urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::f38f7c6c-2466-408a-924c-9a0b75d4b575 for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet, this is due to a change of providers mixed with --target. Change your program back to the original providers<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>provider urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::c9acb55f-41a4-44f9-9f5d-ca3c5c2f7d6c for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet, this is due to a change of providers mixed with --target. Change your program back to the original providers<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>

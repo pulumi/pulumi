@@ -1,14 +1,12 @@
 <{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/default]
-<{%reset%}><{%fg 2%}>    pluginDownloadURL: <{%reset%}><{%fg 2%}>"example.com/default"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>    version          : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:r:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:r:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/default::01e076dc-9d07-4304-a77e-c0c5de5de395]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/default::b76aff9c-b989-4eec-8227-fab974abdc67]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
-<{%reset%}><{%fg 2%}>    pluginDownloadURL: <{%reset%}><{%fg 2%}>"example.com/default"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>    version          : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 
