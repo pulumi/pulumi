@@ -9,7 +9,7 @@
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - secretOutputNames: <{%reset%}><{%fg 1%}>[]<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pulumi: (delete)
-<{%fg 1%}>    [id=2c72d37e-2472-4420-b5a4-ecc46ff52ef1]
+<{%fg 1%}>    [id=880a44ca-7c5a-401d-b629-e3250db3853a]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
 

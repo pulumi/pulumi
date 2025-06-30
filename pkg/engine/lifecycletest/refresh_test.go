@@ -1280,9 +1280,8 @@ func TestRefreshWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1416,9 +1415,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1546,9 +1544,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1681,9 +1678,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1824,9 +1820,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1938,9 +1933,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 			UpdateOptions: engine.UpdateOptions{
 				Parallel: parallel,
 			},
@@ -2065,9 +2059,8 @@ func TestRefreshWithAlias(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 

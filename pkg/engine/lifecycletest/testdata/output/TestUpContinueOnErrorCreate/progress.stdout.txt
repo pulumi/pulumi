@@ -6,6 +6,12 @@
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
  <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider did not return an ID from Create<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider did not return an ID from Create<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing3 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing3 <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing3 <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%fg 2%}>created<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA independent1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
@@ -18,6 +24,12 @@
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pkgB:m:typB (failing):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+
+  <{%fg 12%}>pkgB:m:typB (failing2):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>provider did not return an ID from Create<{%reset%}>
+
+  <{%fg 12%}>pkgB:m:typB (failing3):<{%reset%}>
     <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
 
   <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>

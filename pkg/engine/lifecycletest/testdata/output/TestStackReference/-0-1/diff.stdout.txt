@@ -1,0 +1,15 @@
+<{%reset%}>  pulumi:providers:pulumi: (same)
+<{%reset%}>    [id=416e1394-e4d0-4590-a23d-99a19d16ecc5]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
+<{%reset%}><{%reset%}><{%fg 14%}>> pulumi:pulumi:StackReference: (read)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
+<{%reset%}><{%fg 3%}>  ~ name: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>other<{%reset%}><{%fg 1%}>2<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>other<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 14%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ outputs          : <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 2%}>      + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%fg 2%}>  + secretOutputNames: <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

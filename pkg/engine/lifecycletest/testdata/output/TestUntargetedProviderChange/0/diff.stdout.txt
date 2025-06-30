@@ -1,0 +1,15 @@
+<{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:index:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:index:typA::target]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::explicit]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:index:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:index:typA::unrelated]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::explicit::c54f4d7e-f98d-49a7-aaf4-1eac508a9c2b]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

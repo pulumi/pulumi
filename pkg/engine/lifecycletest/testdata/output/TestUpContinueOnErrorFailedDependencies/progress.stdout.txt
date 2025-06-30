@@ -1,0 +1,38 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgB default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgB default <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB parent <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB parent <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pkgB:m:typB parent <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB deletedWith <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB deletedWith <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pkgB:m:typB deletedWith <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB propDep <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB propDep <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pkgB:m:typB propDep <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA independent <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA independent <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgB:m:typB (deletedWith):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+
+  <{%fg 12%}>pkgB:m:typB (parent):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+
+  <{%fg 12%}>pkgB:m:typB (propDep):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

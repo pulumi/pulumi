@@ -1,0 +1,42 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA A <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 2%}>+A<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA A <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 2%}>+A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA B <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> 
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA B <{%fg 10%}>created replacement<{%reset%}> 
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA B <{%bold%}><{%fg 13%}>replacing<{%reset%}> 
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA B <{%fg 13%}>replaced<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA C <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA C <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA D <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA D <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA E <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA F <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA F <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA F <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA F <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA G <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA G <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA G <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA G <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA H <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA I <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA J <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA K <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA L <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA B <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA G <{%bold%}><{%fg 9%}>deleting original<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA F <{%bold%}><{%fg 9%}>deleting original<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA B <{%fg 9%}>deleted original<{%reset%}> 
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA F <{%fg 9%}>deleted original<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA G <{%fg 9%}>deleted original<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 3 updated<{%reset%}>
+    <{%fg 13%}>+-3 replaced<{%reset%}>
+    <{%bold%}>6 changes<{%reset%}>. 6 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
