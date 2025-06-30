@@ -1,0 +1,17 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::d0859082-9e12-4b8e-a7db-d9a9524a31e9]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::d0859082-9e12-4b8e-a7db-d9a9524a31e9]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>         <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    |local|test  
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

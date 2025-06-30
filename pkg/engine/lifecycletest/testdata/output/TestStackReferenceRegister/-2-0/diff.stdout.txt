@@ -1,8 +1,8 @@
 <{%reset%}>  pulumi:providers:pulumi: (same)
-<{%reset%}>    [id=ab639f55-6d2c-4f2d-b806-33168050b3d6]
+<{%reset%}>    [id=6e80e70a-fe63-475c-85e3-929625ebaca0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:pulumi:StackReference: (same)
-<{%reset%}>    [id=7eaf98fa-ad7e-4c9f-8ab1-1da701395f3a]
+<{%reset%}>    [id=80479560-70d7-4e4b-9250-6e30b22f3273]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    outputs          : <{%reset%}><{%reset%}>{

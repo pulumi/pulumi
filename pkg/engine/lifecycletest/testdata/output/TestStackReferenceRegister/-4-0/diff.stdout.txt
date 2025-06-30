@@ -1,5 +1,5 @@
 <{%fg 1%}>- pulumi:pulumi:StackReference: (delete)
-<{%fg 1%}>    [id=7eaf98fa-ad7e-4c9f-8ab1-1da701395f3a]
+<{%fg 1%}>    [id=80479560-70d7-4e4b-9250-6e30b22f3273]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
 <{%reset%}><{%fg 1%}>    name: <{%reset%}><{%fg 1%}>"other"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
@@ -9,7 +9,7 @@
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - secretOutputNames: <{%reset%}><{%fg 1%}>[]<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pulumi: (delete)
-<{%fg 1%}>    [id=ab639f55-6d2c-4f2d-b806-33168050b3d6]
+<{%fg 1%}>    [id=6e80e70a-fe63-475c-85e3-929625ebaca0]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>

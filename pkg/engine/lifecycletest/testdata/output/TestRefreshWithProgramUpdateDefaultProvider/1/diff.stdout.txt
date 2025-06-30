@@ -1,0 +1,13 @@
+<{%fg 3%}>~ pulumi:providers:pkgA: (update)
+<{%reset%}>    [id=e6dd533b-c980-413c-a565-1227cb7d73b3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%fg 3%}>  ~ auth: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>up<{%reset%}><{%reset%}>auth<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>refresh<{%reset%}><{%reset%}>auth<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=129639f2-971e-4256-b233-265d1d43163b]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

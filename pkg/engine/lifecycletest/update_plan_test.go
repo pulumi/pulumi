@@ -189,10 +189,9 @@ func TestUnplannedCreate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
-			UpdateOptions:    UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1387,10 +1386,9 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
-			UpdateOptions:    UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1621,10 +1619,9 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
-			UpdateOptions:    UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 

@@ -1,0 +1,21 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource I <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource N <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%fg 1%}>deleted<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource I <{%fg 1%}>deleted<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource N <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource G <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource G <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource H <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource H <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Component D <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Component A <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 7 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

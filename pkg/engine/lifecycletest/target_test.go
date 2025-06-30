@@ -1523,7 +1523,6 @@ func TestReplaceSpecificTargets(t *testing.T) {
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
-	p.Options.SkipDisplayTests = true
 	getURN := func(name string) resource.URN {
 		return pickURN(t, urns, complexTestDependencyGraphNames, name)
 	}
@@ -1769,7 +1768,6 @@ func destroySpecificTargetsWithChildren(
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
 	p.Options.T = t
-	p.Options.SkipDisplayTests = true
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -4320,7 +4318,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	options := lt.TestUpdateOptions{T: t, HostF: hostF}
 	p := &lt.TestPlan{}
 
 	project := p.GetProject()
@@ -4814,9 +4812,8 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 	opts := lt.TestUpdateOptions{
-		T:                t,
-		HostF:            host,
-		SkipDisplayTests: true,
+		T:     t,
+		HostF: host,
 		UpdateOptions: UpdateOptions{
 			LocalPolicyPacks: []LocalPolicyPack{
 				{

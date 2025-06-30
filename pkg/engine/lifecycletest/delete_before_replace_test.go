@@ -750,7 +750,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	options := lt.TestUpdateOptions{T: t, HostF: hostF}
 	p := &lt.TestPlan{}
 
 	project := p.GetProject()

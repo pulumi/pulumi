@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pulumi: (same)
-<{%reset%}>    [id=2c72d37e-2472-4420-b5a4-ecc46ff52ef1]
+<{%reset%}>    [id=880a44ca-7c5a-401d-b629-e3250db3853a]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
 <{%reset%}><{%reset%}>  pulumi:pulumi:StackReference: (same)
 <{%reset%}>    [id=other]

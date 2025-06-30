@@ -1,0 +1,9 @@
+<{%reset%}>  pulumi:providers:pkg: (same)
+<{%reset%}>    [id=1aaebeed-1b77-4d52-898c-50360bb859a4]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::provA]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    value: <{%reset%}><{%reset%}>"100"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

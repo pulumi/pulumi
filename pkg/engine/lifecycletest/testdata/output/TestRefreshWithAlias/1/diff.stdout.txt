@@ -1,0 +1,12 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=f65ff767-9222-4512-8146-6d354980decc]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typB: (same)
+<{%reset%}>    [id=3e6191f4-b79c-4ff5-ba0e-aadb6d0ca698]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resA]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
