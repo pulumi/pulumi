@@ -1722,7 +1722,9 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 						}
 					}
 				}
-				require.True(t, foundError, "expected to find an error in the stack events")
+				events, err := json.Marshal(stack.Events)
+				require.NoError(t, err, "failed to marshal stack events")
+				require.True(t, foundError, "expected to find an error in the stack events, got %s", events)
 			},
 		})
 
@@ -1734,6 +1736,4 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 		t.Fatal("Test didn't finish in time")
 	case <-done:
 	}
-
-	t.Logf("done here 2\n")
 }
