@@ -17,7 +17,6 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"net/url"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -99,7 +98,7 @@ func createExplainPreviewRequest(
 
 func createGenerateStackReportRequest(
 	stack StackIdentifier,
-	baseURL string,
+	stackConsoleURL string,
 ) apitype.CopilotGenerateStackReportRequest {
 	return apitype.CopilotGenerateStackReportRequest{
 		CopilotRequest: apitype.CopilotRequest{
@@ -107,7 +106,7 @@ func createGenerateStackReportRequest(
 				Client: apitype.CopilotClientState{
 					CloudContext: apitype.CopilotCloudContext{
 						OrgID: stack.Owner,
-						URL:   getPulumiStackPath(baseURL, stack),
+						URL:   stackConsoleURL,
 					},
 				},
 			},
@@ -117,11 +116,6 @@ func createGenerateStackReportRequest(
 			Params: apitype.CopilotGenerateStackReportParams{},
 		},
 	}
-}
-
-func getPulumiStackPath(baseURL string, stack StackIdentifier) string {
-	p, _ := url.JoinPath(baseURL, stack.Owner, stack.Project, stack.Stack.String())
-	return p
 }
 
 // extractCopilotResponse parses the Copilot API response and extracts the summary content

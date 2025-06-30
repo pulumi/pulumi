@@ -1473,9 +1473,9 @@ func (pc *Client) ExplainPreviewWithCopilot(
 func (pc *Client) GenerateStackReportWithCopilot(
 	ctx context.Context,
 	stack StackIdentifier,
-	baseURL string,
+	stackConsoleURL string,
 ) (string, error) {
-	request := createGenerateStackReportRequest(stack, baseURL)
+	request := createGenerateStackReportRequest(stack, stackConsoleURL)
 	return pc.callCopilot(ctx, request)
 }
 

@@ -1330,11 +1330,16 @@ func (b *cloudBackend) Report(ctx context.Context, stack backend.Stack,
 		return "", err
 	}
 
+	stackConsoleUrl, err := b.StackConsoleURL(stack.Ref())
+	if err != nil {
+		return "", err
+	}
+
 	displayOpts := display.Options{
 		ShowResourceChanges: true,
 	}
 	display.RenderCopilotThinking(displayOpts)
-	report, err := b.client.GenerateStackReportWithCopilot(ctx, stackID, b.CloudConsoleURL())
+	report, err := b.client.GenerateStackReportWithCopilot(ctx, stackID, stackConsoleUrl)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			// Format a better error message for the user
