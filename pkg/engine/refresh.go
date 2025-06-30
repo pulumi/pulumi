@@ -74,7 +74,7 @@ func Refresh(
 }
 
 func newRefreshSource(
-	ctx context.Context, client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main,
+	ctx context.Context, opts *deploymentOptions, proj *workspace.Project, pwd, main,
 	projectRoot string, target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	// Like update, we need to gather the set of plugins necessary to refresh everything in the snapshot. While we don't

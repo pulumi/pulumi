@@ -456,7 +456,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 }
 
 func newUpdateSource(ctx context.Context,
-	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
+	opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	//

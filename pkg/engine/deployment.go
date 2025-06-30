@@ -164,7 +164,7 @@ type deploymentOptions struct {
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type deploymentSourceFunc func(
 	ctx context.Context,
-	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
+	opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
 
 type deploymentBuilder struct {
@@ -236,7 +236,7 @@ func (b *deploymentBuilder) enqueue(
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := b.opts.SourceFunc(
-		b.cancelCtx, ctx.BackendClient, b.opts, proj, pwd, main, projinfo.Root, target, plugctx)
+		b.cancelCtx, b.opts, proj, pwd, main, projinfo.Root, target, plugctx)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -351,7 +351,7 @@ func newDeployment(
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx)
+		cancelCtx, opts, proj, pwd, main, projinfo.Root, target, plugctx)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
