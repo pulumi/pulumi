@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1668,4 +1670,70 @@ func TestGetSchemaUsesCorrectVersion(t *testing.T) {
 	err = json.Unmarshal([]byte(stdout), &packageSpec)
 	require.NoError(t, err)
 	require.Equal(t, "3.6.0", packageSpec.Version)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19905
+func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
+	// We want to install the command provider
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	// The regression caused a hang where a remote component construct would
+	// never return.
+	timeout := time.After(3 * time.Minute)
+	done := make(chan bool)
+	go func() {
+		pulumiHome := t.TempDir()
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			NoParallel:      true, // We're modifying the env above
+			PulumiHomeDir:   pulumiHome,
+			Dir:             "component-error-resource",
+			RelativeWorkDir: "program",
+			PrepareProject: func(info *engine.Projinfo) error {
+				providerPath := filepath.Join(info.Root, "..", "provider")
+
+				// Install command provider
+				t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+				cmd := exec.Command("pulumi", "plugin", "install", "resource", "command", "1.0.4")
+				cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
+				out, err := cmd.CombinedOutput()
+				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+
+				// Install the provider's dependencies
+				installNodejsProviderDependencies(t, providerPath)
+
+				// Add the provider to our project
+				cmd = exec.Command("pulumi", "package", "add", providerPath)
+				cmd.Dir = info.Root
+				cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
+				out, err = cmd.CombinedOutput()
+				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+
+				return nil
+			},
+			Quick:         true,
+			ExpectFailure: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				foundError := false
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
+						t.Logf("DiagnosticEvent.Message: %s", event.DiagnosticEvent.Message)
+						if strings.Contains(event.DiagnosticEvent.Message, "exiting with error") {
+							foundError = true
+						}
+					}
+				}
+				events, err := json.Marshal(stack.Events)
+				require.NoError(t, err, "failed to marshal stack events")
+				require.True(t, foundError, "expected to find an error in the stack events, got %s", events)
+			},
+		})
+
+		done <- true
+	}()
+
+	select {
+	case <-timeout:
+		t.Fatal("Test didn't finish in time")
+	case <-done:
+	}
 }

@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -4490,4 +4491,59 @@ func TestParallelDiff(t *testing.T) {
 
 	// Wait for the diff to complete, but don't wait forever
 	assert.False(t, waitTimeout(&wg, 10*time.Second), "waiting for diff to complete timed out")
+}
+
+func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
+	t.Parallel()
+
+	constructCalled := false
+	done := make(chan struct{})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Always fail the create operation
+					return plugin.CreateResponse{}, errors.New("create failed intentionally")
+				},
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					// Try to register a resource, which should fail
+					_, err := monitor.RegisterResource("pkgA:m:typB", req.Name+"-child", true, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.Error(t, err)
+					constructCalled = true
+					// Hang until we end the test
+					<-done
+					return plugin.ConstructResponse{}, err
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.ErrorContains(t, err, "resource monitor shut down while waiting for construct to complete")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	// Run the update - it should complete with an error even though ConstructF hangs
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "create failed intentionally")
+	require.True(t, constructCalled)
+	close(done)
 }
