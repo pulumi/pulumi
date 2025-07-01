@@ -1519,6 +1519,23 @@ func (sg *stepGenerator) generateStepsFromDiff(
 // calls into continueStepsFromDiff and then validateSteps to continue the work that GenerateSteps would have
 // done with a synchronous diff.
 func (sg *stepGenerator) ContinueStepsFromDiff(event ContinueResourceDiffEvent) ([]Step, error) {
+	// If we're re-entering the step generator we need to handle the case that another step generation that
+	// ran between this event starting and its diff returning has marked this resource deleted and it now
+	// needs to be re-created.
+	urn := event.URN()
+	if sg.deletes[urn] {
+		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
+
+		// Unmark this resource as deleted, we now know it's being replaced instead.
+		delete(sg.deletes, urn)
+		sg.replaces[urn] = true
+		keys := sg.dependentReplaceKeys[urn]
+		return []Step{
+			NewReplaceStep(sg.deployment, event.Old(), event.New(), nil, nil, nil, false),
+			NewCreateReplacementStep(sg.deployment, event.Event(), event.Old(), event.New(), keys, nil, nil, false),
+		}, nil
+	}
+
 	updateSteps, err := sg.continueStepsFromDiff(event)
 	if err != nil {
 		return nil, err
@@ -2790,7 +2807,15 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
-	impossibleDependents := sg.urns
+	impossibleDependents := map[resource.URN]bool{}
+	// We can't just use sg.urns here because a resource may have started registration but not yet have been
+	// processed, so instead we have to iterate all the operation maps
+	for _, m := range []map[resource.URN]bool{sg.reads, sg.creates, sg.sames, sg.updates, sg.deletes, sg.replaces} {
+		for urn := range m {
+			impossibleDependents[urn] = true
+		}
+	}
+
 	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents, false) {
 		replace, keys, err := requiresReplacement(d)
 		if err != nil {
