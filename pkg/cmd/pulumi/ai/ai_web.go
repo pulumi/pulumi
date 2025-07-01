@@ -135,7 +135,7 @@ func newAIWebCommand() *cobra.Command {
 		aiwebcmd.appURL = "https://www.pulumi.com/ai"
 	}
 	cmd := &cobra.Command{
-		Use:   "web [prompt]",
+		Use:   "web <prompt|--no-auto-submit>",
 		Short: "Opens Pulumi AI in your local browser",
 		Long: `Opens Pulumi AI in your local browser
 
