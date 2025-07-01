@@ -4496,8 +4496,8 @@ func TestParallelDiff(t *testing.T) {
 func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	t.Parallel()
 
-	constructCalled := false
-	done := make(chan struct{})
+	done := make(chan bool)
+	defer close(done)
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -4516,9 +4516,7 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 						Parent: req.Parent,
 					})
 					require.Error(t, err)
-					constructCalled = true
-					// Hang until we end the test
-					<-done
+					done <- true // This will block until we read from the channel at the end of the test
 					return plugin.ConstructResponse{}, err
 				},
 			}, nil
@@ -4544,6 +4542,5 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
-	require.True(t, constructCalled)
-	close(done)
+	require.True(t, <-done)
 }
