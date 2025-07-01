@@ -457,11 +457,11 @@ func TestProvider_DeleteRequests(t *testing.T) {
 
 			// We have to configure before we can use Delete.
 			_, err := p.Configure(context.Background(), ConfigureRequest{})
-			assert.NoError(t, err, "Configure failed")
+			require.NoError(t, err, "Configure failed")
 
 			// Act.
 			_, err = p.Delete(context.Background(), tt.give)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Assert.
 			assert.NotNil(t, got, "Delete was not called")
@@ -757,14 +757,14 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			Outputs: props,
 			Timeout: 1000,
 		})
-		assert.NoError(t, err, "Delete failed")
+		require.NoError(t, err, "Delete failed")
 	}()
 
 	// Wait until delete request has been sent to Configure
 	// and then wait until Delete has finished.
 	<-deleting
 	_, err := p.Configure(context.Background(), ConfigureRequest{Inputs: props})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	<-done
 
 	s, ok := gotSecret.Kind.(*structpb.Value_StructValue)
@@ -946,7 +946,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		false,
 		nil,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, DiffUnknown, diff.Changes)
 
 	// Test that some other error is not ignored if reported by kubernetes

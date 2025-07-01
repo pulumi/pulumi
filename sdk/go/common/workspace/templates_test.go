@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // uses shared state in pulumi dir
@@ -111,7 +112,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateName, false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Root should point to Pulumi templates directory
@@ -155,7 +156,7 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateURL, false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, true, repository.ShouldDelete)
 
 			// Root should point to a subfolder of a Temp Dir
@@ -172,11 +173,11 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 			// SubDirectory should exist and contain the template files
 			yamlPath := filepath.Join(repository.SubDirectory, tt.yamlFile)
 			_, err = os.Stat(yamlPath)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Clean Up
 			err = repository.Delete()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -232,7 +233,7 @@ func TestRetrieveFileTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), ".", false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Both Root and SubDirectory just point to the (existing) specified folder
@@ -263,24 +264,24 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	setupTestData := func(t *testing.T, testDataDir string, files []string, directories []string) (string, string) {
 		err := os.MkdirAll(testDataDir, 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		projectDir := testDataDir + "/project"
 		err = os.MkdirAll(projectDir, 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		copyDestDir := testDataDir + "/tmp"
 		err = os.MkdirAll(copyDestDir, 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		for _, dirName := range directories {
 			err := os.MkdirAll(projectDir+"/"+dirName, 0o700)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		for _, fileName := range files {
 			err := os.WriteFile(projectDir+"/"+fileName, []byte("testing"), 0o600)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return projectDir, copyDestDir
@@ -293,13 +294,13 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 
@@ -310,13 +311,13 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 
@@ -327,13 +328,13 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// copy the same files again to test overwriting - expect error
 			err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
 			assert.Error(t, err)
@@ -347,16 +348,16 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// copy the same files again to test overwriting - expect no error with force
 			err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 
@@ -365,7 +366,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -374,14 +375,14 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the src directory in the destination dir to a file
 		err = os.RemoveAll(copyDestDir + "/src")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect error
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
@@ -393,7 +394,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -402,18 +403,18 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the src directory in the destination dir to a file
 		err = os.RemoveAll(copyDestDir + "/src")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Overwrite file over empty directory: force=false", func(t *testing.T) {
@@ -421,7 +422,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -430,14 +431,14 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
 		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect error
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
@@ -449,7 +450,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -458,18 +459,18 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
 		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Overwrite file over non-empty directory: force=true", func(t *testing.T) {
@@ -477,7 +478,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -486,21 +487,21 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
 		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// add a file to the dir
 		err = os.WriteFile(copyDestDir+"/Pulumi.dev.yaml/README.md", []byte("testing"), 0o600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

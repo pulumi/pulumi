@@ -576,7 +576,7 @@ func TestAliases(t *testing.T) {
 
 	var err error
 	_, err = snap.NormalizeURNReferences()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start again with a parent and child.
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1112,7 +1112,7 @@ func TestAliasURNs(t *testing.T) {
 
 	var err error
 	_, err = snap.NormalizeURNReferences()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start again with a parent and child.
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1248,7 +1248,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 		case 1:
 			// First test case, try and create a new B that aliases to A. First make the A like normal...
@@ -1257,7 +1257,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// ... then make B with an alias, it should error
 			_, err = monitor.RegisterResource(
@@ -1282,7 +1282,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 						makeSpecAlias("resA", "", "", ""),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// ... then try to make the A like normal. It should error that it's already been aliased away
 			_, err = monitor.RegisterResource(
@@ -1304,7 +1304,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 	// Run an update to create the starting A resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1358,21 +1358,21 @@ func TestCorrectResourceChosen(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
 				deploytest.ResourceOptions{Parent: respA.URN})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 		case 1:
 			// Next case, make "resA" and "resB with no parent and alias to have resA as its parent".
@@ -1381,7 +1381,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
@@ -1393,7 +1393,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 					},
 				},
 			)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -1407,7 +1407,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 
 	// Run an update for initial state with "resA", "resB with resA as its parent", and "resB with no parent".
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
@@ -1418,7 +1418,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	// Run the next case, with "resA" and "resB with no parent and alias to have resA as its parent".
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
@@ -1465,7 +1465,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		_, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1482,7 +1482,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
 	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
@@ -1496,11 +1496,11 @@ func TestComponentToCustomUpdate(t *testing.T) {
 				makeSpecAlias("", "prog::myType", "", ""),
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that A is now a custom
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	// Now two because we'll have a provider now
 	assert.Len(t, snap.Resources, 2)
@@ -1515,11 +1515,11 @@ func TestComponentToCustomUpdate(t *testing.T) {
 				makeSpecAlias("", "pkgA:m:typA", "", ""),
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	// Assert that A is now a custom
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	// Back to one because the provider should have been cleaned up as well
 	assert.Len(t, snap.Resources, 1)
@@ -1555,16 +1555,16 @@ func TestParentAlias(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource(
 			"prog:index:myStandardType", "resA", false, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if firstRun {
 			respB, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 				Parent: respB.URN,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		} else {
 			respB, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{
 				Parent: respA.URN,
@@ -1572,7 +1572,7 @@ func TestParentAlias(t *testing.T) {
 					makeSpecAliasWithNoParent("", "", "", "", true),
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 				Parent: respA.URN,
@@ -1580,7 +1580,7 @@ func TestParentAlias(t *testing.T) {
 					makeSpecAliasWithParent("", "", "", "", string(respB.URN)),
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -1594,7 +1594,7 @@ func TestParentAlias(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 
@@ -1609,7 +1609,7 @@ func TestParentAlias(t *testing.T) {
 			}
 			return err
 		}, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 }
@@ -1642,13 +1642,13 @@ func TestEmptyParentAlias(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource(
 			"prog:index:myStandardType", "resA", false, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if firstRun {
 			_, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{
 				Parent: respA.URN,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		} else {
 			_, err := monitor.RegisterResource("prog:index:myType", "resC", false, deploytest.ResourceOptions{
 				Parent: respA.URN,
@@ -1656,7 +1656,7 @@ func TestEmptyParentAlias(t *testing.T) {
 					makeSpecAliasWithParent("resB", "", "", "", ""),
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -1723,7 +1723,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			respB, err := monitor.RegisterResource(
 				"pkgA:m:typB",
@@ -1732,7 +1732,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 				deploytest.ResourceOptions{
 					Parent: respA.URN,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource(
 				"pkgA:m:typC",
@@ -1741,7 +1741,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 				deploytest.ResourceOptions{
 					Parent: respB.URN,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 		case 1:
 			// Delete "resA" and re-parent "resB" to the root but then fail before getting to resC.
@@ -1754,7 +1754,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 						"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB",
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return errors.New("something went bang")
 
@@ -1769,7 +1769,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 						"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB",
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource(
 				"pkgA:m:typC",
@@ -1778,7 +1778,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 				deploytest.ResourceOptions{
 					Parent: respB.URN,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -1792,7 +1792,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 
 	// Run an update for initial state with "resA", "resB", and "resC".
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
@@ -1822,7 +1822,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
@@ -1897,7 +1897,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 		case 1:
 			// Rename "resA" to "resAX" with an alias
@@ -1910,7 +1910,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 						makeSpecAlias("resA", "", "", ""),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -1924,7 +1924,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 
 	// Run an update for initial state with "resA"
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 2)
@@ -1933,7 +1933,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// Run the next case, resA should be aliased
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 2)

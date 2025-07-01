@@ -467,7 +467,7 @@ func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
 	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{}, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return importedPkg
 }
 

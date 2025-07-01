@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCopyDirWorksWithFilters(t *testing.T) {
@@ -27,13 +28,13 @@ func TestCopyDirWorksWithFilters(t *testing.T) {
 	content := []byte("hello world")
 	fs := afero.NewMemMapFs()
 	err := afero.WriteFile(fs, "/src/file.txt", content, 0o644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// filter always returns false so nothing is copied
 	err = CopyDir(fs, "/src", "/dst", func(f os.FileInfo) bool {
 		return false
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// assert that the file was not copied and thus should not exist
 	_, err = fs.Open("/dst/file.txt")
 	assert.True(t, os.IsNotExist(err))
@@ -43,12 +44,12 @@ func TestCopyDirWorksWithFilters(t *testing.T) {
 		return true
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// check that the file was copied
 	file, err := fs.Open("/dst/file.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer file.Close()
 	fileContent, err := afero.ReadAll(file)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(content), string(fileContent))
 }

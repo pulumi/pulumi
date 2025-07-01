@@ -114,14 +114,14 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	lastRequestAsVerbatim := func() (ret apitype.PatchUpdateVerbatimCheckpointRequest) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim", lastRequest.URL.Path)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return
 	}
 
 	lastRequestAsDelta := func() (ret apitype.PatchUpdateCheckpointDeltaRequest) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointdelta", lastRequest.URL.Path)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return
 	}
 
@@ -132,7 +132,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	handleDelta := func(req apitype.PatchUpdateCheckpointDeltaRequest) {
 		edits := []gotextdiff.TextEdit{}
 		if err := json.Unmarshal(req.DeploymentDelta, &edits); err != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		persistedState = json.RawMessage([]byte(gotextdiff.ApplyEdits(string(persistedState), edits)))
 		assert.Equal(t, req.CheckpointHash, fmt.Sprintf("%x", sha256.Sum256(persistedState)))
@@ -141,10 +141,10 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	typedPersistedState := func() apitype.DeploymentV3 {
 		var ud apitype.UntypedDeployment
 		err := json.Unmarshal(persistedState, &ud)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var d3 apitype.DeploymentV3
 		err = json.Unmarshal(ud.Deployment, &d3)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return d3
 	}
 
@@ -157,7 +157,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 				}}}
 				err := json.NewEncoder(rw).Encode(resp)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return
 			case "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim",
 				"/api/stacks/owner/project/stack/update/update-id/checkpointdelta":
@@ -165,12 +165,12 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 				rw.WriteHeader(200)
 				message := `{}`
 				reader, err := gzip.NewReader(req.Body)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer reader.Close()
 				rbytes, err := io.ReadAll(reader)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err = rw.Write([]byte(message))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
 			default:
 				panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
@@ -187,7 +187,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
 		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
 			StackIdentifier: stackID,
@@ -206,7 +206,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			{URN: resource.URN("urn-1")},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req1 := lastRequestAsVerbatim()
 	assert.Equal(t, 1, req1.SequenceNumber)
@@ -227,7 +227,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			{URN: resource.URN("urn-2")},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req2 := lastRequestAsDelta()
 	assert.Equal(t, 2, req2.SequenceNumber)
@@ -247,7 +247,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			{URN: resource.URN("urn-1")},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req3 := lastRequestAsDelta()
 	assert.Equal(t, 3, req3.SequenceNumber)
@@ -277,7 +277,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			type Dummy struct {

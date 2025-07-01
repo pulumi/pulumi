@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -220,7 +221,7 @@ func newLoader(t *testing.T, pkg, version string,
 	var ver semver.Version
 	if version != "" {
 		v, err := semver.ParseTolerant(version)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		ver = v
 	}
 	return &providerLoader{
@@ -314,7 +315,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
 		assert.False(t, ok)
@@ -322,7 +323,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		// "Same" the provider to add it to registry
 		err = r.Same(context.Background(), old)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Now we should be able to get it
 		p, ok = r.GetProvider(ref)
@@ -334,10 +335,10 @@ func TestNewRegistryOldState(t *testing.T) {
 		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 
 		ver, err := GetProviderVersion(old.Inputs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if ver != nil {
 			info, err := p.GetPluginInfo(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.True(t, info.Version.GTE(*ver))
 		}
 	}
@@ -363,7 +364,7 @@ func TestCRUD(t *testing.T) {
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
 		assert.False(t, ok)
@@ -371,7 +372,7 @@ func TestCRUD(t *testing.T) {
 
 		// "Same" the provider to add it to registry
 		err = r.Same(context.Background(), old)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Now we should be able to get it
 		p, ok = r.GetProvider(ref)
@@ -394,7 +395,7 @@ func TestCRUD(t *testing.T) {
 			Olds: olds,
 			News: news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
 		assert.Empty(t, check.Failures)
 
@@ -411,7 +412,7 @@ func TestCRUD(t *testing.T) {
 			Properties: check.Properties,
 			Timeout:    timeout,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotEqual(t, "", create.ID)
 		assert.NotEqual(t, UnconfiguredID, create.ID)
 		assert.NotEqual(t, UnknownID, create.ID)
@@ -440,7 +441,7 @@ func TestCRUD(t *testing.T) {
 			Olds: olds,
 			News: news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
 		assert.Empty(t, check.Failures)
 
@@ -457,7 +458,7 @@ func TestCRUD(t *testing.T) {
 			OldOutputs: olds,
 			NewInputs:  news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The old provider should still be registered.
@@ -473,7 +474,7 @@ func TestCRUD(t *testing.T) {
 			NewInputs:  check.Properties,
 			Timeout:    timeout,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, update.Properties)
 		assert.Equal(t, resource.StatusOK, update.Status)
 
@@ -500,7 +501,7 @@ func TestCRUD(t *testing.T) {
 			Outputs: resource.PropertyMap{},
 			Timeout: timeout,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, resp.Status)
 
 		_, ok = r.GetProvider(Reference{urn: urn, id: id})
@@ -549,7 +550,7 @@ func TestCRUDPreview(t *testing.T) {
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
 		assert.False(t, ok)
@@ -557,7 +558,7 @@ func TestCRUDPreview(t *testing.T) {
 
 		// "Same" the provider to add it to registry
 		err = r.Same(context.Background(), old)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Now we should be able to get it
 		p, ok = r.GetProvider(ref)
@@ -579,7 +580,7 @@ func TestCRUDPreview(t *testing.T) {
 			Olds: olds,
 			News: news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
 		assert.Empty(t, check.Failures)
 
@@ -604,7 +605,7 @@ func TestCRUDPreview(t *testing.T) {
 			Olds: olds,
 			News: news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
 		assert.Empty(t, check.Failures)
 
@@ -621,7 +622,7 @@ func TestCRUDPreview(t *testing.T) {
 			OldOutputs: olds,
 			NewInputs:  news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The original provider should be used because the config did not change.
@@ -646,7 +647,7 @@ func TestCRUDPreview(t *testing.T) {
 			Olds: olds,
 			News: news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
 		assert.Empty(t, check.Failures)
 
@@ -663,7 +664,7 @@ func TestCRUDPreview(t *testing.T) {
 			OldOutputs: olds,
 			NewInputs:  news,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, diff.Replace())
 
 		// The new provider should be not be registered; the registered provider should still be the original.
@@ -770,7 +771,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 		Olds: olds,
 		News: news,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
 	assert.Nil(t, check.Properties)
@@ -797,7 +798,7 @@ func TestCRUDBadVersion(t *testing.T) {
 		Olds: olds,
 		News: news,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
 	assert.Nil(t, check.Properties)
@@ -890,7 +891,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 				Olds: olds,
 				News: news,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Len(t, check.Failures, 1)
 			assert.Equal(t, "version", string(check.Failures[0].Property))
 			assert.Nil(t, check.Properties)

@@ -56,7 +56,7 @@ func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 		},
 	}
 	result, err := enumNameWithPackage("pulumiservice:index:WebhookFilters", s.Reference())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "pulumiservice.WebhookFilters", result)
 
 	// These are redundant, but serve to clarify our expectations around package alias names.

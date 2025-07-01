@@ -433,7 +433,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -648,7 +648,7 @@ func TestFindReadme(t *testing.T) {
 		nonExistentDir := filepath.Join(tmpDir, "does-not-exist")
 		readme, err := cmd.findReadme(ctx, nonExistentDir)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error for non-existent directory")
+		require.NoError(t, err, "Should not return error for non-existent directory")
 	})
 
 	t.Run("FileInsteadOfDirectory", func(t *testing.T) {
@@ -659,7 +659,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, filePath)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when source is a file")
+		require.NoError(t, err, "Should not return error when source is a file")
 	})
 
 	t.Run("SchemaFile", func(t *testing.T) {
@@ -670,7 +670,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, schemaPath)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when source is a schema file")
+		require.NoError(t, err, "Should not return error when source is a schema file")
 	})
 
 	t.Run("DirectoryWithoutReadme", func(t *testing.T) {
@@ -680,7 +680,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, dirPath)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when directory has no readme")
+		require.NoError(t, err, "Should not return error when directory has no readme")
 	})
 
 	t.Run("DirectoryWithReadme", func(t *testing.T) {
@@ -692,7 +692,7 @@ func TestFindReadme(t *testing.T) {
 
 		found, err := cmd.findReadme(ctx, dirPath)
 		assert.Equal(t, readmePath, found)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("InvalidPluginSpec", func(t *testing.T) {
@@ -711,7 +711,7 @@ func TestFindReadme(t *testing.T) {
 		validPlugin := "my-cool-plugin"
 		readme, err := cmd.findReadme(ctx, validPlugin)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when no readme is found")
+		require.NoError(t, err, "Should not return error when no readme is found")
 	})
 
 	t.Run("Git Plugin Download URL", func(t *testing.T) {
@@ -728,7 +728,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
 		assert.Equal(t, readmePath, readme)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
@@ -749,6 +749,6 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
 		assert.Equal(t, subdirReadmePath, readme)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

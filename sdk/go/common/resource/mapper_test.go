@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -69,18 +68,18 @@ func TestAssetsAndArchives(t *testing.T) {
 
 	t.Run("asset", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "asset", &bag.asset, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	t.Run("optionalAsset", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalAsset", &bag.optionalAsset, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	t.Run("archive", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "archive", &bag.archive, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	t.Run("optionalArchive", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalArchive", &bag.optionalArchive, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

@@ -48,10 +48,10 @@ func createStackWithResources(
 	ctx := context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	data, err := encoding.JSON.Marshal(sdep)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	udep := &apitype.UntypedDeployment{
 		Version:    3,
@@ -99,7 +99,7 @@ func runMoveWithOptionsAndDestResources(
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -121,13 +121,13 @@ func runMoveWithOptionsAndDestResources(
 		IncludeParents: options.IncludeParents,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return sourceSnapshot, destSnapshot, stdout
 }
@@ -388,7 +388,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -450,7 +450,7 @@ func TestMoveWithExistingResource(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -528,7 +528,7 @@ func TestEmptySourceStack(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceRef, err := b.ParseStackReference(sourceStackName)
@@ -562,7 +562,7 @@ func TestEmptyDestStack(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
@@ -611,16 +611,16 @@ runtime: mock
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
 
@@ -670,7 +670,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -693,13 +693,13 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The provider, rootstack and one resource remain
 	assert.Equal(t, 3, len(sourceSnapshot.Resources))
@@ -707,13 +707,13 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	assert.Equal(t, 3, len(destSnapshot.Resources))
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[3].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err = sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destSnapshot, err = destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Only the provider and root stack remain
 	assert.Equal(t, 2, len(sourceSnapshot.Resources))
@@ -766,7 +766,7 @@ func TestMoveUnknownResource(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -792,7 +792,7 @@ func TestMoveUnknownResource(t *testing.T) {
 	assert.ErrorContains(t, err, "no resources found to move")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, stdout.String(), "warning: Resource not-a-urn not found in source stack")
 	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
@@ -873,7 +873,7 @@ func TestMoveProvider(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -899,7 +899,7 @@ func TestMoveProvider(t *testing.T) {
 	assert.ErrorContains(t, err, "cannot move provider")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
 }
@@ -977,7 +977,7 @@ func TestMoveSecret(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1015,16 +1015,16 @@ runtime: mock
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Expect the root stack and the provider to remain in the source stack
 	assert.Equal(t, 2, len(sourceSnapshot.Resources))
@@ -1076,7 +1076,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1109,13 +1109,13 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Expect no resources to be moved
 	assert.Equal(t, 3, len(sourceSnapshot.Resources))
@@ -1149,7 +1149,7 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1192,13 +1192,13 @@ runtime: mock
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Expect no resources to be moved
 	assert.Equal(t, 3, len(sourceSnapshot.Resources))
@@ -1303,7 +1303,7 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1325,10 +1325,10 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	}
 
 	lockingB, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = lockingB.Lock(ctx, sourceStack.Ref())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	assert.ErrorContains(t, err, "None of the resources have been moved.  Please fix the error and try again")
@@ -1336,12 +1336,12 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	sourceStack, err = b.GetStack(ctx, sourceStack.Ref())
 	require.NoError(t, err)
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destStack.Ref())
 	require.NoError(t, err)
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, destSnapshot.Resources, 0)
 
@@ -1358,12 +1358,12 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 
 func chdir(t *testing.T, dir string) {
 	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir)) // Set directory
 	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		require.NoError(t, os.Chdir(cwd)) // Restore directory
 		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, cwd, restoredDir)
 	})
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestErrorSource(t *testing.T) {
@@ -27,9 +28,9 @@ func TestErrorSource(t *testing.T) {
 	t.Run("Close is nil", func(t *testing.T) {
 		t.Parallel()
 		s := &errorSource{}
-		assert.NoError(t, s.Close())
+		require.NoError(t, s.Close())
 		// Ensure idempotent.
-		assert.NoError(t, s.Close())
+		require.NoError(t, s.Close())
 	})
 	t.Run("Iterate panics", func(t *testing.T) {
 		t.Parallel()

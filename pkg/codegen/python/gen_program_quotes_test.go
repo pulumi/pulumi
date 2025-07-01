@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLowerPropertyAccess(t *testing.T) {
@@ -47,7 +48,7 @@ resource rta "aws:ec2:RouteTableAssociation" {
 	contract.Ignore(diags)
 
 	g, err := newGenerator(program)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var rta *pcl.Resource
 	for _, n := range g.program.Nodes {

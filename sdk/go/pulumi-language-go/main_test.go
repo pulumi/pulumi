@@ -103,7 +103,7 @@ func TestParseRunParams(t *testing.T) {
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, &tt.want, got)
 			}
 		})
@@ -297,11 +297,11 @@ func TestGetPackage(t *testing.T) {
 			if c.JSON != nil {
 				path := filepath.Join(cwd, c.JSONPath)
 				err := os.MkdirAll(path, 0o700)
-				assert.NoErrorf(t, err, "Failed to setup test folder %s", path)
+				require.NoErrorf(t, err, "Failed to setup test folder %s", path)
 				bytes, err := c.JSON.JSON()
-				assert.NoError(t, err, "Failed to setup test pulumi-plugin.json")
+				require.NoError(t, err, "Failed to setup test pulumi-plugin.json")
 				err = os.WriteFile(filepath.Join(path, "pulumi-plugin.json"), bytes, 0o600)
-				assert.NoError(t, err, "Failed to write pulumi-plugin.json")
+				require.NoError(t, err, "Failed to write pulumi-plugin.json")
 			}
 
 			actual, err := c.Mod.getPackage(t.TempDir())
@@ -312,7 +312,7 @@ func TestGetPackage(t *testing.T) {
 				if c.Expected.Kind == "" {
 					c.Expected.Kind = "resource"
 				}
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, c.Expected, actual)
 			}
 		})

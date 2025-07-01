@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -28,9 +29,9 @@ func TestAnalyzer(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		a := &Analyzer{}
-		assert.NoError(t, a.Close())
+		require.NoError(t, a.Close())
 		// Ensure Idempotent.
-		assert.NoError(t, a.Close())
+		require.NoError(t, a.Close())
 	})
 	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
@@ -55,7 +56,7 @@ func TestAnalyzer(t *testing.T) {
 			}
 			res, err := a.Analyze(plugin.AnalyzerResource{})
 			assert.True(t, called)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 		t.Run("no AnalyzeF", func(t *testing.T) {
@@ -63,7 +64,7 @@ func TestAnalyzer(t *testing.T) {
 
 			a := &Analyzer{}
 			res, err := a.Analyze(plugin.AnalyzerResource{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 	})
@@ -81,7 +82,7 @@ func TestAnalyzer(t *testing.T) {
 			}
 			res, err := a.AnalyzeStack(nil)
 			assert.True(t, called)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 		t.Run("no AnalyzeStackF", func(t *testing.T) {
@@ -89,7 +90,7 @@ func TestAnalyzer(t *testing.T) {
 
 			a := &Analyzer{}
 			res, err := a.AnalyzeStack(nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 	})
@@ -107,7 +108,7 @@ func TestAnalyzer(t *testing.T) {
 			}
 			res, err := a.Remediate(plugin.AnalyzerResource{})
 			assert.True(t, called)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 		t.Run("no RemediateF", func(t *testing.T) {
@@ -115,7 +116,7 @@ func TestAnalyzer(t *testing.T) {
 
 			a := &Analyzer{}
 			res, err := a.Remediate(plugin.AnalyzerResource{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 	})
@@ -127,7 +128,7 @@ func TestAnalyzer(t *testing.T) {
 			},
 		}
 		info, err := a.GetPluginInfo()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "my-analyzer", info.Name)
 		assert.Equal(t, apitype.AnalyzerPlugin, info.Kind)
 	})
@@ -143,14 +144,14 @@ func TestAnalyzer(t *testing.T) {
 					return nil
 				},
 			}
-			assert.NoError(t, a.Configure(nil))
+			require.NoError(t, a.Configure(nil))
 			assert.True(t, called)
 		})
 		t.Run("no ConfigureF", func(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
-			assert.NoError(t, a.Configure(nil))
+			require.NoError(t, a.Configure(nil))
 		})
 	})
 }

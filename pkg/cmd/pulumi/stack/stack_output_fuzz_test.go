@@ -66,6 +66,7 @@ func FuzzBashStackOutputWriter(f *testing.F) {
 			if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
 				t.Logf("stderr:\n%s", exitErr.Stderr)
 			}
+			t.FailNow()
 		}
 		assert.Equal(t, give+"\n", string(got))
 	})

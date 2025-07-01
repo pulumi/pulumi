@@ -48,7 +48,7 @@ func TestArchiveArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -63,7 +63,7 @@ func TestAssetArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -78,7 +78,7 @@ func TestAssetOrArchiveArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -93,7 +93,7 @@ func TestBoolArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -108,7 +108,7 @@ func TestFloat64ArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -123,7 +123,7 @@ func TestIDArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -138,7 +138,7 @@ func TestIntArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -153,7 +153,7 @@ func TestStringArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }
@@ -168,7 +168,7 @@ func TestURNArrayContravariance(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av, plain)
 }

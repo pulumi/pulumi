@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUntil_exhaustAttempts(t *testing.T) {
@@ -107,7 +108,7 @@ func TestUntil_maxDelay(t *testing.T) {
 		},
 	})
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, afterRec.Sleeps, 100)
 	for _, d := range afterRec.Sleeps {

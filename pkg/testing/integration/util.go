@@ -199,9 +199,7 @@ func AssertHTTPResultWithRetry(
 	for {
 		now := time.Now()
 		req, err := http.NewRequest("GET", hostname, nil)
-		if !assert.NoError(t, err, "error reading request: %v", err) {
-			return false
-		}
+		require.NoError(t, err, "error reading request: %v", err)
 
 		for k, v := range headers {
 			// Host header cannot be set via req.Header.Set(), and must be set
@@ -234,15 +232,11 @@ func AssertHTTPResultWithRetry(
 		t.Logf("Http Error: %v\n", err)
 		t.Logf("  Retry: %v, elapsed wait: %v, max wait %v\n", count, now.Sub(startTime), maxWait)
 	}
-	if !assert.NoError(t, err) {
-		return false
-	}
+	require.NoError(t, err)
 	// Read the body
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	if !assert.NoError(t, err) {
-		return false
-	}
+	require.NoError(t, err)
 	// Verify it matches expectations
 	return check(string(body))
 }

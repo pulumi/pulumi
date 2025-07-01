@@ -69,7 +69,7 @@ func getTestPackage(t *testing.T) *schema.Package {
 	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err, "could not import the test package spec")
+	require.NoError(t, err, "could not import the test package spec")
 	return pkg
 }
 

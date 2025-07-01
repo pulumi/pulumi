@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCurrentStack(t *testing.T) {
@@ -49,7 +50,7 @@ func TestCurrentStack(t *testing.T) {
 			}
 
 			_, err := CurrentStack(ctx, backend)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 		t.Run("`$org/$stack` qualifies with specified org", func(t *testing.T) {
@@ -64,7 +65,7 @@ func TestCurrentStack(t *testing.T) {
 			}
 
 			_, err := CurrentStack(ctx, backend)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 		t.Run("`$stack` qualifies with individual org if default org not configured", func(t *testing.T) {
@@ -91,7 +92,7 @@ func TestCurrentStack(t *testing.T) {
 			}
 
 			_, err := CurrentStack(ctx, backend)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 		t.Run("`$stack` does not qualify with org if default org configured", func(t *testing.T) {
@@ -121,7 +122,7 @@ func TestCurrentStack(t *testing.T) {
 			}
 
 			_, err := CurrentStack(ctx, backend)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 		t.Run("`$stack` does not qualify with org if backend does not support orgs", func(t *testing.T) {
@@ -138,11 +139,11 @@ func TestCurrentStack(t *testing.T) {
 			}
 
 			_, err := CurrentStack(ctx, backend)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	})
 }
 
 func writeConfig(t *testing.T, dir string, config []byte) {
-	assert.NoError(t, os.WriteFile(dir+"/config.json", config, 0o600))
+	require.NoError(t, os.WriteFile(dir+"/config.json", config, 0o600))
 }

@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOutputApply(t *testing.T) {
@@ -43,7 +44,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 	}
@@ -58,7 +59,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		_, known, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.False(t, known)
 	}
 	// Test that rejected outputs do not run the apply, and instead flow the error.
@@ -88,7 +89,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
@@ -100,7 +101,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 44)
 	}
@@ -675,7 +676,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err := await(res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"qux", "zed"}, v)
 
@@ -683,7 +684,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"foo", "bar"}, v)
 
@@ -691,7 +692,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res3)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed", v)
 
@@ -699,12 +700,12 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res4)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
 
 		v, known, _, _, err = await(res5)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
 	}
@@ -721,7 +722,7 @@ func TestToOutputArchive(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveInput)
@@ -729,7 +730,7 @@ func TestToOutputArchive(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArchiveArray(t *testing.T) {
@@ -741,7 +742,7 @@ func TestToOutputArchiveArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveArrayInput)
@@ -749,7 +750,7 @@ func TestToOutputArchiveArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArchiveMap(t *testing.T) {
@@ -761,7 +762,7 @@ func TestToOutputArchiveMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveMapInput)
@@ -769,7 +770,7 @@ func TestToOutputArchiveMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArchiveArrayMap(t *testing.T) {
@@ -781,7 +782,7 @@ func TestToOutputArchiveArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveArrayMapInput)
@@ -789,7 +790,7 @@ func TestToOutputArchiveArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArchiveMapArray(t *testing.T) {
@@ -801,7 +802,7 @@ func TestToOutputArchiveMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveMapArrayInput)
@@ -809,7 +810,7 @@ func TestToOutputArchiveMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArchiveMapMap(t *testing.T) {
@@ -821,7 +822,7 @@ func TestToOutputArchiveMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveMapMapInput)
@@ -829,7 +830,7 @@ func TestToOutputArchiveMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArchiveArrayArray(t *testing.T) {
@@ -841,7 +842,7 @@ func TestToOutputArchiveArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArchiveArrayArrayInput)
@@ -849,7 +850,7 @@ func TestToOutputArchiveArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAsset(t *testing.T) {
@@ -861,7 +862,7 @@ func TestToOutputAsset(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetInput)
@@ -869,7 +870,7 @@ func TestToOutputAsset(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetArray(t *testing.T) {
@@ -881,7 +882,7 @@ func TestToOutputAssetArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetArrayInput)
@@ -889,7 +890,7 @@ func TestToOutputAssetArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetMap(t *testing.T) {
@@ -901,7 +902,7 @@ func TestToOutputAssetMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetMapInput)
@@ -909,7 +910,7 @@ func TestToOutputAssetMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetArrayMap(t *testing.T) {
@@ -921,7 +922,7 @@ func TestToOutputAssetArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetArrayMapInput)
@@ -929,7 +930,7 @@ func TestToOutputAssetArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetMapArray(t *testing.T) {
@@ -941,7 +942,7 @@ func TestToOutputAssetMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetMapArrayInput)
@@ -949,7 +950,7 @@ func TestToOutputAssetMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetMapMap(t *testing.T) {
@@ -961,7 +962,7 @@ func TestToOutputAssetMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetMapMapInput)
@@ -969,7 +970,7 @@ func TestToOutputAssetMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetArrayArray(t *testing.T) {
@@ -981,7 +982,7 @@ func TestToOutputAssetArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetArrayArrayInput)
@@ -989,7 +990,7 @@ func TestToOutputAssetArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchive(t *testing.T) {
@@ -1001,7 +1002,7 @@ func TestToOutputAssetOrArchive(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveInput)
@@ -1009,7 +1010,7 @@ func TestToOutputAssetOrArchive(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchiveArray(t *testing.T) {
@@ -1021,7 +1022,7 @@ func TestToOutputAssetOrArchiveArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveArrayInput)
@@ -1029,7 +1030,7 @@ func TestToOutputAssetOrArchiveArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchiveMap(t *testing.T) {
@@ -1041,7 +1042,7 @@ func TestToOutputAssetOrArchiveMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveMapInput)
@@ -1049,7 +1050,7 @@ func TestToOutputAssetOrArchiveMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchiveArrayMap(t *testing.T) {
@@ -1061,7 +1062,7 @@ func TestToOutputAssetOrArchiveArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveArrayMapInput)
@@ -1069,7 +1070,7 @@ func TestToOutputAssetOrArchiveArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchiveMapArray(t *testing.T) {
@@ -1081,7 +1082,7 @@ func TestToOutputAssetOrArchiveMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveMapArrayInput)
@@ -1089,7 +1090,7 @@ func TestToOutputAssetOrArchiveMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchiveMapMap(t *testing.T) {
@@ -1101,7 +1102,7 @@ func TestToOutputAssetOrArchiveMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveMapMapInput)
@@ -1109,7 +1110,7 @@ func TestToOutputAssetOrArchiveMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
@@ -1121,7 +1122,7 @@ func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveArrayArrayInput)
@@ -1129,7 +1130,7 @@ func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBool(t *testing.T) {
@@ -1141,7 +1142,7 @@ func TestToOutputBool(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolInput)
@@ -1149,7 +1150,7 @@ func TestToOutputBool(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolPtr(t *testing.T) {
@@ -1161,7 +1162,7 @@ func TestToOutputBoolPtr(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolPtrInput)
@@ -1169,7 +1170,7 @@ func TestToOutputBoolPtr(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolArray(t *testing.T) {
@@ -1181,7 +1182,7 @@ func TestToOutputBoolArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolArrayInput)
@@ -1189,7 +1190,7 @@ func TestToOutputBoolArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolMap(t *testing.T) {
@@ -1201,7 +1202,7 @@ func TestToOutputBoolMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolMapInput)
@@ -1209,7 +1210,7 @@ func TestToOutputBoolMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolArrayMap(t *testing.T) {
@@ -1221,7 +1222,7 @@ func TestToOutputBoolArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolArrayMapInput)
@@ -1229,7 +1230,7 @@ func TestToOutputBoolArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolMapArray(t *testing.T) {
@@ -1241,7 +1242,7 @@ func TestToOutputBoolMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolMapArrayInput)
@@ -1249,7 +1250,7 @@ func TestToOutputBoolMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolMapMap(t *testing.T) {
@@ -1261,7 +1262,7 @@ func TestToOutputBoolMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolMapMapInput)
@@ -1269,7 +1270,7 @@ func TestToOutputBoolMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputBoolArrayArray(t *testing.T) {
@@ -1281,7 +1282,7 @@ func TestToOutputBoolArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(BoolArrayArrayInput)
@@ -1289,7 +1290,7 @@ func TestToOutputBoolArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64(t *testing.T) {
@@ -1301,7 +1302,7 @@ func TestToOutputFloat64(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64Input)
@@ -1309,7 +1310,7 @@ func TestToOutputFloat64(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64Ptr(t *testing.T) {
@@ -1321,7 +1322,7 @@ func TestToOutputFloat64Ptr(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64PtrInput)
@@ -1329,7 +1330,7 @@ func TestToOutputFloat64Ptr(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64Array(t *testing.T) {
@@ -1341,7 +1342,7 @@ func TestToOutputFloat64Array(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64ArrayInput)
@@ -1349,7 +1350,7 @@ func TestToOutputFloat64Array(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64Map(t *testing.T) {
@@ -1361,7 +1362,7 @@ func TestToOutputFloat64Map(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64MapInput)
@@ -1369,7 +1370,7 @@ func TestToOutputFloat64Map(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64ArrayMap(t *testing.T) {
@@ -1381,7 +1382,7 @@ func TestToOutputFloat64ArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64ArrayMapInput)
@@ -1389,7 +1390,7 @@ func TestToOutputFloat64ArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64MapArray(t *testing.T) {
@@ -1401,7 +1402,7 @@ func TestToOutputFloat64MapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64MapArrayInput)
@@ -1409,7 +1410,7 @@ func TestToOutputFloat64MapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64MapMap(t *testing.T) {
@@ -1421,7 +1422,7 @@ func TestToOutputFloat64MapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64MapMapInput)
@@ -1429,7 +1430,7 @@ func TestToOutputFloat64MapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputFloat64ArrayArray(t *testing.T) {
@@ -1441,7 +1442,7 @@ func TestToOutputFloat64ArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(Float64ArrayArrayInput)
@@ -1449,7 +1450,7 @@ func TestToOutputFloat64ArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputID(t *testing.T) {
@@ -1461,7 +1462,7 @@ func TestToOutputID(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDInput)
@@ -1469,7 +1470,7 @@ func TestToOutputID(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDPtr(t *testing.T) {
@@ -1481,7 +1482,7 @@ func TestToOutputIDPtr(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDPtrInput)
@@ -1489,7 +1490,7 @@ func TestToOutputIDPtr(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDArray(t *testing.T) {
@@ -1501,7 +1502,7 @@ func TestToOutputIDArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDArrayInput)
@@ -1509,7 +1510,7 @@ func TestToOutputIDArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDMap(t *testing.T) {
@@ -1521,7 +1522,7 @@ func TestToOutputIDMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDMapInput)
@@ -1529,7 +1530,7 @@ func TestToOutputIDMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDArrayMap(t *testing.T) {
@@ -1541,7 +1542,7 @@ func TestToOutputIDArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDArrayMapInput)
@@ -1549,7 +1550,7 @@ func TestToOutputIDArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDMapArray(t *testing.T) {
@@ -1561,7 +1562,7 @@ func TestToOutputIDMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDMapArrayInput)
@@ -1569,7 +1570,7 @@ func TestToOutputIDMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDMapMap(t *testing.T) {
@@ -1581,7 +1582,7 @@ func TestToOutputIDMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDMapMapInput)
@@ -1589,7 +1590,7 @@ func TestToOutputIDMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIDArrayArray(t *testing.T) {
@@ -1601,7 +1602,7 @@ func TestToOutputIDArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IDArrayArrayInput)
@@ -1609,7 +1610,7 @@ func TestToOutputIDArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArray(t *testing.T) {
@@ -1621,7 +1622,7 @@ func TestToOutputArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArrayInput)
@@ -1629,7 +1630,7 @@ func TestToOutputArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputMap(t *testing.T) {
@@ -1641,7 +1642,7 @@ func TestToOutputMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(MapInput)
@@ -1649,7 +1650,7 @@ func TestToOutputMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArrayMap(t *testing.T) {
@@ -1661,7 +1662,7 @@ func TestToOutputArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArrayMapInput)
@@ -1669,7 +1670,7 @@ func TestToOutputArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputMapArray(t *testing.T) {
@@ -1681,7 +1682,7 @@ func TestToOutputMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(MapArrayInput)
@@ -1689,7 +1690,7 @@ func TestToOutputMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputMapMap(t *testing.T) {
@@ -1701,7 +1702,7 @@ func TestToOutputMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(MapMapInput)
@@ -1709,7 +1710,7 @@ func TestToOutputMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArrayArray(t *testing.T) {
@@ -1721,7 +1722,7 @@ func TestToOutputArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArrayArrayInput)
@@ -1729,7 +1730,7 @@ func TestToOutputArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputArrayArrayMap(t *testing.T) {
@@ -1741,7 +1742,7 @@ func TestToOutputArrayArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(ArrayArrayMapInput)
@@ -1749,7 +1750,7 @@ func TestToOutputArrayArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputInt(t *testing.T) {
@@ -1761,7 +1762,7 @@ func TestToOutputInt(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntInput)
@@ -1769,7 +1770,7 @@ func TestToOutputInt(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntPtr(t *testing.T) {
@@ -1781,7 +1782,7 @@ func TestToOutputIntPtr(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntPtrInput)
@@ -1789,7 +1790,7 @@ func TestToOutputIntPtr(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntArray(t *testing.T) {
@@ -1801,7 +1802,7 @@ func TestToOutputIntArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntArrayInput)
@@ -1809,7 +1810,7 @@ func TestToOutputIntArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntMap(t *testing.T) {
@@ -1821,7 +1822,7 @@ func TestToOutputIntMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntMapInput)
@@ -1829,7 +1830,7 @@ func TestToOutputIntMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntArrayMap(t *testing.T) {
@@ -1841,7 +1842,7 @@ func TestToOutputIntArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntArrayMapInput)
@@ -1849,7 +1850,7 @@ func TestToOutputIntArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntMapArray(t *testing.T) {
@@ -1861,7 +1862,7 @@ func TestToOutputIntMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntMapArrayInput)
@@ -1869,7 +1870,7 @@ func TestToOutputIntMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntMapMap(t *testing.T) {
@@ -1881,7 +1882,7 @@ func TestToOutputIntMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntMapMapInput)
@@ -1889,7 +1890,7 @@ func TestToOutputIntMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputIntArrayArray(t *testing.T) {
@@ -1901,7 +1902,7 @@ func TestToOutputIntArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(IntArrayArrayInput)
@@ -1909,7 +1910,7 @@ func TestToOutputIntArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputString(t *testing.T) {
@@ -1921,7 +1922,7 @@ func TestToOutputString(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringInput)
@@ -1929,7 +1930,7 @@ func TestToOutputString(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringPtr(t *testing.T) {
@@ -1941,7 +1942,7 @@ func TestToOutputStringPtr(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringPtrInput)
@@ -1949,7 +1950,7 @@ func TestToOutputStringPtr(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringArray(t *testing.T) {
@@ -1961,7 +1962,7 @@ func TestToOutputStringArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringArrayInput)
@@ -1969,7 +1970,7 @@ func TestToOutputStringArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringMap(t *testing.T) {
@@ -1981,7 +1982,7 @@ func TestToOutputStringMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringMapInput)
@@ -1989,7 +1990,7 @@ func TestToOutputStringMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringArrayMap(t *testing.T) {
@@ -2001,7 +2002,7 @@ func TestToOutputStringArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringArrayMapInput)
@@ -2009,7 +2010,7 @@ func TestToOutputStringArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringMapArray(t *testing.T) {
@@ -2021,7 +2022,7 @@ func TestToOutputStringMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringMapArrayInput)
@@ -2029,7 +2030,7 @@ func TestToOutputStringMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringMapMap(t *testing.T) {
@@ -2041,7 +2042,7 @@ func TestToOutputStringMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringMapMapInput)
@@ -2049,7 +2050,7 @@ func TestToOutputStringMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringArrayArray(t *testing.T) {
@@ -2061,7 +2062,7 @@ func TestToOutputStringArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringArrayArrayInput)
@@ -2069,7 +2070,7 @@ func TestToOutputStringArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputStringMapMapMap(t *testing.T) {
@@ -2081,7 +2082,7 @@ func TestToOutputStringMapMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(StringMapMapMapInput)
@@ -2089,7 +2090,7 @@ func TestToOutputStringMapMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURN(t *testing.T) {
@@ -2101,7 +2102,7 @@ func TestToOutputURN(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNInput)
@@ -2109,7 +2110,7 @@ func TestToOutputURN(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNPtr(t *testing.T) {
@@ -2121,7 +2122,7 @@ func TestToOutputURNPtr(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNPtrInput)
@@ -2129,7 +2130,7 @@ func TestToOutputURNPtr(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNArray(t *testing.T) {
@@ -2141,7 +2142,7 @@ func TestToOutputURNArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNArrayInput)
@@ -2149,7 +2150,7 @@ func TestToOutputURNArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNMap(t *testing.T) {
@@ -2161,7 +2162,7 @@ func TestToOutputURNMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNMapInput)
@@ -2169,7 +2170,7 @@ func TestToOutputURNMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNArrayMap(t *testing.T) {
@@ -2181,7 +2182,7 @@ func TestToOutputURNArrayMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNArrayMapInput)
@@ -2189,7 +2190,7 @@ func TestToOutputURNArrayMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNMapArray(t *testing.T) {
@@ -2201,7 +2202,7 @@ func TestToOutputURNMapArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNMapArrayInput)
@@ -2209,7 +2210,7 @@ func TestToOutputURNMapArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNMapMap(t *testing.T) {
@@ -2221,7 +2222,7 @@ func TestToOutputURNMapMap(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNMapMapInput)
@@ -2229,7 +2230,7 @@ func TestToOutputURNMapMap(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToOutputURNArrayArray(t *testing.T) {
@@ -2241,7 +2242,7 @@ func TestToOutputURNArrayArray(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.(URNArrayArrayInput)
@@ -2249,7 +2250,7 @@ func TestToOutputURNArrayArray(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Test that type-specific ToOutput methods work with all builtin input and output types
@@ -2263,25 +2264,25 @@ func TestToArchiveOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArchiveArrayOutput(t *testing.T) {
@@ -2293,25 +2294,25 @@ func TestToArchiveArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArchiveMapOutput(t *testing.T) {
@@ -2323,25 +2324,25 @@ func TestToArchiveMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArchiveArrayMapOutput(t *testing.T) {
@@ -2353,25 +2354,25 @@ func TestToArchiveArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArchiveMapArrayOutput(t *testing.T) {
@@ -2383,25 +2384,25 @@ func TestToArchiveMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArchiveMapMapOutput(t *testing.T) {
@@ -2413,25 +2414,25 @@ func TestToArchiveMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArchiveArrayArrayOutput(t *testing.T) {
@@ -2443,25 +2444,25 @@ func TestToArchiveArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArchiveArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArchiveArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOutput(t *testing.T) {
@@ -2473,25 +2474,25 @@ func TestToAssetOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetArrayOutput(t *testing.T) {
@@ -2503,25 +2504,25 @@ func TestToAssetArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetMapOutput(t *testing.T) {
@@ -2533,25 +2534,25 @@ func TestToAssetMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetArrayMapOutput(t *testing.T) {
@@ -2563,25 +2564,25 @@ func TestToAssetArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetMapArrayOutput(t *testing.T) {
@@ -2593,25 +2594,25 @@ func TestToAssetMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetMapMapOutput(t *testing.T) {
@@ -2623,25 +2624,25 @@ func TestToAssetMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetArrayArrayOutput(t *testing.T) {
@@ -2653,25 +2654,25 @@ func TestToAssetArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveOutput(t *testing.T) {
@@ -2683,25 +2684,25 @@ func TestToAssetOrArchiveOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveArrayOutput(t *testing.T) {
@@ -2713,25 +2714,25 @@ func TestToAssetOrArchiveArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveMapOutput(t *testing.T) {
@@ -2743,25 +2744,25 @@ func TestToAssetOrArchiveMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
@@ -2773,25 +2774,25 @@ func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
@@ -2803,25 +2804,25 @@ func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveMapMapOutput(t *testing.T) {
@@ -2833,25 +2834,25 @@ func TestToAssetOrArchiveMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
@@ -2863,25 +2864,25 @@ func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolOutput(t *testing.T) {
@@ -2893,25 +2894,25 @@ func TestToBoolOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolPtrOutput(t *testing.T) {
@@ -2923,25 +2924,25 @@ func TestToBoolPtrOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolPtrOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolArrayOutput(t *testing.T) {
@@ -2953,25 +2954,25 @@ func TestToBoolArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolMapOutput(t *testing.T) {
@@ -2983,25 +2984,25 @@ func TestToBoolMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolArrayMapOutput(t *testing.T) {
@@ -3013,25 +3014,25 @@ func TestToBoolArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolMapArrayOutput(t *testing.T) {
@@ -3043,25 +3044,25 @@ func TestToBoolMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolMapMapOutput(t *testing.T) {
@@ -3073,25 +3074,25 @@ func TestToBoolMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToBoolArrayArrayOutput(t *testing.T) {
@@ -3103,25 +3104,25 @@ func TestToBoolArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToBoolArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToBoolArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64Output(t *testing.T) {
@@ -3133,25 +3134,25 @@ func TestToFloat64Output(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64Output()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64OutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64OutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64PtrOutput(t *testing.T) {
@@ -3163,25 +3164,25 @@ func TestToFloat64PtrOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64PtrOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64PtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64PtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64ArrayOutput(t *testing.T) {
@@ -3193,25 +3194,25 @@ func TestToFloat64ArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64ArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64MapOutput(t *testing.T) {
@@ -3223,25 +3224,25 @@ func TestToFloat64MapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64MapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64MapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64MapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64ArrayMapOutput(t *testing.T) {
@@ -3253,25 +3254,25 @@ func TestToFloat64ArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64MapArrayOutput(t *testing.T) {
@@ -3283,25 +3284,25 @@ func TestToFloat64MapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64MapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64MapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64MapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64MapMapOutput(t *testing.T) {
@@ -3313,25 +3314,25 @@ func TestToFloat64MapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64MapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64MapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64MapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToFloat64ArrayArrayOutput(t *testing.T) {
@@ -3343,25 +3344,25 @@ func TestToFloat64ArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToFloat64ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDOutput(t *testing.T) {
@@ -3373,25 +3374,25 @@ func TestToIDOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDPtrOutput(t *testing.T) {
@@ -3403,25 +3404,25 @@ func TestToIDPtrOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDPtrOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDArrayOutput(t *testing.T) {
@@ -3433,25 +3434,25 @@ func TestToIDArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDMapOutput(t *testing.T) {
@@ -3463,25 +3464,25 @@ func TestToIDMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDArrayMapOutput(t *testing.T) {
@@ -3493,25 +3494,25 @@ func TestToIDArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDMapArrayOutput(t *testing.T) {
@@ -3523,25 +3524,25 @@ func TestToIDMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDMapMapOutput(t *testing.T) {
@@ -3553,25 +3554,25 @@ func TestToIDMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIDArrayArrayOutput(t *testing.T) {
@@ -3583,25 +3584,25 @@ func TestToIDArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIDArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIDArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArrayOutput(t *testing.T) {
@@ -3613,25 +3614,25 @@ func TestToArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToMapOutput(t *testing.T) {
@@ -3643,25 +3644,25 @@ func TestToMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArrayMapOutput(t *testing.T) {
@@ -3673,25 +3674,25 @@ func TestToArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToMapArrayOutput(t *testing.T) {
@@ -3703,25 +3704,25 @@ func TestToMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToMapMapOutput(t *testing.T) {
@@ -3733,25 +3734,25 @@ func TestToMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArrayArrayOutput(t *testing.T) {
@@ -3763,25 +3764,25 @@ func TestToArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToArrayArrayMapOutput(t *testing.T) {
@@ -3793,25 +3794,25 @@ func TestToArrayArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToArrayArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToArrayArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntOutput(t *testing.T) {
@@ -3823,25 +3824,25 @@ func TestToIntOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntPtrOutput(t *testing.T) {
@@ -3853,25 +3854,25 @@ func TestToIntPtrOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntPtrOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntArrayOutput(t *testing.T) {
@@ -3883,25 +3884,25 @@ func TestToIntArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntMapOutput(t *testing.T) {
@@ -3913,25 +3914,25 @@ func TestToIntMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntArrayMapOutput(t *testing.T) {
@@ -3943,25 +3944,25 @@ func TestToIntArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntMapArrayOutput(t *testing.T) {
@@ -3973,25 +3974,25 @@ func TestToIntMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntMapMapOutput(t *testing.T) {
@@ -4003,25 +4004,25 @@ func TestToIntMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToIntArrayArrayOutput(t *testing.T) {
@@ -4033,25 +4034,25 @@ func TestToIntArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToIntArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToIntArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringOutput(t *testing.T) {
@@ -4063,25 +4064,25 @@ func TestToStringOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringPtrOutput(t *testing.T) {
@@ -4093,25 +4094,25 @@ func TestToStringPtrOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringPtrOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringArrayOutput(t *testing.T) {
@@ -4123,25 +4124,25 @@ func TestToStringArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringMapOutput(t *testing.T) {
@@ -4153,25 +4154,25 @@ func TestToStringMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringArrayMapOutput(t *testing.T) {
@@ -4183,25 +4184,25 @@ func TestToStringArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringMapArrayOutput(t *testing.T) {
@@ -4213,25 +4214,25 @@ func TestToStringMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringMapMapOutput(t *testing.T) {
@@ -4243,25 +4244,25 @@ func TestToStringMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringArrayArrayOutput(t *testing.T) {
@@ -4273,25 +4274,25 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToStringMapMapMapOutput(t *testing.T) {
@@ -4303,25 +4304,25 @@ func TestToStringMapMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToStringMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToStringMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNOutput(t *testing.T) {
@@ -4333,25 +4334,25 @@ func TestToURNOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNPtrOutput(t *testing.T) {
@@ -4363,25 +4364,25 @@ func TestToURNPtrOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNPtrOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNPtrOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNArrayOutput(t *testing.T) {
@@ -4393,25 +4394,25 @@ func TestToURNArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNMapOutput(t *testing.T) {
@@ -4423,25 +4424,25 @@ func TestToURNMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNArrayMapOutput(t *testing.T) {
@@ -4453,25 +4454,25 @@ func TestToURNArrayMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNArrayMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNMapArrayOutput(t *testing.T) {
@@ -4483,25 +4484,25 @@ func TestToURNMapArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNMapArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNMapArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNMapMapOutput(t *testing.T) {
@@ -4513,25 +4514,25 @@ func TestToURNMapMapOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNMapMapOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToURNArrayArrayOutput(t *testing.T) {
@@ -4543,25 +4544,25 @@ func TestToURNArrayArrayOutput(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNArrayArrayOutput()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.ToURNArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.ToURNArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
@@ -4572,56 +4573,56 @@ func TestBuiltinConversions(t *testing.T) {
 	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
 	archiveV, known, _, _, err := await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, archiveIn, archiveV)
 
 	archiveOut := archiveIn.ToArchiveOutput()
 	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
 	archiveV, known, _, _, err = await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, archiveIn, archiveV)
 
 	assetIn := NewFileAsset("foo.zip")
 	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
 	assetV, known, _, _, err := await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, assetIn, assetV)
 
 	assetOut := assetIn.ToAssetOutput()
 	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
 	assetV, known, _, _, err = await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, assetIn, assetV)
 
 	idIn := ID("foo")
 	stringOut := idIn.ToStringOutput()
 	stringV, known, _, _, err := await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(idIn), stringV)
 
 	idOut := idIn.ToIDOutput()
 	stringOut = idOut.ToStringOutput()
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(idIn), stringV)
 
 	urnIn := URN("foo")
 	stringOut = urnIn.ToStringOutput()
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(urnIn), stringV)
 
 	urnOut := urnIn.ToURNOutput()
 	stringOut = urnOut.ToStringOutput()
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(urnIn), stringV)
 }
 
@@ -4634,11 +4635,11 @@ func TestBoolPtrElem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*bool)), iv)
 }
@@ -4650,11 +4651,11 @@ func TestFloat64PtrElem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*float64)), iv)
 }
@@ -4666,11 +4667,11 @@ func TestIDPtrElem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*ID)), iv)
 }
@@ -4682,11 +4683,11 @@ func TestIntPtrElem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*int)), iv)
 }
@@ -4698,11 +4699,11 @@ func TestStringPtrElem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*string)), iv)
 }
@@ -4714,11 +4715,11 @@ func TestURNPtrElem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*URN)), iv)
 }
@@ -4732,16 +4733,16 @@ func TestArchiveArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]Archive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -4752,11 +4753,11 @@ func TestToArchiveArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]Archive)[0], iv)
 }
@@ -4768,11 +4769,11 @@ func TestTopLevelToArchiveArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]Archive)[0], iv)
 }
@@ -4784,16 +4785,16 @@ func TestArchiveMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]Archive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -4804,11 +4805,11 @@ func TestToArchiveMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]Archive)[0], iv)
 }
@@ -4820,11 +4821,11 @@ func TestTopLevelToArchiveMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]Archive)[0], iv)
 }
@@ -4836,16 +4837,16 @@ func TestArchiveArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]Archive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -4856,11 +4857,11 @@ func TestToArchiveArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]Archive)[0], iv)
 }
@@ -4872,11 +4873,11 @@ func TestTopLevelToArchiveArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]Archive)[0], iv)
 }
@@ -4888,16 +4889,16 @@ func TestAssetArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]Asset)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -4908,11 +4909,11 @@ func TestToAssetArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]Asset)[0], iv)
 }
@@ -4924,11 +4925,11 @@ func TestTopLevelToAssetArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]Asset)[0], iv)
 }
@@ -4940,16 +4941,16 @@ func TestAssetMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -4960,11 +4961,11 @@ func TestToAssetMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
 }
@@ -4976,11 +4977,11 @@ func TestTopLevelToAssetMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
 }
@@ -4992,16 +4993,16 @@ func TestAssetArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]Asset)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5012,11 +5013,11 @@ func TestToAssetArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]Asset)[0], iv)
 }
@@ -5028,11 +5029,11 @@ func TestTopLevelToAssetArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]Asset)[0], iv)
 }
@@ -5044,16 +5045,16 @@ func TestAssetOrArchiveArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]AssetOrArchive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5064,16 +5065,16 @@ func TestAssetOrArchiveMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]AssetOrArchive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5084,16 +5085,16 @@ func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]AssetOrArchive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5104,16 +5105,16 @@ func TestBoolArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]bool)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5124,11 +5125,11 @@ func TestToBoolArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]bool)[0], iv)
 }
@@ -5140,11 +5141,11 @@ func TestTopLevelToBoolArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]bool)[0], iv)
 }
@@ -5156,16 +5157,16 @@ func TestBoolMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]bool)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5176,11 +5177,11 @@ func TestToBoolMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]bool)[0], iv)
 }
@@ -5192,11 +5193,11 @@ func TestTopLevelToBoolMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]bool)[0], iv)
 }
@@ -5208,16 +5209,16 @@ func TestBoolArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]bool)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5228,11 +5229,11 @@ func TestToBoolArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]bool)[0], iv)
 }
@@ -5244,11 +5245,11 @@ func TestTopLevelToBoolArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]bool)[0], iv)
 }
@@ -5260,16 +5261,16 @@ func TestFloat64ArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]float64)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5280,11 +5281,11 @@ func TestToFloat64Array(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]float64)[0], iv)
 }
@@ -5296,11 +5297,11 @@ func TestTopLevelToFloat64ArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]float64)[0], iv)
 }
@@ -5312,16 +5313,16 @@ func TestFloat64MapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5332,11 +5333,11 @@ func TestToFloat64MapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
 }
@@ -5348,11 +5349,11 @@ func TestTopLevelToFloat64MapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
 }
@@ -5364,16 +5365,16 @@ func TestFloat64ArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]float64)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5384,11 +5385,11 @@ func TestToFloat64ArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]float64)[0], iv)
 }
@@ -5400,11 +5401,11 @@ func TestTopLevelToFloat64ArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]float64)[0], iv)
 }
@@ -5416,16 +5417,16 @@ func TestIDArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]ID)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5436,11 +5437,11 @@ func TestToIDArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]ID)[0], iv)
 }
@@ -5452,11 +5453,11 @@ func TestTopLevelToIDArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]ID)[0], iv)
 }
@@ -5468,16 +5469,16 @@ func TestIDMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]ID)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5488,11 +5489,11 @@ func TestToIDMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]ID)[0], iv)
 }
@@ -5504,11 +5505,11 @@ func TestTopLevelToIDMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]ID)[0], iv)
 }
@@ -5520,16 +5521,16 @@ func TestIDArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]ID)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5540,11 +5541,11 @@ func TestToIDArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]ID)[0], iv)
 }
@@ -5556,11 +5557,11 @@ func TestTopLevelToIDArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]ID)[0], iv)
 }
@@ -5572,16 +5573,16 @@ func TestArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]interface{})[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5592,11 +5593,11 @@ func TestToArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]interface{})[0], iv)
 }
@@ -5608,11 +5609,11 @@ func TestTopLevelToArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]interface{})[0], iv)
 }
@@ -5624,16 +5625,16 @@ func TestMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5644,11 +5645,11 @@ func TestToMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
 }
@@ -5660,11 +5661,11 @@ func TestTopLevelToMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
 }
@@ -5676,16 +5677,16 @@ func TestArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]interface{})[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5696,11 +5697,11 @@ func TestToArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]interface{})[0], iv)
 }
@@ -5712,11 +5713,11 @@ func TestTopLevelToArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]interface{})[0], iv)
 }
@@ -5728,16 +5729,16 @@ func TestIntArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]int)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5748,11 +5749,11 @@ func TestToIntArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]int)[0], iv)
 }
@@ -5764,11 +5765,11 @@ func TestTopLevelToIntArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]int)[0], iv)
 }
@@ -5780,16 +5781,16 @@ func TestIntMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]int)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5800,11 +5801,11 @@ func TestToIntMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]int)[0], iv)
 }
@@ -5816,11 +5817,11 @@ func TestTopLevelToIntMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]int)[0], iv)
 }
@@ -5832,16 +5833,16 @@ func TestIntArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]int)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5852,11 +5853,11 @@ func TestToIntArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]int)[0], iv)
 }
@@ -5868,11 +5869,11 @@ func TestTopLevelToIntArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]int)[0], iv)
 }
@@ -5884,16 +5885,16 @@ func TestStringArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]string)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5904,11 +5905,11 @@ func TestToStringArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]string)[0], iv)
 }
@@ -5920,11 +5921,11 @@ func TestTopLevelToStringArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]string)[0], iv)
 }
@@ -5936,16 +5937,16 @@ func TestStringMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]string)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -5956,11 +5957,11 @@ func TestToStringMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]string)[0], iv)
 }
@@ -5972,11 +5973,11 @@ func TestTopLevelToStringMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]string)[0], iv)
 }
@@ -5988,16 +5989,16 @@ func TestStringArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]string)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6008,11 +6009,11 @@ func TestToStringArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]string)[0], iv)
 }
@@ -6024,11 +6025,11 @@ func TestTopLevelToStringArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]string)[0], iv)
 }
@@ -6040,16 +6041,16 @@ func TestURNArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]URN)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6060,11 +6061,11 @@ func TestToURNArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]URN)[0], iv)
 }
@@ -6076,11 +6077,11 @@ func TestTopLevelToURNArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]URN)[0], iv)
 }
@@ -6092,16 +6093,16 @@ func TestURNMapArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6112,11 +6113,11 @@ func TestToURNMapArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
 }
@@ -6128,11 +6129,11 @@ func TestTopLevelToURNMapArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
 }
@@ -6144,16 +6145,16 @@ func TestURNArrayArrayIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]URN)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6164,11 +6165,11 @@ func TestToURNArrayArray(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]URN)[0], iv)
 }
@@ -6180,11 +6181,11 @@ func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]URN)[0], iv)
 }
@@ -6198,16 +6199,16 @@ func TestArchiveMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]Archive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6218,11 +6219,11 @@ func TestToArchiveMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]Archive)["baz"], iv)
 }
@@ -6234,11 +6235,11 @@ func TestTopLevelToArchiveMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]Archive)["baz"], iv)
 }
@@ -6250,16 +6251,16 @@ func TestArchiveArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]Archive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6270,11 +6271,11 @@ func TestToArchiveArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]Archive)["baz"], iv)
 }
@@ -6286,11 +6287,11 @@ func TestTopLevelToArchiveArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]Archive)["baz"], iv)
 }
@@ -6302,16 +6303,16 @@ func TestArchiveMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6322,11 +6323,11 @@ func TestToArchiveMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
 }
@@ -6338,11 +6339,11 @@ func TestTopLevelToArchiveMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
 }
@@ -6354,16 +6355,16 @@ func TestAssetMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]Asset)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6374,11 +6375,11 @@ func TestToAssetMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]Asset)["baz"], iv)
 }
@@ -6390,11 +6391,11 @@ func TestTopLevelToAssetMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]Asset)["baz"], iv)
 }
@@ -6406,16 +6407,16 @@ func TestAssetArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6426,11 +6427,11 @@ func TestToAssetArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
 }
@@ -6442,11 +6443,11 @@ func TestTopLevelToAssetArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
 }
@@ -6458,16 +6459,16 @@ func TestAssetMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6478,11 +6479,11 @@ func TestToAssetMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
 }
@@ -6494,11 +6495,11 @@ func TestTopLevelToAssetMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
 }
@@ -6510,16 +6511,16 @@ func TestAssetOrArchiveMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]AssetOrArchive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6530,16 +6531,16 @@ func TestAssetOrArchiveArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]AssetOrArchive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6550,16 +6551,16 @@ func TestAssetOrArchiveMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]AssetOrArchive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6570,16 +6571,16 @@ func TestBoolMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]bool)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6590,11 +6591,11 @@ func TestToBoolMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]bool)["baz"], iv)
 }
@@ -6606,11 +6607,11 @@ func TestTopLevelToBoolMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]bool)["baz"], iv)
 }
@@ -6622,16 +6623,16 @@ func TestBoolArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]bool)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6642,11 +6643,11 @@ func TestToBoolArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]bool)["baz"], iv)
 }
@@ -6658,11 +6659,11 @@ func TestTopLevelToBoolArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]bool)["baz"], iv)
 }
@@ -6674,16 +6675,16 @@ func TestBoolMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6694,11 +6695,11 @@ func TestToBoolMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
 }
@@ -6710,11 +6711,11 @@ func TestTopLevelToBoolMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
 }
@@ -6726,16 +6727,16 @@ func TestFloat64MapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]float64)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6746,11 +6747,11 @@ func TestToFloat64Map(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]float64)["baz"], iv)
 }
@@ -6762,11 +6763,11 @@ func TestTopLevelToFloat64MapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]float64)["baz"], iv)
 }
@@ -6778,16 +6779,16 @@ func TestFloat64ArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6798,11 +6799,11 @@ func TestToFloat64ArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
 }
@@ -6814,11 +6815,11 @@ func TestTopLevelToFloat64ArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
 }
@@ -6830,16 +6831,16 @@ func TestFloat64MapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6850,11 +6851,11 @@ func TestToFloat64MapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
 }
@@ -6866,11 +6867,11 @@ func TestTopLevelToFloat64MapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
 }
@@ -6882,16 +6883,16 @@ func TestIDMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]ID)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6902,11 +6903,11 @@ func TestToIDMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]ID)["baz"], iv)
 }
@@ -6918,11 +6919,11 @@ func TestTopLevelToIDMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]ID)["baz"], iv)
 }
@@ -6934,16 +6935,16 @@ func TestIDArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]ID)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -6954,11 +6955,11 @@ func TestToIDArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]ID)["baz"], iv)
 }
@@ -6970,11 +6971,11 @@ func TestTopLevelToIDArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]ID)["baz"], iv)
 }
@@ -6986,16 +6987,16 @@ func TestIDMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7006,11 +7007,11 @@ func TestToIDMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
 }
@@ -7022,11 +7023,11 @@ func TestTopLevelToIDMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
 }
@@ -7038,16 +7039,16 @@ func TestMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7058,11 +7059,11 @@ func TestToMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
 }
@@ -7074,11 +7075,11 @@ func TestTopLevelToMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
 }
@@ -7090,16 +7091,16 @@ func TestArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7110,11 +7111,11 @@ func TestToArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
 }
@@ -7126,11 +7127,11 @@ func TestTopLevelToArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
 }
@@ -7142,16 +7143,16 @@ func TestMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7162,11 +7163,11 @@ func TestToMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
 }
@@ -7178,11 +7179,11 @@ func TestTopLevelToMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
 }
@@ -7194,16 +7195,16 @@ func TestArrayArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7214,11 +7215,11 @@ func TestToArrayArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
 }
@@ -7230,11 +7231,11 @@ func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
 }
@@ -7246,16 +7247,16 @@ func TestIntMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]int)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7266,11 +7267,11 @@ func TestToIntMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]int)["baz"], iv)
 }
@@ -7282,11 +7283,11 @@ func TestTopLevelToIntMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]int)["baz"], iv)
 }
@@ -7298,16 +7299,16 @@ func TestIntArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]int)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7318,11 +7319,11 @@ func TestToIntArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]int)["baz"], iv)
 }
@@ -7334,11 +7335,11 @@ func TestTopLevelToIntArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]int)["baz"], iv)
 }
@@ -7350,16 +7351,16 @@ func TestIntMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7370,11 +7371,11 @@ func TestToIntMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
 }
@@ -7386,11 +7387,11 @@ func TestTopLevelToIntMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
 }
@@ -7402,16 +7403,16 @@ func TestStringMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]string)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7422,11 +7423,11 @@ func TestToStringMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]string)["baz"], iv)
 }
@@ -7438,11 +7439,11 @@ func TestTopLevelToStringMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]string)["baz"], iv)
 }
@@ -7454,16 +7455,16 @@ func TestStringArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7474,11 +7475,11 @@ func TestToStringArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
 }
@@ -7490,11 +7491,11 @@ func TestTopLevelToStringArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
 }
@@ -7506,16 +7507,16 @@ func TestStringMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7526,11 +7527,11 @@ func TestToStringMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 }
@@ -7542,11 +7543,11 @@ func TestTopLevelToStringMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 }
@@ -7558,16 +7559,16 @@ func TestStringMapMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7578,11 +7579,11 @@ func TestToStringMapMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
 }
@@ -7594,11 +7595,11 @@ func TestTopLevelToStringMapMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
 }
@@ -7610,16 +7611,16 @@ func TestURNMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]URN)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7630,11 +7631,11 @@ func TestToURNMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]URN)["baz"], iv)
 }
@@ -7646,11 +7647,11 @@ func TestTopLevelToURNMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]URN)["baz"], iv)
 }
@@ -7662,16 +7663,16 @@ func TestURNArrayMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7682,11 +7683,11 @@ func TestToURNArrayMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
 }
@@ -7698,11 +7699,11 @@ func TestTopLevelToURNArrayMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
 }
@@ -7714,16 +7715,16 @@ func TestURNMapMapIndex(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 
@@ -7734,11 +7735,11 @@ func TestToURNMapMap(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 }
@@ -7750,11 +7751,11 @@ func TestTopLevelToURNMapMapOutput(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 }
@@ -7769,11 +7770,11 @@ func TestAnyOutputAsArchiveOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7786,11 +7787,11 @@ func TestAnyOutputAsArchiveArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7803,11 +7804,11 @@ func TestAnyOutputAsArchiveMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7820,11 +7821,11 @@ func TestAnyOutputAsArchiveArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7837,11 +7838,11 @@ func TestAnyOutputAsArchiveMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7854,11 +7855,11 @@ func TestAnyOutputAsArchiveMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7871,11 +7872,11 @@ func TestAnyOutputAsArchiveArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7888,11 +7889,11 @@ func TestAnyOutputAsAssetOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7905,11 +7906,11 @@ func TestAnyOutputAsAssetArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7922,11 +7923,11 @@ func TestAnyOutputAsAssetMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7939,11 +7940,11 @@ func TestAnyOutputAsAssetArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7956,11 +7957,11 @@ func TestAnyOutputAsAssetMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7973,11 +7974,11 @@ func TestAnyOutputAsAssetMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -7990,11 +7991,11 @@ func TestAnyOutputAsAssetArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8007,11 +8008,11 @@ func TestAnyOutputAsAssetOrArchiveOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8024,11 +8025,11 @@ func TestAnyOutputAsAssetOrArchiveArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8041,11 +8042,11 @@ func TestAnyOutputAsAssetOrArchiveMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8058,11 +8059,11 @@ func TestAnyOutputAsAssetOrArchiveArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8075,11 +8076,11 @@ func TestAnyOutputAsAssetOrArchiveMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8092,11 +8093,11 @@ func TestAnyOutputAsAssetOrArchiveMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8109,11 +8110,11 @@ func TestAnyOutputAsAssetOrArchiveArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8126,11 +8127,11 @@ func TestAnyOutputAsBoolOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8143,11 +8144,11 @@ func TestAnyOutputAsBoolPtrOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8160,11 +8161,11 @@ func TestAnyOutputAsBoolArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8177,11 +8178,11 @@ func TestAnyOutputAsBoolMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8194,11 +8195,11 @@ func TestAnyOutputAsBoolArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8211,11 +8212,11 @@ func TestAnyOutputAsBoolMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8228,11 +8229,11 @@ func TestAnyOutputAsBoolMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8245,11 +8246,11 @@ func TestAnyOutputAsBoolArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8262,11 +8263,11 @@ func TestAnyOutputAsFloat64Output(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8279,11 +8280,11 @@ func TestAnyOutputAsFloat64PtrOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8296,11 +8297,11 @@ func TestAnyOutputAsFloat64ArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8313,11 +8314,11 @@ func TestAnyOutputAsFloat64MapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8330,11 +8331,11 @@ func TestAnyOutputAsFloat64ArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8347,11 +8348,11 @@ func TestAnyOutputAsFloat64MapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8364,11 +8365,11 @@ func TestAnyOutputAsFloat64MapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8381,11 +8382,11 @@ func TestAnyOutputAsFloat64ArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8398,11 +8399,11 @@ func TestAnyOutputAsIDOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8415,11 +8416,11 @@ func TestAnyOutputAsIDPtrOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8432,11 +8433,11 @@ func TestAnyOutputAsIDArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8449,11 +8450,11 @@ func TestAnyOutputAsIDMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8466,11 +8467,11 @@ func TestAnyOutputAsIDArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8483,11 +8484,11 @@ func TestAnyOutputAsIDMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8500,11 +8501,11 @@ func TestAnyOutputAsIDMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8517,11 +8518,11 @@ func TestAnyOutputAsIDArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8534,11 +8535,11 @@ func TestAnyOutputAsArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8551,11 +8552,11 @@ func TestAnyOutputAsMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8568,11 +8569,11 @@ func TestAnyOutputAsArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8585,11 +8586,11 @@ func TestAnyOutputAsMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8602,11 +8603,11 @@ func TestAnyOutputAsMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8619,11 +8620,11 @@ func TestAnyOutputAsArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8636,11 +8637,11 @@ func TestAnyOutputAsArrayArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8653,11 +8654,11 @@ func TestAnyOutputAsIntOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8670,11 +8671,11 @@ func TestAnyOutputAsIntPtrOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8687,11 +8688,11 @@ func TestAnyOutputAsIntArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8704,11 +8705,11 @@ func TestAnyOutputAsIntMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8721,11 +8722,11 @@ func TestAnyOutputAsIntArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8738,11 +8739,11 @@ func TestAnyOutputAsIntMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8755,11 +8756,11 @@ func TestAnyOutputAsIntMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8772,11 +8773,11 @@ func TestAnyOutputAsIntArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8789,11 +8790,11 @@ func TestAnyOutputAsStringOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8806,11 +8807,11 @@ func TestAnyOutputAsStringPtrOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8823,11 +8824,11 @@ func TestAnyOutputAsStringArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8840,11 +8841,11 @@ func TestAnyOutputAsStringMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8857,11 +8858,11 @@ func TestAnyOutputAsStringArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8874,11 +8875,11 @@ func TestAnyOutputAsStringMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8891,11 +8892,11 @@ func TestAnyOutputAsStringMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8908,11 +8909,11 @@ func TestAnyOutputAsStringArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8925,11 +8926,11 @@ func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8942,11 +8943,11 @@ func TestAnyOutputAsURNOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8959,11 +8960,11 @@ func TestAnyOutputAsURNPtrOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8976,11 +8977,11 @@ func TestAnyOutputAsURNArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -8993,11 +8994,11 @@ func TestAnyOutputAsURNMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -9010,11 +9011,11 @@ func TestAnyOutputAsURNArrayMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -9027,11 +9028,11 @@ func TestAnyOutputAsURNMapArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -9044,11 +9045,11 @@ func TestAnyOutputAsURNMapMapOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }
@@ -9061,11 +9062,11 @@ func TestAnyOutputAsURNArrayArrayOutput(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
 }

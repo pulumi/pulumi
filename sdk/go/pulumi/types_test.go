@@ -37,7 +37,7 @@ func await(out Output) (interface{}, bool, bool, []Resource, error) {
 func assertApplied(t *testing.T, out Output) {
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func newIntOutput() IntOutput {
@@ -54,7 +54,7 @@ func TestBasicOutputs(t *testing.T) {
 			resolve(42)
 		}()
 		v, known, secret, deps, err := await(out)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Nil(t, deps)
@@ -253,7 +253,7 @@ func TestToOutputStruct(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 
 	out = ToOutput(out)
@@ -265,7 +265,7 @@ func TestToOutputStruct(t *testing.T) {
 	assert.False(t, secret)
 	assert.Nil(t, deps)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 
 	out = ToOutput(nestedTypeInputs{Foo: ToOutput(String("bar")).(StringInput), Bar: ToOutput(Int(42)).(IntInput)})
@@ -276,7 +276,7 @@ func TestToOutputStruct(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 }
 
@@ -319,7 +319,7 @@ func TestToOutputConvert(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 1}, v)
 }
 
@@ -345,7 +345,7 @@ func TestToOutputAny(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	argsV := v.(*args)
 
@@ -415,7 +415,7 @@ func TestToOutputAnyDeps(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, intDep1, intDep2, boolDep1, boolDep2}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	argsV := v.(*args)
 
@@ -446,7 +446,7 @@ func TestToOutputAnyDeps(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{res}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type args struct {
@@ -481,7 +481,7 @@ func TestToOutputInputAny(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, &args{
 		S: "hello",
@@ -522,7 +522,7 @@ func TestUnsecret(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errChan:
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			break
 		case r := <-resultChan:
 			assert.Equal(t, "foo", r)
@@ -562,7 +562,7 @@ func TestSecrets(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errChan:
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			break
 		case r := <-resultChan:
 			assert.Equal(t, "foo", r)
@@ -607,7 +607,7 @@ func TestSecretApply(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errChan:
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			break
 		case r := <-resultChan:
 			assert.Equal(t, "foobar", r)
@@ -646,7 +646,7 @@ func TestNil(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	o := ToOutput(nil)
@@ -654,7 +654,7 @@ func TestNil(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	o = ToOutput(ao)
@@ -662,7 +662,7 @@ func TestNil(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	ao = ToOutput("").ApplyT(func(v string) interface{} {
@@ -672,7 +672,7 @@ func TestNil(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	bo := ao.ApplyT(func(x interface{}) bool {
@@ -682,7 +682,7 @@ func TestNil(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, true, v)
 }
 
@@ -715,7 +715,7 @@ func TestDeps(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, boolDep1, boolDep2}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
@@ -820,7 +820,7 @@ func TestAll(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	a = All(aStringPtrInput).ApplyT(func(args []interface{}) (string, error) {
 		a := args[0].(*string)
@@ -832,7 +832,7 @@ func TestAll(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	a = All(aStringOutput).ApplyT(func(args []interface{}) (string, error) {
 		a := args[0].(string)
@@ -844,7 +844,7 @@ func TestAll(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	a = All(aStringInput, aStringPtrInput, aStringOutput).ApplyT(func(args []interface{}) (string, error) {
 		a := args[0].(string)
@@ -858,14 +858,14 @@ func TestAll(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{}, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestApplyTOutput(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
 	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
@@ -881,7 +881,7 @@ func TestApplyTOutput(t *testing.T) {
 			return out2, nil
 		})
 		v, _, _, deps, err := await(out3)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 42, v)
 		assert.Equal(t, fmt.Sprintf("%v", reflect.TypeOf(v)), "int")
 		assert.Len(t, deps, 4)
@@ -891,7 +891,7 @@ func TestApplyTOutput(t *testing.T) {
 func assertResult(t *testing.T, o Output, expectedValue interface{}, expectedKnown, expectedSecret bool, expectedDeps ...CustomResource) {
 	t.Helper()
 	v, known, secret, deps, err := await(o)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedValue, v, "values do not match")
 	assert.Equal(t, expectedKnown, known, "known-ness does not match")
 	assert.Equal(t, expectedSecret, secret, "secret-ness does not match")
@@ -911,7 +911,7 @@ func TestApplyTOutputJoinDeps(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rA := newSimpleCustomResource(ctx, URN("urnA"), ID("idA"))
 	rB := newSimpleCustomResource(ctx, URN("urnB"), ID("idB"))
 
@@ -939,7 +939,7 @@ func TestApplyTOutputJoin(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
 	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
@@ -1090,7 +1090,7 @@ func TestJSONMarshalBasic(t *testing.T) {
 	}()
 	json := JSONMarshal(out)
 	v, known, secret, deps, err := await(json)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1134,7 +1134,7 @@ func TestJSONUnmarshalBasic(t *testing.T) {
 	}).(StringOutput)
 	json := JSONUnmarshal(str)
 	v, known, secret, deps, err := await(json)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1236,7 +1236,7 @@ func TestDeferredOutputDelayedResolution(t *testing.T) {
 
 	resDelayedOutput("hello")
 	v, known, secret, deps, err := await(deferred)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1268,7 +1268,7 @@ func TestDeferredOutputString(t *testing.T) {
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(String("hello").ToStringOutput())
 	v, known, secret, deps, err := await(deferred)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1282,7 +1282,7 @@ func TestDeferredOutputStringArray(t *testing.T) {
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(ToStringArray([]string{"hello"}).ToStringArrayOutput())
 	v, known, secret, deps, err := await(deferred)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1308,7 +1308,7 @@ func TestDeferredOutputStruct(t *testing.T) {
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(pulumix.Val[SomeInterface](SomeStruct{A: 42}))
 	v, known, secret, deps, err := await(deferred)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1322,7 +1322,7 @@ func TestDeferredOutputNil(t *testing.T) {
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(pulumix.Val[*string](nil))
 	v, known, secret, deps, err := await(deferred)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1336,7 +1336,7 @@ func TestDeferredOutputAny(t *testing.T) {
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(String("hello").ToStringOutput())
 	v, known, secret, deps, err := await(deferred)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)

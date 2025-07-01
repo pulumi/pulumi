@@ -105,7 +105,7 @@ func generateComplexTestDependencyGraph(
 				propertyDependencies{"B": []resource.URN{urnF, urnG}}, nil),
 		},
 	}
-	assert.NoError(t, old.VerifyIntegrity())
+	require.NoError(t, old.VerifyIntegrity())
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
@@ -113,7 +113,7 @@ func generateComplexTestDependencyGraph(
 				Provider: provider,
 				Inputs:   inputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return resp.ID
 		}
 
@@ -196,7 +196,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			replaced := make(map[resource.URN]bool)
 			for _, entry := range entries {
@@ -245,7 +245,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 				Dependencies: dependencies,
 				PropertyDeps: inputDeps,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return resp.URN
 		}
@@ -323,11 +323,11 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	var provURN, urnA, urnB resource.URN
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		provURN = resp.URN
 
 		provRef, err := providers.NewReference(provURN, resp.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		provA := provRef.String()
 
 		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
@@ -335,7 +335,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 			Inputs:              inputsA,
 			DeleteBeforeReplace: dbrA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
@@ -345,7 +345,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 			Dependencies: []resource.URN{urnA},
 			PropertyDeps: inputDepsB,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB = respB.URN
 
 		return nil
@@ -546,7 +546,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		resp, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = resp.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
@@ -555,7 +555,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 			Dependencies: []resource.URN{urnA},
 			PropertyDeps: inputDepsB,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB = resp.URN
 
 		return nil
@@ -571,13 +571,13 @@ func TestDependencyChangeDBR(t *testing.T) {
 		resp, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs: inputsB,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB = resp.URN
 
 		resp, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = resp.URN
 
 		return nil
@@ -590,7 +590,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.True(t, len(entries) > 0)
 
 				resBDeleted, resBSame := false, false
@@ -666,7 +666,7 @@ func TestDBRProtect(t *testing.T) {
 				PropertyDeps: inputDepsB,
 				Protect:      &protect,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		} else {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		}
@@ -735,7 +735,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 		respA, err := monitor.RegisterResource("pkgA:index:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"value": {respA.URN}}
 		_, err = monitor.RegisterResource("pkgA:index:typA", "resB", true, deploytest.ResourceOptions{
@@ -746,7 +746,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 			PropertyDeps:     inputDepsB,
 			ReplaceOnChanges: []string{"value"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})

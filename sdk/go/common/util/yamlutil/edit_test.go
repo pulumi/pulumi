@@ -19,13 +19,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func assertYamlEdit(t *testing.T, original string, edited interface{}, expected string) {
 	t.Helper()
 
 	actualValue, err := Edit([]byte(original), edited)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(string(actualValue)))
 }

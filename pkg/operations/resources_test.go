@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -31,11 +32,11 @@ func getPulumiResources(t *testing.T, path string) *Resource {
 	ctx := context.Background()
 	var checkpoint apitype.CheckpointV3
 	byts, err := os.ReadFile(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	snapshot, err := stack.DeserializeCheckpoint(ctx, b64.Base64SecretsProvider, &checkpoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	resources := NewResourceTree(snapshot.Resources)
 	return resources
 }

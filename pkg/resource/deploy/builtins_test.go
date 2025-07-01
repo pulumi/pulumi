@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuiltinProvider(t *testing.T) {
@@ -33,7 +34,7 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		assert.NoError(t, p.Close())
+		require.NoError(t, p.Close())
 	})
 	t.Run("Pkg", func(t *testing.T) {
 		t.Parallel()
@@ -44,14 +45,14 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		b, err := p.GetSchema(context.Background(), plugin.GetSchemaRequest{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []byte("{}"), b.Schema)
 	})
 	t.Run("GetMapping", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		m, err := p.GetMapping(context.Background(), plugin.GetMappingRequest{Key: "key", Provider: "provider"})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, m.Data)
 		assert.Equal(t, "", m.Provider)
 	})
@@ -59,7 +60,7 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		strs, err := p.GetMappings(context.Background(), plugin.GetMappingsRequest{Key: "key"})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, strs)
 	})
 	t.Run("Check", func(t *testing.T) {
@@ -92,7 +93,7 @@ func TestBuiltinProvider(t *testing.T) {
 					Reason:   `missing required property "name"`,
 				},
 			}, resp.Failures)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run(`property "name" must be a string`, func(t *testing.T) {
 			t.Parallel()
@@ -113,7 +114,7 @@ func TestBuiltinProvider(t *testing.T) {
 					Reason:   `property "name" must be a string`,
 				},
 			}, resp.Failures)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("ok", func(t *testing.T) {
 			t.Parallel()
@@ -128,7 +129,7 @@ func TestBuiltinProvider(t *testing.T) {
 				AllowUnknowns: true,
 			})
 			assert.Nil(t, resp.Failures)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, resource.PropertyMap{
 				"name": resource.NewStringProperty("res-name"),
 			}, resp.Properties)
@@ -191,7 +192,7 @@ func TestBuiltinProvider(t *testing.T) {
 						"name": resource.NewStringProperty("res-name"),
 					},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.True(t, called)
 				assert.Nil(t, resp.Failures)
 
@@ -231,7 +232,7 @@ func TestBuiltinProvider(t *testing.T) {
 						"stackName": resource.NewStringProperty("res-name"),
 					},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.True(t, called)
 			})
 		})
@@ -261,7 +262,7 @@ func TestBuiltinProvider(t *testing.T) {
 					},
 				})
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
 			})
 
@@ -288,7 +289,7 @@ func TestBuiltinProvider(t *testing.T) {
 					},
 				})
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
 			})
 
@@ -328,9 +329,9 @@ func TestBuiltinProvider(t *testing.T) {
 				called = true
 			},
 		}
-		assert.NoError(t, p.SignalCancellation(context.Background()))
+		require.NoError(t, p.SignalCancellation(context.Background()))
 		assert.True(t, called)
 		// Ensure idempotent.
-		assert.NoError(t, p.SignalCancellation(context.Background()))
+		require.NoError(t, p.SignalCancellation(context.Background()))
 	})
 }

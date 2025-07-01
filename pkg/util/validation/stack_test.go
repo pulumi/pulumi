@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateStackTag(t *testing.T) {
@@ -47,7 +48,7 @@ func TestValidateStackTag(t *testing.T) {
 				}
 
 				err := ValidateStackTags(tags)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 		}
 	})

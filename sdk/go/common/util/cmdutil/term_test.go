@@ -79,14 +79,14 @@ func TestTerminate_gracefulShutdown(t *testing.T) {
 
 				ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
 				assert.True(t, ok, "child process did not exit gracefully")
-				assert.NoError(t, err, "error terminating child process")
+				require.NoError(t, err, "error terminating child process")
 			}()
 
 			err := cmd.Wait()
 			if isWaitAlreadyExited(err) {
 				err = nil
 			}
-			assert.NoError(t, err, "child did not exit cleanly")
+			require.NoError(t, err, "child did not exit cleanly")
 
 			<-done
 		})
@@ -167,7 +167,7 @@ func TestTerminate_forceKill(t *testing.T) {
 
 				ok, err := TerminateProcessGroup(cmd.Process, 50*time.Millisecond)
 				assert.False(t, ok, "child process should not exit gracefully")
-				assert.NoError(t, err, "error terminating child process")
+				require.NoError(t, err, "error terminating child process")
 			}()
 
 			select {
@@ -180,7 +180,7 @@ func TestTerminate_forceKill(t *testing.T) {
 				t.Fatal("Took too long to kill child process")
 			}
 
-			assert.NoError(t,
+			require.NoError(t,
 				waitPidDead(pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
@@ -225,7 +225,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 
 		ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
 		assert.False(t, ok, "child process should not exit gracefully")
-		assert.NoError(t, err, "error terminating child process")
+		require.NoError(t, err, "error terminating child process")
 	}()
 
 	select {
@@ -239,7 +239,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 	}
 
 	for _, pid := range []int{pid, childPid} {
-		assert.NoError(t,
+		require.NoError(t,
 			waitPidDead(pid, 100*time.Millisecond),
 			"error waiting for process to die")
 	}
@@ -299,7 +299,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 				t.Fatal("Took too long to kill child process")
 			}
 
-			assert.NoError(t,
+			require.NoError(t,
 				waitPidDead(pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})

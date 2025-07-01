@@ -55,12 +55,12 @@ func TestAssetSerialize(t *testing.T) {
 
 		text := "a test asset"
 		asset, err := rasset.FromText(text)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, text, asset.Text)
 		assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset.Hash)
 		assetSer := asset.Serialize()
 		assetDes, isasset, err := rasset.Deserialize(assetSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isasset)
 		assert.True(t, assetDes.IsText())
 		assert.Equal(t, text, assetDes.Text)
@@ -70,25 +70,25 @@ func TestAssetSerialize(t *testing.T) {
 		// another text asset with the same contents, should hash the same way.
 		text2 := "a test asset"
 		asset2, err := rasset.FromText(text2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, text2, asset2.Text)
 		assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset2.Hash)
 
 		// another text asset, but with different contents, should be a different hash.
 		text3 := "a very different and special test asset"
 		asset3, err := rasset.FromText(text3)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, text3, asset3.Text)
 		assert.Equal(t, "9a6ed070e1ff834427105844ffd8a399a634753ce7a60ec5aae541524bbe7036", asset3.Hash)
 
 		// check that an empty text asset also works correctly.
 		empty, err := rasset.FromText("")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "", empty.Text)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", empty.Hash)
 		emptySer := empty.Serialize()
 		emptyDes, isasset, err := rasset.Deserialize(emptySer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isasset)
 		assert.True(t, emptyDes.IsText())
 		assert.Equal(t, "", emptyDes.Text)
@@ -96,7 +96,7 @@ func TestAssetSerialize(t *testing.T) {
 
 		// now a map of nested assets and/or archives.
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		switch runtime.Version() {
 		case go19Version:
 			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
@@ -106,7 +106,7 @@ func TestAssetSerialize(t *testing.T) {
 		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := rarchive.Deserialize(archSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
 		assert.Equal(t, 1, len(archDes.Assets))
@@ -124,14 +124,14 @@ func TestAssetSerialize(t *testing.T) {
 		t.Parallel()
 
 		f, err := os.CreateTemp(t.TempDir(), "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		file := f.Name()
 		asset, err := rasset.FromPath(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", asset.Hash)
 		assetSer := asset.Serialize()
 		assetDes, isasset, err := rasset.Deserialize(assetSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isasset)
 		assert.True(t, assetDes.IsPath())
 		assert.Equal(t, file, assetDes.Path)
@@ -139,7 +139,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		switch runtime.Version() {
 		case go19Version:
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
@@ -149,7 +149,7 @@ func TestAssetSerialize(t *testing.T) {
 		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := rarchive.Deserialize(archSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
 		assert.Equal(t, 1, len(archDes.Assets))
@@ -169,11 +169,11 @@ func TestAssetSerialize(t *testing.T) {
 		skipWindows(t)
 		url := "file:///dev/null"
 		asset, err := rasset.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", asset.Hash)
 		assetSer := asset.Serialize()
 		assetDes, isasset, err := rasset.Deserialize(assetSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isasset)
 		assert.True(t, assetDes.IsURI())
 		assert.Equal(t, url, assetDes.URI)
@@ -181,7 +181,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		switch runtime.Version() {
 		case go19Version:
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
@@ -191,7 +191,7 @@ func TestAssetSerialize(t *testing.T) {
 		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := rarchive.Deserialize(archSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
 		assert.Equal(t, 1, len(archDes.Assets))
@@ -214,7 +214,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "", empty.Text)
 		emptySer := empty.Serialize()
 		emptyDes, isasset, err := rasset.Deserialize(emptySer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isasset)
 		assert.True(t, emptyDes.IsText())
 		assert.Equal(t, "", emptyDes.Text)
@@ -222,12 +222,12 @@ func TestAssetSerialize(t *testing.T) {
 
 		// Check that a text asset with it's text removed shows as "no content".
 		asset, err := rasset.FromText("a very different and special test asset")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		asset.Text = ""
 		assert.False(t, asset.IsText())
 		assert.False(t, asset.HasContents())
 		asset, isasset, err = rasset.Deserialize(asset.Serialize())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isasset)
 		assert.False(t, asset.IsText())
 		assert.False(t, asset.HasContents())
@@ -241,14 +241,14 @@ func TestArchiveSerialize(t *testing.T) {
 		t.Parallel()
 
 		file, err := tempArchive("test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		arch, err := rarchive.FromPath(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", arch.Hash)
 		archSer := arch.Serialize()
 		archDes, isarch, err := rarchive.Deserialize(archSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsPath())
 		assert.Equal(t, file, archDes.Path)
@@ -259,15 +259,15 @@ func TestArchiveSerialize(t *testing.T) {
 
 		skipWindows(t)
 		file, err := tempArchive("test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		url := "file:///" + file
 		arch, err := rarchive.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", arch.Hash)
 		archSer := arch.Serialize()
 		archDes, isarch, err := rarchive.Deserialize(archSer)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsURI())
 		assert.Equal(t, url, archDes.URI)
@@ -278,19 +278,19 @@ func TestArchiveSerialize(t *testing.T) {
 
 		skipWindows(t)
 		file1, err := tempArchive("test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file1)) }()
 		file2, err := tempArchive("test2", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file2)) }()
 		arch1, err := rarchive.FromPath(file1)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		arch2, err := rarchive.FromPath(file2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, arch1.Equals(arch2))
 		url := "file:///" + file1
 		arch3, err := rarchive.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, arch1.Equals(arch3))
 	})
 	t.Run("nested archives", func(t *testing.T) {
@@ -298,23 +298,23 @@ func TestArchiveSerialize(t *testing.T) {
 
 		skipWindows(t)
 		file, err := tempArchive("test", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		arch1, err := rarchive.FromPath(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch1.EnsureHash())
 		url := "file:///" + file
 		arch2, err := rarchive.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch2.EnsureHash())
 
 		assert.Nil(t, os.Truncate(file, 0))
 		arch3, err := rarchive.FromPath(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch3.EnsureHash())
 		assert.False(t, arch1.Equals(arch3))
 		arch4, err := rarchive.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch4.EnsureHash())
 		assert.False(t, arch2.Equals(arch4))
 	})
@@ -323,23 +323,23 @@ func TestArchiveSerialize(t *testing.T) {
 
 		skipWindows(t)
 		file, err := tempArchive("test", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		arch1, err := rarchive.FromPath(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch1.EnsureHash())
 		url := "file:///" + file
 		arch2, err := rarchive.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch2.EnsureHash())
 
 		assert.Nil(t, os.Truncate(file, 0))
 		arch3, err := rarchive.FromPath(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch3.EnsureHash())
 		assert.False(t, arch1.Equals(arch3))
 		arch4, err := rarchive.FromURI(url)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, arch4.EnsureHash())
 		assert.False(t, arch2.Equals(arch4))
 	})
@@ -419,7 +419,7 @@ func TestDeserializeMissingHash(t *testing.T) {
 
 	assetSer := (&rasset.Asset{Text: "asset"}).Serialize()
 	assetDes, isasset, err := rasset.Deserialize(assetSer)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, isasset)
 	assert.Equal(t, "asset", assetDes.Text)
 }
@@ -428,7 +428,7 @@ func TestAssetFile(t *testing.T) {
 	t.Parallel()
 
 	asset, err := rasset.FromPath("../../../../pkg/resource/testdata/Fox.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "85e5f2698ac92d10d50e2f2802ed0d51a13e7c81d0d0a5998a75349469e774c5", asset.Hash)
 	assertAssetTextEquals(t, asset,
 		`The quick brown 🦊 jumps over
@@ -442,7 +442,7 @@ func TestArchiveDir(t *testing.T) {
 	t.Parallel()
 
 	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	switch runtime.Version() {
 	case go19Version:
 		assert.Equal(t, "35ddf9c48ce6ac5ba657573d388db6ce41f3ed6965346a3086fb70a550fe0864", arch.Hash)
@@ -458,7 +458,7 @@ func TestArchiveTar(t *testing.T) {
 
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.tar")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "c618d74a40f87de3092ca6a6c4cca834aa5c6a3956c6ceb2054b40d04bb4cd76", arch.Hash)
 	validateTestDirArchive(t, arch, 3)
 }
@@ -468,7 +468,7 @@ func TestArchiveTgz(t *testing.T) {
 
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.tgz")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "f9b33523b6a3538138aff0769ff9e7d522038e33c5cfe28b258332b3f15790c8", arch.Hash)
 	validateTestDirArchive(t, arch, 3)
 }
@@ -478,7 +478,7 @@ func TestArchiveZip(t *testing.T) {
 
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.zip")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "343da72cec1302441efd4a490d66f861d393fb270afb3ced27f92a0d96abc068", arch.Hash)
 	validateTestDirArchive(t, arch, 3)
 }
@@ -487,7 +487,7 @@ func TestArchiveJar(t *testing.T) {
 	t.Parallel()
 
 	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.jar")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "dfb9eb69f433564b07df524068621c5ac65c08868e6094b8fa4ee388a5ee66e7", arch.Hash)
 	validateTestDirArchive(t, arch, 4)
 }
@@ -521,13 +521,13 @@ func TestArchiveTarFiles(t *testing.T) {
 	t.Skip("Disabled due to flakiness. See #7976.")
 
 	repoRoot, err := findRepositoryRoot()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	arch, err := rarchive.FromPath(repoRoot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = arch.Archive(rarchive.TarArchive, io.Discard)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestArchiveZipFiles(t *testing.T) {
@@ -535,13 +535,13 @@ func TestArchiveZipFiles(t *testing.T) {
 
 	t.Skip() // TODO[pulumi/pulumi#7147]
 	repoRoot, err := findRepositoryRoot()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	arch, err := rarchive.FromPath(repoRoot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = arch.Archive(rarchive.ZIPArchive, io.Discard)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 //nolint:gosec
@@ -550,34 +550,34 @@ func TestNestedArchive(t *testing.T) {
 
 	// Create temp dir and place some files.
 	dirName := t.TempDir()
-	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0o777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0o777))
+	require.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
+	require.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0o777))
+	require.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
+	require.NoError(t, os.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0o777))
 
 	// Construct an AssetArchive with a nested PathArchive.
 	innerArch, err := rarchive.FromPath(filepath.Join(dirName, "./foo"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	textAsset, err := rasset.FromText("hello world")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	arch, err := rarchive.FromAssets(map[string]interface{}{
 		"./foo":    innerArch,
 		"fake.txt": textAsset,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Write a ZIP of the AssetArchive to disk.
 	tmpFile, err := os.CreateTemp(t.TempDir(), "")
 	fileName := tmpFile.Name()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = arch.Archive(rarchive.ZIPArchive, tmpFile)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tmpFile.Close()
 
 	// Read the ZIP back into memory, and validate its contents.
 	zipReader, err := zip.OpenReader(fileName)
 	defer contract.IgnoreClose(zipReader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	files := zipReader.File
 	assert.Len(t, files, 3)
 
@@ -592,32 +592,32 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 
 	// Create temp dir and place some files.
 	dirName := t.TempDir()
-	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
+	require.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
+	require.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
 
 	// Construct an AssetArchive with a nested PathArchive.
 	outerArch, err := rarchive.FromPath(filepath.Join(dirName, "./foo"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	innerArch, err := rarchive.FromPath(filepath.Join(dirName, "./foo/bar"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	arch, err := rarchive.FromAssets(map[string]interface{}{
 		"./foo":     outerArch,
 		"./foo/bar": innerArch,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Write a ZIP of the AssetArchive to disk.
 	tmpFile, err := os.CreateTemp(t.TempDir(), "")
 	fileName := tmpFile.Name()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = arch.Archive(rarchive.ZIPArchive, tmpFile)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tmpFile.Close()
 
 	// Read the ZIP back into memory, and validate its contents.
 	zipReader, err := zip.OpenReader(fileName)
 	defer contract.IgnoreClose(zipReader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	files := zipReader.File
 	assert.Len(t, files, 1)
 	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[0].Name))
@@ -631,7 +631,7 @@ func TestEmptyArchiveRoundTrip(t *testing.T) {
 	assert.True(t, emptyArchive.IsAssets(), "even empty archives should be have empty assets")
 	serialized := emptyArchive.Serialize()
 	deserialized, ok, err := rarchive.Deserialize(serialized)
-	assert.NoError(t, err, "Deserializing an empty archive should work")
+	require.NoError(t, err, "Deserializing an empty archive should work")
 	assert.True(t, ok, "Deserializing an empty archive should return true")
 	assert.True(t, deserialized.IsAssets(), "Deserialized archive should be an AssetsArchive")
 }
@@ -642,7 +642,7 @@ func TestInvalidPathArchive(t *testing.T) {
 	// Create a temp file that is not an asset.
 	tmpFile, err := os.CreateTemp(t.TempDir(), "")
 	fileName := tmpFile.Name()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	fmt.Fprintf(tmpFile, "foo\n")
 	tmpFile.Close()
 
@@ -653,7 +653,7 @@ func TestInvalidPathArchive(t *testing.T) {
 
 func validateTestDirArchive(t *testing.T, arch *rarchive.Archive, expected int) {
 	r, err := arch.Open()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		assert.Nil(t, r.Close())
 	}()
@@ -665,7 +665,7 @@ func validateTestDirArchive(t *testing.T, arch *rarchive.Archive, expected int) 
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, blob)
 
 		// Check for duplicates
@@ -675,10 +675,10 @@ func validateTestDirArchive(t *testing.T, arch *rarchive.Archive, expected int) 
 		// Read the blob
 		var text bytes.Buffer
 		n, err := io.Copy(&text, blob)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, blob.Size(), n)
 		err = blob.Close()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Store its contents in subs
 		subs[name] = text.String()
@@ -724,7 +724,7 @@ perferendis doloribus asperiores repellat…
 
 func assertAssetTextEquals(t *testing.T, asset *rasset.Asset, expect string) {
 	blob, err := asset.Read()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, blob)
 	assertAssetBlobEquals(t, blob, expect)
 }
@@ -732,9 +732,9 @@ func assertAssetTextEquals(t *testing.T, asset *rasset.Asset, expect string) {
 func assertAssetBlobEquals(t *testing.T, blob *rasset.Blob, expect string) {
 	var text bytes.Buffer
 	n, err := io.Copy(&text, blob)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, blob.Size(), n)
 	assert.Equal(t, expect, text.String())
 	err = blob.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

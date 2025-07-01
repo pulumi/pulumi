@@ -188,7 +188,7 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestOpenStackEnvUnsupportedBackend(t *testing.T) {

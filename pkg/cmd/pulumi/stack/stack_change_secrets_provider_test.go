@@ -305,12 +305,12 @@ runtime: mock
 
 func chdir(t *testing.T, dir string) {
 	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir)) // Set directory
 	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		require.NoError(t, os.Chdir(cwd)) // Restore directory
 		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, cwd, restoredDir)
 	})
 }

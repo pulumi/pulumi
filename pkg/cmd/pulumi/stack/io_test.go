@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -67,7 +68,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 
 	// Arrange.
 	_, expectedSm, err := passphrase.NewPassphraseSecretsManager("test-passphrase")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var actualDeployment apitype.DeploymentV3
 
@@ -87,7 +88,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 			opts *backend.CreateStackOptions,
 		) (backend.Stack, error) {
 			err := json.Unmarshal(initialState.Deployment, &actualDeployment)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil, nil
 		},
 		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {

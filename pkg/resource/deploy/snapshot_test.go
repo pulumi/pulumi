@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createSnapshot() Snapshot {
@@ -44,7 +45,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 	t.Parallel()
 	s1 := createSnapshotPtr()
 	s1n, err := s1.NormalizeURNReferences()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Same(t, s1, s1n)
 
 	s2 := createSnapshotPtr()
@@ -53,7 +54,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 	s2.Resources[2].Parent = r0.URN
 	r0.URN += "!"
 	s2n, err := s2.NormalizeURNReferences()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotSame(t, s2, s2n)
 	// before normalize in s2, Parent link uses outdated URL
 	assert.Equal(t, s2.Resources[2].Parent+"!", s2.Resources[0].URN)
@@ -250,13 +251,13 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 			t.Parallel()
 
 			snap := &Snapshot{Resources: c.given}
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 
 			// Act.
 			snap.Prune()
 
 			// Assert.
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -669,7 +670,7 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				assert.Equal(t, res.OldURN, actual[i].OldURN)
 				assert.ElementsMatch(t, res.RemovedDependencies, actual[i].RemovedDependencies)
 			}
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -849,14 +850,14 @@ func TestSnapshotToposort_PreservesValidSnapshots(t *testing.T) {
 			t.Parallel()
 
 			snap := &Snapshot{Resources: c.given}
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 
 			// Act.
 			err := snap.Toposort()
 
 			// Assert.
-			assert.NoError(t, err)
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, err)
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -1029,8 +1030,8 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 			err := snap.Toposort()
 
 			// Assert.
-			assert.NoError(t, err)
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, err)
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
