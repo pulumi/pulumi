@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix an issue where the engine would not issue creates and deletes in the correct order for delete before create replacements where dependencies had changed
