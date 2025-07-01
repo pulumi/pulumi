@@ -118,7 +118,7 @@ func TestOpenInEditorMultiPart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := openInEditorInternal(tt.command, tt.filename)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

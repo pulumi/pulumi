@@ -87,7 +87,7 @@ func TestDeletion(t *testing.T) {
 	})
 
 	err := DeleteResource(snap, b, nil, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, []*resource.State{pA, a, c}, snap.Resources)
 }
@@ -371,7 +371,7 @@ func TestDeleteProtected(t *testing.T) {
 					protectedCount++
 					return nil
 				}, false)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, protectedCount, 1)
 				assert.Equal(t, snap.Resources, []*resource.State{pA, b, c})
 			},
@@ -388,7 +388,7 @@ func TestDeleteProtected(t *testing.T) {
 					protectedCount++
 					return nil
 				}, true)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				// 2 because we only plan to delete b and c. a is protected but not
 				// scheduled for deletion, so we don't call the onProtect handler.
 				assert.Equal(t, protectedCount, 2)
@@ -406,7 +406,7 @@ func TestDeleteProtected(t *testing.T) {
 					protectedCount++
 					return nil
 				}, false)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, protectedCount, 1)
 				assert.Equal(t, snap.Resources, []*resource.State{pA, a, b})
 			},

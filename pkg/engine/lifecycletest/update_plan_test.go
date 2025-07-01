@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -60,7 +61,7 @@ func TestPlannedUpdate(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -91,7 +92,7 @@ func TestPlannedUpdate(t *testing.T) {
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to run an update using the plan.
 	expectError = true
@@ -106,7 +107,7 @@ func TestPlannedUpdate(t *testing.T) {
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: +-baz[{map[a:{42} b:output<string>{}]}], +-foo[{bar}]<{%reset%}>\n"))
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 1) {
@@ -133,7 +134,7 @@ func TestPlannedUpdate(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 2) {
@@ -200,7 +201,7 @@ func TestUnplannedCreate(t *testing.T) {
 
 	// Create a plan to do nothing
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now set the flag for the language runtime to create a resource, and run update with the plan
 	createResource = true
@@ -208,7 +209,7 @@ func TestUnplannedCreate(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>create is not allowed by the plan: no steps were expected for this resource<{%reset%}>\n"))
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check nothing was was created
 	assert.NotNil(t, snap)
@@ -245,13 +246,13 @@ func TestUnplannedDelete(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if createAllResources {
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -270,11 +271,11 @@ func TestUnplannedDelete(t *testing.T) {
 
 	// Create an initial snapshot that resA and resB exist
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a plan that resA and resB won't change
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now set the flag for the language runtime to not create resB and run an update with
 	// the no-op plan, this should block the delete
@@ -284,7 +285,7 @@ func TestUnplannedDelete(t *testing.T) {
 		"<{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>\n"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check both resources and the provider are still listed in the snapshot
 	if !assert.Len(t, snap.Resources, 3) {
@@ -321,7 +322,7 @@ func TestExpectedDelete(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if createAllResources {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -330,7 +331,7 @@ func TestExpectedDelete(t *testing.T) {
 			if expectError {
 				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		}
 
@@ -351,13 +352,13 @@ func TestExpectedDelete(t *testing.T) {
 	// Create an initial snapshot that resA and resB exist
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a plan that resA is same and resB is deleted
 	createAllResources = false
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run but set the runtime to return resA and resB, given we expected resB to be deleted
 	// this should be an error
@@ -369,7 +370,7 @@ func TestExpectedDelete(t *testing.T) {
 			"resource unexpectedly not deleted<{%reset%}>\n"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check both resources and the provider are still listed in the snapshot
 	if !assert.Len(t, snap.Resources, 3) {
@@ -402,13 +403,13 @@ func TestExpectedCreate(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if createAllResources {
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -428,13 +429,13 @@ func TestExpectedCreate(t *testing.T) {
 	// Create an initial snapshot that resA exists
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a plan that resA is same and resB is created
 	createAllResources = true
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run but set the runtime to return resA, given we expected resB to be created
 	// this should be an error
@@ -445,7 +446,7 @@ func TestExpectedCreate(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:m:typA::resB but none were seen<{%reset%}>\n"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check resA and the provider are still listed in the snapshot
 	if !assert.Len(t, snap.Resources, 2) {
@@ -482,7 +483,7 @@ func TestPropertySetChange(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -502,7 +503,7 @@ func TestPropertySetChange(t *testing.T) {
 	// Create an initial plan to create resA
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now change the runtime to not return property "frob", this should error
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -515,7 +516,7 @@ func TestPropertySetChange(t *testing.T) {
 			"properties changed: +-frob[{baz}]<{%reset%}>\n"))
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestExpectedUnneededCreate(t *testing.T) {
@@ -542,7 +543,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -561,18 +562,18 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	// Create a plan that resA needs creating
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create an a snapshot that resA exists
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run again with the plan set but the snapshot that resA already exists
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check resA and the provider are still listed in the snapshot
 	if !assert.Len(t, snap.Resources, 2) {
@@ -609,7 +610,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -628,23 +629,23 @@ func TestExpectedUnneededDelete(t *testing.T) {
 
 	// Create an initial snapshot that resA exists
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a plan that resA is deleted
 	createResource = false
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run to delete resA
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run again with the plan set but the snapshot that resA is already deleted
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resources are still gone
 	if !assert.Len(t, snap.Resources, 0) {
@@ -681,7 +682,7 @@ func TestResoucesWithSames(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		if createB {
@@ -690,7 +691,7 @@ func TestResoucesWithSames(t *testing.T) {
 					"X": "Y",
 				}),
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -715,13 +716,13 @@ func TestResoucesWithSames(t *testing.T) {
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Run an update that creates B
 	createA = false
 	createB = true
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 2) {
@@ -742,7 +743,7 @@ func TestResoucesWithSames(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 3) {
@@ -789,7 +790,7 @@ func TestPlannedPreviews(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -820,7 +821,7 @@ func TestPlannedPreviews(t *testing.T) {
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to run a new preview using the plan, given we've changed the property set this should fail
 	expectError = true
@@ -835,7 +836,7 @@ func TestPlannedPreviews(t *testing.T) {
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: properties changed: "+
 			"+-baz[{map[a:{42} b:output<string>{}]}], +-foo[{bar}]<{%reset%}>\n"))
 	_, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to run an preview using the plan, such that the property set is now valid
 	expectError = false
@@ -853,7 +854,7 @@ func TestPlannedPreviews(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	_, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPlannedUpdateChangedStack(t *testing.T) {
@@ -884,7 +885,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -906,7 +907,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"zed": 24,
 	})
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Generate a plan that we want to change foo
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -914,7 +915,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"zed": 24,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Change zed in the stack
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -922,7 +923,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"zed": 26,
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
 	expectError = true
@@ -935,7 +936,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: =~zed[{24}]<{%reset%}>\n"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state we shouldn't of changed anything because the update failed
 	if !assert.Len(t, snap.Resources, 2) {
@@ -972,7 +973,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_ = monitor.RegisterResourceOutputs(resp.URN, outs)
 
@@ -993,7 +994,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	// Create an initial plan to create resA and the outputs
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now change the runtime to not return property "frob", this should error
 	outs = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1004,7 +1005,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 		"<{%reset%}>resource violates plan: properties changed: +-frob[{baz}]<{%reset%}>\n"))
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPlannedInputOutputDifferences(t *testing.T) {
@@ -1055,7 +1056,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -1075,13 +1076,13 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	// Create an initial plan to create resA
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check we can create resA even though its outputs are different to the planned inputs
 	p.Options.Plan = plan.Clone()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make a plan to change resA
 	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1091,7 +1092,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	p.Options.Plan = nil
 	plan, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test the plan fails if we don't pass newBazzer
 	expectError = true
@@ -1105,7 +1106,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 			"properties changed: ~~frob[{newBazzer}!={differentBazzer}]<{%reset%}>\n"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the plan succeeds if we do pass newBazzer
 	expectError = false
@@ -1116,7 +1117,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestAliasWithPlans(t *testing.T) {
@@ -1149,7 +1150,7 @@ func TestAliasWithPlans(t *testing.T) {
 			Inputs:    ins,
 			AliasURNs: aliases,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -1168,7 +1169,7 @@ func TestAliasWithPlans(t *testing.T) {
 	// Create an initial ResA
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Update the name and alias and make a plan for resA
 	resourceName = "newResA"
@@ -1176,13 +1177,13 @@ func TestAliasWithPlans(t *testing.T) {
 	aliases[0] = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now try and run with the plan
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestComputedCanBeDropped(t *testing.T) {
@@ -1208,16 +1209,16 @@ func TestComputedCanBeDropped(t *testing.T) {
 	var resourceInputs resource.PropertyMap
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resourceInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// We're using the same property set on purpose, this is not a test bug
 		err = monitor.RegisterResourceOutputs(resp.URN, resourceInputs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -1273,13 +1274,13 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Generate a plan.
 	resourceInputs = computedPropertySet
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to run an update using the plan with all computed values removed
 	resourceInputs = partialPropertySet
 	p.Options.Plan = plan.Clone()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 3) {
@@ -1293,7 +1294,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	resourceInputs = fullPropertySet
 	p.Options.Plan = nil
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 3) {
@@ -1306,13 +1307,13 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// ...and then build a new plan where they're computed updates (vs above where its computed creates)
 	resourceInputs = computedPropertySet
 	plan, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run the an update with the plan and check the update is allowed to remove these properties
 	resourceInputs = partialPropertySet
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 3) {
@@ -1351,7 +1352,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 					}
 
 					name, err := resource.NewUniqueHex(req.URN.Name(), 8, 512)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					result := req.News.Copy()
 					result["name"] = resource.NewStringProperty(name)
@@ -1377,7 +1378,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 			if expectError {
 				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		}
 
@@ -1403,7 +1404,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to run an update using the plan.
 	// This should fail because of the non-determinism
@@ -1418,7 +1419,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: \\+\\+name\\[{res[\\d\\w]{9}}!={res[\\d\\w]{9}}\\]<{%reset%}>\\n")
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "4")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 1) {
@@ -1468,7 +1469,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -1493,7 +1494,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
 	assert.Nil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Generate a plan with good inputs
 	expectError = false
@@ -1503,7 +1504,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	plan, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
 	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Try and run against the plan with inputs that will fail Check
 	expectError = true
@@ -1514,7 +1515,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	validate = ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 
 	// Check the resource's state.
@@ -1536,7 +1537,7 @@ func TestPluginsAreDownloaded(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	},
 		workspace.PackageDescriptor{PluginSpec: workspace.PluginSpec{Name: "pkgA"}},
@@ -1556,7 +1557,7 @@ func TestPluginsAreDownloaded(t *testing.T) {
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
 	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestProviderDeterministicPreview(t *testing.T) {
@@ -1577,7 +1578,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 							req.News["name"] = name
 						} else {
 							name, err := resource.NewUniqueName(req.RandomSeed, req.URN.Name(), -1, -1, nil)
-							assert.NoError(t, err)
+							require.NoError(t, err)
 							generatedName = resource.NewStringProperty(name)
 							req.News["name"] = generatedName
 						}
@@ -1614,7 +1615,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1632,7 +1633,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 	// Run a preview, this should want to create resA with a given name
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, generatedName.IsString())
 	assert.NotEqual(t, "", generatedName.StringValue())
 	expectedName := generatedName
@@ -1640,7 +1641,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	// Run an update, we should get the same name as we saw in preview
 	p.Options.Plan = plan
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
@@ -1652,7 +1653,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	})
 	p.Options.Plan = nil
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
@@ -1696,13 +1697,13 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
 			Inputs:       respA.Outputs,
 			Dependencies: []resource.URN{respA.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -1721,7 +1722,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	})
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Update the input and mark it as a replace, check that both A and B are marked as replacements
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1742,7 +1743,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	}
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typA::resA"].Ops))
 	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typB::resB"].Ops))
@@ -1751,7 +1752,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestResourcesTargeted checks that a plan created with targets specified captures only those targets and
@@ -1776,7 +1777,7 @@ func TestResourcesTargeted(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -1806,7 +1807,7 @@ func TestResourcesTargeted(t *testing.T) {
 			}),
 		},
 	}, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, plan)
 
 	// Check that running an update with everything targeted fails due to our plan being constrained
@@ -1837,7 +1838,7 @@ func TestResourcesTargeted(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // This test checks that registering resource outputs does not fail for the root stack resource when it
@@ -1855,17 +1856,17 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -1886,7 +1887,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 			}),
 		},
 	}, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, plan)
 
 	// Check that update succeeds despite the root stack not being targeted.
@@ -1901,5 +1902,5 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

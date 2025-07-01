@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // This test checks that the ANSI control codes are removed from EngineEvents
@@ -40,7 +41,7 @@ func TestRemoveANSI(t *testing.T) {
 	)
 
 	res, err := ConvertEngineEvent(e, false /* showSecrets */)
-	assert.NoError(t, err, "unable to convert engine event")
+	require.NoError(t, err, "unable to convert engine event")
 	assert.Equal(t, expected, res.DiagnosticEvent.Message)
 }
 
@@ -58,8 +59,8 @@ func TestEmptyDetailedDiff(t *testing.T) {
 		},
 	)
 	res, err := ConvertEngineEvent(e, false /* showSecrets */)
-	assert.NoError(t, err, "unable to convert engine event")
+	require.NoError(t, err, "unable to convert engine event")
 	jsonEvent, err := json.Marshal(res)
-	assert.NoError(t, err, "unable to marshal to json")
+	require.NoError(t, err, "unable to marshal to json")
 	assert.Equal(t, expected, string(jsonEvent))
 }

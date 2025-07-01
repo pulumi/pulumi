@@ -29,7 +29,7 @@ func failf(format string, a ...interface{}) {
 	panic(fmt.Errorf(format, a...))
 }
 
-func require(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) string {
+func requireConfig(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) string {
 	v, ok := get(ctx, key, use, insteadOf)
 
 	secretText := " "
@@ -47,11 +47,11 @@ func require(ctx *pulumi.Context, key string, secret bool, use, insteadOf string
 
 // Require loads a configuration value by its key, or panics if it doesn't exist.
 func Require(ctx *pulumi.Context, key string) string {
-	return require(ctx, key, false, "RequireSecret", "Require")
+	return requireConfig(ctx, key, false, "RequireSecret", "Require")
 }
 
 func requireObject(ctx *pulumi.Context, key string, secret bool, output interface{}, use, insteadOf string) {
-	v := require(ctx, key, secret, use, insteadOf)
+	v := requireConfig(ctx, key, secret, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
 		failf("unable to unmarshall required configuration variable '%s'; %s", key, err)
 	}
@@ -66,7 +66,7 @@ func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
 {{range .Builtins}}
 {{if .GenerateConfig}}
 func require{{.Name}}(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) {{.Type}} {
-	v := require(ctx, key, secret, use, insteadOf)
+	v := requireConfig(ctx, key, secret, use, insteadOf)
 	o, err := cast.To{{.Name}}E(v)
 	if err != nil {
 		failf("unable to parse required configuration variable '%s'; %s", key, err)
@@ -84,7 +84,7 @@ func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
 func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
-	return pulumi.ToSecret(require(ctx, key, true, "", "")).(pulumi.StringOutput)
+	return pulumi.ToSecret(requireConfig(ctx, key, true, "", "")).(pulumi.StringOutput)
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,

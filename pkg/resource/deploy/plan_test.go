@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPlan(t *testing.T) {
@@ -242,7 +243,7 @@ func TestResourcePlan(t *testing.T) {
 				resource.PropertyMap{},
 				resource.PropertyMap{},
 				&resource.Goal{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("violations", func(t *testing.T) {
 			t.Run("custom mismatch", func(t *testing.T) {
@@ -554,7 +555,7 @@ func TestCheckDiff(t *testing.T) {
 						"should-be-here",
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
 			t.Parallel()
@@ -608,7 +609,7 @@ func TestCheckDiff(t *testing.T) {
 						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
 			t.Parallel()
@@ -631,7 +632,7 @@ func TestCheckDiff(t *testing.T) {
 						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("ok same", func(t *testing.T) {
 			t.Parallel()
@@ -647,7 +648,7 @@ func TestCheckDiff(t *testing.T) {
 						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
 			t.Parallel()
@@ -711,7 +712,7 @@ func TestCheckDiff(t *testing.T) {
 								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewStringProperty("new-new-test")),
 							},
 						})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				})
 			})
 		})

@@ -103,7 +103,7 @@ func TestBindProgram(t *testing.T) {
 				// PCL binder options are taken from program_driver.go
 				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
 
-				assert.NoError(t, bindError)
+				require.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
 					t.Fatalf("failed to bind program %s: %v", v.Name(), diags)
 				}
@@ -149,7 +149,7 @@ func TestWritingProgramSource(t *testing.T) {
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
-	assert.NoError(t, bindError)
+	require.NoError(t, bindError)
 	if diags.HasErrors() || program == nil {
 		t.Fatalf("failed to bind program: %v", diags)
 	}
@@ -157,29 +157,29 @@ func TestWritingProgramSource(t *testing.T) {
 	// STEP 2: assert the resulting files
 	fs := afero.NewMemMapFs()
 	writingFilesError := program.WriteSource(fs)
-	assert.NoError(t, writingFilesError, "failed to write source files")
+	require.NoError(t, writingFilesError, "failed to write source files")
 
 	// Assert main file exists
 	mainFileExists, err := afero.Exists(fs, "/components.pp")
-	assert.NoError(t, err, "failed to get the main file")
+	require.NoError(t, err, "failed to get the main file")
 	assert.True(t, mainFileExists, "main program file should exist at the root")
 
 	// Assert directories "simpleComponent" and "exampleComponent" are present
 	simpleComponentDirExists, err := afero.DirExists(fs, "/simpleComponent")
-	assert.NoError(t, err, "failed to get the simple component dir")
+	require.NoError(t, err, "failed to get the simple component dir")
 	assert.True(t, simpleComponentDirExists, "simple component dir exists")
 
 	exampleComponentDirExists, err := afero.DirExists(fs, "/exampleComponent")
-	assert.NoError(t, err, "failed to get the example component dir")
+	require.NoError(t, err, "failed to get the example component dir")
 	assert.True(t, exampleComponentDirExists, "example component dir exists")
 
 	// Assert simpleComponent/main.pp and exampleComponent/main.pp exist
 	simpleMainExists, err := afero.Exists(fs, "/simpleComponent/main.pp")
-	assert.NoError(t, err, "failed to get the main file of simple component")
+	require.NoError(t, err, "failed to get the main file of simple component")
 	assert.True(t, simpleMainExists, "main program file of simple component should exist")
 
 	exampleMainExists, err := afero.Exists(fs, "/exampleComponent/main.pp")
-	assert.NoError(t, err, "failed to get the main file of example component")
+	require.NoError(t, err, "failed to get the main file of example component")
 	assert.True(t, exampleMainExists, "main program file of example component should exist")
 }
 

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -26,12 +27,12 @@ func TestParseKey(t *testing.T) {
 	t.Parallel()
 
 	k, err := ParseKey("test:config:key")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "test", k.namespace)
 	assert.Equal(t, "key", k.name)
 
 	k, err = ParseKey("test:key")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "test", k.namespace)
 	assert.Equal(t, "key", k.name)
 
@@ -52,11 +53,11 @@ func TestMarshalKeyJSON(t *testing.T) {
 	k := Key{namespace: "test", name: "key"}
 
 	b, err := json.Marshal(k)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("\"test:key\""), b)
 
 	newK, err := roundtripKeyJSON(k)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, k, newK)
 }
 
@@ -66,11 +67,11 @@ func TestMarshalKeyYAML(t *testing.T) {
 	k := Key{namespace: "test", name: "key"}
 
 	b, err := yaml.Marshal(k)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("test:key\n"), b)
 
 	newK, err := roundtripKeyYAML(k)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, k, newK)
 }
 

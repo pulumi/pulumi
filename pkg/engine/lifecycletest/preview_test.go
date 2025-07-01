@@ -121,7 +121,7 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the update outputs
 		if programExecutions == 1 {

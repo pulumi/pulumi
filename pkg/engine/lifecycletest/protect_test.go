@@ -51,19 +51,19 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	creating := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource(resource.RootStackType, "test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if creating {
 			protect := true
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Protect: &protect,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Protect: &protect,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return err
@@ -77,7 +77,7 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	// Run the initial update which sets some stack outputs.
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 
@@ -135,13 +135,13 @@ func TestProtectInheritance(t *testing.T) {
 		resp, err := monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
 			Protect: &protect,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Inherit protect true from parent
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Parent: resp.URN,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Override protect true from parent
 		protectB := false
@@ -149,7 +149,7 @@ func TestProtectInheritance(t *testing.T) {
 			Parent:  resp.URN,
 			Protect: &protectB,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return err
 	})
@@ -162,7 +162,7 @@ func TestProtectInheritance(t *testing.T) {
 	// Run the update
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
 	// Assert that parent and resA are protected and resB is not
 	assert.Equal(t, "parent", snap.Resources[0].URN.Name())

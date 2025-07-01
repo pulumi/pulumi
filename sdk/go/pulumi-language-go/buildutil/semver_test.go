@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVersions(t *testing.T) {
@@ -34,7 +35,7 @@ func TestVersions(t *testing.T) {
 
 	for ver, expected := range cases {
 		p, err := PyPiVersionFromNpmVersion(ver)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected, p, "failed parsing '%s'", ver)
 	}
 }

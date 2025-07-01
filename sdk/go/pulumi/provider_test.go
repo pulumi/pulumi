@@ -561,7 +561,7 @@ func init() {
 
 func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool, deps map[URN]struct{}, output interface{}) {
 	actualValue, actualKnown, actualSecret, actualDeps, err := await(output.(Output))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, value, actualValue)
 	assert.Equal(t, known, actualKnown)
 	assert.Equal(t, secret, actualSecret)
@@ -569,7 +569,7 @@ func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool,
 	actualDepsSet := map[URN]struct{}{}
 	for _, res := range actualDeps {
 		urn, uknown, usecret, err := res.URN().awaitURN(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, uknown)
 		assert.False(t, usecret)
 		actualDepsSet[urn] = struct{}{}
@@ -1680,7 +1680,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			if test.expectedError != "" {
 				assert.EqualError(t, err, "copying input \"value\": "+test.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				actual := reflect.ValueOf(test.args).Elem().FieldByName("Value").Interface()
 				test.assert(t, actual)
 			}
@@ -1710,10 +1710,10 @@ func TestConstructResult(t *testing.T) {
 	}
 
 	_, state, err := newConstructResult(component)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resolvedProps, _, _, err := marshalInputs(state)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, resource.PropertyMap{
 		"foo":       resource.NewStringProperty("hi"),
@@ -1736,10 +1736,10 @@ func TestSerdeNilNestedResource(t *testing.T) {
 		Component: (*MyComponent)(nil),
 	}
 	_, state, err := newConstructResult(component)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, _, _, err = marshalInputs(state)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestConstruct_resourceOptionsSnapshot(t *testing.T) {

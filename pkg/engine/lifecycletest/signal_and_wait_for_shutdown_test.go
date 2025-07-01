@@ -42,7 +42,7 @@ func TestSignalAndWaitForShutdown(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if callSignalAndWaitForShutdown {
 			err = monitor.SignalAndWaitForShutdown(context.Background())
 			require.NoError(t, err)
@@ -187,10 +187,10 @@ func TestSignalAndWaitForShutdownErrorAfterWait(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if callSignalAndWaitForShutdown {
 			err = monitor.SignalAndWaitForShutdown(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return errors.New("error in program after signal")
 		}
 		return errors.New("error in program without signal")

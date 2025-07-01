@@ -236,7 +236,7 @@ func TestRemoteTransforms(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 3)
 	// Check Resources[1] is the resA resource
@@ -421,7 +421,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 3)
 	// Check Resources[2] is the resA resource
@@ -639,7 +639,7 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 4)
 	// Check Resources[3] is the resC resource
@@ -728,7 +728,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 3)
 	// Check Resources[2] is the resA resource

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -80,7 +81,7 @@ func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 
 func (ctx *testContext) makeEventEmitter(t testing.TB) eventEmitter {
 	emitter, err := makeQueryEventEmitter(ctx.events)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return emitter
 }
 
@@ -129,7 +130,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	defer ctx.Close()
 
 	info, err := newDeploymentContext(makeUpdateInfo(), "test", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer info.Close()
 
 	host := makePluginHost(t, program)

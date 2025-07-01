@@ -50,14 +50,14 @@ func TestRenameProvider(t *testing.T) {
 	}
 
 	// Ensure that the snapshot is valid before the rename.
-	assert.NoError(t, snap.VerifyIntegrity())
+	require.NoError(t, snap.VerifyIntegrity())
 
 	// Mutates the snapshot.
 	err := stateRenameOperation(provURN, "our-provider", display.Options{}, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Ensure that the snapshot is valid after the rename.
-	assert.NoError(t, snap.VerifyIntegrity())
+	require.NoError(t, snap.VerifyIntegrity())
 
 	// Check that the snapshot contains the renamed provider as `our-provider`.
 	for _, res := range snap.Resources {

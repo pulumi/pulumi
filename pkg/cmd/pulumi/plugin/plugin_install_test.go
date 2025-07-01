@@ -112,7 +112,7 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{"resource", "aws@1000.78.0"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
@@ -163,7 +163,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{"resource", "foo@2.0.0"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // We need to check that we don't break installs of versions that are not published into the registry.
@@ -225,7 +225,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{"resource", "random", "1.48.0"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetPluginDownloadForMissingPackage(t *testing.T) {
@@ -309,7 +309,7 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
 }
 
 type testMockRegistry struct {

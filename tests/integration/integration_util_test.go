@@ -84,9 +84,9 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			cmd := exec.Command(path, "ignored")
 			cmd.Env = append(os.Environ(), test.env...)
 			stdout, err := cmd.StdoutPipe()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = cmd.Start()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer func() {
 				// Ignore the error as it may fail with access denied on Windows.
 				cmd.Process.Kill() //nolint:errcheck
@@ -95,7 +95,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			// Read the port from standard output.
 			reader := bufio.NewReader(stdout)
 			bytes, err := reader.ReadBytes('\n')
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
@@ -104,7 +104,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				rpcutil.GrpcChannelOptions(),
 			)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			client := pulumirpc.NewResourceProviderClient(conn)
 
 			// Call GetSchema and verify the results.
@@ -215,7 +215,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 		err := cmd.Run()
 
 		// This runs in a separate goroutine, so don't use 'require'.
-		assert.NoError(t, err, "failed to run setup script")
+		require.NoError(t, err, "failed to run setup script")
 	})
 
 	// The function above runs in a separate goroutine
@@ -242,7 +242,7 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 			}
 
 			defer func() {
-				assert.NoError(t, mutex.Unlock())
+				require.NoError(t, mutex.Unlock())
 			}()
 			break
 		}
@@ -272,7 +272,7 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	mu := fsutil.NewFileMutex(path)
 	require.NoError(t, mu.Lock())
 	defer func() {
-		assert.NoError(t, mu.Unlock())
+		require.NoError(t, mu.Unlock())
 	}()
 
 	fakeT := nonfatalT{T: t}
@@ -478,7 +478,7 @@ func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output str
 	encoder := json.NewEncoder(&evtJSON)
 	encoder.SetEscapeHTML(false)
 	err := encoder.Encode(evt)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, output, evtJSON.String())
 }
 

@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	codegenGo "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -32,7 +32,7 @@ func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
 
 	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	test.GenerateGoYAMLBatchTest(
 		t,

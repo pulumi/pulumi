@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // changes directory for process
@@ -35,7 +36,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	}
 
 	err := runNewPolicyPack(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
 	assert.FileExists(t, filepath.Join(tempdir, "index.ts"))

@@ -122,7 +122,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 				assert.EqualError(t, err, tt.err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -210,9 +210,9 @@ in-project = true
 // and returns its path.
 func pulumiWheel(t *testing.T) string {
 	dir, err := filepath.Abs(filepath.Join("..", "..", "build"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	files, err := os.ReadDir(dir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == ".whl" {
 			return filepath.Join(dir, file.Name())
@@ -306,7 +306,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			assert.NotEmpty(t, pipInstallTest.Location)
 
 			plugin, err := determinePackageDependency(pipInstallTest)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, plugin)
 			assert.Equal(t, "thing1", plugin.Name)
 			assert.Equal(t, "vthing2", plugin.Version)
@@ -323,7 +323,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			// Install a local pulumi SDK that has a pulumi-plugin.json file with `{ "resource": false }`.
 			fooSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "foo-1.0.0"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
 			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", fooSdkDir)
@@ -339,7 +339,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			// There should be no associated plugin since its `resource` field is set to `false`.
 			plugin, err := determinePackageDependency(packages[0])
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, plugin)
 		})
 
@@ -352,7 +352,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			// Install a local old provider SDK that does not have a pulumi-plugin.json file.
 			oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
 			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", oldSdkDir)
@@ -361,7 +361,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
 			packages, err := determinePulumiPackages(t.Context(), opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotEmpty(t, packages)
 			assert.Equal(t, 1, len(packages))
 			old := packages[0]
@@ -379,7 +379,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			// The package should not be considered a Pulumi package since it is hardcoded not to be,
 			// since it does not have an associated plugin.
 			packages, err := determinePulumiPackages(t.Context(), opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, packages)
 		})
 	}

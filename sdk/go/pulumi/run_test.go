@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -175,24 +176,24 @@ func TestRegisterResource(t *testing.T) {
 			Baz:  String("zab"),
 			Bang: String("gnab"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		id, known, secret, deps, err := await(res.ID())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, ID("someID"), id)
 
 		urn, known, secret, deps, err := await(res.URN())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res}, deps)
 		assert.NotEqual(t, "", urn)
 
 		foo, known, secret, deps, err := await(res.Foo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res}, deps)
@@ -206,25 +207,25 @@ func TestRegisterResource(t *testing.T) {
 			"baz":  String("zab"),
 			"bang": String("gnab"),
 		}, &res2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, res2.rawOutputs)
 
 		id, known, secret, deps, err = await(res2.ID())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res2}, deps)
 		assert.Equal(t, ID("someID"), id)
 
 		urn, known, secret, deps, err = await(res2.URN())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res2}, deps)
 		assert.NotEqual(t, "", urn)
 
 		outputs, known, secret, deps, err := await(res2.Outputs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res2}, deps)
@@ -238,11 +239,11 @@ func TestRegisterResource(t *testing.T) {
 			"baz":  String("zab"),
 			"bang": String("gnab"),
 		}, &res3)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, res3.rawOutputs)
 		output := InternalGetRawOutputs(&res3.ResourceState)
 		rawOutputsTmp, _, _, _, err := await(output)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		rawOutputs, ok := rawOutputsTmp.(resource.PropertyMap)
 		assert.True(t, ok)
 		assert.True(t, rawOutputs.HasValue("foo"))
@@ -251,7 +252,7 @@ func TestRegisterResource(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestReadResource(t *testing.T) {
@@ -277,24 +278,24 @@ func TestReadResource(t *testing.T) {
 		err := ctx.ReadResource("test:resource:type", "resA", ID("someID"), &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		id, known, secret, deps, err := await(res.ID())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, ID("someID"), id)
 
 		urn, known, secret, deps, err := await(res.URN())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res}, deps)
 		assert.NotEqual(t, "", urn)
 
 		foo, known, secret, deps, err := await(res.Foo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res}, deps)
@@ -305,10 +306,10 @@ func TestReadResource(t *testing.T) {
 		err = ctx.ReadResource("test:resource:type", "resA", ID("someID"), Map{
 			"foo": String("oof"),
 		}, &res2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		foo, known, secret, deps, err = await(res2.Foo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res2}, deps)
@@ -316,7 +317,7 @@ func TestReadResource(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoke(t *testing.T) {
@@ -343,7 +344,7 @@ func TestInvoke(t *testing.T) {
 			Bang: "gnab",
 			Bar:  "rab",
 		}, &result)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "oof", result.Foo)
 		assert.Equal(t, "zab", result.Baz)
 
@@ -353,13 +354,13 @@ func TestInvoke(t *testing.T) {
 			Bang: "gnab",
 			Bar:  "rab",
 		}, &result2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "oof", result2["foo"].(string))
 		assert.Equal(t, "zab", result2["baz"].(string))
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type testInstanceResource struct {
@@ -468,21 +469,21 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
 		var instance testInstanceResource
 		err := ctx.RegisterResource("pkg:index:Instance", "instance", &testInstanceResourceInputs{}, &instance)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var mycustom testMyCustomResource
 		err = ctx.RegisterResource("pkg:index:MyCustom", "mycustom", &testMyCustomResourceInputs{
 			Instance: &instance,
 		}, &mycustom)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, _, secret, _, err := await(mycustom.Instance)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.False(t, secret)
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type testMyRemoteComponentArgs struct {
@@ -526,17 +527,17 @@ func TestRemoteComponent(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
 		var instance testInstanceResource
 		err := ctx.RegisterResource("pkg:index:Instance", "instance", &testInstanceResourceInputs{}, &instance)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var myremotecomponent testMyRemoteComponent
 		err = ctx.RegisterRemoteComponentResource(
 			"pkg:index:MyRemoteComponent", "myremotecomponent", &testMyRemoteComponentInputs{
 				Inprop: Sprintf("hello: %v", instance.id),
 			}, &myremotecomponent)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		val, known, secret, deps, err := await(myremotecomponent.Outprop)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		stringVal, ok := val.(string)
 		assert.True(t, ok)
 		assert.True(t, strings.HasPrefix(stringVal, "output: hello: "))
@@ -546,7 +547,7 @@ func TestRemoteComponent(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestWaitOrphanedApply(t *testing.T) {
@@ -564,7 +565,7 @@ func TestWaitOrphanedApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		res.ID().ApplyT(func(id ID) int {
 			theID = id
@@ -573,7 +574,7 @@ func TestWaitOrphanedApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, ID("someID"), theID)
 }
@@ -593,7 +594,7 @@ func TestWaitOrphanedNestedApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		ctx.Export("urn", res.URN().ApplyT(func(urn URN) URN {
 			res.ID().ApplyT(func(id ID) int {
@@ -605,7 +606,7 @@ func TestWaitOrphanedNestedApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, ID("someID"), theID)
 }
@@ -626,7 +627,7 @@ func TestWaitOrphanedAllApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
 			theURN, _ = vs[0].(URN)
@@ -636,7 +637,7 @@ func TestWaitOrphanedAllApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, URN(""), theURN)
 	assert.Equal(t, ID("someID"), theID)
@@ -658,7 +659,7 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		Any(map[string]Output{
 			"urn": res.URN(),
@@ -678,7 +679,7 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, URN(""), theURN)
 	assert.Equal(t, ID("someID"), theID)
@@ -700,7 +701,7 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
 			theURN, _ = vs[0].(URN)
@@ -710,7 +711,7 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, URN(""), theURN)
 	assert.Equal(t, ID("someID"), theID)
@@ -732,7 +733,7 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		Any(map[string]Output{
 			"urn": res.URN(),
@@ -752,7 +753,7 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, URN(""), theURN)
 	assert.Equal(t, ID("someID"), theID)
@@ -772,11 +773,11 @@ func TestWaitOrphanedResource(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(res.urn))
 	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(res.id))
@@ -797,7 +798,7 @@ func TestWaitResourceInsideApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &outerRes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		outerRes.ID().ApplyT(func(_ ID) error {
 			return ctx.RegisterResource("test:resource:type", "resB", &testResource2Inputs{
@@ -807,7 +808,7 @@ func TestWaitResourceInsideApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(innerRes.urn))
 	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(innerRes.id))
@@ -828,14 +829,14 @@ func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &outerRes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		outerRes.ID().ApplyT(func(_ ID) int {
 			var innerRes testResource2
 			err := ctx.RegisterResource("test:resource:type", "resB", &testResource2Inputs{
 				Foo: String("foo"),
 			}, &innerRes)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			innerRes.ID().ApplyT(func(id ID) int {
 				theID = id
@@ -846,7 +847,7 @@ func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, ID("someID"), theID)
 }
@@ -872,7 +873,7 @@ func TestWaitRecursiveApply(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", fmt.Sprintf("res%d", n), &testResource2Inputs{
 			Foo: String(strconv.Itoa(n)),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resources++
 		res.ID().ApplyT(func(_ ID) int {
@@ -885,7 +886,7 @@ func TestWaitRecursiveApply(t *testing.T) {
 		newResource(ctx, 10)
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, 10, resources)
 }
@@ -913,7 +914,7 @@ func TestWaitOrphanedManualOutput(t *testing.T) {
 
 			return nil
 		}, WithMocks("project", "stack", mocks))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		close(done)
 	}()
@@ -942,7 +943,7 @@ func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	status := internal.GetOutputStatus(output)
 	assert.Equal(t, internal.OutputPending, status)
@@ -963,14 +964,14 @@ func TestExportResource(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		anyout = Any(&res)
 
 		ctx.Export("any", anyout)
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotNil(t, internal.GetOutputValue(anyout))
 }
@@ -1051,17 +1052,17 @@ func TestResourceInput(t *testing.T) {
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo: String("oof"),
 		}, &res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var myremotecomponent testResource4
 		err = ctx.RegisterRemoteComponentResource("pkg:index:MyRemoteComponent", "myremotecomponent",
 			&testResource4Inputs{
 				Inprop: res.ToTestResource2Output(),
 			}, &myremotecomponent)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		ctx.Export("outprop", myremotecomponent.Outprop)
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
