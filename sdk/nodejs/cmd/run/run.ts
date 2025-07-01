@@ -322,28 +322,28 @@ export async function run(
         };
 
         // See if we can use the automatic ESM mode. We require that:
-        // * the project is an ES module
-        // * have TypeScript >= 4.7, which introduces `module: "nodenext"`
+        // * the project is an ES module (package.json specifies `type: "module"`).
+        // * have TypeScript >= 4.7, which introduces support for `module: "nodenext"` in tsconfig.json.
         // * node is running without any other custom loader, we don't want to interfere with any custom setup.
         // * ts-node/esm is available, this is only available in recent ts-node versions, but we're stuck
         //   shipping a vendored version of 7.0.1. Users are free to install a more recent version in their
         //   project, and we'll see if we can load that.
-        const hasLoaders = process.execArgv.find((arg) => arg === "--loader");
         const isModule = packageObject["type"] === "module";
+        const ts = require(typescriptRequire);
+        const tsVersion = semver.parse(ts.version);
+        const hasLoaders = process.execArgv.find((arg) => arg === "--loader");
         try {
             tsNodeESMRequire = require.resolve("ts-node/esm");
         } catch (err) {
             // ts-node/esm not available, we'll use ts-node instead
         }
-        const ts = require(typescriptRequire);
-        const tsVersion = semver.parse(ts.version);
 
         if (
             isModule &&
-            !hasLoaders &&
-            tsNodeESMRequire &&
             tsVersion &&
-            tsVersion.compare(new semver.SemVer("4.7.0")) > 0
+            tsVersion.compare(new semver.SemVer("4.7.0")) > 0 &&
+            !hasLoaders &&
+            tsNodeESMRequire
         ) {
             // All the conditions for automatic ESM mode are fullfilled.
             options.compilerOptions = {
