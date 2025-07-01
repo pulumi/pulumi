@@ -1323,7 +1323,7 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *cloudBackend) Report(ctx context.Context, stack backend.Stack,
+func (b *cloudBackend) GenerateStackReadme(ctx context.Context, stack backend.Stack,
 ) (string, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
@@ -1339,7 +1339,7 @@ func (b *cloudBackend) Report(ctx context.Context, stack backend.Stack,
 		ShowResourceChanges: true,
 	}
 	display.RenderCopilotThinking(displayOpts)
-	report, err := b.client.GenerateStackReportWithCopilot(ctx, stackID, stackConsoleUrl)
+	report, err := b.client.GenerateStackReadmeWithCopilot(ctx, stackID, stackConsoleUrl)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			// Format a better error message for the user

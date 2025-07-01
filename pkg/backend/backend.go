@@ -197,8 +197,8 @@ type Backend interface {
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
-	// Report generates a detailed report about the active stack.
-	Report(ctx context.Context, stack Stack) (string, error)
+	// GenerateStackReadme renders the stack's README using Copilot.
+	GenerateStackReadme(ctx context.Context, stack Stack) (string, error)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).

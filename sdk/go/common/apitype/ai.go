@@ -42,7 +42,7 @@ type CopilotSkill string
 const (
 	SkillSummarizeUpdate     CopilotSkill = "summarizeUpdate"
 	SkillExplainPreview      CopilotSkill = "explainPreview"
-	SkillGenerateStackReport CopilotSkill = "generateStackReport"
+	SkillGenerateStackReadme CopilotSkill = "generateStackReadme"
 )
 
 // SummarizeUpdateRequest

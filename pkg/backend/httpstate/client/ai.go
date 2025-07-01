@@ -96,7 +96,7 @@ func createExplainPreviewRequest(
 	}
 }
 
-func createGenerateStackReportRequest(
+func createGenerateStackReadmeRequest(
 	stack StackIdentifier,
 	stackConsoleURL string,
 ) apitype.CopilotGenerateStackReportRequest {
@@ -112,7 +112,7 @@ func createGenerateStackReportRequest(
 			},
 		},
 		DirectSkillCall: apitype.CopilotGenerateStackReportSkill{
-			Skill:  apitype.SkillGenerateStackReport,
+			Skill:  apitype.SkillGenerateStackReadme,
 			Params: apitype.CopilotGenerateStackReportParams{},
 		},
 	}

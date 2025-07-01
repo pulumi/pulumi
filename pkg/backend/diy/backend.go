@@ -1136,9 +1136,9 @@ func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *diyBackend) Report(ctx context.Context, stk backend.Stack,
+func (b *diyBackend) GenerateStackReadme(ctx context.Context, stk backend.Stack,
 ) (string, error) {
-	return "", errors.New("stack reports not supported with diy backends")
+	return "", errors.New("stack READMEs not supported with diy backends")
 }
 
 // apply actually performs the provided type of update on a diy hosted stack.

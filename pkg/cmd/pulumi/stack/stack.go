@@ -103,7 +103,7 @@ func NewStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackInitCmd())
 	cmd.AddCommand(newStackLsCmd())
 	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackReportCmd())
+	cmd.AddCommand(newStackReadmeCmd())
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
 	cmd.AddCommand(newStackTagCmd())

@@ -1478,12 +1478,12 @@ func (pc *Client) ExplainPreviewWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
-func (pc *Client) GenerateStackReportWithCopilot(
+func (pc *Client) GenerateStackReadmeWithCopilot(
 	ctx context.Context,
 	stack StackIdentifier,
 	stackConsoleURL string,
 ) (string, error) {
-	request := createGenerateStackReportRequest(stack, stackConsoleURL)
+	request := createGenerateStackReadmeRequest(stack, stackConsoleURL)
 	return pc.callCopilot(ctx, request)
 }
 

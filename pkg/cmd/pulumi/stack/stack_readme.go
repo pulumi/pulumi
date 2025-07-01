@@ -27,13 +27,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newStackReportCmd() *cobra.Command {
+func newStackReadmeCmd() *cobra.Command {
 	var stack string
 
 	cmd := &cobra.Command{
-		Use:     "report",
+		Use:     "readme",
 		Aliases: []string{},
-		Short:   "Generate a detailed report about the stack.",
+		Short:   "Generate a Stack README file using Copilot.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -54,7 +54,7 @@ func newStackReportCmd() *cobra.Command {
 			}
 			b := s.Backend()
 
-			report, err := b.Report(ctx, s)
+			content, err := b.GenerateStackReadme(ctx, s)
 
 			stdout := opts.Stdout
 			if stdout == nil {
@@ -63,12 +63,12 @@ func newStackReportCmd() *cobra.Command {
 			if err != nil {
 				_, err = stdout.Write([]byte(
 					opts.Color.Colorize(
-						"An error occurred while generating a report:\n" +
+						"An error occurred while generating the Stack README:\n" +
 							colors.BrightRed + err.Error() + colors.Reset + "\n\n")))
 				contract.IgnoreError(err)
 				return nil
 			}
-			_, err = stdout.Write([]byte(report + "\n"))
+			_, err = stdout.Write([]byte(content + "\n"))
 			contract.IgnoreError(err)
 			return nil
 		},

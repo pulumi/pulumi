@@ -353,7 +353,7 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Report(ctx context.Context, stack Stack,
+func (be *MockBackend) GenerateStackReadme(ctx context.Context, stack Stack,
 ) (string, error) {
 	if be.ReportF != nil {
 		return be.ReportF(ctx, stack)
