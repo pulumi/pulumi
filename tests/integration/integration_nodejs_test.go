@@ -1296,7 +1296,7 @@ func TestESMTSAuto(t *testing.T) {
 	stackName := ptesting.RandomStackName()
 	// For this test we need to properly install the core SDK instead of yarn
 	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause th test to fallback to the vendored
+	// installation. This would cause the test to fallback to the vendored
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
