@@ -7,6 +7,13 @@ permissions:
 on:
   schedule:
     - cron: "27 5 * * *"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run tests on"
+        required: true
+        default: "master"
+        type: string
 
 jobs:
   info:
@@ -15,7 +22,7 @@ jobs:
     permissions:
       contents: read
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.event.inputs.branch || github.ref }}
       is-snapshot: true
     secrets: inherit
 
@@ -27,7 +34,7 @@ jobs:
       contents: read
       id-token: write
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.event.inputs.branch || github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
       # codegen tests are not the fastest, but we want to run all
@@ -51,7 +58,7 @@ jobs:
     permissions:
       contents: read
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.event.inputs.branch || github.ref }}
       version: ${{ needs.info.outputs.version }}
       test-version-sets: 'all'
       performance-test-platforms: ubuntu-latest
