@@ -2002,15 +2002,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	// We also need to delete all the new resources that we created/updated/samed if this is a destroy
-	// operation.
+	// operation. If a resource isn't targetted at this point it means it's already had a same step generated
+	// for it, and so we don't need to handle it (unlike in the loop above).
 	for _, res := range sg.toDelete {
 		if isTargeted(res) {
 			sg.deletes[res.URN] = true
 			oldViews := sg.deployment.GetOldViews(res.URN)
 			steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
-		} else {
-			// Add this resource to the deployment.news so that it shows up in analysis.
-			sg.deployment.news.Store(res.URN, res)
 		}
 	}
 
