@@ -1,0 +1,3 @@
+name: esm-with-package-exports
+runtime: nodejs
+description: Run an ESM TypeScript program where the entrypoint is defined in package.exports.

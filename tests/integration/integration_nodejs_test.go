@@ -1349,6 +1349,24 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestTSWithPackageExports(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "ts-with-package-exports"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestESMWithPackageExports(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-with-package-exports"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestTSWithPackageJsonInParentDir(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "ts-with-package-json-in-parent-dir"),
