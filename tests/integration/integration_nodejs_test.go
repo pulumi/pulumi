@@ -1306,6 +1306,45 @@ func TestESMTSAuto(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
 	e.RunCommand("pulumi", "up", "--yes")
+	// Validate the stack outputs
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	err = json.Unmarshal([]byte(stdout), &stackExport)
+	require.NoError(t, err)
+	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	require.True(t, ok)
+	require.Greater(t, len(resources), 0)
+	stack := resources[0].(map[string]any)
+	outputs, ok := stack["outputs"].(map[string]any)
+	require.True(t, ok)
+	expected := map[string]any{
+		"otherx": 42.0,
+		"res":    "name: esm-ts\nruntime: nodejs\ndescription: Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option\n",
+	}
+	require.Equal(t, expected, outputs)
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+}
+
+func TestESMTSAutoTypeCheck(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto-typecheck")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	stdout, _ := e.RunCommandExpectError("pulumi", "up", "--yes")
+	require.Contains(t, stdout, "index.ts(3,14): error TS2322: Type 'number' is not assignable to type 'string'.")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
 }
 

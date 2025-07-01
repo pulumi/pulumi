@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2025, Pulumi Corporation.  All rights reserved.
 
 import * as fs from "fs";
 import { x } from "./other.js"; // this is the "by design" way to do this, even in TS
