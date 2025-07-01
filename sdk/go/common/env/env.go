@@ -104,6 +104,9 @@ var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 var CopilotEnabled = env.Bool("COPILOT",
 	"Enable Pulumi Copilot's assistance for improved CLI experience and insights.")
 
+var CopilotURL = env.String("COPILOT_URL",
+	"Set the backend that will be used for Copilot API calls.")
+
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
 var CopilotSummaryModel = env.String("COPILOT_SUMMARY_MODEL",
