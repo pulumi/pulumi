@@ -2002,7 +2002,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	// We also need to delete all the new resources that we created/updated/samed if this is a destroy
-	// operation. If a resource isn't targetted at this point it means it's already had a same step generated
+	// operation. If a resource isn't targeted at this point it means it's already had a same step generated
 	// for it, and so we don't need to handle it (unlike in the loop above).
 	for _, res := range sg.toDelete {
 		if isTargeted(res) {
