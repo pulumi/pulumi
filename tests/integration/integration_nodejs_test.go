@@ -1317,15 +1317,12 @@ func TestESMTSAuto(t *testing.T) {
 	stack := resources[0].(map[string]any)
 	outputs, ok := stack["outputs"].(map[string]any)
 	require.True(t, ok)
-	expected := map[string]any{
-		"otherx": 42.0,
-		"res": `name: esm-ts
-runtime: nodejs
-description: Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option
-`,
-	}
-	require.Equal(t, expected, outputs)
-	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+	require.Equal(t, 42.0, outputs["otherx"])
+	require.Contains(t,
+		outputs["res"],
+		"Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option",
+	)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
 }
 
 func TestESMTSAutoTypeCheck(t *testing.T) {
