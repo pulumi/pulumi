@@ -186,6 +186,12 @@ export interface Store {
     supportsParameterization: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * resource hooks.
+     */
+    supportsResourceHooks: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -244,6 +250,7 @@ export class LocalStore implements Store {
     supportsTransforms = false;
     supportsInvokeTransforms = false;
     supportsParameterization = false;
+    supportsResourceHooks = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
 }

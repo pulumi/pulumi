@@ -24,6 +24,7 @@ import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
 /**
  * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
@@ -252,6 +253,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             transforms,
             invokeTransforms,
             parameterization,
+            resourceHooks,
         ] = await Promise.all(
             [
                 "secrets",
@@ -262,6 +264,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "transforms",
                 "invokeTransforms",
                 "parameterization",
+                "resourceHooks",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -273,6 +276,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsTransforms = transforms;
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
+        store.supportsResourceHooks = resourceHooks;
     }
 }
 
@@ -544,13 +548,38 @@ export function disconnect(): Promise<void> {
 export function waitForRPCs(disconnectFromServers = false): Promise<void> {
     const localStore = getStore();
     let done: Promise<any> | undefined;
-    const closeCallback: () => Promise<void> = () => {
+    const closeCallback: () => Promise<void> = async () => {
         if (done !== localStore.settings.rpcDone) {
             // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
             done = localStore.settings.rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
         if (disconnectFromServers) {
+            await debuggablePromise(
+                new Promise<void>((resolve, reject) => {
+                    if (!monitor) {
+                        resolve(undefined);
+                        return;
+                    }
+                    monitor.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
+                        if (err) {
+                            // If we are running against an older version of the
+                            // CLI, SignalAndWaitForShutdown might not be
+                            // implemented. This is mostly fine, but means that
+                            // delete hooks do not work. Since we check if the CLI
+                            // supports the `resourceHook` feature when registering
+                            // hooks, it's fine to ignore the `UNIMPLEMENTED` error
+                            // here.
+                            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                                return resolve();
+                            }
+                            return reject(err);
+                        }
+                        return resolve(undefined);
+                    });
+                }),
+                "signalAndWaitForShutdown",
+            );
             disconnectSync();
         }
         return Promise.resolve();
