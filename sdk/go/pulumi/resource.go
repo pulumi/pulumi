@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -327,6 +328,30 @@ type CustomTimeouts struct {
 	Delete string
 }
 
+type ResourceHookOptions struct {
+	OnDryRun bool
+}
+
+type ResourceHookArgs struct {
+	URN        URN
+	ID         ID
+	NewInputs  resource.PropertyMap
+	OldInputs  resource.PropertyMap
+	NewOutputs resource.PropertyMap
+	OldOutputs resource.PropertyMap
+}
+type ResourceHookFunction func(args *ResourceHookArgs) error
+
+type ResourceHook struct {
+	Name       string
+	Func       ResourceHookFunction
+	registered *promise.Promise[struct{}]
+}
+
+type ResourceHookBinding struct {
+	BeforeCreate []*ResourceHook
+}
+
 // ResourceOptions is a snapshot of one or more [ResourceOption]s.
 //
 // You cannot pass a ResourceOptions struct to a resource constructor.
@@ -421,6 +446,8 @@ type ResourceOptions struct {
 	// DeletedWith holds a container resource that, if deleted,
 	// also deletes this resource.
 	DeletedWith Resource
+
+	Hooks *ResourceHookBinding
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -457,6 +484,7 @@ type resourceOptions struct {
 	RetainOnDelete          *bool
 	DeletedWith             Resource
 	Parameterization        []byte
+	Hooks                   *ResourceHookBinding
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -520,6 +548,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		PluginDownloadURL:       ro.PluginDownloadURL,
 		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
+		Hooks:                   ro.Hooks,
 	}
 }
 
@@ -821,6 +850,12 @@ func Parent(r Resource) ResourceOrInvokeOption {
 func Protect(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Protect = &o
+	})
+}
+
+func ResourceHooks(hooks *ResourceHookBinding) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Hooks = hooks
 	})
 }
 
