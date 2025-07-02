@@ -37,6 +37,7 @@ from google.protobuf import struct_pb2
 from .. import _types, log
 from .. import urn as urn_util
 from ..output import Input, Output
+from .._output import _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
@@ -725,7 +726,7 @@ def read_resource(
     if opts.id is None:
         raise Exception("Cannot read resource whose options are lacking an ID value")
 
-    log.debug(f"reading resource: ty={ty}, name={name}, id={opts.id}")
+    log.debug(f"reading resource: ty={ty}, name={name}, id={_safe_str(opts.id)}")
     monitor = settings.get_monitor()
 
     # If we have type information, we'll use its and the resource's type/name metadata
@@ -764,7 +765,7 @@ def read_resource(
             # provider sense, because a read resource already exists. We do not need to track this
             # dependency.
             resolved_id = await rpc.serialize_property(opts.id, [], None)
-            log.debug(f"read prepared: ty={ty}, name={name}, id={opts.id}")
+            log.debug(f"read prepared: ty={ty}, name={name}, id={_safe_str(opts.id)}")
 
             # These inputs will end up in the snapshot, so if there are any additional secret
             # outputs, record them here.

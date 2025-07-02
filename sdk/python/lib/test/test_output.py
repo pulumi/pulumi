@@ -14,9 +14,11 @@
 
 import asyncio
 import json
+import os
 import unittest
 from typing import Mapping, Optional, Sequence, cast
 
+from pulumi._output import _OutputToStringError, _safe_str
 from pulumi.runtime import rpc, rpc_manager, settings
 from pulumi.runtime._serialization import (
     _deserialize,
@@ -305,19 +307,64 @@ class OutputHoistingTests(unittest.TestCase):
 
 
 class OutputStrTests(unittest.TestCase):
-    @pulumi_test
-    async def test_str(self):
-        o = Output.from_input(1)
-        self.assertEqual(
-            str(o),
-            """Calling __str__ on an Output[T] is not supported.
+    output_str_message = """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of Pulumi.""",
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+
+    def test_str(self):
+        """Test that the str function returns a warning when Output.__str__ is
+        called."""
+
+        o = Output.from_input(1)
+        self.assertEqual(
+            str(o),
+            self.output_str_message
+            + "\nThis function may throw in a future version of Pulumi.",
         )
+
+    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_str_error(self):
+        """Test that the str function raises an error when
+        PULUMI_ERROR_OUTPUT_STRING is set."""
+
+        with self.assertRaises(_OutputToStringError, msg=self.output_str_message):
+            o = Output.from_input(1)
+            str(o)
+
+    def test_safe_str(self):
+        """Test that the _safe_str function returns the same output as str when
+        errors are not raised."""
+
+        o = Output.from_input(1)
+        self.assertEqual(
+            _safe_str(o),
+            self.output_str_message
+            + "\nThis function may throw in a future version of Pulumi.",
+        )
+
+    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_safe_str_catch_error(self):
+        """Test that the _safe_str function catches _OutputToStringErrors and
+        returns a fallback string."""
+
+        o = Output.from_input(1)
+        self.assertEqual(_safe_str(o), "Output[T]")
+
+    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_safe_str_reraise_error(self):
+        """Test that the _safe_str function re-raises any error which is not an
+        _OutputToStringError."""
+
+        class Broken:
+            def __str__(self):
+                raise Exception("This should be re-raised")
+
+        with self.assertRaises(Exception):
+            x = Broken()
+            _safe_str(x)
 
 
 class OutputApplyTests(unittest.TestCase):
