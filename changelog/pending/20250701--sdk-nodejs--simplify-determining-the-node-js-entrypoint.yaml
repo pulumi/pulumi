@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Simplify determining the Node.js entrypoint and respect package.exports
