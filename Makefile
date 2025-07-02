@@ -83,7 +83,7 @@ build_display_wasm:: .make/ensure/go
 
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
-build:: build_proto .make/ensure/go dist build_display_wasm
+build:: build_proto .make/ensure/go bin/pulumi build_display_wasm
 
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
