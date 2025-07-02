@@ -73,6 +73,7 @@ linters:
     forbidigo:
       forbid:
         - pattern: ^assert.NoError$
+          msg: Use require.NoError instead
   exclusions:
     generated: lax
     presets:
