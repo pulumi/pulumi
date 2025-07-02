@@ -1323,7 +1323,7 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *cloudBackend) GenerateStackReadme(ctx context.Context, stack backend.Stack,
+func (b *cloudBackend) GenerateStackReadme(ctx context.Context, stack backend.Stack, opts display.Options,
 ) (string, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
@@ -1335,10 +1335,7 @@ func (b *cloudBackend) GenerateStackReadme(ctx context.Context, stack backend.St
 		return "", err
 	}
 
-	displayOpts := display.Options{
-		ShowResourceChanges: true,
-	}
-	display.RenderCopilotThinking(displayOpts)
+	display.RenderCopilotThinking(opts)
 	report, err := b.client.GenerateStackReadmeWithCopilot(ctx, stackID, stackConsoleUrl)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -1352,7 +1349,7 @@ func (b *cloudBackend) GenerateStackReadme(ctx context.Context, stack backend.St
 		report = "No report available"
 	}
 
-	formattedSummary := display.FormatCopilotSummary(report, displayOpts)
+	formattedSummary := display.FormatCopilotSummary(report, opts)
 
 	return formattedSummary, nil
 }

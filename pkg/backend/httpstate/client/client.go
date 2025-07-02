@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -1493,8 +1494,6 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, CopilotRequestTimeout)
-	defer cancel()
 
 	url := pc.copilotURL + "/api/ai/chat/preview"
 	apiToken := string(pc.apiToken)
@@ -1535,6 +1534,8 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		}
 		return "", errors.New(errorMsg)
 	}
+
+	logging.V(9).Infof("Copilot response:\n%s", string(body))
 
 	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {

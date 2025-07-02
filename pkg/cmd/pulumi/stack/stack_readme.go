@@ -54,7 +54,7 @@ func newStackReadmeCmd() *cobra.Command {
 			}
 			b := s.Backend()
 
-			content, err := b.GenerateStackReadme(ctx, s)
+			content, err := b.GenerateStackReadme(ctx, s, opts)
 
 			stdout := opts.Stdout
 			if stdout == nil {

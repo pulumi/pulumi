@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -353,7 +354,7 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) GenerateStackReadme(ctx context.Context, stack Stack,
+func (be *MockBackend) GenerateStackReadme(ctx context.Context, stack Stack, opts display.Options,
 ) (string, error) {
 	if be.ReportF != nil {
 		return be.ReportF(ctx, stack)
