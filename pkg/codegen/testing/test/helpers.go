@@ -351,6 +351,7 @@ func RunCommandWithOptions(
 		append([]string{exec}, args...),
 		wd,
 		opts)
+	//nolint:forbidigo // We enhance the error message show if the test fails
 	if !assert.NoError(t, err) {
 		stdout := stdout.String()
 		stderr := stderr.String()

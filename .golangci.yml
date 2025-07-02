@@ -7,6 +7,7 @@ linters:
     - depguard
     - durationcheck
     - exhaustive
+    - forbidigo
     - goheader
     - goprintffuncname
     - gosec
@@ -69,6 +70,9 @@ linters:
       max-func-lines: 60
     nolintlint:
       allow-unused: true
+    forbidigo:
+      forbid:
+        - pattern: ^assert.NoError$
   exclusions:
     generated: lax
     presets:
