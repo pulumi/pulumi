@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // changes directory
@@ -54,8 +55,6 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
-	// skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
@@ -84,8 +83,8 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
-	assert.Equal(t, projectName, proj.Name.String())
+	require.Equal(t, projectName, proj.Name.String())
 }
