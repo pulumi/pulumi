@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Fix the AI prompt flow of pulumi new command
