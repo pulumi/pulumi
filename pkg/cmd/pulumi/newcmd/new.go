@@ -61,29 +61,33 @@ type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Opt
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
 	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
 
+type promptForAIProjectURLFunc func(ctx context.Context,
+	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
+
 type newArgs struct {
-	configArray          []string
-	configPath           bool
-	description          string
-	dir                  string
-	force                bool
-	generateOnly         bool
-	interactive          bool
-	name                 string
-	offline              bool
-	prompt               promptForValueFunc
-	promptRuntimeOptions runtimeOptionsFunc
-	chooseTemplate       chooseTemplateFunc
-	secretsProvider      string
-	stack                string
-	templateNameOrURL    string
-	yes                  bool
-	listTemplates        bool
-	aiPrompt             string
-	aiLanguage           httpstate.PulumiAILanguage
-	templateMode         bool
-	runtimeOptions       []string
-	remoteStackConfig    bool
+	configArray           []string
+	configPath            bool
+	description           string
+	dir                   string
+	force                 bool
+	generateOnly          bool
+	interactive           bool
+	name                  string
+	offline               bool
+	prompt                promptForValueFunc
+	promptRuntimeOptions  runtimeOptionsFunc
+	promptForAIProjectURL promptForAIProjectURLFunc
+	chooseTemplate        chooseTemplateFunc
+	secretsProvider       string
+	stack                 string
+	templateNameOrURL     string
+	yes                   bool
+	listTemplates         bool
+	aiPrompt              string
+	aiLanguage            httpstate.PulumiAILanguage
+	templateMode          bool
+	runtimeOptions        []string
+	remoteStackConfig     bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -158,6 +162,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	if args.templateNameOrURL == "" && args.promptForAIProjectURL != nil {
+		aiURL, err := args.promptForAIProjectURL(ctx, ws, args, opts)
+		if err != nil {
+			return err
+		}
+		args.templateNameOrURL = aiURL
+	}
+
 	// Retrieve the template repo.
 	scope := cmdTemplates.ScopeAll
 	if args.offline {
@@ -166,47 +178,6 @@ func runNew(ctx context.Context, args newArgs) error {
 	templateSource := cmdTemplates.New(ctx,
 		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject)
 	defer func() { contract.IgnoreError(templateSource.Close()) }()
-
-	if args.templateNameOrURL == "" {
-		// Try to read the current project
-		project, _, err := ws.ReadProject()
-		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-			return err
-		}
-
-		b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
-		if err != nil {
-			return err
-		}
-
-		var aiOrTemplate string
-		if shouldPromptForAIOrTemplate(args, b) {
-			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
-		} else {
-			aiOrTemplate = deriveAIOrTemplate(args)
-		}
-		if err != nil {
-			return err
-		}
-		if aiOrTemplate == "ai" {
-			checkedBackend, ok := b.(httpstate.Backend)
-			if !ok {
-				if args.aiLanguage != "" && args.aiPrompt == "" {
-					return errors.New(
-						"--language is used to generate a template with Pulumi AI. " +
-							"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
-							"Use --template to create a project from a template, " +
-							"or no flags to choose one interactively.")
-				}
-				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
-			}
-			conversationURL, err := runAINew(ctx, args, opts, checkedBackend)
-			if err != nil {
-				return err
-			}
-			args.templateNameOrURL = conversationURL
-		}
-	}
 
 	// List the templates from the repo.
 	templates, err := templateSource.Templates()
@@ -496,9 +467,10 @@ func isInteractive() bool {
 // NewNewCmd creates a New command with default dependencies.
 func NewNewCmd() *cobra.Command {
 	args := newArgs{
-		prompt:               ui.PromptForValue,
-		chooseTemplate:       ChooseTemplate,
-		promptRuntimeOptions: promptRuntimeOptions,
+		prompt:                ui.PromptForValue,
+		chooseTemplate:        ChooseTemplate,
+		promptRuntimeOptions:  promptRuntimeOptions,
+		promptForAIProjectURL: promptForAIProjectURL,
 	}
 
 	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
@@ -808,6 +780,47 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	}
 
 	return options, nil
+}
+
+func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
+	opts display.Options,
+) (string, error) {
+	// Try to read the current project
+	project, _, err := ws.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return "", err
+	}
+
+	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	if err != nil {
+		return "", err
+	}
+
+	var aiOrTemplate string
+	if shouldPromptForAIOrTemplate(args, b) {
+		aiOrTemplate, err = chooseWithAIOrTemplate(opts)
+	} else {
+		aiOrTemplate = deriveAIOrTemplate(args)
+	}
+	if err != nil {
+		return "", err
+	}
+	if aiOrTemplate != "ai" {
+		return "", nil
+	}
+
+	checkedBackend, ok := b.(httpstate.Backend)
+	if !ok {
+		if args.aiLanguage != "" && args.aiPrompt == "" {
+			return "", errors.New(
+				"--language is used to generate a template with Pulumi AI. " +
+					"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
+					"Use --template to create a project from a template, " +
+					"or no flags to choose one interactively.")
+		}
+		return "", errors.New("please log in to Pulumi Cloud to use Pulumi AI")
+	}
+	return runAINew(ctx, args, opts, checkedBackend)
 }
 
 func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
