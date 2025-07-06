@@ -1,0 +1,44 @@
+{
+  "version": "0.0.1",
+  "name": "map-map-union-schema",
+  "resources": {
+    "map-map-union-schema::Example": {
+      "inputProperties": {
+        "p1": {
+          "$ref": "#/types/map-map-union-schema::MapMapUnion"
+        }
+      },
+      "properties": {
+        "p2": {
+          "$ref": "#/types/map-map-union-schema::MapMapUnion"
+        }
+      }
+    }
+  },
+  "types": {
+    "map-map-union-schema::MapMapUnion": {
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}}
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "map-map-union-schema/map-map-union-schema",
+      "respectSchemaVersion": true,
+      "generateExtraInputTypes": true
+    }
+  }
+}
