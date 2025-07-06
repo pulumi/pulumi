@@ -43,3 +43,15 @@ const (
 	// Deprecated: Eight inch pots are no longer supported.
 	ContainerSizeContainerSizeEightInch = ContainerSize(8)
 )
+
+// The environment to use for the provider
+type ProviderEnvironment string
+
+const (
+	// Development environment
+	ProviderEnvironmentProviderEnvironmentDevelopment = ProviderEnvironment("dev")
+	// Staging environment
+	ProviderEnvironmentProviderEnvironmentStaging = ProviderEnvironment("staging")
+	// Production environment
+	ProviderEnvironmentProviderEnvironmentProduction = ProviderEnvironment("prod")
+)

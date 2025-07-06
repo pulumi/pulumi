@@ -760,6 +760,195 @@ func (in *containerSizePtr) ToOutput(ctx context.Context) pulumix.Output[*Contai
 	}
 }
 
+// The environment to use for the provider
+type ProviderEnvironment string
+
+const (
+	// Development environment
+	ProviderEnvironmentDevelopment = ProviderEnvironment("dev")
+	// Staging environment
+	ProviderEnvironmentStaging = ProviderEnvironment("staging")
+	// Production environment
+	ProviderEnvironmentProduction = ProviderEnvironment("prod")
+)
+
+func (ProviderEnvironment) ElementType() reflect.Type {
+	return reflect.TypeOf((*ProviderEnvironment)(nil)).Elem()
+}
+
+func (e ProviderEnvironment) ToProviderEnvironmentOutput() ProviderEnvironmentOutput {
+	return pulumi.ToOutput(e).(ProviderEnvironmentOutput)
+}
+
+func (e ProviderEnvironment) ToProviderEnvironmentOutputWithContext(ctx context.Context) ProviderEnvironmentOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(ProviderEnvironmentOutput)
+}
+
+func (e ProviderEnvironment) ToProviderEnvironmentPtrOutput() ProviderEnvironmentPtrOutput {
+	return e.ToProviderEnvironmentPtrOutputWithContext(context.Background())
+}
+
+func (e ProviderEnvironment) ToProviderEnvironmentPtrOutputWithContext(ctx context.Context) ProviderEnvironmentPtrOutput {
+	return ProviderEnvironment(e).ToProviderEnvironmentOutputWithContext(ctx).ToProviderEnvironmentPtrOutputWithContext(ctx)
+}
+
+func (e ProviderEnvironment) ToStringOutput() pulumi.StringOutput {
+	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e ProviderEnvironment) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e ProviderEnvironment) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e ProviderEnvironment) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type ProviderEnvironmentOutput struct{ *pulumi.OutputState }
+
+func (ProviderEnvironmentOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ProviderEnvironment)(nil)).Elem()
+}
+
+func (o ProviderEnvironmentOutput) ToProviderEnvironmentOutput() ProviderEnvironmentOutput {
+	return o
+}
+
+func (o ProviderEnvironmentOutput) ToProviderEnvironmentOutputWithContext(ctx context.Context) ProviderEnvironmentOutput {
+	return o
+}
+
+func (o ProviderEnvironmentOutput) ToProviderEnvironmentPtrOutput() ProviderEnvironmentPtrOutput {
+	return o.ToProviderEnvironmentPtrOutputWithContext(context.Background())
+}
+
+func (o ProviderEnvironmentOutput) ToProviderEnvironmentPtrOutputWithContext(ctx context.Context) ProviderEnvironmentPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ProviderEnvironment) *ProviderEnvironment {
+		return &v
+	}).(ProviderEnvironmentPtrOutput)
+}
+
+func (o ProviderEnvironmentOutput) ToOutput(ctx context.Context) pulumix.Output[ProviderEnvironment] {
+	return pulumix.Output[ProviderEnvironment]{
+		OutputState: o.OutputState,
+	}
+}
+
+func (o ProviderEnvironmentOutput) ToStringOutput() pulumi.StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o ProviderEnvironmentOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ProviderEnvironment) string {
+		return string(e)
+	}).(pulumi.StringOutput)
+}
+
+func (o ProviderEnvironmentOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o ProviderEnvironmentOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ProviderEnvironment) *string {
+		v := string(e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+type ProviderEnvironmentPtrOutput struct{ *pulumi.OutputState }
+
+func (ProviderEnvironmentPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**ProviderEnvironment)(nil)).Elem()
+}
+
+func (o ProviderEnvironmentPtrOutput) ToProviderEnvironmentPtrOutput() ProviderEnvironmentPtrOutput {
+	return o
+}
+
+func (o ProviderEnvironmentPtrOutput) ToProviderEnvironmentPtrOutputWithContext(ctx context.Context) ProviderEnvironmentPtrOutput {
+	return o
+}
+
+func (o ProviderEnvironmentPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ProviderEnvironment] {
+	return pulumix.Output[*ProviderEnvironment]{
+		OutputState: o.OutputState,
+	}
+}
+
+func (o ProviderEnvironmentPtrOutput) Elem() ProviderEnvironmentOutput {
+	return o.ApplyT(func(v *ProviderEnvironment) ProviderEnvironment {
+		if v != nil {
+			return *v
+		}
+		var ret ProviderEnvironment
+		return ret
+	}).(ProviderEnvironmentOutput)
+}
+
+func (o ProviderEnvironmentPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o ProviderEnvironmentPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *ProviderEnvironment) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+// ProviderEnvironmentInput is an input type that accepts values of the ProviderEnvironment enum
+// A concrete instance of `ProviderEnvironmentInput` can be one of the following:
+//
+//	ProviderEnvironmentDevelopment
+//	ProviderEnvironmentStaging
+//	ProviderEnvironmentProduction
+type ProviderEnvironmentInput interface {
+	pulumi.Input
+
+	ToProviderEnvironmentOutput() ProviderEnvironmentOutput
+	ToProviderEnvironmentOutputWithContext(context.Context) ProviderEnvironmentOutput
+}
+
+var providerEnvironmentPtrType = reflect.TypeOf((**ProviderEnvironment)(nil)).Elem()
+
+type ProviderEnvironmentPtrInput interface {
+	pulumi.Input
+
+	ToProviderEnvironmentPtrOutput() ProviderEnvironmentPtrOutput
+	ToProviderEnvironmentPtrOutputWithContext(context.Context) ProviderEnvironmentPtrOutput
+}
+
+type providerEnvironmentPtr string
+
+func ProviderEnvironmentPtr(v string) ProviderEnvironmentPtrInput {
+	return (*providerEnvironmentPtr)(&v)
+}
+
+func (*providerEnvironmentPtr) ElementType() reflect.Type {
+	return providerEnvironmentPtrType
+}
+
+func (in *providerEnvironmentPtr) ToProviderEnvironmentPtrOutput() ProviderEnvironmentPtrOutput {
+	return pulumi.ToOutput(in).(ProviderEnvironmentPtrOutput)
+}
+
+func (in *providerEnvironmentPtr) ToProviderEnvironmentPtrOutputWithContext(ctx context.Context) ProviderEnvironmentPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(ProviderEnvironmentPtrOutput)
+}
+
+func (in *providerEnvironmentPtr) ToOutput(ctx context.Context) pulumix.Output[*ProviderEnvironment] {
+	return pulumix.Output[*ProviderEnvironment]{
+		OutputState: in.ToProviderEnvironmentPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNameInput)(nil)).Elem(), CloudAuditOptionsLogName("UNSPECIFIED_LOG_NAME"))
 	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNamePtrInput)(nil)).Elem(), CloudAuditOptionsLogName("UNSPECIFIED_LOG_NAME"))
@@ -769,6 +958,8 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorPtrInput)(nil)).Elem(), ContainerColor("red"))
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizeInput)(nil)).Elem(), ContainerSize(4))
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizePtrInput)(nil)).Elem(), ContainerSize(4))
+	pulumi.RegisterInputType(reflect.TypeOf((*ProviderEnvironmentInput)(nil)).Elem(), ProviderEnvironment("dev"))
+	pulumi.RegisterInputType(reflect.TypeOf((*ProviderEnvironmentPtrInput)(nil)).Elem(), ProviderEnvironment("dev"))
 	pulumi.RegisterOutputType(CloudAuditOptionsLogNameOutput{})
 	pulumi.RegisterOutputType(CloudAuditOptionsLogNamePtrOutput{})
 	pulumi.RegisterOutputType(ContainerBrightnessOutput{})
@@ -777,4 +968,6 @@ func init() {
 	pulumi.RegisterOutputType(ContainerColorPtrOutput{})
 	pulumi.RegisterOutputType(ContainerSizeOutput{})
 	pulumi.RegisterOutputType(ContainerSizePtrOutput{})
+	pulumi.RegisterOutputType(ProviderEnvironmentOutput{})
+	pulumi.RegisterOutputType(ProviderEnvironmentPtrOutput{})
 }
