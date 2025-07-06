@@ -61,8 +61,7 @@ func (s *CallbackServer) Close() error {
 }
 
 func (s *CallbackServer) Allocate(
-	callback func(args []byte,
-	) (proto.Message, error),
+	callback func(args []byte) (proto.Message, error),
 ) (*pulumirpc.Callback, error) {
 	token := uuid.NewString()
 	s.callbacks[token] = callback
