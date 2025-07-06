@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -150,7 +151,7 @@ config:
   pulumi-test:a: A
 $`
 		b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set an additional secret config and verify that the generated config file matches the expected values
@@ -164,7 +165,7 @@ config:
     secure: \S*
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// update a config and verify that the generated config file matches the expected values
@@ -178,7 +179,7 @@ config:
     secure: \S*
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// update the secret config and verify that the generated config file matches the expected values
@@ -192,7 +193,7 @@ config:
     secure: \S*
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set a config with path=true and verify that the generated config file matches the expected values
@@ -208,7 +209,7 @@ config:
   pulumi-test:c: C
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set a nested config and verify that the generated config file matches the expected values
@@ -226,7 +227,7 @@ config:
     a: D
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set an array config and verify that the generated config file matches the expected values
@@ -246,7 +247,7 @@ config:
     - E
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set a nested array config and verify that the generated config file matches the expected values
@@ -269,7 +270,7 @@ config:
       - F
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -319,7 +320,7 @@ runtime: go`
 	e.RunCommand("pulumi", "config", "set", "Bconfig", "shouldOverWrite")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedRegex := `encryptionsalt: .*
 config:
@@ -350,7 +351,7 @@ runtime: go`
 	e.RunCommand("pulumi", "config", "rm", "Aconfig")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedRegex := `encryptionsalt: .*
 config:
@@ -361,7 +362,7 @@ config:
 	e.RunCommand("pulumi", "config", "rm", "Bconfig")
 
 	b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedRegex = `encryptionsalt: .*`
 	assert.Regexp(t, regexp.MustCompile(expectedRegex), strings.TrimSpace(string(b)))

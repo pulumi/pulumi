@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -196,9 +197,9 @@ func TestPluginHostProvider(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		host := &pluginHost{closed: true}
-		assert.NoError(t, host.Close())
+		require.NoError(t, host.Close())
 		// Is idempotent.
-		assert.NoError(t, host.Close())
+		require.NoError(t, host.Close())
 	})
 	t.Run("Log", func(t *testing.T) {
 		t.Parallel()

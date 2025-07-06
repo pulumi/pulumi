@@ -55,12 +55,12 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 		err := RunErr(func(ctx *Context) error {
 			String("X").ToStringOutput().ApplyT(func(string) int {
 				err := ctx.Log.Debug("Zzz", &LogArgs{})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return 0
 			})
 			return nil
 		}, WithMocks("project", "stack", mocks))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -101,10 +101,10 @@ func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			_, err := NewLoggingTestResource(t, ctx, "res", String("A"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, WithMocks("project", "stack", mocks))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -129,7 +129,7 @@ func NewLoggingTestResource(
 	resource.TestOutput = input.ToStringOutput().ApplyT(func(inputValue string) (string, error) {
 		time.Sleep(10 * time.Nanosecond)
 		err := ctx.Log.Debug("Zzz", &LogArgs{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return inputValue, nil
 	}).(StringOutput)
 
@@ -161,7 +161,7 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 			}()
 			return nil
 		}, WithMocks("project", "stack", mocks))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -245,9 +245,9 @@ func TestCollapseAliases(t *testing.T) {
 			var res testResource2
 			err := ctx.RegisterResource("test:resource:type", "myres", &testResource2Inputs{}, &res,
 				Aliases(testCase.parentAliases))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Len(t, urns, testCase.totalAliasUrns)
 			var items []interface{}
 			for _, item := range urns {
@@ -259,7 +259,7 @@ func TestCollapseAliases(t *testing.T) {
 			})
 			return nil
 		}, WithMocks("project", "stack", mocks))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -276,7 +276,7 @@ func (pr *Prov) i(ctx *Context, t *testing.T) ProviderResource {
 	}
 	p := &testProv{foo: pr.name}
 	err := ctx.RegisterResource("pulumi:providers:"+pr.t, pr.name, nil, p)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return p
 }
 
@@ -300,7 +300,7 @@ func (rs *Res) i(ctx *Context, t *testing.T) Resource {
 	} else {
 		err = ctx.RegisterResource(rs.t, rs.name, nil, r, Provider(rs.parent.i(ctx, t)))
 	}
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return r
 }
 
@@ -384,7 +384,7 @@ func TestMergeProviders(t *testing.T) {
 				assert.ElementsMatch(t, tt.expected, result)
 				return nil
 			}, WithMocks("project", "stack", &testMonitor{}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -612,7 +612,7 @@ func TestSourcePosition(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestWithValue(t *testing.T) {
@@ -879,6 +879,6 @@ func TestRegisterResourceOutputs(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	}, WithMocks("project", "stack", mocks))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
 }

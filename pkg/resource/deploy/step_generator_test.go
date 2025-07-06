@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIgnoreChanges(t *testing.T) {
@@ -183,7 +184,7 @@ func TestIgnoreChanges(t *testing.T) {
 			if c.expectFailure {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, expected, processed)
 			}
 		})
@@ -286,7 +287,7 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 			t.Parallel()
 
 			newdiff, err := applyReplaceOnChanges(c.diff, c.replaceOnChanges, c.hasInitErrors)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.expected, newdiff)
 		})
 	}
@@ -380,7 +381,7 @@ func TestEngineDiff(t *testing.T) {
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.expectedChanges, diff.Changes)
 			assert.EqualValues(t, c.expected, diff.ChangedKeys)
 		})
@@ -539,11 +540,11 @@ func TestStepGenerator(t *testing.T) {
 
 		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
 		apRef, err := providers.NewReference(apUrn, "0")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
 		bpRef, err := providers.NewReference(bpUrn, "1")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Arrange.
 		sg := &stepGenerator{
@@ -663,11 +664,11 @@ func TestStepGenerator(t *testing.T) {
 		// Arrange.
 		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
 		apRef, err := providers.NewReference(apUrn, "0")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
 		bpRef, err := providers.NewReference(bpUrn, "1")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		sg := &stepGenerator{
 			deployment: &Deployment{
@@ -869,7 +870,7 @@ func TestStepGenerator(t *testing.T) {
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
 				UrnTargets{literals: []resource.URN{"a"}},
 			)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, targets)
 		})
 	})

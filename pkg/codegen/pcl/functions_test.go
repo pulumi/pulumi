@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -115,7 +116,7 @@ func TestTryWithCorrectArguments(t *testing.T) {
 
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a plain number.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -141,7 +142,7 @@ func TestTryWithCorrectOutputArguments(t *testing.T) {
 
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is an output number.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -170,7 +171,7 @@ func TestTryWithCorrectDynamicArguments(t *testing.T) {
 
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a plain number.
 	assert.Equal(t, len(program.Nodes), 2, "there are two nodes")
@@ -208,7 +209,7 @@ func TestCanWithCorrectArgument(t *testing.T) {
 
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a boolean.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -230,7 +231,7 @@ func TestCanWithCorrectOutputArgument(t *testing.T) {
 
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a boolean.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -268,7 +269,7 @@ func TestRootDirectory(t *testing.T) {
 
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRootDirectoryFailsWithArguments(t *testing.T) {

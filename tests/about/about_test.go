@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAboutCommands(t *testing.T) {
@@ -37,7 +38,7 @@ func TestAboutCommands(t *testing.T) {
 		e.SetBackend(e.LocalURL())
 		stdout, _ := e.RunCommand("pulumi", "about", "--json")
 		var res interface{}
-		assert.NoError(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
+		require.NoError(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
 		assert.Regexp(t, `"goVersion": "go1\..*"`, stdout)
 		assert.Contains(t, stdout, runtime.Compiler)
 		assert.Contains(t, stdout, "Failed to get information about the current stack:")

@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests that a plugin mapper wrapped with a caching layer only attempts to install a plugin once.
@@ -55,7 +56,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 		nil, /*mappings*/
 	)
 	mapper := NewCachingMapper(baseMapper)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, mapper)
 
 	// Act.
@@ -64,7 +65,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 	assert.Equal(t, 1, installCalled, "install should be called the first time when a caching mapper is used")
 
@@ -74,7 +75,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	data, err = mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 	assert.Equal(t, 1, installCalled, "install should only be called once when a caching mapper is used")
 }
@@ -104,7 +105,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 		nil, /*mappings*/
 	)
 	mapper := NewCachingMapper(baseMapper)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, mapper)
 
 	// Act.
@@ -129,7 +130,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 
 			// Get the mapping - this will cause concurrent map writes without proper locking
 			_, err := mapper.GetMapping(context.Background(), p, nil /*hint*/)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}(provider)
 	}
 

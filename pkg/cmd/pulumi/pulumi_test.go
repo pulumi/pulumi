@@ -89,9 +89,7 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 				"oldestWithoutWarning": "v1.2.0",
 				"cacheMS": 86400000
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -132,9 +130,7 @@ func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 				"latestVersion": "v1.2.3",
 				"oldestWithoutWarning": "v1.2.0"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -185,9 +181,7 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 				"latestVersion": "v1.2.3",
 				"oldestWithoutWarning": "v1.2.0"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -256,9 +250,7 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 				"latestVersion": "v1.2.3",
 				"oldestWithoutWarning": "v1.2.0"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -466,9 +458,7 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 				"latestVersion": "v1.2.3",
 				"oldestWithoutWarning": "v1.2.0"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -506,9 +496,7 @@ func TestCheckForUpdate_RespectsServerCache(t *testing.T) {
 				"oldestWithoutWarning": "v1.2.0",
 				"cacheMS": 1000
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -565,9 +553,7 @@ func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 				"latestVersion": "v1.2.3",
 				"oldestWithoutWarning": "v1.2.0"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -661,9 +647,7 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 				"oldestWithoutWarning": "v1.2.0",
 				"latestDevVersion": "v1.0.0-12-gdeadbeef"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -725,9 +709,7 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 				"oldestWithoutWarning": "v1.2.0",
 				"latestDevVersion": "v1.0.0-12-gdeadbeef"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -774,9 +756,7 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 				"oldestWithoutWarning": "v2.2.0",
 				"latestDevVersion": "v2.0.0-12-gdeadbeef"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -838,9 +818,7 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 				"oldestWithoutWarning": "v1.40.0",
 				"latestDevVersion": "v1.40.0-12-gdeadbeef"
 			}`))
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)

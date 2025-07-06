@@ -686,7 +686,7 @@ func TestUninitializedParentResource(t *testing.T) {
 				assert.Contains(t, buff.String(), tt.wantErr)
 				return nil
 			}, WithMocks("project", "stack", &testMonitor{}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -711,7 +711,7 @@ func TestDependsOnInputs(t *testing.T) {
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
@@ -742,7 +742,7 @@ func TestDependsOnInputs(t *testing.T) {
 
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -772,7 +772,7 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("providers option", func(t *testing.T) {
@@ -797,7 +797,7 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -855,7 +855,7 @@ func TestRemoteComponentResourcePropagatesProvider(t *testing.T) {
 			return args.Name, resource.PropertyMap{}, nil
 		},
 	}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Verifies that Provider takes precedence over Providers.
@@ -943,7 +943,7 @@ func TestComponentResourceMultipleSingletonProviders(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", &testMonitor{}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestNewResourceOptions(t *testing.T) {
@@ -1252,7 +1252,7 @@ func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
 	var res testRes
 	err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &res
 }
 

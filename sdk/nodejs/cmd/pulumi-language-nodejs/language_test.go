@@ -86,7 +86,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	client := testingrpc.NewLanguageTestClient(conn)
 
 	t.Cleanup(func() {
-		assert.NoError(t, cmd.Process.Kill())
+		require.NoError(t, cmd.Process.Kill())
 		wg.Wait()
 		// We expect this to error because we just killed it.
 		contract.IgnoreError(cmd.Wait())
@@ -207,7 +207,7 @@ func TestLanguage(t *testing.T) {
 
 			t.Cleanup(func() {
 				close(cancel)
-				assert.NoError(t, <-handle.Done)
+				require.NoError(t, <-handle.Done)
 			})
 		})
 	}

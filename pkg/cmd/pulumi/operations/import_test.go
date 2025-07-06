@@ -272,7 +272,7 @@ func TestParseImportFileJustLogicalName(t *testing.T) {
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
 			Type: "foo:bar:bar",
@@ -299,7 +299,7 @@ func TestParseImportFileLogicalName(t *testing.T) {
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	v := semver.MustParse("0.0.0")
 	assert.Equal(t, []deploy.Import{
 		{
@@ -354,7 +354,7 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
 			Type: "foo:bar:bar",
@@ -400,7 +400,7 @@ func TestParseImportFileAutoURN(t *testing.T) {
 		},
 	}
 	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the parent URN was auto filled in.
 	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::foo:bar:a$foo:bar:a::otherThing"), imports[0].Parent)

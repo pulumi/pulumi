@@ -96,7 +96,7 @@ func TestDestroyWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -105,7 +105,7 @@ func TestDestroyWithProgram(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -204,7 +204,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -213,7 +213,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -334,7 +334,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 			Inputs:  programInputs,
 			Version: pkgVersion,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -344,7 +344,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 				Inputs:  programInputs,
 				Version: pkgVersion,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -451,16 +451,16 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
 			Version: pkgVersion,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:   programInputs,
 			Provider: provRef.String(),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -470,7 +470,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 				Inputs:   programInputs,
 				Provider: provRef.String(),
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -568,13 +568,13 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("my_component", "parent", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 			Parent: resp.URN,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, createOutputs, resp.Outputs)
 
 		return nil
@@ -667,7 +667,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			// Second execution (the deletion) we create a custom resource, then a component that depends on
@@ -676,20 +676,20 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 			// Create a custom resource that will be skipped
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Create a component that depends on the custom resource, it also has to be skipped
 			resp, err = monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resp.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// And then create the original custom resource as a child of the component, remember to alias it
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:       programInputs,
 				Dependencies: []resource.URN{resp.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 		return nil
@@ -782,7 +782,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			// Second execution (the deletion) we create a custom resource that will have to be skipped, then
@@ -790,7 +790,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 			// Create a custom resource that will be skipped
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// And then create the original custom resource as a child of the component, remember to alias it
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -808,7 +808,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 					},
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 		return nil

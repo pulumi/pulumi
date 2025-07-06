@@ -57,7 +57,7 @@ func createKey(ctx context.Context, t *testing.T, cfg aws.Config) *kms.CreateKey
 		_, err := kmsClient.ScheduleKeyDeletion(ctx, &kms.ScheduleKeyDeletionInput{
 			KeyId: key.KeyMetadata.KeyId,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	return key
@@ -120,7 +120,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		_, err := iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
 			RoleName: &roleName,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 
 	policyName := "test-policy-" + randomName(t)
@@ -145,11 +145,11 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 			PolicyArn: policy.Policy.Arn,
 			RoleName:  &roleName,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = iamClient.DeletePolicy(ctx, &iam.DeletePolicyInput{
 			PolicyArn: policy.Policy.Arn,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 	_, err = iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
 		PolicyArn: policy.Policy.Arn,

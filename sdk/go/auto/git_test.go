@@ -24,6 +24,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // This takes the unusual step of testing an unexported func. The rationale is to be able to test
@@ -39,9 +40,9 @@ func TestGitClone(t *testing.T) {
 	originDir := filepath.Join(tmpDir, "origin")
 
 	origin, err := git.PlainInit(originDir, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	w, err := origin.Worktree()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	nondefaultHead, err := w.Commit("nondefault branch", &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "testo",
@@ -49,27 +50,27 @@ func TestGitClone(t *testing.T) {
 		},
 		AllowEmptyCommits: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The following sets up some tags and branches: with `default` becoming the "default" branch
 	// when cloning, since it's left as the HEAD of the repo.
 
-	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+	require.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("nondefault"),
 		Create: true,
 	}))
 
 	// tag the nondefault head so we can test getting a tag too
 	_, err = origin.CreateTag("v0.0.1", nondefaultHead, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// make a branch with slashes in it, so that can be tested too
-	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+	require.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("branch/with/slashes"),
 		Create: true,
 	}))
 
-	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+	require.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("default"),
 		Create: true,
 	}))
@@ -80,7 +81,7 @@ func TestGitClone(t *testing.T) {
 		},
 		AllowEmptyCommits: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	type testcase struct {
 		branchName    string
@@ -124,15 +125,15 @@ func TestGitClone(t *testing.T) {
 
 			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = setupGitRepo(context.Background(), tmp, repo)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			r, err := git.PlainOpen(tmp)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			head, err := r.Head()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expectedHead, head.Hash())
 		})
 	}
@@ -180,7 +181,7 @@ func TestGitClone(t *testing.T) {
 
 			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = setupGitRepo(context.Background(), tmp, repo)
 			assert.EqualError(t, err, tc.expectedError)

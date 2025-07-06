@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -66,7 +67,7 @@ func TestParseReference(t *testing.T) {
 
 	urn, id := resource.NewURN("test", "test", "", "pulumi:providers:type", "test"), resource.ID("id")
 	ref, err := ParseReference(string(urn) + "::" + string(id))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, urn, ref.URN())
 	assert.Equal(t, id, ref.ID())
 }
@@ -84,6 +85,6 @@ func TestRoundTripReference(t *testing.T) {
 
 	str := string(resource.NewURN("test", "test", "", "pulumi:providers:type", "test")) + "::id"
 	ref, err := ParseReference(str)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, str, ref.String())
 }

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var aliasTestCases = []struct {
@@ -73,9 +74,9 @@ func TestAliasResolution(t *testing.T) {
 			t.Parallel()
 			parent := newResource(t, URN("AnUrn::ASegment"), ID("hello"))
 			out, err := tt.alias(t).collapseToURN("defName", "defType", parent, "defProject", "defStack")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			urn, _, _, err := out.awaitURN(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, URN(tt.expectedURN), urn)
 		})
 	}
@@ -83,6 +84,6 @@ func TestAliasResolution(t *testing.T) {
 
 func newResource(t *testing.T, urn URN, id ID) Resource {
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return newSimpleCustomResource(ctx, urn, id)
 }

@@ -69,7 +69,7 @@ func TestPropertyNameDiffs(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					require.NotNil(t, stackInfo.Deployment)
 					res, err := getResource(stackInfo, "a")
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					state := res.Outputs["state"].(map[string]interface{})
 					assert.Equal(t, "foo", state[propName])
 				},
@@ -80,7 +80,7 @@ func TestPropertyNameDiffs(t *testing.T) {
 						ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 							require.NotNil(t, stackInfo.Deployment)
 							_, err := getResource(stackInfo, "a")
-							assert.NoError(t, err)
+							require.NoError(t, err)
 						},
 					},
 				},

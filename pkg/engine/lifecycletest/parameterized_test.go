@@ -115,7 +115,7 @@ func TestPackageRef(t *testing.T) {
 
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 
 	assert.Len(t, snap.Resources, 4)
@@ -244,7 +244,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			PackageRef: pkgRef,
 			Remote:     true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "mlcA", mlcA.URN.Name())
 		assert.Equal(t, resource.PropertyMap{
 			"output": resource.NewStringProperty("output"),
@@ -272,7 +272,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			PackageRef: extRef,
 			Remote:     true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "mlcB", mlcB.URN.Name())
 		assert.Equal(t, resource.PropertyMap{
 			"output": resource.NewStringProperty("output"),
@@ -307,7 +307,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			"", /*version*/
 			extRef,
 		)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"output": resource.NewStringProperty("output"),
 		}, callOuts)
@@ -320,10 +320,10 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgExt", "provider", true, deploytest.ResourceOptions{
 			PackageRef: extRef,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resD", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
@@ -585,10 +585,10 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgExt", "provider", true, deploytest.ResourceOptions{
 			PackageRef: extRef,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resC", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),

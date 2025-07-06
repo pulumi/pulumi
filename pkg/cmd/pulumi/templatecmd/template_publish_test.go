@@ -268,7 +268,7 @@ runtime: nodejs
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -497,7 +497,7 @@ dist/
 				version:   "1.0.0",
 			}, templateDir)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

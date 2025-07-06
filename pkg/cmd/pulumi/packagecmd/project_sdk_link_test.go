@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrintNodeJsImportInstructions(t *testing.T) {
@@ -73,7 +74,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 
 			var buf bytes.Buffer
 			err := printNodeJsImportInstructions(&buf, tt.pkg, tt.options)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			output := buf.String()
 			assert.Contains(t, output, tt.wantImportLine, "output should contain the import line")

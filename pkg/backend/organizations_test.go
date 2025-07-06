@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetDefaultOrg(t *testing.T) {
@@ -44,7 +45,7 @@ func TestGetDefaultOrg(t *testing.T) {
 
 		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, userConfiguredOrg, org)
 	})
 
@@ -62,7 +63,7 @@ func TestGetDefaultOrg(t *testing.T) {
 
 		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, backendConfiguredOrg, org)
 	})
 
@@ -76,7 +77,7 @@ func TestGetDefaultOrg(t *testing.T) {
 
 		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "", org)
 	})
 }
@@ -97,7 +98,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 		}
 
 		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, org)
 	})
 
@@ -114,7 +115,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 		}
 
 		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, org)
 	})
 
@@ -134,7 +135,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 		}
 
 		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, user, org)
 	})
 }

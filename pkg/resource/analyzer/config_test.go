@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type JSONTestCaseSuccess struct {
@@ -101,10 +102,10 @@ func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
 
 			config := make(map[string]*json.RawMessage)
 			unmarshalErr := json.Unmarshal([]byte(test.JSON), &config)
-			assert.NoError(t, unmarshalErr)
+			require.NoError(t, unmarshalErr)
 
 			result, err := ParsePolicyPackConfigFromAPI(config)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, result)
 		})
 	}
@@ -174,7 +175,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 			t.Parallel()
 
 			result, err := parsePolicyPackConfig([]byte(test.JSON))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, result)
 		})
 	}
@@ -270,7 +271,7 @@ func TestExtractEnforcementLevelSuccess(t *testing.T) {
 			t.Parallel()
 
 			result, err := extractEnforcementLevel(test.Properties)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.ExpectedEnforcementLevel, result)
 			assert.Equal(t, test.ExpectedProperties, test.Properties)
 		})
@@ -852,7 +853,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			t.Parallel()
 
 			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, validationErrors)
 			assert.Equal(t, test.Expected, result)
 		})
@@ -983,7 +984,7 @@ func TestReconcilePolicyPackConfigWithInitialConfig(t *testing.T) {
 			t.Parallel()
 
 			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.InitialConfig, test.Config)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, validationErrors)
 			assert.Equal(t, test.Expected, result)
 		})
@@ -1225,7 +1226,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			t.Parallel()
 
 			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, result)
 			assert.ElementsMatch(t, test.ExpectedValidationErrors, validationErrors)
 		})

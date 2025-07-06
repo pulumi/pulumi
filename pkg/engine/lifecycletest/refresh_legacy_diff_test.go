@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -219,7 +220,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		assert.NotNil(t, expected)
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		targetedForRefresh := len(refreshTargets) == 0
 		for _, targetUrn := range refreshTargets {

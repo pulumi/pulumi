@@ -43,13 +43,13 @@ func TestTokenSource(t *testing.T) {
 
 	tok0, tok0Expires := backend.NewToken(dur)
 	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer ts.Close()
 
 	for i := 0; i < 64; i++ {
 		tok, err := ts.GetToken(ctx)
-		assert.NoError(t, err)
-		assert.NoError(t, backend.VerifyToken(tok))
+		require.NoError(t, err)
+		require.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
 
 		// tok0 initially

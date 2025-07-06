@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseConfigSuccess(t *testing.T) {
@@ -264,7 +265,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			t.Parallel()
 
 			actual, err := ParseConfig(test.Array, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 		})
 	}

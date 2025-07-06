@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRawPrefix(t *testing.T) {
@@ -379,7 +380,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 			PendingReplacement: true,
 		})
 		status, _, err := s.Apply()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, status)
 	})
 }
@@ -603,7 +604,7 @@ func TestReadStep(t *testing.T) {
 				},
 			}
 			status, _, err := s.Apply()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, resource.StatusOK, status)
 			// News should be updated.
 			assert.Equal(t, resource.PropertyMap{}, s.new.Outputs)
@@ -839,7 +840,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 		}
 		status, _, err := s.Apply()
 		assert.Equal(t, s.diff.DetailedDiff, tc.expectedDetailedDiff)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, status)
 	}
 }
@@ -927,7 +928,7 @@ func TestRefreshStep(t *testing.T) {
 				},
 			}
 			status, _, err := s.Apply()
-			assert.NoError(t, err, "InitError should be discarded")
+			require.NoError(t, err, "InitError should be discarded")
 			assert.Equal(t, resource.StatusPartialFailure, status)
 
 			// News should be updated.
@@ -1123,7 +1124,7 @@ func TestGetProvider(t *testing.T) {
 			},
 		}
 		prov, err := getProvider(s, s.provider)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expectedProvider, prov)
 	})
 }

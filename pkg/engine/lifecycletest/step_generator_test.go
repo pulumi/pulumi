@@ -75,7 +75,7 @@ func TestDuplicateAlias(t *testing.T) {
 
 	program := func(monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func TestDuplicateAlias(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -149,7 +149,7 @@ func TestSecretMasked(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotNil(t, snap)
 	if snap != nil {
@@ -174,11 +174,11 @@ func TestReadReplaceStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, snap)
 
 			assert.Nil(t, snap.VerifyIntegrity())
@@ -198,11 +198,11 @@ func TestReadReplaceStep(t *testing.T) {
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					return nil
 				}, false).
 				Then(func(snap *deploy.Snapshot, err error) {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					assert.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
@@ -230,7 +230,7 @@ func TestRelinquishStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
@@ -251,11 +251,11 @@ func TestRelinquishStep(t *testing.T) {
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					return nil
 				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					assert.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
@@ -280,11 +280,11 @@ func TestTakeOwnershipStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", "")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
@@ -306,11 +306,11 @@ func TestTakeOwnershipStep(t *testing.T) {
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 					_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					return nil
 				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					assert.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
@@ -357,11 +357,11 @@ func TestInitErrorsStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())

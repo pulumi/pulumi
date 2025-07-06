@@ -56,22 +56,22 @@ func TestParallelRefresh(t *testing.T) {
 	// it.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respA.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respB.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respC.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -120,9 +120,7 @@ func TestExternalRefresh(t *testing.T) {
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -187,9 +185,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -267,7 +263,7 @@ func TestRefreshInitFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -364,7 +360,7 @@ func TestRefreshWithDelete(t *testing.T) {
 
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return err
 			})
 
@@ -433,7 +429,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
@@ -441,7 +437,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 			},
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
@@ -459,7 +455,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].PropertyDependencies["propB1"][0].Name(), "resA")
 
 	err := snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
@@ -470,7 +466,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	assert.Empty(t, snap.Resources[1].PropertyDependencies)
 
 	err = snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRefreshDeleteDeletedWith(t *testing.T) {
@@ -495,13 +491,13 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			DeletedWith: resA.URN,
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
@@ -519,7 +515,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].DeletedWith.Name(), "resA")
 
 	err := snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
@@ -530,7 +526,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	assert.Empty(t, snap.Resources[1].DeletedWith)
 
 	err = snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Looks up the provider ID in newResources and sets "Provider" to reference that in every resource in oldResources.
@@ -538,7 +534,7 @@ func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, 
 	for _, r := range newResources {
 		if r.URN == provURN {
 			provRef, err := providers.NewReference(r.URN, r.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for i := range oldResources {
 				oldResources[i].Provider = provRef.String()
 			}
@@ -681,7 +677,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		} else {
 			// A was not deleted. So nothing should be impacted.
 			id, err := strconv.Atoi(r.ID.String())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, oldResources[id], r)
 		}
 	}
@@ -878,7 +874,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		assert.NotNil(t, expected)
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		targetedForRefresh := len(refreshTargets) == 0
 		for _, targetUrn := range refreshTargets {
@@ -1056,7 +1052,7 @@ func TestCanceledRefresh(t *testing.T) {
 		}
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if refreshed[r.ID] {
 			// The refreshed resource should have its new state.
@@ -1112,7 +1108,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1265,7 +1261,7 @@ func TestRefreshWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1391,16 +1387,16 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{"auth": expectedAuth},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 			Inputs:   programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1529,7 +1525,7 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1667,7 +1663,7 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
@@ -1791,7 +1787,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time we should see nothing because it will be deleted
 		if programExecutions == 1 {
@@ -1805,7 +1801,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 			Inputs:       programInputs,
 			Dependencies: []resource.URN{resp.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1917,7 +1913,7 @@ func TestRefreshWithBigProgram(t *testing.T) {
 				deploytest.ResourceOptions{
 					Inputs: programInputs,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// First time we should see the create outputs, second time the read outputs
 			if programExecutions == 1 {
@@ -2035,7 +2031,7 @@ func TestRefreshWithAlias(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			// Register the resource with a different type, but with an alias.
@@ -2049,7 +2045,7 @@ func TestRefreshWithAlias(t *testing.T) {
 					},
 				}},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, readOutputs, resp.Outputs)
 		}
 

@@ -87,7 +87,7 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	// We can't assert that the decrypter we get back is the one we returned since
 	// it may be decorated (e.g. with a caching decrypter). We thus assert that
 	// our fallback was called as a proxy.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"A mock decrypter should have no effect on the project stack",
@@ -119,7 +119,7 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerShouldSave, state,
 		"A fallback passphrase decrypter should be written to the project stack",
@@ -156,7 +156,7 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",
@@ -195,7 +195,7 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	// We can't assert that the encrypter we get back is the one we returned since
 	// it may be decorated (e.g. with a caching encrypter). We thus assert that
 	// our fallback was called as a proxy.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"A mock encrypter should have no effect on the project stack",
@@ -227,7 +227,7 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerShouldSave, state,
 		"A fallback passphrase encrypter should be written to the project stack",
@@ -264,7 +264,7 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",

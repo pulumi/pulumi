@@ -56,7 +56,7 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, err := keysClient.DeleteKey(ctx, keyName, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	return url + "/keys/" + key.Key.KID.Name()
 }

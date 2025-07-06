@@ -257,7 +257,7 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.wantOrg, org)
 		})
@@ -332,7 +332,7 @@ func TestCloudBackend_GetCloudRegistry(t *testing.T) {
 	}
 
 	registry, err := b.GetCloudRegistry()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, registry)
 
 	_, ok := registry.(*cloudRegistry)
@@ -353,7 +353,7 @@ func TestCopilotExplainer(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a mock transport that
 	// 1. captures the request to assert on
