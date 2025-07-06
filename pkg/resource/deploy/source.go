@@ -83,6 +83,8 @@ type SourceResourceMonitor interface {
 // program, and it is the responsibility of the engine to make it so.
 type SourceEvent interface {
 	event()
+
+	Reject(err error)
 }
 
 // RegisterResourceEvent is a step that asks the engine to provision a resource.
