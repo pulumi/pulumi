@@ -176,7 +176,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		scope = cmdTemplates.ScopeLocal
 	}
 	templateSource := cmdTemplates.New(ctx,
-		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject)
+		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, env.Global())
 	defer func() { contract.IgnoreError(templateSource.Close()) }()
 
 	// List the templates from the repo.
@@ -479,7 +479,7 @@ func NewNewCmd() *cobra.Command {
 			scope = cmdTemplates.ScopeLocal
 		}
 		// Attempt to retrieve available templates.
-		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject)
+		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject, env.Global())
 		t, err := s.Templates()
 		return t, s, err
 	}

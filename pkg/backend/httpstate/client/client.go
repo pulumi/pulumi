@@ -29,6 +29,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -167,8 +168,9 @@ func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, r
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
-	respObj interface{}, opts httpCallOptions,
+func (pc *Client) restCallWithOptions(
+	ctx context.Context, method, path string, queryObj, reqObj,
+	respObj any, opts httpCallOptions,
 ) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
@@ -1690,6 +1692,34 @@ func (pc *Client) GetTemplate(
 	var resp apitype.TemplateMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
+}
+
+// DownloadTemplate takes a downloadURL, which is a full URL (not a path). The URL can be
+// one of two situations:
+//
+// - An URL for the client: `api.pulumi.com/api/orgs/{org}/template/download?name={template-name}`
+// - A foreign URL: `api.github.com/blobs/4328791917840`
+//
+// We want to use the full method receiver with configured credentials if and only if we
+// are targeting the correct URL. If we are targeting another URL, we should use a fresh
+// client without tokens.
+func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	if after, ok := strings.CutPrefix(downloadURL, pc.apiURL); ok {
+		downloadURL = after
+	} else {
+		// Set pc to the new client. This only sets the local variable. It is very
+		// different from *pc = *NewClient().
+		pc = NewClient(downloadURL, "", true, pc.diag)
+		downloadURL = ""
+	}
+
+	var bytes io.ReadCloser
+	header := make(http.Header, 1)
+	header.Add("Accept", "application/x-tar")
+	err := pc.restCallWithOptions(ctx, "GET", downloadURL, nil, nil, &bytes, httpCallOptions{
+		Header: header,
+	})
+	return bytes, err
 }
 
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
