@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -97,6 +98,7 @@ type MockBackend struct {
 		UpdateOperation, []string) error
 	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
+	ReportF func(context.Context, Stack) (string, error)
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
@@ -348,6 +350,14 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 ) error {
 	if be.WatchF != nil {
 		return be.WatchF(ctx, stack, op, paths)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GenerateStackReadme(ctx context.Context, stack Stack, opts display.Options,
+) (string, error) {
+	if be.ReportF != nil {
+		return be.ReportF(ctx, stack)
 	}
 	panic("not implemented")
 }

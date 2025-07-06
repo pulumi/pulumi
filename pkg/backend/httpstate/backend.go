@@ -1323,6 +1323,37 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
+func (b *cloudBackend) GenerateStackReadme(ctx context.Context, stack backend.Stack, opts display.Options,
+) (string, error) {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return "", err
+	}
+
+	stackConsoleUrl, err := b.StackConsoleURL(stack.Ref())
+	if err != nil {
+		return "", err
+	}
+
+	display.RenderCopilotThinking(opts)
+	report, err := b.client.GenerateStackReadmeWithCopilot(ctx, stackID, stackConsoleUrl)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			// Format a better error message for the user
+			return "", fmt.Errorf("request to %s timed out after %s", b.client.URL(), client.CopilotRequestTimeout.String())
+		}
+		return "", err
+	}
+
+	if report == "" {
+		report = "No report available"
+	}
+
+	formattedSummary := display.FormatCopilotSummary(report, opts)
+
+	return formattedSummary, nil
+}
+
 func (b *cloudBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {

@@ -39,9 +39,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -86,6 +88,7 @@ type PublishTemplateVersionCompleteResponse struct{}
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
+	copilotURL string
 	apiToken   apiAccessToken
 	apiUser    string
 	apiOrgs    []string
@@ -113,8 +116,14 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		httpClient = http.DefaultClient
 	}
 
+	copilotURL := apiURL
+	if env.CopilotURL.Value() != "" {
+		copilotURL = env.CopilotURL.Value()
+	}
+
 	return &Client{
 		apiURL:     apiURL,
+		copilotURL: copilotURL,
 		apiToken:   apiAccessToken(apiToken),
 		diag:       d,
 		httpClient: httpClient,
@@ -1470,23 +1479,30 @@ func (pc *Client) ExplainPreviewWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
+func (pc *Client) GenerateStackReadmeWithCopilot(
+	ctx context.Context,
+	stack StackIdentifier,
+	stackConsoleURL string,
+) (string, error) {
+	request := createGenerateStackReadmeRequest(stack, stackConsoleURL)
+	return pc.callCopilot(ctx, request)
+}
+
 func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (string, error) {
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, CopilotRequestTimeout)
-	defer cancel()
 
-	url := pc.apiURL + "/api/ai/chat/preview"
+	url := pc.copilotURL + "/api/ai/chat/preview"
 	apiToken := string(pc.apiToken)
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
 
+	req.Header.Set("X-Pulumi-Origin", "api.pulumi.com")
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "token "+apiToken)
@@ -1518,6 +1534,8 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		}
 		return "", errors.New(errorMsg)
 	}
+
+	logging.V(9).Infof("Copilot response:\n%s", string(body))
 
 	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {

@@ -96,6 +96,28 @@ func createExplainPreviewRequest(
 	}
 }
 
+func createGenerateStackReadmeRequest(
+	stack StackIdentifier,
+	stackConsoleURL string,
+) apitype.CopilotGenerateStackReportRequest {
+	return apitype.CopilotGenerateStackReportRequest{
+		CopilotRequest: apitype.CopilotRequest{
+			State: apitype.CopilotState{
+				Client: apitype.CopilotClientState{
+					CloudContext: apitype.CopilotCloudContext{
+						OrgID: stack.Owner,
+						URL:   stackConsoleURL,
+					},
+				},
+			},
+		},
+		DirectSkillCall: apitype.CopilotGenerateStackReportSkill{
+			Skill:  apitype.SkillGenerateStackReadme,
+			Params: apitype.CopilotGenerateStackReportParams{},
+		},
+	}
+}
+
 // extractCopilotResponse parses the Copilot API response and extracts the summary content
 func extractCopilotResponse(copilotResp apitype.CopilotResponse) (string, error) {
 	for _, msg := range copilotResp.ThreadMessages {
