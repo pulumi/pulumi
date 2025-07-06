@@ -58,7 +58,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options: newHostServerDefaultServeOptions(ctx),
 	})
 	if err != nil {
 		return nil, err
@@ -72,6 +72,12 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 	engine.rootUrn.Store("")
 
 	return engine, nil
+}
+
+func newHostServerDefaultServeOptions(ctx *Context) []grpc.ServerOption {
+	serveOpts := rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan)
+	serveOpts = append(serveOpts, ctx.ServeOptions()...)
+	return serveOpts
 }
 
 // Address returns the address at which the engine's RPC server may be reached.
