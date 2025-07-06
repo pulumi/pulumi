@@ -7,7 +7,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := pulumi.NewStackReference(ctx, "stackRef", &pulumi.StackReferenceArgs{
-			Name: pulumi.String("foo/bar/dev"),
+			Name: "foo/bar/dev",
 		})
 		if err != nil {
 			return err

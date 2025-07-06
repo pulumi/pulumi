@@ -30,8 +30,8 @@ type SandwichInput interface {
 }
 
 type SandwichArgs struct {
-	Bread   pulumi.StringPtrInput   `pulumi:"bread"`
-	Veggies pulumi.StringArrayInput `pulumi:"veggies"`
+	Bread   *string              `pulumi:"bread"`
+	Veggies []pulumi.StringInput `pulumi:"veggies"`
 }
 
 func (SandwichArgs) ElementType() reflect.Type {

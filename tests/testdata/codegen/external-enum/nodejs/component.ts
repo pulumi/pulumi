@@ -65,6 +65,6 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    localEnum?: pulumi.Input<enums.local.MyEnum>;
-    remoteEnum?: pulumi.Input<pulumiGoogleNative.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem>;
+    localEnum?: pulumi.Input<enums.local.MyEnum | undefined | null>;
+    remoteEnum?: pulumi.Input<pulumiGoogleNative.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem | undefined | null>;
 }

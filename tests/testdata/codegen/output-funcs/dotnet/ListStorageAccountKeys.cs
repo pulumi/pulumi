@@ -72,7 +72,7 @@ namespace Pulumi.Mypkg
         /// Specifies type of the key to be listed. Possible value is kerb.
         /// </summary>
         [Input("expand")]
-        public Input<string>? Expand { get; set; }
+        public Input<string?>? Expand { get; set; }
 
         /// <summary>
         /// The name of the resource group within the user's subscription. The name is case insensitive.

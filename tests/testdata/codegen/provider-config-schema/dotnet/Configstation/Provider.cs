@@ -44,17 +44,17 @@ namespace Configstation.Pulumi.Configstation
         /// this is a relaxed string enum which can also be set via env var
         /// </summary>
         [Input("favoriteColor", json: true)]
-        public InputUnion<string, Configstation.Pulumi.Configstation.Color>? FavoriteColor { get; set; }
+        public Input<Union<Input<string>, Input<Configstation.Pulumi.Configstation.Color>>?>? FavoriteColor { get; set; }
 
         [Input("secretSandwiches", json: true)]
-        private InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>? _secretSandwiches;
+        private Input<ImmutableArray<Input<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>>>? _secretSandwiches;
 
         /// <summary>
         /// Super duper secret sandwiches.
         /// </summary>
-        public InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs> SecretSandwiches
+        public Input<ImmutableArray<Input<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>>> SecretSandwiches
         {
-            get => _secretSandwiches ?? (_secretSandwiches = new InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>());
+            get => _secretSandwiches ?? (_secretSandwiches = new Input<ImmutableArray<Input<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>>>());
             set
             {
                 var emptySecret = Output.CreateSecret(ImmutableArray.Create<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>());

@@ -30,7 +30,7 @@ type ConfigInput interface {
 }
 
 type ConfigArgs struct {
-	Foo pulumi.StringPtrInput `pulumi:"foo"`
+	Foo *string `pulumi:"foo"`
 }
 
 func (ConfigArgs) ElementType() reflect.Type {

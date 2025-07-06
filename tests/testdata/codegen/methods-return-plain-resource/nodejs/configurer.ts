@@ -63,7 +63,7 @@ export class Configurer extends pulumi.ComponentResource {
  * The set of arguments for constructing a Configurer resource.
  */
 export interface ConfigurerArgs {
-    tlsProxy?: pulumi.Input<string>;
+    tlsProxy?: pulumi.Input<string | undefined | null>;
 }
 
 export namespace Configurer {

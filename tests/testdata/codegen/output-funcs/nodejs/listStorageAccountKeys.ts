@@ -64,7 +64,7 @@ export interface ListStorageAccountKeysOutputArgs {
     /**
      * Specifies type of the key to be listed. Possible value is kerb.
      */
-    expand?: pulumi.Input<string>;
+    expand?: pulumi.Input<string | undefined | null>;
     /**
      * The name of the resource group within the user's subscription. The name is case insensitive.
      */

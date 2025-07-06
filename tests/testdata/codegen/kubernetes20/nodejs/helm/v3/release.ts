@@ -85,9 +85,9 @@ export interface ReleaseArgs {
     /**
      * List of assets (raw yaml files). Content is read and merged with values.
      */
-    valueYamlFiles?: pulumi.Input<pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive>[]>;
+    valueYamlFiles?: pulumi.Input<pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive>[] | undefined | null>;
     /**
      * Custom values set for the release.
      */
-    values?: pulumi.Input<{[key: string]: any}>;
+    values?: pulumi.Input<{[key: string]: any} | undefined | null>;
 }

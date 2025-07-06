@@ -29,7 +29,7 @@ type SharedInput interface {
 }
 
 type SharedArgs struct {
-	Foo pulumi.StringPtrInput `pulumi:"foo"`
+	Foo *string `pulumi:"foo"`
 }
 
 func (SharedArgs) ElementType() reflect.Type {

@@ -22,8 +22,8 @@ __all__ = ['ComponentArgs', 'Component']
 @pulumi.input_type
 class ComponentArgs:
     def __init__(__self__, *,
-                 local: Optional[pulumi.Input['Component2']] = None,
-                 main: Optional[pulumi.Input['MainComponent']] = None):
+                 local: Optional[pulumi.Input[Optional['Component2']]] = None,
+                 main: Optional[pulumi.Input[Optional['MainComponent']]] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -34,20 +34,20 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
-    def local(self) -> Optional[pulumi.Input['Component2']]:
+    def local(self) -> Optional[pulumi.Input[Optional['Component2']]]:
         return pulumi.get(self, "local")
 
     @local.setter
-    def local(self, value: Optional[pulumi.Input['Component2']]):
+    def local(self, value: Optional[pulumi.Input[Optional['Component2']]]):
         pulumi.set(self, "local", value)
 
     @property
     @pulumi.getter
-    def main(self) -> Optional[pulumi.Input['MainComponent']]:
+    def main(self) -> Optional[pulumi.Input[Optional['MainComponent']]]:
         return pulumi.get(self, "main")
 
     @main.setter
-    def main(self, value: Optional[pulumi.Input['MainComponent']]):
+    def main(self, value: Optional[pulumi.Input[Optional['MainComponent']]]):
         pulumi.set(self, "main", value)
 
 
@@ -57,8 +57,8 @@ class Component(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 local: Optional[pulumi.Input['Component2']] = None,
-                 main: Optional[pulumi.Input['MainComponent']] = None,
+                 local: Optional[pulumi.Input[Optional['Component2']]] = None,
+                 main: Optional[pulumi.Input[Optional['MainComponent']]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -88,8 +88,8 @@ class Component(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 local: Optional[pulumi.Input['Component2']] = None,
-                 main: Optional[pulumi.Input['MainComponent']] = None,
+                 local: Optional[pulumi.Input[Optional['Component2']]] = None,
+                 main: Optional[pulumi.Input[Optional['MainComponent']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

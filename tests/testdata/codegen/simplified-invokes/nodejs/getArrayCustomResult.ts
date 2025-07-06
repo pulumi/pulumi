@@ -12,7 +12,7 @@ export function getArrayCustomResult(a?: number, opts?: pulumi.InvokeOptions): P
         "a": a,
     }, opts);
 }
-export function getArrayCustomResultOutput(a?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<outputs.CustomResult[]> {
+export function getArrayCustomResultOutput(a?: pulumi.Input<number | undefined | null>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<outputs.CustomResult[]> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeSingleOutput("std:index:GetArrayCustomResult", {
         "a": a,

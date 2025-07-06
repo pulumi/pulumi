@@ -29,7 +29,7 @@ type PetTypeInput interface {
 }
 
 type PetTypeArgs struct {
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 }
 
 func (PetTypeArgs) ElementType() reflect.Type {

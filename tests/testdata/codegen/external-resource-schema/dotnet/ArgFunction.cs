@@ -36,7 +36,7 @@ namespace Pulumi.Example
     public sealed class ArgFunctionInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("name")]
-        public Input<Pulumi.Random.RandomPet>? Name { get; set; }
+        public Input<Pulumi.Random.RandomPet?>? Name { get; set; }
 
         public ArgFunctionInvokeArgs()
         {

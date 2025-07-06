@@ -164,13 +164,13 @@ type SsisEnvironmentReferenceResponseInput interface {
 // Ssis environment reference.
 type SsisEnvironmentReferenceResponseArgs struct {
 	// Environment folder name.
-	EnvironmentFolderName pulumi.StringPtrInput `pulumi:"environmentFolderName"`
+	EnvironmentFolderName *string `pulumi:"environmentFolderName"`
 	// Environment name.
-	EnvironmentName pulumi.StringPtrInput `pulumi:"environmentName"`
+	EnvironmentName *string `pulumi:"environmentName"`
 	// Environment reference id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Reference type
-	ReferenceType pulumi.StringPtrInput `pulumi:"referenceType"`
+	ReferenceType *string `pulumi:"referenceType"`
 }
 
 func (SsisEnvironmentReferenceResponseArgs) ElementType() reflect.Type {
@@ -320,18 +320,18 @@ type SsisEnvironmentResponseInput interface {
 // Ssis environment.
 type SsisEnvironmentResponseArgs struct {
 	// Metadata description.
-	Description pulumi.StringPtrInput `pulumi:"description"`
+	Description *string `pulumi:"description"`
 	// Folder id which contains environment.
-	FolderId pulumi.Float64PtrInput `pulumi:"folderId"`
+	FolderId *float64 `pulumi:"folderId"`
 	// Metadata id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Metadata name.
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Environment'.
 	Type pulumi.StringInput `pulumi:"type"`
 	// Variable in environment
-	Variables SsisVariableResponseArrayInput `pulumi:"variables"`
+	Variables []SsisVariableResponseInput `pulumi:"variables"`
 }
 
 func (SsisEnvironmentResponseArgs) ElementType() reflect.Type {
@@ -431,11 +431,11 @@ type SsisFolderResponseInput interface {
 // Ssis folder.
 type SsisFolderResponseArgs struct {
 	// Metadata description.
-	Description pulumi.StringPtrInput `pulumi:"description"`
+	Description *string `pulumi:"description"`
 	// Metadata id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Metadata name.
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Folder'.
 	Type pulumi.StringInput `pulumi:"type"`
@@ -536,19 +536,19 @@ type SsisPackageResponseInput interface {
 // Ssis Package.
 type SsisPackageResponseArgs struct {
 	// Metadata description.
-	Description pulumi.StringPtrInput `pulumi:"description"`
+	Description *string `pulumi:"description"`
 	// Folder id which contains package.
-	FolderId pulumi.Float64PtrInput `pulumi:"folderId"`
+	FolderId *float64 `pulumi:"folderId"`
 	// Metadata id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Metadata name.
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// Parameters in package
-	Parameters SsisParameterResponseArrayInput `pulumi:"parameters"`
+	Parameters []SsisParameterResponseInput `pulumi:"parameters"`
 	// Project id which contains package.
-	ProjectId pulumi.Float64PtrInput `pulumi:"projectId"`
+	ProjectId *float64 `pulumi:"projectId"`
 	// Project version which contains package.
-	ProjectVersion pulumi.Float64PtrInput `pulumi:"projectVersion"`
+	ProjectVersion *float64 `pulumi:"projectVersion"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Package'.
 	Type pulumi.StringInput `pulumi:"type"`
@@ -676,29 +676,29 @@ type SsisParameterResponseInput interface {
 // Ssis parameter.
 type SsisParameterResponseArgs struct {
 	// Parameter type.
-	DataType pulumi.StringPtrInput `pulumi:"dataType"`
+	DataType *string `pulumi:"dataType"`
 	// Default value of parameter.
-	DefaultValue pulumi.StringPtrInput `pulumi:"defaultValue"`
+	DefaultValue *string `pulumi:"defaultValue"`
 	// Parameter description.
-	Description pulumi.StringPtrInput `pulumi:"description"`
+	Description *string `pulumi:"description"`
 	// Design default value of parameter.
-	DesignDefaultValue pulumi.StringPtrInput `pulumi:"designDefaultValue"`
+	DesignDefaultValue *string `pulumi:"designDefaultValue"`
 	// Parameter id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Parameter name.
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// Whether parameter is required.
-	Required pulumi.BoolPtrInput `pulumi:"required"`
+	Required *bool `pulumi:"required"`
 	// Whether parameter is sensitive.
-	Sensitive pulumi.BoolPtrInput `pulumi:"sensitive"`
+	Sensitive *bool `pulumi:"sensitive"`
 	// Default sensitive value of parameter.
-	SensitiveDefaultValue pulumi.StringPtrInput `pulumi:"sensitiveDefaultValue"`
+	SensitiveDefaultValue *string `pulumi:"sensitiveDefaultValue"`
 	// Parameter value set.
-	ValueSet pulumi.BoolPtrInput `pulumi:"valueSet"`
+	ValueSet *bool `pulumi:"valueSet"`
 	// Parameter value type.
-	ValueType pulumi.StringPtrInput `pulumi:"valueType"`
+	ValueType *string `pulumi:"valueType"`
 	// Parameter reference variable.
-	Variable pulumi.StringPtrInput `pulumi:"variable"`
+	Variable *string `pulumi:"variable"`
 }
 
 func (SsisParameterResponseArgs) ElementType() reflect.Type {
@@ -892,22 +892,22 @@ type SsisProjectResponseInput interface {
 // Ssis project.
 type SsisProjectResponseArgs struct {
 	// Metadata description.
-	Description pulumi.StringPtrInput `pulumi:"description"`
+	Description *string `pulumi:"description"`
 	// Environment reference in project
-	EnvironmentRefs SsisEnvironmentReferenceResponseArrayInput `pulumi:"environmentRefs"`
+	EnvironmentRefs []SsisEnvironmentReferenceResponseInput `pulumi:"environmentRefs"`
 	// Folder id which contains project.
-	FolderId pulumi.Float64PtrInput `pulumi:"folderId"`
+	FolderId *float64 `pulumi:"folderId"`
 	// Metadata id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Metadata name.
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// Parameters in project
-	Parameters SsisParameterResponseArrayInput `pulumi:"parameters"`
+	Parameters []SsisParameterResponseInput `pulumi:"parameters"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Project'.
 	Type pulumi.StringInput `pulumi:"type"`
 	// Project version.
-	Version pulumi.Float64PtrInput `pulumi:"version"`
+	Version *float64 `pulumi:"version"`
 }
 
 func (SsisProjectResponseArgs) ElementType() reflect.Type {
@@ -1022,19 +1022,19 @@ type SsisVariableResponseInput interface {
 // Ssis variable.
 type SsisVariableResponseArgs struct {
 	// Variable type.
-	DataType pulumi.StringPtrInput `pulumi:"dataType"`
+	DataType *string `pulumi:"dataType"`
 	// Variable description.
-	Description pulumi.StringPtrInput `pulumi:"description"`
+	Description *string `pulumi:"description"`
 	// Variable id.
-	Id pulumi.Float64PtrInput `pulumi:"id"`
+	Id *float64 `pulumi:"id"`
 	// Variable name.
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// Whether variable is sensitive.
-	Sensitive pulumi.BoolPtrInput `pulumi:"sensitive"`
+	Sensitive *bool `pulumi:"sensitive"`
 	// Variable sensitive value.
-	SensitiveValue pulumi.StringPtrInput `pulumi:"sensitiveValue"`
+	SensitiveValue *string `pulumi:"sensitiveValue"`
 	// Variable value.
-	Value pulumi.StringPtrInput `pulumi:"value"`
+	Value *string `pulumi:"value"`
 }
 
 func (SsisVariableResponseArgs) ElementType() reflect.Type {

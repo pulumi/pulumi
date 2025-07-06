@@ -61,10 +61,10 @@ namespace Pulumi.Example
     public sealed class ExampleServerArgs : global::Pulumi.ResourceArgs
     {
         [Input("propertiesCollection")]
-        private InputList<Union<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>>? _propertiesCollection;
-        public InputList<Union<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>> PropertiesCollection
+        private Input<ImmutableArray<InputUnion<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>>>? _propertiesCollection;
+        public Input<ImmutableArray<InputUnion<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>>> PropertiesCollection
         {
-            get => _propertiesCollection ?? (_propertiesCollection = new InputList<Union<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>>());
+            get => _propertiesCollection ?? (_propertiesCollection = new Input<ImmutableArray<InputUnion<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>>>());
             set => _propertiesCollection = value;
         }
 

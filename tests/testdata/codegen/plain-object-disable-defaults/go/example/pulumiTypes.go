@@ -39,9 +39,9 @@ type HelmReleaseSettingsInput interface {
 // BETA FEATURE - Options to configure the Helm Release resource.
 type HelmReleaseSettingsArgs struct {
 	// The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
-	Driver pulumi.StringPtrInput `pulumi:"driver"`
+	Driver *string `pulumi:"driver"`
 	// The path to the helm plugins directory.
-	PluginsPath pulumi.StringPtrInput `pulumi:"pluginsPath"`
+	PluginsPath *string `pulumi:"pluginsPath"`
 	// to test required args
 	RequiredArg pulumi.StringInput `pulumi:"requiredArg"`
 }
@@ -216,10 +216,10 @@ type KubeClientSettingsInput interface {
 // Options for tuning the Kubernetes client used by a Provider.
 type KubeClientSettingsArgs struct {
 	// Maximum burst for throttle. Default value is 10.
-	Burst pulumi.IntPtrInput `pulumi:"burst"`
+	Burst *int `pulumi:"burst"`
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
-	Qps     pulumi.Float64PtrInput     `pulumi:"qps"`
-	RecTest KubeClientSettingsPtrInput `pulumi:"recTest"`
+	Qps     *float64                `pulumi:"qps"`
+	RecTest *KubeClientSettingsArgs `pulumi:"recTest"`
 }
 
 func (KubeClientSettingsArgs) ElementType() reflect.Type {
@@ -395,13 +395,13 @@ type LayeredTypeInput interface {
 // Make sure that defaults propagate through types
 type LayeredTypeArgs struct {
 	// The answer to the question
-	Answer pulumi.Float64PtrInput   `pulumi:"answer"`
+	Answer *float64                 `pulumi:"answer"`
 	Other  HelmReleaseSettingsInput `pulumi:"other"`
 	// Test how plain types interact
 	PlainOther *HelmReleaseSettingsArgs `pulumi:"plainOther"`
 	// The question already answered
-	Question  pulumi.StringPtrInput `pulumi:"question"`
-	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
+	Question  *string          `pulumi:"question"`
+	Recursive *LayeredTypeArgs `pulumi:"recursive"`
 	// To ask and answer
 	Thinker pulumi.StringInput `pulumi:"thinker"`
 }
@@ -614,9 +614,9 @@ type TypInput interface {
 
 // A test for namespaces (mod main)
 type TypArgs struct {
-	Mod1 mod1.TypPtrInput      `pulumi:"mod1"`
-	Mod2 mod2.TypPtrInput      `pulumi:"mod2"`
-	Val  pulumi.StringPtrInput `pulumi:"val"`
+	Mod1 *mod1.TypArgs `pulumi:"mod1"`
+	Mod2 *mod2.TypArgs `pulumi:"mod2"`
+	Val  *string       `pulumi:"val"`
 }
 
 func (TypArgs) ElementType() reflect.Type {

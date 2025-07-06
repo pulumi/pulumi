@@ -42,11 +42,11 @@ export interface HelmReleaseSettingsArgs {
     /**
      * The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
      */
-    driver?: pulumi.Input<string>;
+    driver?: pulumi.Input<string | undefined | null>;
     /**
      * The path to the helm plugins directory.
      */
-    pluginsPath?: pulumi.Input<string>;
+    pluginsPath?: pulumi.Input<string | undefined | null>;
     /**
      * to test required args
      */
@@ -70,12 +70,12 @@ export interface KubeClientSettingsArgs {
     /**
      * Maximum burst for throttle. Default value is 10.
      */
-    burst?: pulumi.Input<number>;
+    burst?: pulumi.Input<number | undefined | null>;
     /**
      * Maximum queries per second (QPS) to the API server from this client. Default value is 5.
      */
-    qps?: pulumi.Input<number>;
-    recTest?: pulumi.Input<inputs.KubeClientSettingsArgs>;
+    qps?: pulumi.Input<number | undefined | null>;
+    recTest?: pulumi.Input<inputs.KubeClientSettingsArgs | undefined | null>;
 }
 /**
  * kubeClientSettingsArgsProvideDefaults sets the appropriate defaults for KubeClientSettingsArgs
@@ -96,7 +96,7 @@ export interface LayeredTypeArgs {
     /**
      * The answer to the question
      */
-    answer?: pulumi.Input<number>;
+    answer?: pulumi.Input<number | undefined | null>;
     other: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
     /**
      * Test how plain types interact
@@ -105,8 +105,8 @@ export interface LayeredTypeArgs {
     /**
      * The question already answered
      */
-    question?: pulumi.Input<string>;
-    recursive?: pulumi.Input<inputs.LayeredTypeArgs>;
+    question?: pulumi.Input<string | undefined | null>;
+    recursive?: pulumi.Input<inputs.LayeredTypeArgs | undefined | null>;
     /**
      * To ask and answer
      */
@@ -131,9 +131,9 @@ export function layeredTypeArgsProvideDefaults(val: LayeredTypeArgs): LayeredTyp
  * A test for namespaces (mod main)
  */
 export interface TypArgs {
-    mod1?: pulumi.Input<inputs.mod1.TypArgs>;
-    mod2?: pulumi.Input<inputs.mod2.TypArgs>;
-    val?: pulumi.Input<string>;
+    mod1?: pulumi.Input<inputs.mod1.TypArgs | undefined | null>;
+    mod2?: pulumi.Input<inputs.mod2.TypArgs | undefined | null>;
+    val?: pulumi.Input<string | undefined | null>;
 }
 /**
  * typArgsProvideDefaults sets the appropriate defaults for TypArgs
@@ -151,7 +151,7 @@ export namespace mod1 {
      * A test for namespaces (mod 1)
      */
     export interface TypArgs {
-        val?: pulumi.Input<string>;
+        val?: pulumi.Input<string | undefined | null>;
     }
     /**
      * typArgsProvideDefaults sets the appropriate defaults for TypArgs
@@ -169,8 +169,8 @@ export namespace mod2 {
      * A test for namespaces (mod 2)
      */
     export interface TypArgs {
-        mod1?: pulumi.Input<inputs.mod1.TypArgs>;
-        val?: pulumi.Input<string>;
+        mod1?: pulumi.Input<inputs.mod1.TypArgs | undefined | null>;
+        val?: pulumi.Input<string | undefined | null>;
     }
     /**
      * typArgsProvideDefaults sets the appropriate defaults for TypArgs

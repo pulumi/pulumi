@@ -76,8 +76,8 @@ class MyType:
 if not MYPY:
     class MyTypeArgsDict(TypedDict):
         my_prop: pulumi.Input[builtins.str]
-        external_prop: NotRequired[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]
-        my_other_prop: NotRequired[pulumi.Input[builtins.float]]
+        external_prop: NotRequired[pulumi.Input[NotRequired['pulumi_kubernetes.core.v1.PodArgs']]]
+        my_other_prop: NotRequired[pulumi.Input[NotRequired[builtins.float]]]
 elif False:
     MyTypeArgsDict: TypeAlias = Mapping[str, Any]
 
@@ -85,8 +85,8 @@ elif False:
 class MyTypeArgs:
     def __init__(__self__, *,
                  my_prop: pulumi.Input[builtins.str],
-                 external_prop: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']] = None,
-                 my_other_prop: Optional[pulumi.Input[builtins.float]] = None):
+                 external_prop: Optional[pulumi.Input[Optional['pulumi_kubernetes.core.v1.PodArgs']]] = None,
+                 my_other_prop: Optional[pulumi.Input[Optional[builtins.float]]] = None):
         pulumi.set(__self__, "my_prop", my_prop)
         if external_prop is not None:
             pulumi.set(__self__, "external_prop", external_prop)
@@ -104,20 +104,20 @@ class MyTypeArgs:
 
     @property
     @pulumi.getter(name="externalProp")
-    def external_prop(self) -> Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]:
+    def external_prop(self) -> Optional[pulumi.Input[Optional['pulumi_kubernetes.core.v1.PodArgs']]]:
         return pulumi.get(self, "external_prop")
 
     @external_prop.setter
-    def external_prop(self, value: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]):
+    def external_prop(self, value: Optional[pulumi.Input[Optional['pulumi_kubernetes.core.v1.PodArgs']]]):
         pulumi.set(self, "external_prop", value)
 
     @property
     @pulumi.getter(name="myOtherProp")
-    def my_other_prop(self) -> Optional[pulumi.Input[builtins.float]]:
+    def my_other_prop(self) -> Optional[pulumi.Input[Optional[builtins.float]]]:
         return pulumi.get(self, "my_other_prop")
 
     @my_other_prop.setter
-    def my_other_prop(self, value: Optional[pulumi.Input[builtins.float]]):
+    def my_other_prop(self, value: Optional[pulumi.Input[Optional[builtins.float]]]):
         pulumi.set(self, "my_other_prop", value)
 
 

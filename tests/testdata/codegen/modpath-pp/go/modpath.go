@@ -8,7 +8,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := other.NewThing(ctx, "thing", &other.ThingArgs{
-			Idea: pulumi.String("myIdea"),
+			Idea: "myIdea",
 		})
 		if err != nil {
 			return err

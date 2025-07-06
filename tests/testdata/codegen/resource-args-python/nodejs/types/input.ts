@@ -6,5 +6,5 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 export interface PetArgs {
-    name?: pulumi.Input<string>;
+    name?: pulumi.Input<string | undefined | null>;
 }

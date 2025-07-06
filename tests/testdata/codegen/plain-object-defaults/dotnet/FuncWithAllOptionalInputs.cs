@@ -58,13 +58,13 @@ namespace Pulumi.Example
         /// Property A
         /// </summary>
         [Input("a")]
-        public Input<Inputs.HelmReleaseSettingsArgs>? A { get; set; }
+        public Input<Inputs.HelmReleaseSettingsArgs?>? A { get; set; }
 
         /// <summary>
         /// Property B
         /// </summary>
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public Input<string?>? B { get; set; }
 
         public FuncWithAllOptionalInputsInvokeArgs()
         {

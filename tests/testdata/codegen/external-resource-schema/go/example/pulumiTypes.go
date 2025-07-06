@@ -36,13 +36,13 @@ type PetInput interface {
 }
 
 type PetArgs struct {
-	Age               pulumi.IntPtrInput         `pulumi:"age"`
-	Name              random.RandomPetInput      `pulumi:"name"`
-	NameArray         random.RandomPetArrayInput `pulumi:"nameArray"`
-	NameMap           random.RandomPetMapInput   `pulumi:"nameMap"`
-	RequiredName      random.RandomPetInput      `pulumi:"requiredName"`
-	RequiredNameArray random.RandomPetArrayInput `pulumi:"requiredNameArray"`
-	RequiredNameMap   random.RandomPetMapInput   `pulumi:"requiredNameMap"`
+	Age               *int                             `pulumi:"age"`
+	Name              *random.RandomPet                `pulumi:"name"`
+	NameArray         []random.RandomPetInput          `pulumi:"nameArray"`
+	NameMap           map[string]random.RandomPetInput `pulumi:"nameMap"`
+	RequiredName      random.RandomPetInput            `pulumi:"requiredName"`
+	RequiredNameArray random.RandomPetArrayInput       `pulumi:"requiredNameArray"`
+	RequiredNameMap   random.RandomPetMapInput         `pulumi:"requiredNameMap"`
 }
 
 func (PetArgs) ElementType() reflect.Type {

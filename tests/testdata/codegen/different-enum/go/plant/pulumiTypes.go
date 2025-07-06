@@ -45,10 +45,10 @@ type ContainerInput interface {
 }
 
 type ContainerArgs struct {
-	Brightness ContainerBrightnessPtrInput `pulumi:"brightness"`
-	Color      pulumi.StringPtrInput       `pulumi:"color"`
-	Material   pulumi.StringPtrInput       `pulumi:"material"`
-	Size       ContainerSizeInput          `pulumi:"size"`
+	Brightness *ContainerBrightness `pulumi:"brightness"`
+	Color      interface{}          `pulumi:"color"`
+	Material   *string              `pulumi:"material"`
+	Size       ContainerSizeInput   `pulumi:"size"`
 }
 
 // Defaults sets the appropriate defaults for ContainerArgs

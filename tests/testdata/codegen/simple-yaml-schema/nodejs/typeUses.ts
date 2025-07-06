@@ -83,8 +83,8 @@ export class TypeUses extends pulumi.CustomResource {
  * The set of arguments for constructing a TypeUses resource.
  */
 export interface TypeUsesArgs {
-    bar?: pulumi.Input<inputs.SomeOtherObjectArgs>;
-    baz?: pulumi.Input<inputs.ObjectWithNodeOptionalInputsArgs>;
-    foo?: pulumi.Input<inputs.ObjectArgs>;
-    qux?: pulumi.Input<enums.RubberTreeVariety>;
+    bar?: pulumi.Input<inputs.SomeOtherObjectArgs | undefined | null>;
+    baz?: pulumi.Input<inputs.ObjectWithNodeOptionalInputsArgs | undefined | null>;
+    foo?: pulumi.Input<inputs.ObjectArgs | undefined | null>;
+    qux?: pulumi.Input<enums.RubberTreeVariety | undefined | null>;
 }

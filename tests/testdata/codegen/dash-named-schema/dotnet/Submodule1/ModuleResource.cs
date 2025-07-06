@@ -61,7 +61,7 @@ namespace Pulumi.FooBar.Submodule1
     public sealed class ModuleResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("thing")]
-        public Input<Pulumi.FooBar.Inputs.TopLevelArgs>? Thing { get; set; }
+        public Input<Pulumi.FooBar.Inputs.TopLevelArgs?>? Thing { get; set; }
 
         public ModuleResourceArgs()
         {

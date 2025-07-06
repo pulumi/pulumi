@@ -42,8 +42,8 @@ func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputAr
 }
 
 type FuncWithDictParamOutputArgs struct {
-	A pulumi.StringMapInput `pulumi:"a"`
-	B pulumi.StringPtrInput `pulumi:"b"`
+	A map[string]pulumi.StringInput `pulumi:"a"`
+	B *string                       `pulumi:"b"`
 }
 
 func (FuncWithDictParamOutputArgs) ElementType() reflect.Type {

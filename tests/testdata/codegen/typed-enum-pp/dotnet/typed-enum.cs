@@ -30,7 +30,7 @@ return await Deployment.RunAsync(() =>
         ResourceGroupName = someString,
         AccountName = someString,
         ContainerName = someString,
-        Type = staticwebsite.IndexDocument.Apply(System.Enum.Parse<AzureNative.Storage.BlobType>),
+        Type = staticwebsite.IndexDocument,
     });
 
     // Unsafe enum

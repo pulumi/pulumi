@@ -12,8 +12,8 @@ func main() {
 			return err
 		}
 		bucket, err := s3.NewBucket(ctx, "bucket", &s3.BucketArgs{
-			Loggings: s3.BucketLoggingArray{
-				&s3.BucketLoggingArgs{
+			Loggings: []s3.BucketLoggingArgs{
+				{
 					TargetBucket: logs.Bucket,
 				},
 			},

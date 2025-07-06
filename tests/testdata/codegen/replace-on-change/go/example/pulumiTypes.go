@@ -31,7 +31,7 @@ type ChewInput interface {
 
 // A toy for a dog
 type ChewArgs struct {
-	Owner DogInput `pulumi:"owner"`
+	Owner *Dog `pulumi:"owner"`
 }
 
 func (ChewArgs) ElementType() reflect.Type {
@@ -169,9 +169,9 @@ type LaserInput interface {
 
 // A Toy for a cat
 type LaserArgs struct {
-	Animal    CatInput               `pulumi:"animal"`
-	Batteries pulumi.BoolPtrInput    `pulumi:"batteries"`
-	Light     pulumi.Float64PtrInput `pulumi:"light"`
+	Animal    *Cat     `pulumi:"animal"`
+	Batteries *bool    `pulumi:"batteries"`
+	Light     *float64 `pulumi:"light"`
 }
 
 func (LaserArgs) ElementType() reflect.Type {
@@ -331,7 +331,7 @@ type RecInput interface {
 }
 
 type RecArgs struct {
-	Rec1 RecPtrInput `pulumi:"rec1"`
+	Rec1 *RecArgs `pulumi:"rec1"`
 }
 
 func (RecArgs) ElementType() reflect.Type {
@@ -468,9 +468,9 @@ type ToyInput interface {
 
 // This is a toy
 type ToyArgs struct {
-	Associated ToyPtrInput            `pulumi:"associated"`
-	Color      pulumi.StringPtrInput  `pulumi:"color"`
-	Wear       pulumi.Float64PtrInput `pulumi:"wear"`
+	Associated *ToyArgs `pulumi:"associated"`
+	Color      *string  `pulumi:"color"`
+	Wear       *float64 `pulumi:"wear"`
 }
 
 func (ToyArgs) ElementType() reflect.Type {

@@ -25,8 +25,8 @@ func main() {
 			return err
 		}
 		_, err = iam.NewPolicy(ctx, "example", &iam.PolicyArgs{
-			Name:   pulumi.String("example_policy"),
-			Path:   pulumi.String("/"),
+			Name:   "example_policy",
+			Path:   "/",
 			Policy: pulumi.String(policyDocument.Json),
 		})
 		if err != nil {

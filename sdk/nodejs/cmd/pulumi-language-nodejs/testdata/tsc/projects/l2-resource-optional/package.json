@@ -1,0 +1,12 @@
+{
+	"name": "l2-resource-optional",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz",
+		"@pulumi/simple-optional": "ROOT/artifacts/pulumi-simple-optional-17.0.0.tgz"
+	}
+}

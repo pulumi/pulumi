@@ -7,7 +7,7 @@ import * as outputs from "../types/output";
 
 export interface ServerPropertiesForReplicaArgs {
     createMode: pulumi.Input<"Replica">;
-    version?: pulumi.Input<string>;
+    version?: pulumi.Input<string | undefined | null>;
 }
 
 export interface ServerPropertiesForRestoreArgs {

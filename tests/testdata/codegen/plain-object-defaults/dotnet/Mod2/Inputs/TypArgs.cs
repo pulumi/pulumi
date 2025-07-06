@@ -16,10 +16,10 @@ namespace Pulumi.Example.Mod2.Inputs
     public sealed class TypArgs : global::Pulumi.ResourceArgs
     {
         [Input("mod1")]
-        public Input<Pulumi.Example.Mod1.Inputs.TypArgs>? Mod1 { get; set; }
+        public Input<Pulumi.Example.Mod1.Inputs.TypArgs?>? Mod1 { get; set; }
 
         [Input("val")]
-        public Input<string>? Val { get; set; }
+        public Input<string?>? Val { get; set; }
 
         public TypArgs()
         {

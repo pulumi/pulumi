@@ -10,10 +10,10 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// example
 		_, err := appsv1.NewDeployment(ctx, "argocd_serverDeployment", &appsv1.DeploymentArgs{
-			ApiVersion: pulumi.String("apps/v1"),
-			Kind:       pulumi.String("Deployment"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Labels: pulumi.StringMap{
+			ApiVersion: "apps/v1",
+			Kind:       "Deployment",
+			Metadata: &*metav1.ObjectMetaArgs{
+				Labels: map[string]pulumi.String{
 					"app.kubernetes.io/component": pulumi.String("server"),
 					"aws:region":                  pulumi.String("us-west-2"),
 					"key%percent":                 pulumi.String("percent"),
@@ -29,7 +29,7 @@ func main() {
 					"key=>geq":                    pulumi.String("geq"),
 					"key==eq":                     pulumi.String("equal"),
 				},
-				Name: pulumi.String("argocd-server"),
+				Name: "argocd-server",
 			},
 		})
 		if err != nil {

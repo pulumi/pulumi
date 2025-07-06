@@ -15,11 +15,11 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// VPC
 		eksVpc, err := ec2.NewVpc(ctx, "eksVpc", &ec2.VpcArgs{
-			CidrBlock:          pulumi.String("10.100.0.0/16"),
-			InstanceTenancy:    pulumi.String("default"),
-			EnableDnsHostnames: pulumi.Bool(true),
-			EnableDnsSupport:   pulumi.Bool(true),
-			Tags: pulumi.StringMap{
+			CidrBlock:          "10.100.0.0/16",
+			InstanceTenancy:    "default",
+			EnableDnsHostnames: true,
+			EnableDnsSupport:   true,
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("pulumi-eks-vpc"),
 			},
 		})
@@ -28,7 +28,7 @@ func main() {
 		}
 		eksIgw, err := ec2.NewInternetGateway(ctx, "eksIgw", &ec2.InternetGatewayArgs{
 			VpcId: eksVpc.ID(),
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("pulumi-vpc-ig"),
 			},
 		})
@@ -37,13 +37,13 @@ func main() {
 		}
 		eksRouteTable, err := ec2.NewRouteTable(ctx, "eksRouteTable", &ec2.RouteTableArgs{
 			VpcId: eksVpc.ID(),
-			Routes: ec2.RouteTableRouteArray{
-				&ec2.RouteTableRouteArgs{
-					CidrBlock: pulumi.String("0.0.0.0/0"),
+			Routes: []ec2.RouteTableRouteArgs{
+				{
+					CidrBlock: "0.0.0.0/0",
 					GatewayId: eksIgw.ID(),
 				},
 			},
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("pulumi-vpc-rt"),
 			},
 		})
@@ -57,12 +57,12 @@ func main() {
 		var vpcSubnet []*ec2.Subnet
 		for key0, val0 := range zones.Names {
 			__res, err := ec2.NewSubnet(ctx, fmt.Sprintf("vpcSubnet-%v", key0), &ec2.SubnetArgs{
-				AssignIpv6AddressOnCreation: pulumi.Bool(false),
+				AssignIpv6AddressOnCreation: false,
 				VpcId:                       eksVpc.ID(),
-				MapPublicIpOnLaunch:         pulumi.Bool(true),
-				CidrBlock:                   pulumi.Sprintf("10.100.%v.0/24", key0),
+				MapPublicIpOnLaunch:         true,
+				CidrBlock:                   fmt.Sprintf("10.100.%v.0/24", key0),
 				AvailabilityZone:            pulumi.String(val0),
-				Tags: pulumi.StringMap{
+				Tags: map[string]pulumi.String{
 					"Name": pulumi.Sprintf("pulumi-sn-%v", val0),
 				},
 			})
@@ -89,28 +89,28 @@ func main() {
 		subnetIds := splat0
 		eksSecurityGroup, err := ec2.NewSecurityGroup(ctx, "eksSecurityGroup", &ec2.SecurityGroupArgs{
 			VpcId:       eksVpc.ID(),
-			Description: pulumi.String("Allow all HTTP(s) traffic to EKS Cluster"),
-			Tags: pulumi.StringMap{
+			Description: "Allow all HTTP(s) traffic to EKS Cluster",
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("pulumi-cluster-sg"),
 			},
-			Ingress: ec2.SecurityGroupIngressArray{
-				&ec2.SecurityGroupIngressArgs{
-					CidrBlocks: pulumi.StringArray{
+			Ingress: []ec2.SecurityGroupIngressArgs{
+				{
+					CidrBlocks: []pulumi.String{
 						pulumi.String("0.0.0.0/0"),
 					},
 					FromPort:    pulumi.Int(443),
 					ToPort:      pulumi.Int(443),
 					Protocol:    pulumi.String("tcp"),
-					Description: pulumi.String("Allow pods to communicate with the cluster API Server."),
+					Description: "Allow pods to communicate with the cluster API Server.",
 				},
-				&ec2.SecurityGroupIngressArgs{
-					CidrBlocks: pulumi.StringArray{
+				{
+					CidrBlocks: []pulumi.String{
 						pulumi.String("0.0.0.0/0"),
 					},
 					FromPort:    pulumi.Int(80),
 					ToPort:      pulumi.Int(80),
 					Protocol:    pulumi.String("tcp"),
-					Description: pulumi.String("Allow internet access to pods"),
+					Description: "Allow internet access to pods",
 				},
 			},
 		})
@@ -200,14 +200,14 @@ func main() {
 		}
 		eksCluster, err := eks.NewCluster(ctx, "eksCluster", &eks.ClusterArgs{
 			RoleArn: eksRole.Arn,
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("pulumi-eks-cluster"),
 			},
 			VpcConfig: &eks.ClusterVpcConfigArgs{
-				PublicAccessCidrs: pulumi.StringArray{
+				PublicAccessCidrs: []pulumi.String{
 					pulumi.String("0.0.0.0/0"),
 				},
-				SecurityGroupIds: pulumi.StringArray{
+				SecurityGroupIds: []pulumi.String{
 					eksSecurityGroup.ID(),
 				},
 				SubnetIds: subnetIds,
@@ -218,10 +218,10 @@ func main() {
 		}
 		_, err = eks.NewNodeGroup(ctx, "nodeGroup", &eks.NodeGroupArgs{
 			ClusterName:   eksCluster.Name,
-			NodeGroupName: pulumi.String("pulumi-eks-nodegroup"),
+			NodeGroupName: "pulumi-eks-nodegroup",
 			NodeRoleArn:   ec2Role.Arn,
 			SubnetIds:     subnetIds,
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("pulumi-cluster-nodeGroup"),
 			},
 			ScalingConfig: &eks.NodeGroupScalingConfigArgs{

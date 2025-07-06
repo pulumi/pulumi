@@ -21,8 +21,8 @@ __all__ = ['ResArgs', 'Res']
 @pulumi.input_type
 class ResArgs:
     def __init__(__self__, *,
-                 id: Optional[pulumi.Input[builtins.str]] = None,
-                 urn: Optional[pulumi.Input[builtins.str]] = None):
+                 id: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 urn: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         """
         The set of arguments for constructing a Res resource.
         """
@@ -33,20 +33,20 @@ class ResArgs:
 
     @property
     @pulumi.getter
-    def id(self) -> Optional[pulumi.Input[builtins.str]]:
+    def id(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "id")
 
     @id.setter
-    def id(self, value: Optional[pulumi.Input[builtins.str]]):
+    def id(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "id", value)
 
     @property
     @pulumi.getter
-    def urn(self) -> Optional[pulumi.Input[builtins.str]]:
+    def urn(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "urn")
 
     @urn.setter
-    def urn(self, value: Optional[pulumi.Input[builtins.str]]):
+    def urn(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "urn", value)
 
 
@@ -56,8 +56,8 @@ class Res(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 id: Optional[pulumi.Input[builtins.str]] = None,
-                 urn: Optional[pulumi.Input[builtins.str]] = None,
+                 id: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 urn: Optional[pulumi.Input[Optional[builtins.str]]] = None,
                  __props__=None):
         """
         It's fine to use urn and id as input properties
@@ -89,8 +89,8 @@ class Res(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 id: Optional[pulumi.Input[builtins.str]] = None,
-                 urn: Optional[pulumi.Input[builtins.str]] = None,
+                 id: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 urn: Optional[pulumi.Input[Optional[builtins.str]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

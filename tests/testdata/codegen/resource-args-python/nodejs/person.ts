@@ -62,6 +62,6 @@ export class Person extends pulumi.CustomResource {
  * The set of arguments for constructing a Person resource.
  */
 export interface PersonArgs {
-    name?: pulumi.Input<string>;
-    pets?: pulumi.Input<pulumi.Input<inputs.PetArgs>[]>;
+    name?: pulumi.Input<string | undefined | null>;
+    pets?: pulumi.Input<pulumi.Input<inputs.PetArgs>[] | undefined | null>;
 }

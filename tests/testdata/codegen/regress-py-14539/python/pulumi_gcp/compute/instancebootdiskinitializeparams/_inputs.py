@@ -24,7 +24,7 @@ MYPY = False
 
 if not MYPY:
     class InstanceBootDiskInitializeParamsArgsDict(TypedDict):
-        image_name: NotRequired[pulumi.Input[builtins.str]]
+        image_name: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
         """
         The image from which to initialize this disk. This can be
         one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
@@ -42,9 +42,9 @@ elif False:
 @pulumi.input_type
 class InstanceBootDiskInitializeParamsArgs:
     def __init__(__self__, *,
-                 image_name: Optional[pulumi.Input[builtins.str]] = None):
+                 image_name: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         """
-        :param pulumi.Input[builtins.str] image_name: The image from which to initialize this disk. This can be
+        :param pulumi.Input[Optional[builtins.str]] image_name: The image from which to initialize this disk. This can be
                one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
                `projects/{project}/global/images/family/{family}`, `global/images/{image}`,
                `global/images/family/{family}`, `family/{family}`, `{project}/{family}`,
@@ -59,7 +59,7 @@ class InstanceBootDiskInitializeParamsArgs:
 
     @property
     @pulumi.getter(name="imageName")
-    def image_name(self) -> Optional[pulumi.Input[builtins.str]]:
+    def image_name(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         """
         The image from which to initialize this disk. This can be
         one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
@@ -74,7 +74,7 @@ class InstanceBootDiskInitializeParamsArgs:
         return pulumi.get(self, "image_name")
 
     @image_name.setter
-    def image_name(self, value: Optional[pulumi.Input[builtins.str]]):
+    def image_name(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "image_name", value)
 
 

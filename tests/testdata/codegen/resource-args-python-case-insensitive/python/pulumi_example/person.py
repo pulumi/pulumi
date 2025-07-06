@@ -22,8 +22,8 @@ __all__ = ['PersonArgs', 'Person']
 @pulumi.input_type
 class PersonArgs:
     def __init__(__self__, *,
-                 name: Optional[pulumi.Input[builtins.str]] = None,
-                 pets: Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]] = None):
+                 name: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 pets: Optional[pulumi.Input[Optional[Sequence[pulumi.Input['PetArgs']]]]] = None):
         """
         The set of arguments for constructing a Person resource.
         """
@@ -34,20 +34,20 @@ class PersonArgs:
 
     @property
     @pulumi.getter
-    def name(self) -> Optional[pulumi.Input[builtins.str]]:
+    def name(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "name")
 
     @name.setter
-    def name(self, value: Optional[pulumi.Input[builtins.str]]):
+    def name(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "name", value)
 
     @property
     @pulumi.getter
-    def pets(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]]:
+    def pets(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input['PetArgs']]]]]:
         return pulumi.get(self, "pets")
 
     @pets.setter
-    def pets(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]]):
+    def pets(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input['PetArgs']]]]]):
         pulumi.set(self, "pets", value)
 
 
@@ -57,8 +57,8 @@ class Person(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 name: Optional[pulumi.Input[builtins.str]] = None,
-                 pets: Optional[pulumi.Input[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict']]]]] = None,
+                 name: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 pets: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict']]]]]] = None,
                  __props__=None):
         """
         Create a Person resource with the given unique name, props, and options.
@@ -88,8 +88,8 @@ class Person(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 name: Optional[pulumi.Input[builtins.str]] = None,
-                 pets: Optional[pulumi.Input[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict']]]]] = None,
+                 name: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 pets: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict']]]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -84,7 +84,7 @@ namespace Pulumi.Mypkg
         /// Metadata path.
         /// </summary>
         [Input("metadataPath")]
-        public Input<string>? MetadataPath { get; set; }
+        public Input<string?>? MetadataPath { get; set; }
 
         /// <summary>
         /// The resource group name.

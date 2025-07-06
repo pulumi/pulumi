@@ -31,8 +31,8 @@ type ServerPropertiesForReplicaInput interface {
 }
 
 type ServerPropertiesForReplicaArgs struct {
-	CreateMode pulumi.StringInput    `pulumi:"createMode"`
-	Version    pulumi.StringPtrInput `pulumi:"version"`
+	CreateMode pulumi.StringInput `pulumi:"createMode"`
+	Version    *string            `pulumi:"version"`
 }
 
 func (ServerPropertiesForReplicaArgs) ElementType() reflect.Type {

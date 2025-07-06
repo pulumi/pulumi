@@ -37,7 +37,7 @@ namespace Other.Example
     public sealed class ArgFunctionInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("arg1")]
-        public Input<Other.Example.Resource>? Arg1 { get; set; }
+        public Input<Other.Example.Resource?>? Arg1 { get; set; }
 
         public ArgFunctionInvokeArgs()
         {
