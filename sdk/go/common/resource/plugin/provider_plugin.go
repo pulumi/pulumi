@@ -26,7 +26,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -2160,20 +2159,20 @@ func (p *provider) Close() error {
 // variables, resource providers will respond with a list of missing variables and their descriptions.
 // If that is what occurred, we'll use that information here to construct a nice error message.
 func createConfigureError(rpcerr *rpcerror.Error) error {
-	var err error
+	var errs []error
 	for _, detail := range rpcerr.Details() {
 		if missingKeys, ok := detail.(*pulumirpc.ConfigureErrorMissingKeys); ok {
 			for _, missingKey := range missingKeys.MissingKeys {
 				singleError := fmt.Errorf("missing required configuration key \"%s\": %s\n"+
 					"Set a value using the command `pulumi config set %s <value>`.",
 					missingKey.Name, missingKey.Description, missingKey.Name)
-				err = multierror.Append(err, singleError)
+				errs = append(errs, singleError)
 			}
 		}
 	}
 
-	if err != nil {
-		return err
+	if len(errs) != 0 {
+		return errors.Join(errs...)
 	}
 
 	return rpcerr
@@ -2249,10 +2248,11 @@ type InitError struct {
 var _ error = (*InitError)(nil)
 
 func (ie *InitError) Error() string {
-	var err error
+	errs := slice.Prealloc[error](len(ie.Reasons))
 	for _, reason := range ie.Reasons {
-		err = multierror.Append(err, errors.New(reason))
+		errs = append(errs, errors.New(reason))
 	}
+	err := errors.Join(errs...)
 	if err == nil {
 		return "resource init failed"
 	}

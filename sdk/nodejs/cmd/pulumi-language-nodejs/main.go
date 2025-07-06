@@ -49,7 +49,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/google/shlex"
-	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -426,7 +425,7 @@ func getPackagesFromDir(
 	}
 
 	var packages []*pulumirpc.PackageDependency
-	var allErrors *multierror.Error
+	var errs []error
 	for _, file := range files {
 		name := file.Name()
 		curr := filepath.Join(dir, name)
@@ -443,7 +442,7 @@ func getPackagesFromDir(
 		if (typ & fs.ModeSymlink) != 0 {
 			symlink, err := filepath.EvalSymlinks(curr)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, fmt.Errorf("resolving link in plugin dir %s: %w", curr, err))
+				errs = append(errs, fmt.Errorf("resolving link in plugin dir %s: %w", curr, err))
 				continue
 			}
 			curr = symlink
@@ -451,7 +450,7 @@ func getPackagesFromDir(
 			// And re-stat the directory to get the resolved mode bits
 			fi, err := os.Stat(curr)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, err)
+				errs = append(errs, err)
 				continue
 			}
 			isDir = fi.IsDir()
@@ -463,7 +462,7 @@ func getPackagesFromDir(
 			// program, so we should not include them in the list of plugins to install.
 			policyPack, err := workspace.DetectPolicyPackPathAt(curr)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, err)
+				errs = append(errs, err)
 				continue
 			}
 			if policyPack != "" {
@@ -477,7 +476,7 @@ func getPackagesFromDir(
 				inNodeModules || filepath.Base(dir) == "node_modules",
 				visitedPaths)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, err)
+				errs = append(errs, err)
 			}
 			// Even if there was an error, still append any plugins found in the dir.
 			packages = append(packages, more...)
@@ -485,21 +484,20 @@ func getPackagesFromDir(
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
 			b, err := os.ReadFile(curr)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, fmt.Errorf("reading package.json %s: %w", curr, err))
+				errs = append(errs, fmt.Errorf("reading package.json %s: %w", curr, err))
 				continue
 			}
 
 			var info packageJSON
 			if err := json.Unmarshal(b, &info); err != nil {
-				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
+				errs = append(errs, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 				continue
 			}
 
 			if info.Name == "@pulumi/pulumi" {
 				version, err := semver.Parse(info.Version)
 				if err != nil {
-					allErrors = multierror.Append(
-						allErrors, fmt.Errorf("Could not understand version %s in '%s': %w", info.Version, curr, err))
+					errs = append(errs, fmt.Errorf("Could not understand version %s in '%s': %w", info.Version, curr, err))
 					continue
 				}
 
@@ -508,7 +506,7 @@ func getPackagesFromDir(
 
 			ok, name, version, server, parameterization, err := getPackageInfo(info)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
+				errs = append(errs, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
 				packages = append(packages, &pulumirpc.PackageDependency{
 					Name:             name,
@@ -520,7 +518,7 @@ func getPackagesFromDir(
 			}
 		}
 	}
-	return packages, allErrors.ErrorOrNil()
+	return packages, errors.Join(errs...)
 }
 
 // packageJSON is the minimal amount of package.json information we care about.

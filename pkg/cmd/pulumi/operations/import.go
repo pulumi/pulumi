@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/spf13/cobra"
@@ -223,10 +222,9 @@ func parseImportFile(
 		takenNames[spec.Name] = false
 	}
 
-	// TODO: When Go 1.21 is released, switch to errors.Join.
-	var errs error
+	var errs []error
 	pusherrf := func(format string, args ...interface{}) {
-		errs = multierror.Append(errs, fmt.Errorf(format, args...))
+		errs = append(errs, fmt.Errorf(format, args...))
 	}
 
 	// Attempts to generate a human-readable description of the given import spec
@@ -294,8 +292,8 @@ func parseImportFile(
 	}
 
 	// If we've got errors already just exit
-	if errs != nil {
-		return nil, nil, errs
+	if len(errs) != 0 {
+		return nil, nil, errors.Join(errs...)
 	}
 
 	// A mapping from name to URN, prefilled with emptys and what was in the name table so we can do existence checks
@@ -384,8 +382,8 @@ func parseImportFile(
 	}
 
 	// If we've got errors already just exit
-	if errs != nil {
-		return nil, nil, errs
+	if len(errs) != 0 {
+		return nil, nil, errors.Join(errs...)
 	}
 
 	imports := make([]deploy.Import, len(f.Resources))
@@ -436,7 +434,7 @@ func parseImportFile(
 		imports[i] = imp
 	}
 
-	return imports, names, errs
+	return imports, names, errors.Join(errs...)
 }
 
 func getCurrentDeploymentForStack(

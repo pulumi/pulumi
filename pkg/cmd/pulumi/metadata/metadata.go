@@ -17,6 +17,7 @@ package metadata
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/spf13/pflag"
 
 	git "github.com/go-git/go-git/v5"
@@ -198,7 +198,7 @@ func addEscMetadataToEnvironment(env map[string]string, escEnvironments []string
 
 // addGitMetadata populate's the environment metadata bag with Git-related values.
 func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
-	var allErrors *multierror.Error
+	var errs []error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
 	repo, err := gitutil.GetGitRepository(projectRoot)
@@ -209,19 +209,18 @@ func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 		// If we couldn't find a repository, see if explicit environment variables have been set to provide us with
 		// metadata.
 		addGitMetadataFromEnvironment(m)
-
 		return nil
 	}
 
 	if err := addGitRemoteMetadataToMap(repo, projectRoot, m.Environment); err != nil {
-		allErrors = multierror.Append(allErrors, err)
+		errs = append(errs, err)
 	}
 
 	if err := addGitCommitMetadata(repo, projectRoot, m); err != nil {
-		allErrors = multierror.Append(allErrors, err)
+		errs = append(errs, err)
 	}
 
-	return allErrors.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // addGitMetadataFromEnvironment retrieves Git-related metadata from environment variables in the case that a Git
@@ -283,7 +282,7 @@ func addGitMetadataFromEnvironment(m *backend.UpdateMetadata) {
 
 // addGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.
 func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map[string]string) error {
-	var allErrors *multierror.Error
+	var errs []error
 
 	// Get the remote URL for this repo.
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
@@ -296,23 +295,23 @@ func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map
 
 	// Check if the remote URL is a GitHub or a GitLab URL.
 	if err := addVCSMetadataToEnvironment(remoteURL, env); err != nil {
-		allErrors = multierror.Append(allErrors, err)
+		errs = append(errs, err)
 	}
 
 	// Add the repository root path.
 	tree, err := repo.Worktree()
 	if err != nil {
-		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+		errs = append(errs, fmt.Errorf("detecting VCS root: %w", err))
 	} else {
 		rel, err := filepath.Rel(tree.Filesystem.Root(), projectRoot)
 		if err != nil {
-			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+			errs = append(errs, fmt.Errorf("detecting project root: %w", err))
 		} else if !strings.HasPrefix(rel, "..") {
 			env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
 		}
 	}
 
-	return allErrors.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error {

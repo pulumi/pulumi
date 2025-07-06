@@ -25,7 +25,6 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -552,13 +551,13 @@ func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,
 // and/or there are errors loading one or more plugins, a non-nil error is returned.
 func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
-	var result error
+	var errs []error
 	for _, plugin := range plugins {
 		switch plugin.Kind {
 		case apitype.AnalyzerPlugin:
 			if kinds&AnalyzerPlugins != 0 {
 				if _, err := host.Analyzer(tokens.QName(plugin.Name)); err != nil {
-					result = multierror.Append(result,
+					errs = append(errs,
 						fmt.Errorf("failed to load analyzer plugin %s: %w", plugin.Name, err))
 				}
 			}
@@ -571,14 +570,14 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 				// got hold of.
 				info := NewProgramInfo(host.ctx.Root, host.ctx.Pwd, ".", nil)
 				if _, err := host.LanguageRuntime(plugin.Name, info); err != nil {
-					result = multierror.Append(result,
+					errs = append(errs,
 						fmt.Errorf("failed to load language plugin %s: %w", plugin.Name, err))
 				}
 			}
 		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
 				if _, err := host.Provider(workspace.PackageDescriptor{PluginSpec: plugin}); err != nil {
-					result = multierror.Append(result,
+					errs = append(errs,
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}
 			}
@@ -587,7 +586,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 		}
 	}
 
-	return result
+	return errors.Join(errs...)
 }
 
 func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
@@ -601,14 +600,14 @@ func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
-		var result error
+		var errs []error
 		for _, plug := range host.resourcePlugins {
 			if err := plug.Plugin.SignalCancellation(host.ctx.Request()); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
+				errs = append(errs, fmt.Errorf(
 					"Error signaling cancellation to resource provider '%s': %w", plug.Info.Name, err))
 			}
 		}
-		return nil, result
+		return nil, errors.Join(errs...)
 	})
 	return err
 }
