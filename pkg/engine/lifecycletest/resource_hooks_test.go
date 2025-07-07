@@ -536,3 +536,95 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	require.True(t, hookCalled)
 }
+
+func TestResourceHookBeforeUpdateError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: req.NewInputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	isUpdate := false
+	inputs := resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "bar",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		hookFun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			return errors.New("this hook returns an error")
+		}
+		hook, err := deploytest.NewHook(monitor, callbacks, "hook", hookFun, true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				BeforeUpdate: []*deploytest.ResourceHook{hook},
+			},
+		})
+
+		if isUpdate {
+			require.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			return err
+		}
+
+		require.NoError(t, err)
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+
+	// change the inputs
+	inputs = resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "updated",
+	})
+	isUpdate = true
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "before hook \"hook\" failed: this hook returns an error")
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.Equal(t, snap.Resources[1].Outputs.Mappable(), map[string]any{
+		"foo": "bar",
+	}, "the resource was not updated")
+}
