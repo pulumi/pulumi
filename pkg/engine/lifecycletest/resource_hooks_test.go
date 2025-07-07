@@ -669,3 +669,129 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		"foo": "bar",
 	}, "the resource was not updated")
 }
+
+func TestResourceHookDeleteCalledOnDestroyRunProgram(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			return nil
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterDelete: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.False(t, hookCalled)
+
+	// Run a destroy with the program
+	snap, err = lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.True(t, hookCalled)
+	require.Len(t, snap.Resources, 0)
+}
+
+func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			return nil
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				BeforeDelete: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.False(t, hookCalled)
+
+	// Run a destroy without the program
+	snap, err = lt.TestOp(Destroy).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "You must run with the `--run-program` flag to use delete hooks during destroy.")
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.False(t, hookCalled)
+}
