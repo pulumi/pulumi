@@ -292,8 +292,16 @@ func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.BeforeCreate], true,
-		s.new.ID, s.new.URN, s.new.Inputs, nil, nil, nil); err != nil {
+	if err := s.Deployment().RunHooks(
+		s.new.ResourceHooks[resource.BeforeCreate],
+		true, /* isBeforeHook */
+		s.new.ID,
+		s.new.URN,
+		s.new.Inputs,
+		nil, /* oldInputs */
+		nil, /* newOutputs */
+		nil, /* oldOutputs */
+	); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -379,8 +387,16 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterCreate], false,
-		s.new.ID, s.new.URN, s.new.Inputs, nil, s.new.Outputs, nil); err != nil {
+	if err := s.Deployment().RunHooks(
+		s.new.ResourceHooks[resource.AfterCreate],
+		false, /* isBeforeHook */
+		s.new.ID,
+		s.new.URN,
+		s.new.Inputs,
+		nil, /* oldInputs */
+		s.new.Outputs,
+		nil, /* oldOutputs */
+	); err != nil {
 		return resourceStatus, complete, err
 	}
 
@@ -504,8 +520,16 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(s.old.ResourceHooks[resource.BeforeDelete], true,
-		s.old.ID, s.old.URN, nil, s.old.Inputs, nil, s.old.Outputs); err != nil {
+	if err := s.Deployment().RunHooks(
+		s.old.ResourceHooks[resource.BeforeDelete],
+		true, /* isBeforeHook */
+		s.old.ID,
+		s.old.URN,
+		nil, /* newInputs */
+		s.old.Inputs,
+		nil, /* newOutputs */
+		s.old.Outputs,
+	); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -587,8 +611,16 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	if err := s.Deployment().RunHooks(s.old.ResourceHooks[resource.AfterDelete], false,
-		s.old.ID, s.old.URN, nil, s.old.Inputs, nil, s.old.Outputs); err != nil {
+	if err := s.Deployment().RunHooks(
+		s.old.ResourceHooks[resource.AfterDelete],
+		false, /* isBeforeHook */
+		s.old.ID,
+		s.old.URN,
+		nil, /* newInputs */
+		s.old.Inputs,
+		nil, /* newOutputs */
+		s.old.Outputs,
+	); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -744,8 +776,16 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Modified = s.old.Modified
 	s.new.Lock.Unlock()
 
-	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.BeforeUpdate], true,
-		s.new.ID, s.new.URN, s.new.Inputs, s.old.Inputs, nil, s.old.Outputs); err != nil {
+	if err := s.Deployment().RunHooks(
+		s.new.ResourceHooks[resource.BeforeUpdate],
+		true, /* isBeforeHook */
+		s.new.ID,
+		s.new.URN,
+		s.new.Inputs,
+		s.old.Inputs,
+		nil, /* newOutputs */
+		s.old.Outputs,
+	); err != nil {
 		return resource.StatusOK, nil, err
 	}
 
@@ -817,8 +857,15 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterUpdate], false,
-		s.new.ID, s.new.URN, s.new.Inputs, s.old.Inputs, s.new.Outputs, s.old.Outputs); err != nil {
+	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterUpdate],
+		false, /* isBeforeHook */
+		s.new.ID,
+		s.new.URN,
+		s.new.Inputs,
+		s.old.Inputs,
+		s.new.Outputs,
+		s.old.Outputs,
+	); err != nil {
 		return resourceStatus, nil, err
 	}
 

@@ -1651,6 +1651,9 @@ func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
+// Wrap the resource hook callback so the engine can call the callback server in
+// the language runtime, which will then execute the hook. The wrapper takes
+// care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) (ResourceHookFunction, error) {
 	client, err := rm.GetCallbacksClient(cb.Target)
 	if err != nil {
@@ -1662,46 +1665,32 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
 		if newInputs != nil {
-			mNewInputs, err = plugin.MarshalProperties(newInputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
 			}
 		}
 		if oldInputs != nil {
-			mOldInputs, err = plugin.MarshalProperties(oldInputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
 			}
 		}
 		if newOutputs != nil {
-			mNewOutputs, err = plugin.MarshalProperties(newOutputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
 			}
 		}
 		if oldOutputs != nil {
-			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
 			}

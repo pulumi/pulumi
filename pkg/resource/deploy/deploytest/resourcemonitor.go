@@ -190,46 +190,32 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
 		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
 		if req.NewInputs != nil {
-			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
 			}
 		}
 		if req.OldInputs != nil {
-			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
 			}
 		}
 		if req.NewOutputs != nil {
-			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
 			}
 		}
 		if req.OldOutputs != nil {
-			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}

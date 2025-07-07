@@ -699,7 +699,7 @@ func (d *Deployment) Close() error {
 // `isBeforeHook` is false, a hook returning an error will only generate a
 // warning.
 func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID, urn resource.URN,
-	newInputs, oldInput, newOutputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error {
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
@@ -710,16 +710,15 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		err = hook.Callback(context.Background(), urn, id, newInputs, oldInput, newOutputs, oldOutputs)
+		err = hook.Callback(d.Ctx().Base(), urn, id, newInputs, oldInputs, newOutputs, oldOutputs)
 		if err != nil {
-			logging.V(6).Infof("hook %q failed: %s", hookName, err)
 			if isBeforeHook {
-				return fmt.Errorf("hook %q failed: %w", hookName, err)
+				return fmt.Errorf("before hook %q failed: %w", hookName, err)
 			}
 			// Errors on after hooks report a diagnostic, but do not fail the step.
 			d.Diag().Warningf(&diag.Diag{
 				URN:     urn,
-				Message: fmt.Sprintf("hook %q failed: %s", hookName, err),
+				Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
 			})
 		}
 	}

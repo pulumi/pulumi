@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -445,8 +445,8 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		// We create the resource with this hook as a `beforeUpdate` hook, and
-		// then update the resource to use a dfifferent hook. We expect this
-		// hook to not be called during the update.
+		// then update the resource to use a different hook. We expect this hook
+		// to not be called during the update.
 		shouldNotBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {

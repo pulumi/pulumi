@@ -890,7 +890,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 					goal.AdditionalSecretOutputs, new.Aliases, &goal.CustomTimeouts, "", new.RetainOnDelete, goal.DeletedWith,
 					new.Created, new.Modified, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-					new.RefreshBeforeUpdate, "", nil)
+					new.RefreshBeforeUpdate, "", goal.ResourceHooks)
 			}
 
 			sg.events <- &continueResourceImportEvent{

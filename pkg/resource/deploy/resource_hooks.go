@@ -34,11 +34,11 @@ type ResourceHookFunction func(
 	oldOutputs resource.PropertyMap,
 ) error
 
-// ResourceHook represents a resource hook with it's (wrapped) callback and options.
+// ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {
-	Name     string
-	Callback ResourceHookFunction
-	OnDryRun bool
+	Name     string               // The unqiue name of the hook.
+	Callback ResourceHookFunction // The callback of the hook.
+	OnDryRun bool                 // Whether to run this hook for previews or not.
 }
 
 // ResourceHooks is a registry of all resource hooks provided by a program.
