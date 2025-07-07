@@ -115,6 +115,10 @@ service LanguageRuntime {
 
     // `Link` links a local dependency into a project.
     rpc Link(LinkRequest) returns (LinkResponse) {}
+
+    // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+    // Operations aborted in this way will return an error.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
