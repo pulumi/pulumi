@@ -38,7 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLoginCmd() *cobra.Command {
+func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
@@ -129,7 +129,6 @@ func NewLoginCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err

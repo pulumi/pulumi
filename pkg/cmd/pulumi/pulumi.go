@@ -347,13 +347,13 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newcmd.NewNewCmd(),
-				config.NewConfigCmd(),
+				config.NewConfigCmd(pkgWorkspace.Instance),
 				cmdStack.NewStackCmd(),
-				console.NewConsoleCmd(),
+				console.NewConsoleCmd(pkgWorkspace.Instance),
 				operations.NewImportCmd(),
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
-				install.NewInstallCmd(),
+				install.NewInstallCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -362,7 +362,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
-				cancel.NewCancelCmd(),
+				cancel.NewCancelCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -374,12 +374,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				auth.NewLoginCmd(),
-				auth.NewLogoutCmd(),
+				auth.NewLoginCmd(pkgWorkspace.Instance),
+				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
-				deployment.NewDeploymentCmd(),
+				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -401,7 +401,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				cmdVersion.NewVersionCmd(),
-				about.NewAboutCmd(),
+				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
 			},
 		},
@@ -419,9 +419,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				convert.NewConvertCmd(),
+				convert.NewConvertCmd(pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
-				logs.NewLogsCmd(),
+				logs.NewLogsCmd(pkgWorkspace.Instance),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
