@@ -115,7 +115,7 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
 					return plugin.CheckResponse{
-						Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
+						Properties: resource.NewPropertyMapFromMap(map[string]any{
 							"a": "A",
 							"c": "C",
 						}),
@@ -124,9 +124,9 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
 					if !req.Preview {
-						id = resource.ID("id")
+						id = resource.ID("created-id-" + req.URN.Name())
 					}
-					props := resource.NewPropertyMapFromMap(map[string]interface{}{
+					props := resource.NewPropertyMapFromMap(map[string]any{
 						"a": "A",
 						"b": "B",
 						"c": "C",
@@ -152,18 +152,9 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
-			expectedInputs := map[string]any{
-				"a": "A",
-				"c": "C",
-			}
-			require.Equal(t, expectedInputs, newInputs.Mappable(), "Hook receives the checked inputs")
+			require.Equal(t, map[string]any{"a": "A", "c": "C"}, newInputs.Mappable(), "receives the checked inputs")
 			require.Nil(t, oldInputs, "there are no old inputs for creates")
-			expectedOutputs := map[string]any{
-				"a": "A",
-				"b": "B",
-				"c": "C",
-			}
-			require.Equal(t, expectedOutputs, newOutputs.Mappable())
+			require.Equal(t, map[string]any{"a": "A", "b": "B", "c": "C"}, newOutputs.Mappable())
 			require.Nil(t, oldOutputs, "there are no old outputs for creates")
 			return nil
 		}
@@ -171,9 +162,7 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{
-				"a": "A",
-			}),
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				AfterCreate: []*deploytest.ResourceHook{myHook},
 			},
@@ -217,12 +206,17 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, map[string]any{"a": "A"}, newInputs.Mappable())
+			require.Nil(t, oldInputs)
+			require.Nil(t, oldOutputs)
+			require.Nil(t, newOutputs)
 			return errors.New("Oh no")
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				BeforeCreate: []*deploytest.ResourceHook{myHook},
 			},
@@ -268,7 +262,19 @@ func TestResourceHookAfterDelete(t *testing.T) {
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
 		}),
 	}
 
@@ -285,6 +291,10 @@ func TestResourceHookAfterDelete(t *testing.T) {
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Nil(t, newInputs, "deletes have no new inputs")
+			require.Equal(t, map[string]any{"a": "A"}, oldInputs.Mappable(), "reveives the old inputs")
+			require.Nil(t, newOutputs, "deletes have no new outputs")
+			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives the old outputs")
 			return nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -292,6 +302,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 
 		if createResource {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 				ResourceHookBindings: deploytest.ResourceHookBindings{
 					AfterDelete: []*deploytest.ResourceHook{myHook},
 				},
@@ -333,7 +344,21 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID: id,
+						Properties: resource.NewPropertyMapFromMap(map[string]any{
+							"a": "A",
+						}),
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
 		}),
 	}
 
@@ -350,6 +375,11 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Nil(t, newInputs, "deletes have no new inputs")
+			require.Equal(t, map[string]any{"a": "A"}, oldInputs.Mappable(), "receives old inputs")
+			require.Nil(t, newOutputs, "deletes have no new outputs")
+			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives old outputs")
 			return errors.New("Oh no")
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
@@ -357,6 +387,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 
 		if createResource {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 				ResourceHookBindings: deploytest.ResourceHookBindings{
 					BeforeDelete: []*deploytest.ResourceHook{myHook},
 				},
@@ -401,12 +432,12 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 func TestResourceHookBeforeUpdate(t *testing.T) {
 	t.Parallel()
 
-	createOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	createOutputs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 		"baz":  24,
 	})
-	updateOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	updateOutputs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "updated",
 		"baz":  24,
@@ -416,8 +447,12 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
+						ID:         id,
 						Properties: createOutputs,
 						Status:     resource.StatusOK,
 					}, nil
@@ -434,7 +469,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 
 	isUpdate := false
 	hookCalled := false
-	inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	inputs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 	})
@@ -461,22 +496,19 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		) error {
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
-			expectedNewInputs := map[string]any{
+			require.Equal(t, map[string]any{
 				"foo":  "bar",
 				"frob": "updated",
-			}
-			require.Equal(t, expectedNewInputs, newInputs.Mappable(), "Hook receieves the new inputs")
-			expectedOldInputs := map[string]any{
+			}, newInputs.Mappable(), "Hook receieves the new inputs")
+			require.Equal(t, map[string]any{
 				"foo":  "bar",
 				"frob": "baz",
-			}
-			require.Equal(t, expectedOldInputs, oldInputs.Mappable(), "Hook receieves the old inputs")
-			expectedOldOutputs := map[string]any{
+			}, oldInputs.Mappable(), "Hook receieves the old inputs")
+			require.Equal(t, map[string]any{
 				"foo":  "bar",
 				"frob": "baz",
 				"baz":  float64(24),
-			}
-			require.Equal(t, expectedOldOutputs, oldOutputs.Mappable(), "Hook receieves the old outputs")
+			}, oldOutputs.Mappable(), "Hook receieves the old outputs")
 			require.Nil(t, newOutputs, "there are no new outputs for before update hooks")
 			return nil
 		}
@@ -522,7 +554,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 	require.False(t, hookCalled)
 
 	// change the inputs
-	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+	inputs = resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "updated",
 	})
@@ -544,8 +576,12 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
+						ID:         id,
 						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
@@ -573,6 +609,11 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		hookFun := func(ctx context.Context, urn resource.URN, id resource.ID,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, map[string]any{"foo": "updated"}, newInputs.Mappable(), "receives new inputs")
+			require.Equal(t, map[string]any{"foo": "bar"}, oldInputs.Mappable(), "receives old inputs")
+			require.Equal(t, map[string]any{"foo": "bar"}, oldOutputs.Mappable(), "receives old outputs")
+			require.Nil(t, newOutputs, "there are no new outputs")
 			return errors.New("this hook returns an error")
 		}
 		hook, err := deploytest.NewHook(monitor, callbacks, "hook", hookFun, true)
