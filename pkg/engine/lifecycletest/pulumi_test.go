@@ -639,7 +639,8 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
 		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			cancel() // An unexpected cancellation
+			time.Sleep(100 * time.Millisecond)
+			cancel()
 
 			return nil
 		}, func() {
