@@ -31,6 +31,7 @@ import {
     DependencyResource,
     ProviderResource,
     Resource,
+    ResourceHook,
     ResourceOptions,
     ResourceTransform,
     ResourceTransformArgs,
@@ -41,6 +42,8 @@ import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
 import { mapAliasesForRequest } from "./resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
+import { debuggablePromise } from "./debuggable";
+import { rpcKeepAlive } from "./settings";
 
 /**
  * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -56,6 +59,7 @@ export interface ICallbackServer {
     registerStackTransform(callback: ResourceTransform): void;
     registerStackInvokeTransform(callback: InvokeTransform): void;
     registerStackInvokeTransformAsync(callback: InvokeTransform): Promise<callproto.Callback>;
+    registerResourceHook(hook: ResourceHook): Promise<void>;
     shutdown(): void;
     // Wait for any pendind registerStackTransform calls to complete.
     awaitStackRegistrations(): Promise<void>;
@@ -501,5 +505,58 @@ export class CallbackServer implements ICallbackServer {
                     }
                 }
             });
+    }
+
+    async registerResourceHook(hook: ResourceHook): Promise<void> {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            try {
+                const request = resproto.ResourceHookRequest.deserializeBinary(bytes);
+                const newInputs = request.getNewInputs();
+                const oldInputs = request.getOldInputs();
+                const newOutputs = request.getNewOutputs();
+                const oldOutputs = request.getOldOutputs();
+                await hook.callback({
+                    urn: request.getUrn(),
+                    id: request.getId(),
+                    newInputs: newInputs ? deserializeProperties(newInputs, true /*keepUnknowns */) : undefined,
+                    oldInputs: oldInputs ? deserializeProperties(oldInputs, true /*keepUnknowns */) : undefined,
+                    newOutputs: newOutputs ? deserializeProperties(newOutputs, true /*keepUnknowns */) : undefined,
+                    oldOutputs: oldOutputs ? deserializeProperties(oldOutputs, true /*keepUnknowns */) : undefined,
+                });
+            } catch (error) {
+                const response = new resproto.ResourceHookResponse();
+                response.setError(error.message);
+                return response;
+            }
+            return new resproto.ResourceHookResponse();
+        };
+
+        const uuid = randomUUID();
+        this._callbacks.set(uuid, cb);
+        const callback = new Callback();
+        callback.setToken(uuid);
+        callback.setTarget(await this._target);
+
+        const req = new resproto.RegisterResourceHookRequest();
+        req.setCallback(callback);
+        req.setName(hook.name);
+        req.setOnDryRun(hook.opts?.onDryRun ?? false);
+
+        const done = rpcKeepAlive();
+        return debuggablePromise(
+            new Promise((resolve, reject) => {
+                this._monitor.registerResourceHook(req, (err, _) => {
+                    if (err !== null) {
+                        // Remove this from the list of callbacks given we didn't manage to actually register it.
+                        this._callbacks.delete(uuid);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                    done();
+                });
+            }),
+            `resourceHook:${hook.name}`,
+        );
     }
 }

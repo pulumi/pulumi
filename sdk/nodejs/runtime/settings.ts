@@ -24,6 +24,7 @@ import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
 /**
  * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
@@ -252,6 +253,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             transforms,
             invokeTransforms,
             parameterization,
+            resourceHooks,
         ] = await Promise.all(
             [
                 "secrets",
@@ -262,6 +264,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "transforms",
                 "invokeTransforms",
                 "parameterization",
+                "resourceHooks",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -273,6 +276,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsTransforms = transforms;
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
+        store.supportsResourceHooks = resourceHooks;
     }
 }
 
@@ -544,7 +548,7 @@ export function disconnect(): Promise<void> {
 export function waitForRPCs(disconnectFromServers = false): Promise<void> {
     const localStore = getStore();
     let done: Promise<any> | undefined;
-    const closeCallback: () => Promise<void> = () => {
+    const closeCallback: () => Promise<void> = async () => {
         if (done !== localStore.settings.rpcDone) {
             // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
             done = localStore.settings.rpcDone;
