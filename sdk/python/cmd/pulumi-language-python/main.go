@@ -1702,3 +1702,7 @@ func (host *pythonLanguageHost) Link(
 	// The Python language host does not support linking, so we return an empty response.
 	return &pulumirpc.LinkResponse{}, nil
 }
+
+func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
