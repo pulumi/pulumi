@@ -647,7 +647,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 		})
 	}
 
-	options := lt.TestUpdateOptions{ T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF) }
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF)}
 
 	p := &lt.TestPlan{}
 	project, target := p.GetProject(), p.GetTarget(t, nil)

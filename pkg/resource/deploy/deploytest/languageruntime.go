@@ -46,7 +46,9 @@ func NewLanguageRuntime(program ProgramFunc, requiredPackages ...workspace.Packa
 	}
 }
 
-func NewLanguageRuntimeWithShutdown(program ProgramFunc, shutdown func(), requiredPackages ...workspace.PackageDescriptor) plugin.LanguageRuntime {
+func NewLanguageRuntimeWithShutdown(
+	program ProgramFunc, shutdown func(), requiredPackages ...workspace.PackageDescriptor,
+) plugin.LanguageRuntime {
 	return &languageRuntime{
 		requiredPackages: requiredPackages,
 		program:          program,

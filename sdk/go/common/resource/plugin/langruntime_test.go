@@ -145,6 +145,12 @@ func (m *MockLanguageRuntimeClient) Handshake(
 	panic("not implemented")
 }
 
+func (m *MockLanguageRuntimeClient) Cancel(
+	ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	panic("not implemented")
+}
+
 func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	t.Parallel()
 
