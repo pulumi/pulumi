@@ -76,7 +76,7 @@ class ResourceHookOptions:
     """Options for registering a resource hook."""
 
     on_dry_run: bool
-    """Run the hook during dry run operations. Defaults to False."""
+    """Run the hook during dry run (preview) operations. Defaults to False."""
 
     def __init__(self, on_dry_run: bool = False):
         self.on_dry_run = on_dry_run
@@ -89,7 +89,9 @@ class ResourceHook:
     """ResourceHook is a named hook that can be registered as a resource hook."""
 
     name: str
+    """The unqiue name of the resource hook."""    
     func: ResourceHookFunction
+    """The function that will be called when the resource hook is triggered."""
     opts: Optional[ResourceHookOptions] = None
     _registered: asyncio.Future[None]
     """
