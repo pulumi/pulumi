@@ -919,9 +919,13 @@ func (h *langhost) Cancel() error {
 
 	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return rpcError
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s not implemented by language runtime, skipping", label)
+			return nil
+		}
+
+		return fmt.Errorf("failed to cancel language runtime: %w", err)
 	}
 
 	logging.V(7).Infof("%s success", label)
