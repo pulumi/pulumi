@@ -634,13 +634,29 @@ func TestProviderCancellation(t *testing.T) {
 func TestLanguageRuntimeCancellation(t *testing.T) {
 	t.Parallel()
 
-	lr := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		return nil
-	})
+	ctx, cancel := context.WithCancel(context.Background())
 
-	err := lr.Cancel()
+	gracefulShutdown := false
+	programF := func() plugin.LanguageRuntime {
+		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			cancel() // An unexpected cancellation
+
+			return nil
+		}, func() {
+			gracefulShutdown = true
+		})
+	}
+
+	options := lt.TestUpdateOptions{ T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF) }
+
+	p := &lt.TestPlan{}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
+
+	op := lt.TestOp(Update)
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
+
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Cancel called on language runtime")
+	assert.True(t, gracefulShutdown)
 }
 
 // Tests that a preview works for a stack with pending operations.
