@@ -89,7 +89,7 @@ class ResourceHook:
     """ResourceHook is a named hook that can be registered as a resource hook."""
 
     name: str
-    """The unqiue name of the resource hook."""    
+    """The unqiue name of the resource hook."""
     func: ResourceHookFunction
     """The function that will be called when the resource hook is triggered."""
     opts: Optional[ResourceHookOptions] = None
