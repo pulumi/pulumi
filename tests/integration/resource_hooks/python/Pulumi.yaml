@@ -1,0 +1,3 @@
+name: resource_hooks_python
+description: A program with resource hooks
+runtime: python
