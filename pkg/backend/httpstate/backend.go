@@ -1046,7 +1046,7 @@ func (b *cloudBackend) ListStacks(
 	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
 	// this has the added benefit of ensuring that the default org is consistent for the duration of the
 	// operation, even if the user changes their default org mid-process.
-	defaultOrg, err := b.GetDefaultOrg(ctx)
+	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
 	if err != nil {
 		return nil, nil, err
 	}
