@@ -90,7 +90,7 @@ class ResourceHook:
 
     name: str
     """The unqiue name of the resource hook."""
-    func: ResourceHookFunction
+    callback: ResourceHookFunction
     """The function that will be called when the resource hook is triggered."""
     opts: Optional[ResourceHookOptions] = None
     _registered: asyncio.Future[None]
@@ -113,15 +113,15 @@ class ResourceHook:
         self.__doc__ = func.__doc__
         self.__name__ = func.__name__
         self.name = name
-        self.func = func
+        self.callback = func
         self.opts = opts
         self._registered = register_resource_hook(self)
 
     def __call__(self, args: ResourceHookArgs) -> Union[None, Awaitable[None]]:
-        return self.func(args)
+        return self.callback(args)
 
     def __repr__(self) -> str:
-        return f"ResourceHook(name={self.name}, func={self.func}, opts={self.opts})"
+        return f"ResourceHook(name={self.name}, callback={self.callback}, opts={self.opts})"
 
 
 class ResourceHookBinding:
