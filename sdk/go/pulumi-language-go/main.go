@@ -1526,3 +1526,7 @@ func (host *goLanguageHost) Link(
 
 	return &pulumirpc.LinkResponse{}, nil
 }
+
+func (host *goLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
