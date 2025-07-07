@@ -183,5 +183,5 @@ func (p *languageRuntime) Link(plugin.ProgramInfo, map[string]string) error {
 
 func (p *languageRuntime) Cancel() error {
 	p.closed = true
-	return nil
+	return errors.New("Cancel called on language runtime")
 }
