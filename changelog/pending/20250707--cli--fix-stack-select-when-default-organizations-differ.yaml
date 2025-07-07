@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix `stack select` when default organizations differ

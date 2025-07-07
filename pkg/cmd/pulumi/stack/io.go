@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -211,20 +212,51 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, err
 	}
 
-	// List stacks as available options.
+	// If a stack is already selected, make that the default.
+	var defaultStackRef backend.StackReference
+	var defaultStackRefString string
+	var defaultStackRefFullyQualifiedName tokens.QName
+
+	currStack, currErr := state.CurrentStack(ctx, b)
+	contract.IgnoreError(currErr)
+	if currStack != nil {
+		defaultStackRef = currStack.Ref()
+		defaultStackRefString = defaultStackRef.String()
+		defaultStackRefFullyQualifiedName = currStack.Ref().FullyQualifiedName()
+	}
+
 	project := string(proj.Name)
 
 	var (
 		allStackRefs []backend.StackReference
 		inContToken  backend.ContinuationToken
 	)
+
+	// Fetch the list of stacks from the backend, dealing with pagination as necessary. For each stack, we'll check if it
+	// matches the default stack reference by comparing fully-qualified names. If we find a match, we'll check whether the
+	// short names match also. If they don't, this indicates that e.g. the backend and the CLI have differing opinions on
+	// what the default organization is. In such cases, we'll fully qualify all names, both to improve clarity to the user
+	// and also to avoid bugs where Survey, our prompting library, can't find the default option in the full list of
+	// options due to differences in short-name rendering.
+	mustQualify := false
 	for {
 		stackRefs, outContToken, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{Project: &project}, inContToken)
 		if err != nil {
 			return nil, fmt.Errorf("could not query backend for stacks: %w", err)
 		}
 
-		allStackRefs = append(allStackRefs, stackRefs...)
+		for _, stackRef := range stackRefs {
+			if defaultStackRef != nil &&
+				stackRef.FullyQualifiedName() == defaultStackRefFullyQualifiedName &&
+				stackRef.String() != defaultStackRefString {
+
+				// We've found a stack that matches the default stack's fully qualified name, but not its short name. We'll
+				// fully qualify all names to avoid issues with Survey not being able to find the default option.
+				mustQualify = true
+			}
+
+			allStackRefs = append(allStackRefs, stackRef)
+		}
 
 		if outContToken == nil {
 			break
@@ -234,17 +266,23 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	options := slice.Prealloc[string](len(allStackRefs))
 	for _, stackRef := range allStackRefs {
-		name := stackRef.String()
+		var name string
+		if mustQualify {
+			name = stackRef.FullyQualifiedName().String()
+		} else {
+			name = stackRef.String()
+		}
 		options = append(options, name)
 	}
 	sort.Strings(options)
 
-	// If a stack is already selected, make that the default.
 	var defaultOption string
-	currStack, currErr := state.CurrentStack(ctx, b)
-	contract.IgnoreError(currErr)
-	if currStack != nil {
-		defaultOption = currStack.Ref().String()
+	if defaultStackRef != nil {
+		if mustQualify {
+			defaultOption = defaultStackRefFullyQualifiedName.String()
+		} else {
+			defaultOption = defaultStackRefString
+		}
 	}
 
 	// If we are offering to create a new stack, add that to the end of the list.
