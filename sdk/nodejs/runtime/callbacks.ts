@@ -515,7 +515,7 @@ export class CallbackServer implements ICallbackServer {
                 const oldInputs = request.getOldInputs();
                 const newOutputs = request.getNewOutputs();
                 const oldOutputs = request.getOldOutputs();
-                await hook.handler({
+                await hook.callback({
                     urn: request.getUrn(),
                     id: request.getId(),
                     newInputs: newInputs ? deserializeProperties(newInputs, true /*keepUnknowns */) : undefined,

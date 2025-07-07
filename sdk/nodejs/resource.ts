@@ -1005,7 +1005,7 @@ export class ResourceHook {
     /**
      * The function that will be called when the resource hook is triggered.
      */
-    public handler: ResourceHookFunction;
+    public callback: ResourceHookFunction;
     /**
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
@@ -1026,9 +1026,9 @@ export class ResourceHook {
      */
     public readonly __pulumiResourceHook: boolean = true;
 
-    constructor(name: string, handler: ResourceHookFunction, opts?: ResourceHookOptions) {
+    constructor(name: string, callback: ResourceHookFunction, opts?: ResourceHookOptions) {
         this.name = name;
-        this.handler = handler;
+        this.callback = callback;
         this.opts = opts;
         this.__registered = registerResourceHook(this);
     }
