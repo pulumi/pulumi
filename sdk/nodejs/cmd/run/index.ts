@@ -15,7 +15,10 @@
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
 
+import * as grpc from "@grpc/grpc-js";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as log from "../../log";
+import * as settings from "../../runtime/settings";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
@@ -76,6 +79,42 @@ process.on("exit", (code: number) => {
 
         process.exitCode = nodeJSProcessExitedAfterLoggingUserActionableMessage;
     }
+});
+let hasSignaled = false;
+process.on("beforeExit", async (code) => {
+    // Signal and wait for shutdown means a succesful program execution, so
+    // first check if there were any errors and bail out immediately if so.
+    if (uncaughtErrors.size > 0) {
+        return;
+    }
+    // Similarly, if we're exiting with with a non-zero code, bail out.
+    if (code !== 0) {
+        return;
+    }
+    // `beforeExit` is called when Node.js's event loop is empty. We call
+    // `signalAndWaitForShutdown`, which is async, so it schedules more
+    // eventloop work. We have to bail out here the next time the eventloop
+    // is empty, otherwise we end up in a loop where this handler is called
+    // forever.
+    if (hasSignaled) {
+        return;
+    }
+    hasSignaled = true;
+    settings.getMonitor()?.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
+        if (err) {
+            // If we are running against an older version of the CLI,
+            // SignalAndWaitForShutdown might not be implemented. This is
+            // mostly fine, but means that delete hooks do not work. Since
+            // we check if the CLI supports the `resourceHook` feature when
+            // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+            // error here.
+            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                return;
+            }
+            console.error(`Error while signaling shutdown: ${err}`);
+        }
+        return;
+    });
 });
 
 // As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
