@@ -912,3 +912,18 @@ func (h *langhost) Link(
 	logging.V(7).Infof("%s success", label)
 	return nil
 }
+
+func (h *langhost) Cancel() error {
+	label := fmt.Sprintf("langhost[%v].Cancel()", h.runtime)
+	logging.V(7).Infof("%s executing", label)
+
+	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return nil
+}
