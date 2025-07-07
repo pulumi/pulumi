@@ -147,9 +147,23 @@ class ResourceHookBinding:
     after_update: Optional[list[Union[ResourceHook, ResourceHookFunction]]]
     """Hooks to be invoked after the resource is updated."""
     before_delete: Optional[list[ResourceHook]]
-    """Hooks to be invoked before the resource is deleted."""
+    """
+    Hooks to be invoked before the resource is deleted.
+
+    Note that delete hooks require that destroy operations are run with `--run-program`. Unlike other hook types,
+    this argument requires named :class:`ResourceHook` instances, and does not accept anonymous
+    :class:`ResourceHookFunction`. This is because the engine needs to be able to identify a hook when a resource is
+    deleted.
+    """
     after_delete: Optional[list[ResourceHook]]
-    """Hooks to be invoked after the resource is deleted."""
+    """
+    Hooks to be invoked after the resource is deleted.
+
+    Note that delete hooks require that destroy operations are run with `--run-program`. Unlike other hook types,
+    this argument requires named :class:`ResourceHook` instances, and does not accept anonymous
+    :class:`ResourceHookFunction`. This is because the engine needs to be able to identify a hook when a resource is
+    deleted.
+    """
 
     def __init__(
         self,
