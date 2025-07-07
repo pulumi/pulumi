@@ -1124,10 +1124,20 @@ export interface ResourceHookBinding {
     afterUpdate?: Array<ResourceHookFunction | ResourceHook>;
     /**
      * Hooks to be invoked before the resource is deleted.
+     *
+     * Note that delete hooks require that destroy operations are run with `--run-program`. Unlike other hook types,
+     * this argument requires named {@link ResourceHook} instances, and does not accept anonymous
+     * {@link ResourceHookFunction}. This is because the engine needs to be able to identify a hook when a resource is
+     * deleted.
      */
     beforeDelete?: Array<ResourceHook>;
     /**
      * Hooks to be invoked after the resource is deleted.
+     *
+     * Note that delete hooks require that destroy operations are run with `--run-program`. Unlike other hook types,
+     * this argument requires named {@link ResourceHook} instances, and does not accept anonymous
+     * {@link ResourceHookFunction}. This is because the engine needs to be able to identify a hook when a resource is
+     * deleted.
      */
     afterDelete?: Array<ResourceHook>;
 }
