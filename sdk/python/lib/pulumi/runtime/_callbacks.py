@@ -293,6 +293,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                     ResourceHookArgs(
                         urn=request.urn,
                         id=request.id,
+                        name=request.name,
+                        type=request.type,
                         new_inputs=new_inputs,
                         old_inputs=old_inputs,
                         new_outputs=new_outputs,
@@ -303,7 +305,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                     await maybeAwaitable
                 return resource_pb2.ResourceHookResponse()
             except Exception as e:  # noqa: BLE001 catch blind exception
-                log.debug(f"Exception while executing hook: {e}")
+                log.debug(f"Exception while executing hook: {str(e)}")
                 return resource_pb2.ResourceHookResponse(error=str(e))
 
         token = str(uuid.uuid4())

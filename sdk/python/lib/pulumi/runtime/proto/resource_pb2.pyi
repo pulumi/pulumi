@@ -1070,6 +1070,8 @@ class ResourceHookRequest(google.protobuf.message.Message):
 
     URN_FIELD_NUMBER: builtins.int
     ID_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     NEW_INPUTS_FIELD_NUMBER: builtins.int
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NEW_OUTPUTS_FIELD_NUMBER: builtins.int
@@ -1078,6 +1080,10 @@ class ResourceHookRequest(google.protobuf.message.Message):
     """the urn of the resource for which the hook is called."""
     id: builtins.str
     """the optional urn of the resource for which the hook is called."""
+    name: builtins.str
+    """the name of the resource for which the hook is called."""
+    type: builtins.str
+    """the type of the resource for which the hook is called."""
     @property
     def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the optional checked new inputs of the resource."""
@@ -1095,13 +1101,15 @@ class ResourceHookRequest(google.protobuf.message.Message):
         *,
         urn: builtins.str = ...,
         id: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
         new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ResourceHookRequest = ResourceHookRequest
 

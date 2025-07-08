@@ -11,6 +11,12 @@ func main() {
 		hookFun := func(args *pulumi.ResourceHookArgs) error {
 			length := int(args.NewInputs["length"].NumberValue())
 			ctx.Log.Info(fmt.Sprintf("fun was called with length = %d\n", length), nil)
+			if args.Name != "username" {
+				return fmt.Errorf("expected name to be 'username', got %q", args.Name)
+			}
+			if string(args.Type) != "random:index/random:Random" {
+				return fmt.Errorf("expected type to be 'random:index/random:Random', got %q", args.Type)
+			}
 			return nil
 		}
 		hook, err := ctx.RegisterResourceHook("myhook", hookFun, &pulumi.ResourceHookOptions{
