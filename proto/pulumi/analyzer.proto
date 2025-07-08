@@ -53,6 +53,12 @@ service Analyzer {
     // This method is not always called, for example if the engine is just booting the analyzer up to call
     // GetAnalyzerInfo.
     rpc ConfigureStack(AnalyzerStackConfigureRequest) returns (AnalyzerStackConfigureResponse) {}
+
+    // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+    // Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+    // it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+    // hard-closing any gRPC connection.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // `AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed.
