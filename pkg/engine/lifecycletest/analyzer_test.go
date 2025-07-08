@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"time"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -532,7 +532,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
+			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
