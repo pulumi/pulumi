@@ -48,7 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewConfigCmd() *cobra.Command {
+func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stack string
 	var showSecrets bool
 	var jsonOut bool
@@ -63,7 +63,6 @@ func NewConfigCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -134,19 +133,19 @@ func NewConfigCmd() *cobra.Command {
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
-	cmd.AddCommand(newConfigGetCmd(&stack))
-	cmd.AddCommand(newConfigRmCmd(&stack))
-	cmd.AddCommand(newConfigRmAllCmd(&stack))
-	cmd.AddCommand(newConfigSetCmd(&stack))
-	cmd.AddCommand(newConfigSetAllCmd(&stack))
-	cmd.AddCommand(newConfigRefreshCmd(&stack))
-	cmd.AddCommand(newConfigCopyCmd(&stack))
-	cmd.AddCommand(newConfigEnvCmd(&stack))
+	cmd.AddCommand(newConfigGetCmd(ws, &stack))
+	cmd.AddCommand(newConfigRmCmd(ws, &stack))
+	cmd.AddCommand(newConfigRmAllCmd(ws, &stack))
+	cmd.AddCommand(newConfigSetCmd(ws, &stack))
+	cmd.AddCommand(newConfigSetAllCmd(ws, &stack))
+	cmd.AddCommand(newConfigRefreshCmd(ws, &stack))
+	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
+	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
 
 	return cmd
 }
 
-func newConfigCopyCmd(stack *string) *cobra.Command {
+func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 	var destinationStackName string
 
@@ -158,7 +157,6 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -268,7 +266,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 	return cpCommand
 }
 
-func newConfigGetCmd(stack *string) *cobra.Command {
+func newConfigGetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var jsonOut bool
 	var open bool
 	var path bool
@@ -285,7 +283,6 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -325,7 +322,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 	return getCmd
 }
 
-func newConfigRmCmd(stack *string) *cobra.Command {
+func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	rmCmd := &cobra.Command{
@@ -340,7 +337,6 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -397,7 +393,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	return rmCmd
 }
 
-func newConfigRmAllCmd(stack *string) *cobra.Command {
+func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	rmAllCmd := &cobra.Command{
@@ -412,7 +408,6 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -471,7 +466,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 	return rmAllCmd
 }
 
-func newConfigRefreshCmd(stk *string) *cobra.Command {
+func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
@@ -479,7 +474,6 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -607,7 +601,7 @@ type configSetCmd struct {
 	Type      string
 }
 
-func newConfigSetCmd(stack *string) *cobra.Command {
+func newConfigSetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	configSetCmd := &configSetCmd{LoadProjectStack: cmdStack.LoadProjectStack}
 
 	setCmd := &cobra.Command{
@@ -629,7 +623,6 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -653,7 +646,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return configSetCmd.Run(ctx, args, project, s)
+			return configSetCmd.Run(ctx, ws, args, project, s)
 		},
 	}
 
@@ -673,12 +666,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	return setCmd
 }
 
-func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspace.Project, s backend.Stack) error {
+func (c *configSetCmd) Run(
+	ctx context.Context, ws pkgWorkspace.Context, args []string, project *workspace.Project, s backend.Stack,
+) error {
 	stdin := c.Stdin
 	if stdin == nil {
 		stdin = os.Stdin
 	}
-	key, err := ParseConfigKey(pkgWorkspace.Instance, args[0], c.Path)
+	key, err := ParseConfigKey(ws, args[0], c.Path)
 	if err != nil {
 		return fmt.Errorf("invalid configuration key: %w", err)
 	}
@@ -776,7 +771,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 	return cmdStack.SaveProjectStack(ctx, s, ps)
 }
 
-func newConfigSetAllCmd(stack *string) *cobra.Command {
+func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var plaintextArgs []string
 	var secretArgs []string
 	var path bool
@@ -798,7 +793,6 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

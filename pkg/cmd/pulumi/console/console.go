@@ -31,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewConsoleCmd() *cobra.Command {
+func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "console",
@@ -44,7 +44,6 @@ func NewConsoleCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err

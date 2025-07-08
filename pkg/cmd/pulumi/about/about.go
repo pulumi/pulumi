@@ -46,7 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewAboutCmd() *cobra.Command {
+func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var jsonOut bool
 	var transitiveDependencies bool
 	var stack string
@@ -67,7 +67,7 @@ func NewAboutCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
+			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
 				return ui.PrintJSON(summary)
 			}

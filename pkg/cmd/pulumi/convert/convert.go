@@ -54,7 +54,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-func NewConvertCmd() *cobra.Command {
+func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var outDir string
 	var from string
 	var language string
@@ -90,7 +90,7 @@ func NewConvertCmd() *cobra.Command {
 
 			return runConvert(
 				cmd.Context(),
-				pkgWorkspace.Instance,
+				ws,
 				env.Global(),
 				args,
 				cwd,
