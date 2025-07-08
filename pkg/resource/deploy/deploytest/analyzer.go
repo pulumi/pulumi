@@ -15,10 +15,12 @@
 package deploytest
 
 import (
+	"context"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Analyzer struct {
@@ -29,6 +31,7 @@ type Analyzer struct {
 	RemediateF    func(r plugin.AnalyzerResource) ([]plugin.Remediation, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
+	CancelF    func() error
 }
 
 var _ = plugin.Analyzer((*Analyzer)(nil))
@@ -78,4 +81,11 @@ func (a *Analyzer) Configure(policyConfig map[string]plugin.AnalyzerPolicyConfig
 		return a.ConfigureF(policyConfig)
 	}
 	return nil
+}
+
+func (a *Analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	if a.CancelF != nil {
+		a.CancelF()
+	}
+	return &emptypb.Empty{}, nil
 }

@@ -15,8 +15,10 @@
 package lifecycletest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"time"
 	"testing"
 
 	"github.com/blang/semver"
@@ -502,4 +504,46 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 	}
 
 	p.Run(t, nil)
+}
+
+func TestAnalyzerCancellation(t *testing.T) {
+	t.Parallel()
+
+	gracefulShutdown := false
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				CancelF: func() error {
+					gracefulShutdown = true
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
+		},
+	}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
+
+	op := lt.TestOp(Update)
+	_, err := op.RunWithContext(ctx, project, target, p.Options, false, nil, nil)
+
+	assert.Error(t, err)
+	assert.True(t, gracefulShutdown)
 }
