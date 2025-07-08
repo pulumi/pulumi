@@ -23,6 +23,10 @@ func (a *analyzer) Handshake(ctx context.Context, req *pulumirpc.AnalyzerHandsha
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
 }
 
+func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
 	if req.Stack != "test-stack" {
 		return nil, fmt.Errorf("expected stack to be test-stack, got %s", req.Stack)
