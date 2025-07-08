@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -110,7 +111,9 @@ func TestConfigSet(t *testing.T) {
 				stack.ConfigFile = ""
 			}()
 
-			err := configSetCmd.Run(ctx, c.args, &project, &s)
+			ws := &pkgWorkspace.MockContext{}
+
+			err := configSetCmd.Run(ctx, ws, c.args, &project, &s)
 			require.NoError(t, err)
 
 			// verify the config was set
@@ -220,7 +223,9 @@ func TestConfigSetTypes(t *testing.T) {
 				stack.ConfigFile = ""
 			}()
 
-			err := configSetCmd.Run(ctx, c.args, &project, &s)
+			ws := &pkgWorkspace.MockContext{}
+
+			err := configSetCmd.Run(ctx, ws, c.args, &project, &s)
 			require.NoError(t, err)
 
 			// verify the config was set

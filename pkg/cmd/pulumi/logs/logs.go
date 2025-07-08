@@ -39,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLogsCmd() *cobra.Command {
+func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
 	var follow bool
 	var since string
@@ -58,7 +58,6 @@ func NewLogsCmd() *cobra.Command {
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
