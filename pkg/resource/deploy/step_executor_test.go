@@ -154,7 +154,9 @@ func TestStepExecutor(t *testing.T) {
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
-			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{
+				URN: "urn:pulumi:some-urn",
+			}})
 			// Does not error.
 			assert.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
 				urn: notInPlan,

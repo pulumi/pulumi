@@ -389,19 +389,21 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(
-		s.new.ResourceHooks[resource.AfterCreate],
-		false, /* isBeforeHook */
-		s.new.ID,
-		s.new.URN,
-		s.URN().Name(),
-		s.Type(),
-		s.new.Inputs,
-		nil, /* oldInputs */
-		s.new.Outputs,
-		nil, /* oldOutputs */
-	); err != nil {
-		return resourceStatus, complete, err
+	if s.new.Custom {
+		if err := s.Deployment().RunHooks(
+			s.new.ResourceHooks[resource.AfterCreate],
+			false, /* isBeforeHook */
+			s.new.ID,
+			s.new.URN,
+			s.new.URN.Name(),
+			s.new.Type,
+			s.new.Inputs,
+			nil, /* oldInputs */
+			s.new.Outputs,
+			nil, /* oldOutputs */
+		); err != nil {
+			return resourceStatus, complete, err
+		}
 	}
 
 	return resourceStatus, complete, nil
@@ -617,19 +619,21 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	if err := s.Deployment().RunHooks(
-		s.old.ResourceHooks[resource.AfterDelete],
-		false, /* isBeforeHook */
-		s.old.ID,
-		s.old.URN,
-		s.URN().Name(),
-		s.Type(),
-		nil, /* newInputs */
-		s.old.Inputs,
-		nil, /* newOutputs */
-		s.old.Outputs,
-	); err != nil {
-		return resource.StatusOK, nil, err
+	if s.old.Custom {
+		if err := s.Deployment().RunHooks(
+			s.old.ResourceHooks[resource.AfterDelete],
+			false, /* isBeforeHook */
+			s.old.ID,
+			s.old.URN,
+			s.old.URN.Name(),
+			s.Type(),
+			nil, /* newInputs */
+			s.old.Inputs,
+			nil, /* newOutputs */
+			s.old.Outputs,
+		); err != nil {
+			return resource.StatusOK, nil, err
+		}
 	}
 
 	return resource.StatusOK, func() {}, nil
@@ -867,18 +871,21 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterUpdate],
-		false, /* isBeforeHook */
-		s.new.ID,
-		s.new.URN,
-		s.URN().Name(),
-		s.Type(),
-		s.new.Inputs,
-		s.old.Inputs,
-		s.new.Outputs,
-		s.old.Outputs,
-	); err != nil {
-		return resourceStatus, nil, err
+	if s.old.Custom {
+		if err := s.Deployment().RunHooks(
+			s.new.ResourceHooks[resource.AfterUpdate],
+			false, /* isBeforeHook */
+			s.new.ID,
+			s.new.URN,
+			s.new.URN.Name(),
+			s.Type(),
+			s.new.Inputs,
+			s.old.Inputs,
+			s.new.Outputs,
+			s.old.Outputs,
+		); err != nil {
+			return resourceStatus, nil, err
+		}
 	}
 
 	return resourceStatus, complete, nil

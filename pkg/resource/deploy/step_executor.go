@@ -273,6 +273,53 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
+	if s, ok := reg.(*CreateStep); ok {
+		if err := s.Deployment().RunHooks(
+			s.new.ResourceHooks[resource.AfterCreate],
+			false, /* isBeforeHook */
+			s.new.ID,
+			s.new.URN,
+			s.new.URN.Name(),
+			s.Type(),
+			s.new.Inputs,
+			nil, /* oldInputs */
+			s.new.Outputs,
+			nil, /* oldOutputs */
+		); err != nil {
+			return err
+		}
+	} else if s, ok := reg.(*UpdateStep); ok {
+		if err := s.Deployment().RunHooks(
+			s.new.ResourceHooks[resource.AfterUpdate],
+			false, /* isBeforeHook */
+			s.new.ID,
+			s.new.URN,
+			s.new.URN.Name(),
+			s.Type(),
+			s.new.Inputs,
+			s.old.Inputs,
+			s.new.Outputs,
+			s.old.Outputs,
+		); err != nil {
+			return err
+		}
+	} else if s, ok := reg.(*DeleteStep); ok {
+		if err := s.Deployment().RunHooks(
+			s.old.ResourceHooks[resource.AfterDelete],
+			false, /* isBeforeHook */
+			s.old.ID,
+			s.old.URN,
+			s.old.URN.Name(),
+			s.Type(),
+			nil, /* newInputs */
+			s.old.Inputs,
+			nil, /* newOutputs */
+			s.old.Outputs,
+		); err != nil {
+			return err
+		}
+	}
+
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.deployment.events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
