@@ -611,6 +611,23 @@ func (a *analyzer) Close() error {
 	return a.plug.Close()
 }
 
+// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+func (a *analyzer) Cancel(ctx context.Context) error {
+	label := a.label() + ".Cancel()"
+	logging.V(7).Infof("%s executing", label)
+
+	_, err := a.client.Cancel(a.ctx.Request(), &emptypb.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(8).Infof("%s failed: err=%v", label, rpcError)
+		if rpcError.Code() == codes.Unimplemented {
+			return nil
+		}
+	}
+
+	return err
+}
+
 func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
 	dialOpts := append(
 		rpcutil.OpenTracingInterceptorDialOptions(),

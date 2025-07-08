@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Analyzer struct {
@@ -83,9 +82,9 @@ func (a *Analyzer) Configure(policyConfig map[string]plugin.AnalyzerPolicyConfig
 	return nil
 }
 
-func (a *Analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (a *Analyzer) Cancel(ctx context.Context) error {
 	if a.CancelF != nil {
-		a.CancelF()
+		return a.CancelF()
 	}
-	return &emptypb.Empty{}, nil
+	return nil
 }
