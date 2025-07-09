@@ -15,9 +15,16 @@
 package packagecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -59,16 +66,30 @@ empty string.`,
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			p, err := ProviderFromSource(pctx, source)
+			p, _, err := ProviderFromSource(pctx, source, registry.NewOnDemandRegistry(func() (registry.Registry, error) {
+				b, err := cmdBackend.NonInteractiveCurrentBackend(
+					cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
+				)
+				if err == nil && b != nil {
+					return b.GetReadOnlyCloudRegistry(), nil
+				}
+				if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+					return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
+				}
+				return nil, fmt.Errorf("could not get registry backend: %w", err)
+			}))
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
-			defer p.Close()
+			defer p.Provider.Close()
 
 			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
 			if len(args) > 3 {
+				if p.AlreadyParameterized {
+					return fmt.Errorf("cannot specify parameters since %s already refers to a parameterized provider", source)
+				}
 				parameters := args[3:]
-				_, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+				_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 					Parameters: &plugin.ParameterizeArgs{Args: parameters},
 				})
 				if err != nil {
@@ -76,7 +97,7 @@ empty string.`,
 				}
 			}
 
-			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
+			mapping, err := p.Provider.GetMapping(cmd.Context(), plugin.GetMappingRequest{
 				Key:      key,
 				Provider: provider,
 			})
