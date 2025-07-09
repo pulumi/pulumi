@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1488,6 +1489,8 @@ func (ctx *Context) registerResourceHook(f ResourceHookFunction) (*pulumirpc.Cal
 		args := &ResourceHookArgs{
 			URN:        URN(req.Urn),
 			ID:         ID(req.Id),
+			Name:       req.Name,
+			Type:       tokens.Type(req.Type),
 			NewInputs:  newInputs,
 			OldInputs:  oldInputs,
 			NewOutputs: newOutputs,

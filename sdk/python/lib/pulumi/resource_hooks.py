@@ -29,6 +29,10 @@ class ResourceHookArgs:
     """The URN of the resource that triggered the hook."""
     id: str
     """The ID of the resource that triggered the hook."""
+    name: str
+    """The name of the resource that triggered the hook."""
+    type: str
+    """The type of the resource that triggered the hook."""
     new_inputs: Optional[Mapping[str, Any]] = None
     """The new inputs of the resource that triggered the hook."""
     old_inputs: Optional[Mapping[str, Any]] = None
@@ -42,6 +46,8 @@ class ResourceHookArgs:
         self,
         urn: str,
         id: str,
+        name: str,
+        type: str,
         new_inputs: Optional[Mapping[str, Any]] = None,
         old_inputs: Optional[Mapping[str, Any]] = None,
         new_outputs: Optional[Mapping[str, Any]] = None,
@@ -49,6 +55,8 @@ class ResourceHookArgs:
     ):
         self.urn = urn
         self.id = id
+        self.name = name
+        self.type = type
         self.new_inputs = new_inputs
         self.old_inputs = old_inputs
         self.new_outputs = new_outputs
@@ -58,6 +66,8 @@ class ResourceHookArgs:
         return (
             f"ResourceHookArgs(urn={self.urn}, "
             + f"id={self.id}, "
+            + f"name={self.name}, "
+            + f"type_={self.type}, "
             + f"new_inputs={self.new_inputs}, "
             + f"old_inputs={self.old_inputs}, "
             + f"new_outputs={self.new_outputs}, "

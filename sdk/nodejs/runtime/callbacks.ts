@@ -518,6 +518,8 @@ export class CallbackServer implements ICallbackServer {
                 await hook.callback({
                     urn: request.getUrn(),
                     id: request.getId(),
+                    name: request.getName(),
+                    type: request.getType(),
                     newInputs: newInputs ? deserializeProperties(newInputs, true /*keepUnknowns */) : undefined,
                     oldInputs: oldInputs ? deserializeProperties(oldInputs, true /*keepUnknowns */) : undefined,
                     newOutputs: newOutputs ? deserializeProperties(newOutputs, true /*keepUnknowns */) : undefined,

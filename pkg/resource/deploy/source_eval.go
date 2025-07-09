@@ -1661,7 +1661,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
@@ -1698,6 +1698,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
 			Urn:        string(urn),
 			Id:         string(id),
+			Name:       name,
+			Type:       string(typ),
 			NewInputs:  mNewInputs,
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
