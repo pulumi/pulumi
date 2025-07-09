@@ -278,6 +278,7 @@ class Stack:
         replace: Optional[List[str]] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
@@ -312,6 +313,7 @@ class Stack:
         :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in the Exclude list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
@@ -386,7 +388,7 @@ class Stack:
             log_watcher_thread.start()
 
         try:
-            up_result = self._run_pulumi_cmd_sync(args, on_output)
+            up_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
             outputs = self.outputs()
             # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
             # load the project file.
@@ -417,6 +419,7 @@ class Stack:
         replace: Optional[List[str]] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
@@ -450,6 +453,7 @@ class Stack:
         :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in the Exclude list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
@@ -531,7 +535,7 @@ class Stack:
         log_watcher_thread.start()
 
         try:
-            preview_result = self._run_pulumi_cmd_sync(args, on_output)
+            preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
             _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
 
@@ -557,6 +561,7 @@ class Stack:
         clear_pending_creates: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
         log_flow: Optional[bool] = None,
@@ -584,6 +589,7 @@ class Stack:
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param clear_pending_creates: Clear all pending creates, dropping them from the state.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param show_secrets: Include config secrets in the RefreshResult summary.
@@ -632,7 +638,7 @@ class Stack:
             log_watcher_thread.start()
 
         try:
-            refresh_result = self._run_pulumi_cmd_sync(args, on_output)
+            refresh_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
             _cleanup(temp_dir, log_watcher_thread, stop_event)
 
@@ -656,6 +662,7 @@ class Stack:
         clear_pending_creates: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
         log_flow: Optional[bool] = None,
@@ -681,6 +688,7 @@ class Stack:
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param clear_pending_creates: Clear all pending creates, dropping them from the state.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param show_secrets: Include config secrets in the RefreshResult summary.
@@ -728,7 +736,7 @@ class Stack:
         log_watcher_thread.start()
 
         try:
-            preview_result = self._run_pulumi_cmd_sync(args, on_output)
+            preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
             _cleanup(temp_dir, log_watcher_thread, stop_event)
 
@@ -745,6 +753,7 @@ class Stack:
         self,
         stack_name: str,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         show_secrets: bool = False,
     ) -> RenameResult:
         """
@@ -752,6 +761,7 @@ class Stack:
 
         :param stack_name: The new name for the stack.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param show_secrets: Include config secrets in the RefreshResult summary.
         :returns: RenameResult
         """
@@ -760,7 +770,7 @@ class Stack:
         args.extend(extra_args)
 
         args.extend(self._remote_args())
-        rename_result = self._run_pulumi_cmd_sync(args, on_output)
+        rename_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
 
         if self._remote and show_secrets:
             raise RuntimeError("can't enable `showSecrets` for remote workspaces")
@@ -779,6 +789,7 @@ class Stack:
         target_dependents: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
         log_flow: Optional[bool] = None,
@@ -805,6 +816,7 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param show_secrets: Include config secrets in the DestroyResult summary.
@@ -857,7 +869,7 @@ class Stack:
             log_watcher_thread.start()
 
         try:
-            destroy_result = self._run_pulumi_cmd_sync(args, on_output)
+            destroy_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
             _cleanup(temp_dir, log_watcher_thread, stop_event)
 
@@ -885,6 +897,7 @@ class Stack:
         target_dependents: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
         log_flow: Optional[bool] = None,
@@ -910,6 +923,7 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param on_output: A function to process the stdout stream.
+        :param on_error: A function to process the stderr stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param show_secrets: Include config secrets in the DestroyResult summary.
@@ -961,7 +975,7 @@ class Stack:
         log_watcher_thread.start()
 
         try:
-            preview_result = self._run_pulumi_cmd_sync(args, on_output)
+            preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
             _cleanup(temp_dir, log_watcher_thread, stop_event)
 
@@ -1266,7 +1280,10 @@ class Stack:
         return self.workspace.import_stack(self.name, state)
 
     def _run_pulumi_cmd_sync(
-        self, args: List[str], on_output: Optional[OnOutput] = None
+        self,
+        args: List[str],
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
     ) -> CommandResult:
         envs = {"PULUMI_DEBUG_COMMANDS": "true"}
         if self._remote:
@@ -1279,7 +1296,7 @@ class Stack:
         args.extend(additional_args)
         args.extend(["--stack", self.name])
         result = self.workspace.pulumi_command.run(
-            args, self.workspace.work_dir, envs, on_output
+            args, self.workspace.work_dir, envs, on_output, on_error
         )
         self.workspace.post_command_callback(self.name)
         return result
