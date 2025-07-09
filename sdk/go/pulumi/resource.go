@@ -491,7 +491,7 @@ type ResourceOptions struct {
 	DeletedWith Resource
 
 	// Hooks are the optional resource hooks to bind to this resource. The hooks
-	// will be invoked during certain step of the lifecycle of the resource.
+	// will be invoked during the lifecycle of the resource.
 	Hooks *ResourceHookBinding
 }
 
@@ -899,7 +899,7 @@ func Protect(o bool) ResourceOption {
 }
 
 // If set, ResourceHooks are the resource hooks to bind to this resource. The
-// hooks will be invoked during certain step of the lifecycle of the resource.
+// hooks will be invoked during the lifecycle of the resource.
 func ResourceHooks(hooks *ResourceHookBinding) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		if hooks == nil {
