@@ -273,7 +273,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
-	if reg.Res().Custom {
+	if !reg.Res().Custom {
 		// Run the after hooks for Create/Update/Delete steps for
 		// `ComponentResources `now that `RegisterResourceOutputs `is about to
 		// complete.
