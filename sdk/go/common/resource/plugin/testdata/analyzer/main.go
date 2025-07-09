@@ -10,6 +10,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type analyzer struct {
@@ -46,6 +47,10 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 	}
 
 	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
+}
+
+func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func main() {

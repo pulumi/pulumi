@@ -264,6 +264,21 @@ configureStack: {
     responseSerialize: serialize_pulumirpc_AnalyzerStackConfigureResponse,
     responseDeserialize: deserialize_pulumirpc_AnalyzerStackConfigureResponse,
   },
+  // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+// Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+// it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+// hard-closing any gRPC connection.
+cancel: {
+    path: '/pulumirpc.Analyzer/Cancel',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
 };
 
 exports.AnalyzerClient = grpc.makeGenericClientConstructor(AnalyzerService);

@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -45,6 +46,11 @@ type Analyzer interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 	// Configure configures the analyzer, passing configuration properties for each policy.
 	Configure(policyConfig map[string]AnalyzerPolicyConfig) error
+	// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+	// Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+	// it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
+	Cancel(ctx context.Context) error
 }
 
 // AnalyzerResource mirrors a resource that is passed to `Analyze`.
