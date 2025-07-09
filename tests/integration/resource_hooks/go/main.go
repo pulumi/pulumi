@@ -14,8 +14,8 @@ func main() {
 			if args.Name != "username" {
 				return fmt.Errorf("expected name to be 'username', got %q", args.Name)
 			}
-			if string(args.Type) != "random:index/random:Random" {
-				return fmt.Errorf("expected type to be 'random:index/random:Random', got %q", args.Type)
+			if string(args.Type) != "testprovider:index:Random" {
+				return fmt.Errorf("expected type to be 'testprovider:index:Random', got %q", args.Type)
 			}
 			return nil
 		}
