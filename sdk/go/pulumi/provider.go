@@ -119,14 +119,17 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	// that these hooks have already been registered when the remote component
 	// called registerResource, so we can construct dummy hooks here, that will
 	// be serialized back into list of hook names.
+
+	// Create a fulfilled promise to mark the stubs as registered.
+	c := promise.CompletionSource[struct{}]{}
+	c.Fulfill(struct{}{})
+	registered := c.Promise()
 	stubHook := func(names []string) []*ResourceHook {
 		hooks := []*ResourceHook{}
 		for _, name := range names {
-			c := promise.CompletionSource[struct{}]{}
-			c.Fulfill(struct{}{})
 			hooks = append(hooks, &ResourceHook{
 				Name:       name,
-				registered: c.Promise(), // mark the stub hook as registered
+				registered: registered, // mark the stub hook as registered
 			})
 		}
 		return hooks

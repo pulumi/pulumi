@@ -619,6 +619,10 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
+	// For custom resources we run the after hooks at the completion of the
+	// step. For component resources, we instead run the after hooks when
+	// `RegisterResourceOutputs` is called for the resource. This happens in
+	// `stepExecutor.executeRegisterResourceOutputs.`
 	if s.old.Custom {
 		if err := s.Deployment().RunHooks(
 			s.old.ResourceHooks[resource.AfterDelete],
@@ -871,6 +875,10 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
+	// For custom resources we run the after hooks at the completion of the
+	// step. For component resources, we instead run the after hooks when
+	// `RegisterResourceOutputs` is called for the resource. This happens in
+	// `stepExecutor.executeRegisterResourceOutputs.`
 	if s.old.Custom {
 		if err := s.Deployment().RunHooks(
 			s.new.ResourceHooks[resource.AfterUpdate],
