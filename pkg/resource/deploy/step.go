@@ -297,6 +297,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		true, /* isBeforeHook */
 		s.new.ID,
 		s.new.URN,
+		s.URN().Name(),
+		s.Type(),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		nil, /* newOutputs */
@@ -392,6 +394,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		false, /* isBeforeHook */
 		s.new.ID,
 		s.new.URN,
+		s.URN().Name(),
+		s.Type(),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		s.new.Outputs,
@@ -525,6 +529,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		true, /* isBeforeHook */
 		s.old.ID,
 		s.old.URN,
+		s.URN().Name(),
+		s.Type(),
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -616,6 +622,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		false, /* isBeforeHook */
 		s.old.ID,
 		s.old.URN,
+		s.URN().Name(),
+		s.Type(),
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -781,6 +789,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		true, /* isBeforeHook */
 		s.new.ID,
 		s.new.URN,
+		s.URN().Name(),
+		s.Type(),
 		s.new.Inputs,
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -861,6 +871,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		false, /* isBeforeHook */
 		s.new.ID,
 		s.new.URN,
+		s.URN().Name(),
+		s.Type(),
 		s.new.Inputs,
 		s.old.Inputs,
 		s.new.Outputs,

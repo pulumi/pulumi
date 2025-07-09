@@ -138,7 +138,7 @@ type ResourceHookBindings struct {
 	AfterDelete  []*ResourceHook
 }
 
-type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID,
+type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 	newInputs, oldInpts, newOutputs, oldOutputs resource.PropertyMap) error
 
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
@@ -220,7 +220,7 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id),
+		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
 			newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
 			return &pulumirpc.ResourceHookResponse{
 				Error: err.Error(),

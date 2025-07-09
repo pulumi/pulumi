@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
@@ -348,6 +349,8 @@ type ResourceHookOptions struct {
 type ResourceHookArgs struct {
 	URN        URN                  // The URN of the resource that triggered the hook.
 	ID         ID                   // The ID of the resource that triggered the hook.
+	Name       string               // The name of the resource that triggered the hook.
+	Type       tokens.Type          // The type of the resource that triggered the hook.
 	NewInputs  resource.PropertyMap // The new inputs of the resource that triggered the hook.
 	OldInputs  resource.PropertyMap // The old inputs of the resource that triggered the hook.
 	NewOutputs resource.PropertyMap // The new outputs of the resource that triggered the hook.

@@ -150,6 +150,7 @@ func TestCreateStep(t *testing.T) {
 						},
 					},
 					new: &resource.State{
+						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 						// Use denydefaultprovider ID to ensure failure.
 						Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
@@ -264,6 +265,7 @@ func TestDeleteStep(t *testing.T) {
 						},
 					},
 					old: &resource.State{
+						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 						// Use denydefaultprovider ID to ensure failure.
 						Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
@@ -398,6 +400,7 @@ func TestUpdateStep(t *testing.T) {
 				},
 				old: &resource.State{},
 				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
