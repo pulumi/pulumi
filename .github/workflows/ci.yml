@@ -435,6 +435,9 @@ jobs:
     needs: [matrix, build-binaries, build-sdks]
     runs-on: windows-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
