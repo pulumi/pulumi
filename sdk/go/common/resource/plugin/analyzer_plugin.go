@@ -616,7 +616,7 @@ func (a *analyzer) Cancel(ctx context.Context) error {
 	label := a.label() + ".Cancel()"
 	logging.V(7).Infof("%s executing", label)
 
-	_, err := a.client.Cancel(a.ctx.Request(), &emptypb.Empty{})
+	_, err := a.client.Cancel(ctx, &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("%s failed: err=%v", label, rpcError)
