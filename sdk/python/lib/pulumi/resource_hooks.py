@@ -4,9 +4,6 @@ from typing import Any, Awaitable, Callable, Mapping, Optional, TypeVar, Union
 
 
 from .runtime.resource import register_resource_hook
-from .runtime.settings import (
-    _sync_monitor_supports_resource_hooks,
-)
 
 
 class ResourceHookArgs:
@@ -115,11 +112,6 @@ class ResourceHook:
         func: ResourceHookFunction,
         opts: Optional[ResourceHookOptions] = None,
     ):
-        if not _sync_monitor_supports_resource_hooks():
-            raise Exception(
-                "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
-            )
-
         self.__doc__ = func.__doc__
         self.__name__ = func.__name__
         self.name = name

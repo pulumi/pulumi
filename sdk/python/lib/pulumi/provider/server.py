@@ -257,6 +257,27 @@ class ProviderServicer(ResourceProviderServicer):
                 request.customTimeouts.delete,
             )
 
+        resource_hooks = pulumi.ResourceHookBinding(
+            before_create=list(
+                map(StubResourceHook, request.resource_hooks.before_create)
+            ),
+            after_create=list(
+                map(StubResourceHook, request.resource_hooks.after_create)
+            ),
+            before_update=list(
+                map(StubResourceHook, request.resource_hooks.before_update)
+            ),
+            after_update=list(
+                map(StubResourceHook, request.resource_hooks.after_update)
+            ),
+            before_delete=list(
+                map(StubResourceHook, request.resource_hooks.before_delete)
+            ),
+            after_delete=list(
+                map(StubResourceHook, request.resource_hooks.after_delete)
+            ),
+        )
+
         return pulumi.ResourceOptions(
             aliases=list(request.aliases),
             depends_on=[DependencyResource(urn) for urn in request.dependencies],
@@ -271,6 +292,7 @@ class ProviderServicer(ResourceProviderServicer):
             replace_on_changes=list(request.replaceOnChanges),
             retain_on_delete=request.retainOnDelete,
             deleted_with=deleted_with,
+            hooks=resource_hooks,
         )
 
     async def _construct_response(
@@ -553,3 +575,28 @@ def _create_provider_resource(ref: str) -> ProviderResource:
         )
 
     return DependencyProviderResource(ref)
+
+
+def noop(args: pulumi.ResourceHookArgs) -> None:
+    pass
+
+
+class StubResourceHook(pulumi.ResourceHook):
+    """
+    StubResourceHook is a resource hook that does nothing.
+
+    We need to reconstruct `:class:ResourceHook` instances here to set
+    on the `:class:ResourceOption`s, but we only have the name
+    available to us. We also know that these hooks have already been
+    registered when the remote component called register_resource, so we
+    can construct dummy hooks here, that will be serialized back into
+    list of hook names.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+        self.callback = noop
+        self.opts = None
+        self._registered = asyncio.Future()
+        # Set the hook as registered.
+        self._registered.set_result(None)

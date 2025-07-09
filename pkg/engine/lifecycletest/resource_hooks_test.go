@@ -816,3 +816,99 @@ func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	require.False(t, hookCalled)
 }
+
+func TestResourceHookComponent(t *testing.T) {
+	t.Parallel()
+
+	hookCalled := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					// Copy the hooks from the construct options onto the resource options.
+					binding := deploytest.ResourceHookBindings{}
+					for _, h := range req.Options.ResourceHooks[resource.BeforeCreate] {
+						binding.BeforeCreate = append(binding.BeforeCreate, &deploytest.ResourceHook{Name: h})
+					}
+					for _, h := range req.Options.ResourceHooks[resource.AfterCreate] {
+						binding.AfterCreate = append(binding.AfterCreate, &deploytest.ResourceHook{Name: h})
+					}
+					for _, h := range req.Options.ResourceHooks[resource.BeforeUpdate] {
+						binding.BeforeUpdate = append(binding.BeforeUpdate, &deploytest.ResourceHook{Name: h})
+					}
+					for _, h := range req.Options.ResourceHooks[resource.AfterUpdate] {
+						binding.AfterUpdate = append(binding.AfterUpdate, &deploytest.ResourceHook{Name: h})
+					}
+					for _, h := range req.Options.ResourceHooks[resource.BeforeDelete] {
+						binding.BeforeDelete = append(binding.BeforeDelete, &deploytest.ResourceHook{Name: h})
+					}
+					for _, h := range req.Options.ResourceHooks[resource.AfterDelete] {
+						binding.AfterDelete = append(binding.AfterDelete, &deploytest.ResourceHook{Name: h})
+					}
+					opts := deploytest.ResourceOptions{ResourceHookBindings: binding}
+					res, err := monitor.RegisterResource("pkgA:m:typB", req.Name, false, opts)
+					require.NoError(t, err)
+					outs := resource.PropertyMap{}
+					err = monitor.RegisterResourceOutputs(res.URN, outs)
+					require.NoError(t, err)
+					return plugin.ConstructResponse{
+						URN:     res.URN,
+						Outputs: outs,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resA"))
+			require.Equal(t, name, "resA")
+			require.Equal(t, typ, tokens.Type("pkgA:m:typB"))
+			hookCalled = true
+			return nil
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{
+					myHook,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.True(t, hookCalled)
+}

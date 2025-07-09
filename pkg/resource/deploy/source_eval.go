@@ -2369,7 +2369,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return names
 	}
 
-	resourceHooks := make(map[resource.HookType][]string)
+	var resourceHooks map[resource.HookType][]string
 	for _, hookType := range []resource.HookType{
 		resource.BeforeCreate,
 		resource.AfterCreate,
@@ -2380,7 +2380,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	} {
 		names := getHookNames(hookType)
 		if len(names) > 0 {
-			resourceHooks[hookType] = names
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[hookType] = append(resourceHooks[hookType], names...)
 		}
 	}
 
@@ -2429,6 +2432,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
 			RetainOnDelete:          retainOnDelete,
+			ResourceHooks:           resourceHooks,
 		}
 		if customTimeouts != nil {
 			options.CustomTimeouts = &plugin.CustomTimeouts{
