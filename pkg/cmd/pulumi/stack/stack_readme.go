@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -29,6 +30,7 @@ import (
 
 func newStackReadmeCmd() *cobra.Command {
 	var stack string
+	var template string
 
 	cmd := &cobra.Command{
 		Use:     "readme",
@@ -37,9 +39,12 @@ func newStackReadmeCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
+			opts := backend.GenerateStackReadmeOptions{
+				Options: display.Options{
+					Color: cmdutil.GetGlobalColorization(),
+				},
 			}
+
 			s, err := RequireStack(
 				ctx,
 				cmdutil.Diag(),
@@ -47,12 +52,20 @@ func newStackReadmeCmd() *cobra.Command {
 				cmdBackend.DefaultLoginManager,
 				stack,
 				LoadOnly,
-				opts,
+				opts.Options,
 			)
 			if err != nil {
 				return err
 			}
 			b := s.Backend()
+
+			if template != "" {
+				data, err := os.ReadFile(template)
+				if err != nil {
+					return err
+				}
+				opts.Template = string(data)
+			}
 
 			content, err := b.GenerateStackReadme(ctx, s, opts)
 
@@ -77,5 +90,8 @@ func newStackReadmeCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
+	cmd.PersistentFlags().StringVarP(
+		&template, "template-file", "f", "",
+		"The template file to use for the README.")
 	return cmd
 }

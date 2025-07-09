@@ -1483,8 +1483,9 @@ func (pc *Client) GenerateStackReadmeWithCopilot(
 	ctx context.Context,
 	stack StackIdentifier,
 	stackConsoleURL string,
+	template string,
 ) (string, error) {
-	request := createGenerateStackReadmeRequest(stack, stackConsoleURL)
+	request := createGenerateStackReadmeRequest(stack, stackConsoleURL, template)
 	return pc.callCopilot(ctx, request)
 }
 
@@ -1493,7 +1494,6 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
-
 
 	url := pc.copilotURL + "/api/ai/chat/preview"
 	apiToken := string(pc.apiToken)

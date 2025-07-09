@@ -98,7 +98,9 @@ type CopilotGenerateStackReportSkill struct {
 	Params CopilotGenerateStackReportParams `json:"params"`
 }
 
-type CopilotGenerateStackReportParams struct{}
+type CopilotGenerateStackReportParams struct {
+	Template string `json:"template,omitempty"` // The template to use for the README.
+}
 
 // Responses
 

@@ -1136,7 +1136,7 @@ func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *diyBackend) GenerateStackReadme(ctx context.Context, stk backend.Stack, opts display.Options,
+func (b *diyBackend) GenerateStackReadme(ctx context.Context, stk backend.Stack, opts backend.GenerateStackReadmeOptions,
 ) (string, error) {
 	return "", errors.New("stack READMEs not supported with diy backends")
 }
