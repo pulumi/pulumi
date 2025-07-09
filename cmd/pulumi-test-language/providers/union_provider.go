@@ -37,7 +37,7 @@ type UnionProvider struct {
 var _ plugin.Provider = (*UnionProvider)(nil)
 
 func (UnionProvider) version() string {
-	return "1.0.0"
+	return "18.0.0"
 }
 
 func (p *UnionProvider) Pkg() tokens.Package {

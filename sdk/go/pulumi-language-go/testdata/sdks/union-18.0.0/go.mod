@@ -1,4 +1,4 @@
-module example.com/pulumi-union/sdk/go
+module example.com/pulumi-union/sdk/go/v18
 
 go 1.20
 

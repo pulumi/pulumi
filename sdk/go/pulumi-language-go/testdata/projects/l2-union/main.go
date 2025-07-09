@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example.com/pulumi-union/sdk/go/union"
+	"example.com/pulumi-union/sdk/go/v18/union"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

@@ -6,7 +6,7 @@ package union
 import (
 	"fmt"
 
-	"example.com/pulumi-union/sdk/go/union/internal"
+	"example.com/pulumi-union/sdk/go/v18/union/internal"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
