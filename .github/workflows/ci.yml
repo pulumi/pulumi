@@ -430,6 +430,86 @@ jobs:
       version-set: ${{ toJson(matrix.version-set) }}
     secrets: inherit
 
+  python-automation-test:
+    name: Python Automation Test
+    needs: [matrix, build-binaries, build-sdks]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup versioning env vars
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ./scripts/versions.sh | tee -a "$GITHUB_ENV"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
+      - name: Set up Python ${{ fromJson(needs.matrix.outputs.version-set).python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ fromJson(needs.matrix.outputs.version-set).python }}
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet build
+      - name: Install Poetry
+        run: python -m pip install poetry
+      - name: Ensure dependencies for the Python SDK
+        run: |
+          cd sdk/python
+          make ensure
+      - name: Install Python SDK
+        run: |
+          cd sdk/python
+          make build_package
+      - name: Download pulumi-windows-amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts-cli-windows-amd64-integration
+          path: artifacts/cli
+      - name: Install Pulumi Go Binaries
+        run: |
+          echo "Checking contents of $PWD/artifacts/cli"
+          find "$PWD/artifacts/cli"
+          TMPDIR="$(mktemp -d)"
+
+          mkdir -p bin
+
+          # Extract files to temporary directory:
+          find "$PWD/artifacts/cli" -name '*.zip' -print0 -exec unzip {} -d "$TMPDIR" \;
+          find "$PWD/artifacts/cli" -name '*.tar.gz' -print0 -exec tar -xzvf {} -C "$TMPDIR" \;
+
+          # Windows .zip files have an extra "bin" path part, support both:
+          if [ -d "$TMPDIR/pulumi/bin" ]; then
+            mv "${TMPDIR}/pulumi/bin/"* "$PWD/bin/"
+          else
+            mv "${TMPDIR}/pulumi/"* "$PWD/bin/"
+          fi
+
+          echo "Checking contents of $PWD/bin"
+          find "$PWD/bin"
+
+          LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
+          echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
+          echo "$LOCAL_PATH" >> "$GITHUB_PATH"
+      - name: Run pytest automation test
+        run: |
+          cd sdk/python
+          pytest lib/test/automation -k test_on_error
+        env:
+          PULUMI_HOME: ${{ github.workspace }}/home
+          PULUMI_VERSION: ${{ inputs.version }}
+          PULUMI_TEST_OWNER: "moolumi"
+          PULUMI_TEST_ORG: "moolumi"
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+          PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
+          PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   test-collect-reports:
     needs: [unit-test, integration-test, acceptance-test-macos]
     if: ${{ always() }}
