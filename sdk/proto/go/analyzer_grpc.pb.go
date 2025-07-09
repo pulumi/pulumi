@@ -47,6 +47,11 @@ type AnalyzerClient interface {
 	// This method is not always called, for example if the engine is just booting the analyzer up to call
 	// GetAnalyzerInfo.
 	ConfigureStack(ctx context.Context, in *AnalyzerStackConfigureRequest, opts ...grpc.CallOption) (*AnalyzerStackConfigureResponse, error)
+	// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+	// Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+	// it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
+	Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type analyzerClient struct {
@@ -129,6 +134,15 @@ func (c *analyzerClient) ConfigureStack(ctx context.Context, in *AnalyzerStackCo
 	return out, nil
 }
 
+func (c *analyzerClient) Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/Cancel", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AnalyzerServer is the server API for Analyzer service.
 // All implementations must embed UnimplementedAnalyzerServer
 // for forward compatibility
@@ -157,6 +171,11 @@ type AnalyzerServer interface {
 	// This method is not always called, for example if the engine is just booting the analyzer up to call
 	// GetAnalyzerInfo.
 	ConfigureStack(context.Context, *AnalyzerStackConfigureRequest) (*AnalyzerStackConfigureResponse, error)
+	// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+	// Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+	// it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
+	Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAnalyzerServer()
 }
 
@@ -187,6 +206,9 @@ func (UnimplementedAnalyzerServer) Handshake(context.Context, *AnalyzerHandshake
 }
 func (UnimplementedAnalyzerServer) ConfigureStack(context.Context, *AnalyzerStackConfigureRequest) (*AnalyzerStackConfigureResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConfigureStack not implemented")
+}
+func (UnimplementedAnalyzerServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedAnalyzerServer) mustEmbedUnimplementedAnalyzerServer() {}
 
@@ -345,6 +367,24 @@ func _Analyzer_ConfigureStack_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Analyzer_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalyzerServer).Cancel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.Analyzer/Cancel",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalyzerServer).Cancel(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Analyzer_ServiceDesc is the grpc.ServiceDesc for Analyzer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -383,6 +423,10 @@ var Analyzer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ConfigureStack",
 			Handler:    _Analyzer_ConfigureStack_Handler,
+		},
+		{
+			MethodName: "Cancel",
+			Handler:    _Analyzer_Cancel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
