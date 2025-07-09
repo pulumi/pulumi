@@ -30,6 +30,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
@@ -99,7 +102,21 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 	// Log the error message
 	if err != nil {
 		logError(ctx, err)
+	} else {
+		if _, signalErr := ctx.state.monitor.SignalAndWaitForShutdown(ctx.ctx, &pbempty.Empty{}); signalErr != nil {
+			status, ok := status.FromError(err)
+			if ok && status.Code() != codes.Unimplemented {
+				// If we are running against an older version of the CLI,
+				// SignalAndWaitForShutdown might not be implemented. This is
+				// mostly fine, but means that delete hooks do not work. Since
+				// we check if the CLI supports the `resourceHook` feature when
+				// registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+				// error here.
+				return fmt.Errorf("error waiting for shutdown: %v", signalErr)
+			}
+		}
 	}
+
 	return err
 }
 
