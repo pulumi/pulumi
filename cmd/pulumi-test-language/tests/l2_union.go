@@ -60,7 +60,7 @@ func init() {
 				require.Equal(l, resource.NewNumberProperty(42),
 					si1.Outputs["stringOrIntegerProperty"])
 
-				require.Equal(l, resource.NewStringProperty("fourty two"),
+				require.Equal(l, resource.NewStringProperty("forty two"),
 					si2.Outputs["stringOrIntegerProperty"])
 			},
 		}},

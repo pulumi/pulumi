@@ -3,7 +3,7 @@ resource "stringOrIntegerExample1" "union:index:Example" {
 }
 
 resource "stringOrIntegerExample2" "union:index:Example" {
-  stringOrIntegerProperty = "fourty two"
+  stringOrIntegerProperty = "forty two"
 }
 
 resource "mapMapUnionExample" "union:index:Example" {

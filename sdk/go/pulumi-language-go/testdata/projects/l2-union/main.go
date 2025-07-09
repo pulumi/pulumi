@@ -14,7 +14,7 @@ func main() {
 			return err
 		}
 		_, err = union.NewExample(ctx, "stringOrIntegerExample2", &union.ExampleArgs{
-			StringOrIntegerProperty: pulumi.Any("fourty two"),
+			StringOrIntegerProperty: pulumi.Any("forty two"),
 		})
 		if err != nil {
 			return err
