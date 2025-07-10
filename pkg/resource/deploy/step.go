@@ -619,25 +619,24 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	// For custom resources we run the after hooks at the completion of the
-	// step. For component resources, we instead run the after hooks when
-	// `RegisterResourceOutputs` is called for the resource. This happens in
-	// `stepExecutor.executeRegisterResourceOutputs.`
-	if s.old.Custom {
-		if err := s.Deployment().RunHooks(
-			s.old.ResourceHooks[resource.AfterDelete],
-			false, /* isBeforeHook */
-			s.old.ID,
-			s.old.URN,
-			s.old.URN.Name(),
-			s.Type(),
-			nil, /* newInputs */
-			s.old.Inputs,
-			nil, /* newOutputs */
-			s.old.Outputs,
-		); err != nil {
-			return resource.StatusOK, nil, err
-		}
+	// Unlike for Create and Update steps, where we run the after create/update
+	// hooks in `RegisterResourceOutputs, we run the after delete hooks for both
+	// custom and component resources here in the step. When a custom resource
+	// is deleted, we of course never run its constructor, and so there's never
+	// any `RegisterResourceOutputs` call.
+	if err := s.Deployment().RunHooks(
+		s.old.ResourceHooks[resource.AfterDelete],
+		false, /* isBeforeHook */
+		s.old.ID,
+		s.old.URN,
+		s.old.URN.Name(),
+		s.Type(),
+		nil, /* newInputs */
+		s.old.Inputs,
+		nil, /* newOutputs */
+		s.old.Outputs,
+	); err != nil {
+		return resource.StatusOK, nil, err
 	}
 
 	return resource.StatusOK, func() {}, nil

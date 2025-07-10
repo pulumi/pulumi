@@ -1,0 +1,12 @@
+<{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=fd6ee121-6960-4fe7-b028-cdad12386ae7]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typB: (delete)
+<{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resA]
+<{%reset%}><{%fg 1%}>    a: <{%reset%}><{%fg 1%}>"A"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - outA: <{%reset%}><{%fg 1%}>"outA"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

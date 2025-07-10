@@ -307,21 +307,6 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 			); err != nil {
 				return err
 			}
-		} else if s, ok := reg.(*DeleteStep); ok {
-			if err := s.Deployment().RunHooks(
-				s.old.ResourceHooks[resource.AfterDelete],
-				false, /* isBeforeHook */
-				s.old.ID,
-				s.old.URN,
-				s.old.URN.Name(),
-				s.Type(),
-				nil, /* newInputs */
-				s.old.Inputs,
-				nil, /* newOutputs */
-				s.old.Outputs,
-			); err != nil {
-				return err
-			}
 		}
 	}
 
