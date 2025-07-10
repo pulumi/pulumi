@@ -115,7 +115,7 @@ func createGenerateStackReadmeRequest(
 		DirectSkillCall: apitype.CopilotGenerateStackReportSkill{
 			Skill: apitype.SkillGenerateStackReadme,
 			Params: apitype.CopilotGenerateStackReportParams{
-				Template: template,
+				ReadmeFormat: template,
 			},
 		},
 	}

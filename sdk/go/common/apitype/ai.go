@@ -99,7 +99,7 @@ type CopilotGenerateStackReportSkill struct {
 }
 
 type CopilotGenerateStackReportParams struct {
-	Template string `json:"template,omitempty"` // The template to use for the README.
+	ReadmeFormat string `json:"readmeFormat,omitempty"` // The template to use for the README.
 }
 
 // Responses
