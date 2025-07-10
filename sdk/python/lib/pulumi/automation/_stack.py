@@ -760,17 +760,27 @@ class Stack:
         args.extend(extra_args)
 
         args.extend(self._remote_args())
+        
+        # --- FIX ---
+        # Get summary from stack before renaming
+        if self._remote and show_secrets:
+            raise RuntimeError("can't enable showSecrets for remote workspaces")
+
+        # Summary can be None, this case can happen if the stack was empty and had no history.
+        summary = self.info(show_secrets and not self._remote)
+        # Execute the rename command.
         rename_result = self._run_pulumi_cmd_sync(args, on_output)
 
-        if self._remote and show_secrets:
-            raise RuntimeError("can't enable `showSecrets` for remote workspaces")
+        # After the rename is successful in the backend, the internal state of this
+        # Stack object MUST be updated to reflect the new name. This is the crucial
+        # step that prevents the race condition.
+        self.name = new_stack_name
+        # --- END FIX ---
 
-        summary = self.info(show_secrets and not self._remote)
-        assert summary is not None
         return RenameResult(
             stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
         )
-
+        
     def destroy(
         self,
         parallel: Optional[int] = None,
