@@ -2592,3 +2592,44 @@ func TestOrganization(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// Tests that component resource initialization methods work correctly.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestComponentInitializationPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "component_initialize"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Find the Random resource
+			var randomResource *apitype.ResourceV3
+			var randomComponentResource *apitype.ResourceV3
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.URN.Name() == "foo-random" {
+					randomResource = &res
+				}
+				if res.URN.Name() == "foo" {
+					randomComponentResource = &res
+				}
+			}
+			require.NotNil(t, randomResource)
+			require.NotNil(t, randomComponentResource)
+
+			// Check it's parent is the component resource
+			assert.Equal(t, randomComponentResource.URN, randomResource.Parent)
+			// Check the component outputs are as expected
+			assert.Equal(t, map[string]any{
+				"value": randomResource.Outputs["val"],
+				"r": map[string]any{
+					"4dabf18193072939515e22adb298388d": "5cf8f73096256a8f31e491e813e4eb8e",
+					"id":                               string(randomResource.ID),
+					"packageVersion":                   "",
+					"urn":                              string(randomResource.URN),
+				},
+			}, randomComponentResource.Outputs)
+		},
+	})
+}
