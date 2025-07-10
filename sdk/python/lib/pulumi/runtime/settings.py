@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,11 @@ _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SI
 
 # excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
 excessive_debug_output = False
+
+# current ambient parent resource, this is set for component resource initialization methods.
+ambient_parent: ContextVar[Optional[Resource]] = ContextVar(
+    "ambient_parent", default=None
+)
 
 
 class Settings:
