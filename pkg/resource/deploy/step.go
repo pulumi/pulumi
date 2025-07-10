@@ -620,7 +620,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	// Unlike for Create and Update steps, where we run the after create/update
-	// hooks in `RegisterResourceOutputs, we run the after delete hooks for both
+	// hooks for components in `RegisterResourceOutputs`, we run the after delete hooks for both
 	// custom and component resources here in the step. When a component resource
 	// is deleted, we of course never run its constructor, and so there's never
 	// any `RegisterResourceOutputs` call.
