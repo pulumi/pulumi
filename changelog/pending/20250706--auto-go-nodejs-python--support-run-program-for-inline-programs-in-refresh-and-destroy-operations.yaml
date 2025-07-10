@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go,nodejs,python
+  description: Support --run-program for inline programs in refresh and destroy operations
