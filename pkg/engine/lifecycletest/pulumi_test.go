@@ -4544,3 +4544,60 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	require.ErrorContains(t, err, "create failed intentionally")
 	require.True(t, <-done)
 }
+
+// This test ensures that we do not proceed to deletions if a program throws an error.
+func TestProgramError(t *testing.T) {
+	t.Parallel()
+
+	returnError := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		if returnError {
+			return errors.New("program error")
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NotNil(t, snap)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.Equal(t, snap.Resources[2].URN.Name(), "resB")
+
+	returnError = true
+
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NotNil(t, snap)
+	require.Error(t, err)
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "program error")
+	require.Len(t, snap.Resources, 3)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.Equal(t, snap.Resources[2].URN.Name(), "resB")
+}
