@@ -1,0 +1,26 @@
+changes:
+- type: feat
+  scope: diy-backends
+  description: |
+    Add stack tags support for DIY backends (S3, Postgres, file-based, etc.).
+    
+    DIY backends now support stack tags functionality, bringing feature parity with cloud backends.
+    This includes:
+    
+    - Full CRUD operations for stack tags (create, read, update, delete)
+    - Automatic system tag injection (e.g., `pulumi:project`)
+    - Tag filtering support in stack listing operations
+    - Backward compatibility with existing stacks (no tags file required)
+    - Atomic operations with caching for performance
+    - Automatic cleanup of tag files when stacks are deleted
+    
+    Tags are stored as separate `.pulumi-tags` files alongside stack checkpoints, using a versioned
+    JSON format. The implementation works across all DIY backend storage types including S3, Azure Blob,
+    Google Cloud Storage, PostgreSQL, and local file systems.
+    
+    Example usage:
+    ```bash
+    pulumi stack tag set environment production
+    pulumi stack tag set owner backend-team
+    pulumi stack ls --tag-filter environment=production
+    ```
