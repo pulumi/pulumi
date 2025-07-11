@@ -17,6 +17,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"testing"
 
@@ -37,6 +38,8 @@ type mockRegistry struct {
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
 	listTemplates func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+
+	downloadTemplate func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 func (r mockRegistry) GetPackage(
@@ -57,6 +60,10 @@ func (r mockRegistry) GetTemplate(
 
 func (r mockRegistry) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 	return r.listTemplates(ctx, name)
+}
+
+func (r mockRegistry) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	return r.downloadTemplate(ctx, downloadURL)
 }
 
 func TestOnDemandRegistry(t *testing.T) {
