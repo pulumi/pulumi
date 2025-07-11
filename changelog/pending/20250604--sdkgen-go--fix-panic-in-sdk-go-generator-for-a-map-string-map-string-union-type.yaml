@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Fix panic in SDK go generator for a map[string]map[string]union type

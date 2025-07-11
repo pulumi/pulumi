@@ -119,7 +119,7 @@ programs generated from that PCL. Presently they are laid out as follows:
   below) and `name` is a descriptive name for the test. The `l1-output-string`
   test, for example, has a level of 1 and the name `output-string`.
 
-* PCL programs are defined in `cmd/pulumi-test-language/testdata`. Each test has
+* PCL programs are defined in `cmd/pulumi-test-language/tests/testdata`. Each test has
   its own directory, `l<N>-<name>`. If the test runs a single program once, this
   directory will typically just contain a `main.pp` file containing a PCL
   program, or several `.pp` files making up a whole. If the test runs multiple
