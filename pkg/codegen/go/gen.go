@@ -3427,7 +3427,12 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		if schema.IsPrimitiveType(innerMostType(t.ElementType)) {
 			return
 		}
-		elementTypeName = pkg.nestedTypeToType(t.ElementType)
+		n, gotNestedType := pkg.nestedTypeToType(t.ElementType)
+		if !gotNestedType {
+			return
+		}
+
+		elementTypeName = n
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Array"
 
 		// We make sure that subsidiary elements are marked for array as well
@@ -3441,7 +3446,11 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		if schema.IsPrimitiveType(innerMostType(t.ElementType)) {
 			return
 		}
-		elementTypeName = pkg.nestedTypeToType(t.ElementType)
+		n, gotNestedType := pkg.nestedTypeToType(t.ElementType)
+		if !gotNestedType {
+			return
+		}
+		elementTypeName = n
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Map"
 
 		// We make sure that subsidiary elements are marked for map as well
@@ -3513,18 +3522,26 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 	return names
 }
 
-func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
+func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, bool) {
 	switch t := codegen.UnwrapType(typ).(type) {
 	case *schema.ArrayType:
-		return pkg.nestedTypeToType(t.ElementType) + "Array"
+		if nested, ok := pkg.nestedTypeToType(t.ElementType); ok {
+			return nested + "Array", true
+		}
+		return "", false
 	case *schema.MapType:
-		return pkg.nestedTypeToType(t.ElementType) + "Map"
+		if nested, ok := pkg.nestedTypeToType(t.ElementType); ok {
+			return nested + "Map", true
+		}
+		return "", false
 	case *schema.ObjectType:
-		return pkg.resolveObjectType(t)
+		return pkg.resolveObjectType(t), true
 	case *schema.EnumType:
-		return pkg.resolveEnumType(t)
+		return pkg.resolveEnumType(t), true
+	case *schema.UnionType:
+		return "", false
 	}
-	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args")
+	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args"), true
 }
 
 func (pkg *pkgContext) genTypeRegistrations(
