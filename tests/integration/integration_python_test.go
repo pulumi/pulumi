@@ -2467,3 +2467,29 @@ func TestOrganization(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// Tests that component resource initialization methods work correctly.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestComponentInitializationPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "component_initalize"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Find the Random resource
+			var randomResource *apitype.ResourceV3
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.URN.Name() == "foo-random" {
+					randomResource = &res
+					break
+				}
+			}
+			assert.NotNil(t, randomResource)
+			// Check it's parent is the component resource
+			assert.Equal(t, "foo", randomResource.Parent.Name())
+		},
+	})
+}
