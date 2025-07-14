@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -139,12 +140,13 @@ var (
 // Create a new [Template] [Source] associated with a given [SearchScope].
 func New(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
-	templateKind workspace.TemplateKind,
+	templateKind workspace.TemplateKind, e env.Env,
 ) *Source {
 	return newImpl(
 		ctx, templateNamePathOrURL, scope,
 		templateKind,
 		workspace.RetrieveTemplates,
+		e,
 	)
 }
 
@@ -155,6 +157,7 @@ func newImpl(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
 	templateKind workspace.TemplateKind,
 	getWorkspaceTemplates getWorkspaceTemplateFunc,
+	e env.Env,
 ) *Source {
 	var source Source
 	ctx, cancel := context.WithCancel(ctx)
@@ -171,7 +174,7 @@ func newImpl(
 	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
 		source.wg.Add(1)
 		go func() {
-			source.getOrgTemplates(ctx, templateNamePathOrURL, &source.wg)
+			source.getCloudTemplates(ctx, templateNamePathOrURL, &source.wg, e)
 			source.wg.Done()
 		}()
 	}

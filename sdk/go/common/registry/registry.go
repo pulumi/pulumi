@@ -16,6 +16,7 @@ package registry
 
 import (
 	"context"
+	"io"
 	"iter"
 	"sync"
 
@@ -60,6 +61,10 @@ type Registry interface {
 	// plan for deprecation. The safest way to do this is to flag functionality behind
 	// `PULUMI_EXPERIMENTAL`, which removes any backwards comparability requirements.
 	ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+
+	// DownloadTemplate downloads a template given the value of
+	// [apitype.TemplateMetadata].DownloadURL.
+	DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 type registryKey struct{}
@@ -127,4 +132,14 @@ func (r *onDemandRegistry) ListTemplates(
 		}
 	}
 	return impl.ListTemplates(ctx, name)
+}
+
+func (r *onDemandRegistry) DownloadTemplate(
+	ctx context.Context, downloadURL string,
+) (io.ReadCloser, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return nil, err
+	}
+	return impl.DownloadTemplate(ctx, downloadURL)
 }
