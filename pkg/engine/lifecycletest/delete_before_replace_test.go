@@ -811,20 +811,21 @@ func TestDBRParallel(t *testing.T) {
 			t.Parallel()
 
 			// We're going to assert that we always delete B before A
-			seenDeleteB := false
 			diffCalled := false
 			var waitForDiff sync.WaitGroup
 			waitForDiff.Add(1)
+			var waitForDelete sync.WaitGroup
+			waitForDelete.Add(1)
 
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
 						DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 							if req.URN.Name() == "resB" {
-								seenDeleteB = true
+								waitForDelete.Done()
 							}
 							if req.URN.Name() == "resA" {
-								assert.True(t, seenDeleteB)
+								waitForDelete.Wait()
 							}
 							return plugin.DeleteResponse{
 								Status: resource.StatusOK,
@@ -833,7 +834,7 @@ func TestDBRParallel(t *testing.T) {
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							// If we're re-creating B ensure it was deleted first
 							if diffCalled && req.URN.Name() == "resB" {
-								assert.True(t, seenDeleteB)
+								waitForDelete.Wait()
 							}
 							return plugin.CreateResponse{
 								ID:         "created-id",
