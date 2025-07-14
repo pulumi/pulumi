@@ -545,6 +545,22 @@ class Stack:
             change_summary=summary_events[0].resource_changes,
         )
 
+    def _check_inline_support(self) -> None:
+        """
+        Check the installed version of the Pulumi CLI supports inline programs for refresh and destroy operations.
+        """
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.181.
+        ver = VersionInfo(3)
+        if self.workspace.pulumi_command.version is not None:
+            ver = self.workspace.pulumi_command.version
+
+        # 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
+        if not (ver >= VersionInfo(3, 181)):
+            raise InvalidVersionError(
+                "The installed version of the CLI does not support this operation. Please "
+                "upgrade to at least version 3.181.0."
+            )
+
     def refresh(
         self,
         parallel: Optional[int] = None,
@@ -623,17 +639,7 @@ class Stack:
         on_exit = None
 
         if program:
-            # Assume an old version. Doesn't really matter what this is as long as it's pre-3.181.
-            ver = VersionInfo(3)
-            if self.workspace.pulumi_command.version is not None:
-                ver = self.workspace.pulumi_command.version
-
-            # 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
-            if not (ver >= VersionInfo(3, 181)):
-                raise InvalidVersionError(
-                    "The installed version of the CLI does not support this operation. Please "
-                    "upgrade to at least version 3.181.0."
-                )
+            self._check_inline_support()
 
             kind = ExecKind.INLINE.value
             server = grpc.server(
@@ -885,17 +891,7 @@ class Stack:
         on_exit = None
 
         if program:
-            # Assume an old version. Doesn't really matter what this is as long as it's pre-3.181.
-            ver = VersionInfo(3)
-            if self.workspace.pulumi_command.version is not None:
-                ver = self.workspace.pulumi_command.version
-
-            # 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
-            if not (ver >= VersionInfo(3, 181)):
-                raise InvalidVersionError(
-                    "The installed version of the CLI does not support this operation. Please "
-                    "upgrade to at least version 3.181.0."
-                )
+            self._check_inline_support()
 
             kind = ExecKind.INLINE.value
             server = grpc.server(

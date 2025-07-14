@@ -16,8 +16,8 @@ import * as fs from "fs";
 import * as os from "os";
 import * as pathlib from "path";
 import * as readline from "readline";
-import * as upath from "upath";
 import * as semver from "semver";
+import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
 import TailFile from "@logdna/tail-file";
@@ -463,6 +463,17 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Check the installed version of the Pulumi CLI supports inline programs for refresh and destroy operations.
+     */
+    private checkInlineSupport(): void {
+        const ver = semver.parse(this.workspace.pulumiVersion) ?? semver.parse("3.0.0")!;
+        // 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
+        if (semver.lt(ver, "3.181.0")) {
+            throw new Error(`destroy with inline programs requires Pulumi version >= 3.181.0`);
+        }
+    }
+
+    /**
      * Compares the current stack’s resource state with the state known to exist
      * in the actual cloud provider. Any such changes are adopted into the
      * current stack.
@@ -543,11 +554,7 @@ Event: ${line}\n${e.toString()}`);
 
         let kind = execKind.local;
         if (this.workspace.program !== undefined) {
-            const ver = semver.parse(this.workspace.pulumiVersion) ?? semver.parse("3.0.0")!;
-            // 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
-            if (ver.compare("3.181.0") < 0) {
-                throw new Error(`refresh with inline programs requires Pulumi version >= 3.181.0`);
-            }
+            this.checkInlineSupport();
 
             kind = execKind.inline;
             const server = new grpc.Server({
@@ -767,11 +774,7 @@ Event: ${line}\n${e.toString()}`);
 
         let kind = execKind.local;
         if (this.workspace.program !== undefined) {
-            const ver = semver.parse(this.workspace.pulumiVersion) ?? semver.parse("3.0.0")!;
-            // 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
-            if (ver.compare("3.181.0") < 0) {
-                throw new Error(`destroy with inline programs requires Pulumi version >= 3.181.0`);
-            }
+            this.checkInlineSupport();
 
             kind = execKind.inline;
             const server = new grpc.Server({
