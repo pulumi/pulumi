@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 import os
-import select
 import subprocess
 import tempfile
+import threading
 import urllib.request
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
@@ -217,6 +217,13 @@ class PulumiCommand:
         stdout_chunks: List[str] = []
         stderr_chunks: List[str] = []
 
+        def consumer(stream, callback, chunks):
+            for line in iter(stream.readline, ''):
+                if callback:
+                    callback(line)
+                chunks.append(line)
+            stream.close()
+
         with subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -228,28 +235,14 @@ class PulumiCommand:
             assert process.stdout is not None
             assert process.stderr is not None
 
-            streams = [process.stdout, process.stderr]
+            stdout = threading.Thread(target=consumer, args=(process.stdout, on_output, stdout_chunks))
+            stderr = threading.Thread(target=consumer, args=(process.stderr, on_error, stderr_chunks))
 
-            while len(streams):
-                reads, _, _ = select.select(streams, [], [])
+            stdout.start()
+            stderr.start()
 
-                for incoming in reads:
-                    chunk = incoming.readline()
-
-                    if chunk:
-                        if incoming is process.stdout:
-                            if on_output:
-                                on_output(chunk)
-                            stdout_chunks.append(chunk)
-                        elif incoming is process.stderr:
-                            stderr_chunks.append(chunk)
-                            if on_error:
-                                on_error(chunk)
-                    else:
-                        if incoming is process.stdout:
-                            streams.remove(process.stdout)
-                        elif incoming is process.stderr:
-                            streams.remove(process.stderr)
+            stdout.join()
+            stderr.join()
 
             process.wait()
             code = process.returncode
