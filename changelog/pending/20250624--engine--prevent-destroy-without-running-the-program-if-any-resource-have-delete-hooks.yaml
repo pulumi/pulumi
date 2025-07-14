@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Prevent destroy without running the program if any resource have delete hooks
