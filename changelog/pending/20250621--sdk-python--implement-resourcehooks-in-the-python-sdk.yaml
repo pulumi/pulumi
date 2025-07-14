@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Implement ResourceHooks in the Python SDK

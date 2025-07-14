@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.182.0 (2025-07-14)
+
+
+### Features
+
+- [engine] Implement ResourceHooks in the engine
+  [#19874](https://github.com/pulumi/pulumi/pull/19874)
+
+- [engine] Prevent destroy without running the program if any resource have delete hooks
+  [#19933](https://github.com/pulumi/pulumi/pull/19933)
+
+- [engine] Send `Cancel` message to analyzer plugins on engine shutdown
+  [#20015](https://github.com/pulumi/pulumi/pull/20015)
+
+- [sdk/go] Implement ResourceHooks in the Go SDK
+  [#20002](https://github.com/pulumi/pulumi/pull/20002)
+
+- [sdk/nodejs] Implement ResourceHooks in the Node.js SDK
+  [#19946](https://github.com/pulumi/pulumi/pull/19946)
+
+- [sdk/python] Implement ResourceHooks in the Python SDK
+  [#19876](https://github.com/pulumi/pulumi/pull/19876)
+
+
+### Bug Fixes
+
+- [cli] Fix `stack select` when local default-org differs from the service setting for default-org
+  [#20010](https://github.com/pulumi/pulumi/pull/20010)
+
+- [cli/new] Fix the AI prompt flow of pulumi new command
+  [#19998](https://github.com/pulumi/pulumi/pull/19998)
+
+- [engine] Fix an issue where the engine would not issue creates and deletes in the correct order for delete before create replacements where dependencies had changed
+  [#19945](https://github.com/pulumi/pulumi/pull/19945)
+
+- [engine] Handle cancellation during construct
+  [#19976](https://github.com/pulumi/pulumi/pull/19976)
+
+- [engine] Run after delete hooks for component resources
+  [#20025](https://github.com/pulumi/pulumi/pull/20025)
+
+- [sdk/{go,nodejs,python}] Pass resource hooks through to construct
+  [#20016](https://github.com/pulumi/pulumi/pull/20016)
+
+- [sdkgen/go] Fix panic in SDK go generator for a map[string]map[string]union type
+  [#19731](https://github.com/pulumi/pulumi/pull/19731)
+
+- [sdk/python] Log safely in Python in the presence of `PULUMI_ERROR_OUTPUT_STRING`
+  [#18903](https://github.com/pulumi/pulumi/pull/18903)
+
+
+### Miscellaneous
+
+- [sdk/{go,nodejs,python}] Add PULUMI_AUTOMATION_API
+  [#19974](https://github.com/pulumi/pulumi/pull/19974)
+
+- [sdk/{go,nodejs,python}] Add type and name to ResourceHookArgs
+  [#20017](https://github.com/pulumi/pulumi/pull/20017)
+
 ## 3.181.0 (2025-06-27)
 
 ### Features

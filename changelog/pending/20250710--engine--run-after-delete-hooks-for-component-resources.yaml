@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Run after delete hooks for component resources
