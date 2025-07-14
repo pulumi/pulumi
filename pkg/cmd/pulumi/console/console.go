@@ -69,6 +69,11 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 					if err != nil {
 						return err
 					}
+					if stack == nil {
+						fmt.Printf("Stack '%s' does not exist. "+
+							"Run `pulumi stack init` to create a new stack.\n", ref.Name())
+						return nil
+					}
 				} else {
 					stack, err = state.CurrentStack(ctx, currentBackend)
 					if err != nil {
