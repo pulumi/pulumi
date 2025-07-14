@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Send `Cancel` message to analyzer plugins on engine shutdown
