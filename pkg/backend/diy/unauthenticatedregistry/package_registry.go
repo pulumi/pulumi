@@ -17,6 +17,7 @@ package unauthenticatedregistry
 import (
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"net/http"
 
@@ -69,4 +70,12 @@ func (r registryClient) GetTemplate(
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err
+}
+
+func (r registryClient) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	bytes, err := r.c.DownloadTemplate(ctx, downloadURL)
+	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+		return bytes, backenderr.NotFoundError{Err: err}
+	}
+	return bytes, err
 }
