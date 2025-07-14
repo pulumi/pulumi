@@ -74,6 +74,18 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(m encoding.Marshaler, bytes 
 		}
 
 		return &v3checkpoint, nil
+	case 4:
+		// Version 4 is unmarshaled to CheckpointV3.
+		var v3checkpoint apitype.CheckpointV3
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v3checkpoint); err != nil {
+			return nil, err
+		}
+
+		if err := validateSupportedFeatures(versionedCheckpoint.Features); err != nil {
+			return nil, err
+		}
+
+		return &v3checkpoint, nil
 	default:
 		return nil, fmt.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}

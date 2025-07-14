@@ -58,3 +58,28 @@ func TestLoadV3Checkpoint(t *testing.T) {
 	assert.NotNil(t, chk.Latest)
 	assert.Len(t, chk.Latest.Resources, 30)
 }
+
+func TestLoadV4Checkpoint(t *testing.T) {
+	t.Parallel()
+
+	bytes, err := os.ReadFile("testdata/checkpoint-v4.json")
+	require.NoError(t, err)
+
+	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
+	require.NoError(t, err)
+	assert.NotNil(t, chk.Latest)
+	assert.Len(t, chk.Latest.Resources, 30)
+}
+
+func TestLoadV4CheckpointUnsupportedFeature(t *testing.T) {
+	t.Parallel()
+
+	bytes, err := os.ReadFile("testdata/checkpoint-v4-unsupported-feature.json")
+	require.NoError(t, err)
+
+	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
+	require.Nil(t, chk)
+	var expectedErr *ErrDeploymentUnsupportedFeatures
+	require.ErrorAs(t, err, &expectedErr)
+	require.Equal(t, []string{"unsupported-feature"}, expectedErr.Features)
+}

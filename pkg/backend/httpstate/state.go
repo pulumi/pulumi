@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -221,11 +222,18 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 
 	snapshot, err := b.getSnapshot(ctx, secretsProvider, stackRef)
 	if err != nil {
-		switch err {
-		case stack.ErrDeploymentSchemaVersionTooOld:
+		var unsupportedErr *stack.ErrDeploymentUnsupportedFeatures
+
+		switch {
+		case errors.As(err, &unsupportedErr):
+			return nil, fmt.Errorf(
+				"the stack '%s' uses features that are not supported by this version of the Pulumi CLI: %s. "+
+					"Please update your version of the Pulumi CLI",
+				stackRef.Name(), strings.Join(unsupportedErr.Features, ", "))
+		case errors.Is(err, stack.ErrDeploymentSchemaVersionTooOld):
 			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
 				stackRef.Name())
-		case stack.ErrDeploymentSchemaVersionTooNew:
+		case errors.Is(err, stack.ErrDeploymentSchemaVersionTooNew):
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 				"Please update your version of the Pulumi CLI", stackRef.Name())
 		default:
