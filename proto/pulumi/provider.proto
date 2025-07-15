@@ -199,6 +199,7 @@ service ResourceProvider {
     // to the host to decide how long to wait after Cancel is called before (e.g.)
     // hard-closing any gRPC connection.
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 

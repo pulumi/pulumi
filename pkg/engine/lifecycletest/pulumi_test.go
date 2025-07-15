@@ -631,6 +631,36 @@ func TestProviderCancellation(t *testing.T) {
 	<-done
 }
 
+func TestLanguageRuntimeCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	gracefulShutdown := false
+	programF := func() plugin.LanguageRuntime {
+		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			time.Sleep(1 * time.Second)
+			cancel()
+
+			return nil
+		}, func() {
+			gracefulShutdown = true
+		})
+	}
+
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF)}
+
+	p := &lt.TestPlan{}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
+
+	op := lt.TestOp(Update)
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
+
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "BAIL: canceled")
+	assert.True(t, gracefulShutdown)
+}
+
 // Tests that a preview works for a stack with pending operations.
 func TestPreviewWithPendingOperations(t *testing.T) {
 	t.Parallel()
