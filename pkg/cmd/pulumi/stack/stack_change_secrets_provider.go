@@ -221,7 +221,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	}
 	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, secretsProvider)
 	if err != nil {
-		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
+		return stack.FormatDeploymentDeserializationError(err, currentStack.Ref().Name().String())
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager

@@ -449,15 +449,7 @@ func getCurrentDeploymentForStack(
 	}
 	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
-		switch err {
-		case stack.ErrDeploymentSchemaVersionTooOld:
-			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-				s.Ref().Name())
-		case stack.ErrDeploymentSchemaVersionTooNew:
-			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-				"Please update your version of the Pulumi CLI", s.Ref().Name())
-		}
-		return nil, fmt.Errorf("could not deserialize deployment: %w", err)
+		return nil, stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 	}
 	return snap, err
 }

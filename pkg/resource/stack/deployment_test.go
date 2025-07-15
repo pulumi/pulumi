@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
@@ -212,7 +213,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 	ctx := context.Background()
 
 	untypedDeployment := &apitype.UntypedDeployment{
-		Version: apitype.DeploymentSchemaVersionCurrent + 1,
+		Version: DeploymentSchemaVersionLatest + 1,
 	}
 
 	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
@@ -233,6 +234,50 @@ func TestLoadTooOldDeployment(t *testing.T) {
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
+}
+
+// TestUnsupportedFeature tests that an unsupported feature in the deployment errors as expected.
+func TestUnsupportedFeature(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	untypedDeployment := &apitype.UntypedDeployment{
+		Version: DeploymentSchemaVersionLatest,
+		Features: []string{
+			"unsupported-feature",
+		},
+	}
+
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
+	require.Nil(t, deployment)
+	var expectedErr *ErrDeploymentUnsupportedFeatures
+	require.ErrorAs(t, err, &expectedErr)
+	require.Equal(t, []string{"unsupported-feature"}, expectedErr.Features)
+}
+
+// TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.
+func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	for _, features := range combinations.All([]string{
+		"refreshBeforeUpdate",
+		"views",
+		"hooks",
+	}) {
+		t.Run(strings.Join(features, ","), func(t *testing.T) {
+			t.Parallel()
+
+			untypedDeployment := &apitype.UntypedDeployment{
+				Version:    DeploymentSchemaVersionLatest,
+				Features:   features,
+				Deployment: json.RawMessage("{}"),
+			}
+			deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
+			require.NoError(t, err)
+			require.NotNil(t, deployment)
+		})
+	}
 }
 
 func TestUnsupportedSecret(t *testing.T) {

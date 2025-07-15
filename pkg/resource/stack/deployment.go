@@ -43,6 +43,10 @@ const (
 	// be migrated to the current schema.
 	DeploymentSchemaVersionOldestSupported = 1
 
+	// DeploymentSchemaVersionLatest is the latest version of the `Deployment` schema.
+	// Any deployments newer than this version will be rejected.
+	DeploymentSchemaVersionLatest = 4
+
 	// computedValue is a magic number we emit for a value of a resource.Property value
 	// whenever we need to serialize a resource.Computed. (Since the real/actual value
 	// is not known.) This allows us to persist engine events and resource states that
@@ -58,7 +62,26 @@ var (
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
 	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
+
+	// supportedFeatures is a map of features that are currently supported.
+	// Any features not in this map will be rejected.
+	supportedFeatures = map[string]bool{
+		"refreshBeforeUpdate": true,
+		"views":               true,
+		"hooks":               true,
+	}
 )
+
+// ErrDeploymentUnsupportedFeatures is returned from `DeserializeDeployment` if the
+// untyped deployment being deserialized uses one or more features that are not supported.
+type ErrDeploymentUnsupportedFeatures struct {
+	// The unsupported features.
+	Features []string
+}
+
+func (e *ErrDeploymentUnsupportedFeatures) Error() string {
+	return "this stack's deployment needs support for the following features: " + strings.Join(e.Features, ", ")
+}
 
 var (
 	deploymentSchema    *jsonschema.Schema
@@ -83,6 +106,20 @@ func init() {
 	}
 	deploymentSchema = compiler.MustCompile(apitype.DeploymentSchemaID)
 	propertyValueSchema = compiler.MustCompile(apitype.PropertyValueSchemaID)
+}
+
+// validateSupportedFeatures validates that the features used in a deployment are supported.
+func validateSupportedFeatures(features []string) error {
+	var unsupported []string
+	for _, feature := range features {
+		if !supportedFeatures[feature] {
+			unsupported = append(unsupported, feature)
+		}
+	}
+	if len(unsupported) > 0 {
+		return &ErrDeploymentUnsupportedFeatures{Features: unsupported}
+	}
+	return nil
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
@@ -179,10 +216,17 @@ func UnmarshalUntypedDeployment(
 ) (*apitype.DeploymentV3, error) {
 	contract.Requiref(deployment != nil, "deployment", "must not be nil")
 	switch {
-	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
+	case deployment.Version > DeploymentSchemaVersionLatest:
 		return nil, ErrDeploymentSchemaVersionTooNew
 	case deployment.Version < DeploymentSchemaVersionOldestSupported:
 		return nil, ErrDeploymentSchemaVersionTooOld
+	}
+
+	// Check for unsupported features in deployments with version 4 and above.
+	if deployment.Version >= 4 {
+		if err := validateSupportedFeatures(deployment.Features); err != nil {
+			return nil, err
+		}
 	}
 
 	var v3deployment apitype.DeploymentV3
@@ -200,7 +244,8 @@ func UnmarshalUntypedDeployment(
 			return nil, err
 		}
 		v3deployment = migrate.UpToDeploymentV3(v2deployment)
-	case 3:
+	case 3, 4:
+		// Both version 3 and 4 can be unmarshaled into `DeploymentV3`.
 		if err := json.Unmarshal([]byte(deployment.Deployment), &v3deployment); err != nil {
 			return nil, err
 		}
@@ -717,4 +762,25 @@ func secretPropertyValueFromPlaintext(plaintext string) (resource.PropertyValue,
 		return resource.PropertyValue{}, err
 	}
 	return DeserializePropertyValue(elem, config.NopDecrypter)
+}
+
+// FormatDeploymentDeserializationError formats deployment-related errors into user-friendly messages.
+// It handles version compatibility errors and unsupported feature errors.
+func FormatDeploymentDeserializationError(err error, stackName string) error {
+	var unsupportedErr *ErrDeploymentUnsupportedFeatures
+
+	switch {
+	case errors.As(err, &unsupportedErr):
+		return fmt.Errorf(
+			"the stack '%s' uses features that are not supported by this version of the Pulumi CLI: %s. "+
+				"Please update your version of the Pulumi CLI",
+			stackName, strings.Join(unsupportedErr.Features, ", "))
+	case errors.Is(err, ErrDeploymentSchemaVersionTooOld):
+		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+			stackName)
+	case errors.Is(err, ErrDeploymentSchemaVersionTooNew):
+		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+			"Please update your version of the Pulumi CLI", stackName)
+	}
+	return fmt.Errorf("could not deserialize deployment: %w", err)
 }

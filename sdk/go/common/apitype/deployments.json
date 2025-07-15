@@ -12,6 +12,13 @@
         "deployment": {
             "description": "The deployment object.",
             "type": "object"
+        },
+        "features": {
+            "description": "A set of features this deployment object requires to be supported by Pulumi.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         }
     },
     "required": ["version", "deployment"],
