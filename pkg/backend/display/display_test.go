@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShowEvents(t *testing.T) {
@@ -35,10 +36,10 @@ func TestShowEvents(t *testing.T) {
 	events := make(chan engine.Event)
 	done := make(chan bool)
 	stack, err := tokens.ParseStackName("stack")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	eventLog, err := os.CreateTemp(t.TempDir(), "event-log-")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	go func() {
 		events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -71,7 +72,7 @@ func TestShowEvents(t *testing.T) {
 	assert.NotContains(t, stdout.String(), "this-is-filtered-from-display")
 
 	read, err := os.ReadFile(eventLog.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(read), "not-filtered")
 	assert.Contains(t, string(read), "this-is-filtered-from-display")
 }

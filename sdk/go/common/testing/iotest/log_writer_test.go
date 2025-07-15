@@ -116,7 +116,7 @@ func TestLogWriter(t *testing.T) {
 
 			for _, input := range tt.writes {
 				n, err := w.Write([]byte(input))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, len(input), n)
 			}
 

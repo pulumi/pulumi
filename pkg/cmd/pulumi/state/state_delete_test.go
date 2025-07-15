@@ -134,7 +134,7 @@ func TestStateDeleteURN(t *testing.T) {
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err := cmd.ExecuteContext(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
 		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"metadata":{}}`,
@@ -253,7 +253,7 @@ func TestStateDeleteProtected(t *testing.T) {
 
 	cmd.SetArgs([]string{"--force", "--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err = cmd.ExecuteContext(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
 		"{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"},\"metadata\":{}}",

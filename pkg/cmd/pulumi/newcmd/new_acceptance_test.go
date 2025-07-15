@@ -37,12 +37,12 @@ import (
 
 func chdir(t *testing.T, dir string) {
 	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir)) // Set directory
 	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		require.NoError(t, os.Chdir(cwd)) // Restore directory
 		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, cwd, restoredDir)
 	})
 }
@@ -73,13 +73,13 @@ func TestRegress13774(t *testing.T) {
 	// Create new project.
 	err := runNew(context.Background(), args)
 	defer removeStack(t, tempdir, args.stack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create new stack on an existing project.
 	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
 	err = runNew(context.Background(), args)
 	defer removeStack(t, tempdir, args.stack)
-	assert.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
+	require.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
 }
 
 //nolint:paralleltest // changes directory for process
@@ -103,7 +103,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, orgStackName)
@@ -136,7 +136,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p := loadProject(t, tempdir)
 	assert.NotNil(t, p)
@@ -166,7 +166,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, orgStackName)
@@ -190,7 +190,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
 
@@ -227,13 +227,13 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		yes:               true,
 	}
 
-	assert.NoError(t, runNew(context.Background(), args))
+	require.NoError(t, runNew(context.Background(), args))
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
 	_, err = os.Stat(filepath.Join(
 		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
@@ -264,18 +264,18 @@ func promptMock(name string, stackName string) promptForValueFunc {
 
 func loadProject(t *testing.T, dir string) *workspace.Project {
 	path, err := workspace.DetectProjectPathFrom(dir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	proj, err := workspace.LoadProject(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return proj
 }
 
 func currentUser(t *testing.T) string {
 	ctx := context.Background()
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	currentUser, _, _, err := b.CurrentUser()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return currentUser
 }
 
@@ -289,13 +289,13 @@ func removeStack(t *testing.T, dir, name string) {
 	project := loadProject(t, dir)
 	ctx := context.Background()
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, display.Options{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	stack, err := b.GetStack(context.Background(), ref)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = b.RemoveStack(context.Background(), stack, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func skipIfShortOrNoPulumiAccessToken(t *testing.T) {

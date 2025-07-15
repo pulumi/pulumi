@@ -284,11 +284,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	componentURN := newURN("component", "component", "")
 
 	providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	providerBRef, err := providers.NewReference(newProviderURN("pkgA", "providerB", componentURN), "id2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	providerCRef, err := providers.NewReference(newProviderURN("pkgC", "providerC", ""), "id1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	steps := []RegisterResourceEvent{
 		// Register a provider.
@@ -323,7 +323,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 
 	// Create and iterate an eval source.
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iter, err := NewEvalSource(
 		ctx,
@@ -332,12 +332,12 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 	).Iterate(context.Background(), &testProviderSource{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	processed := 0
 	for {
 		event, err := iter.Next()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if event == nil {
 			break
@@ -419,7 +419,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 
 	// Create and iterate an eval source.
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iter, err := NewEvalSource(
 		ctx,
@@ -428,12 +428,12 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 	).Iterate(context.Background(), &testProviderSource{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
 	for {
 		event, err := iter.Next()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if event == nil {
 			break
@@ -451,7 +451,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		if providers.IsProviderType(goal.Type) {
 			assert.Equal(t, "default", goal.Name)
 			ref, err := providers.NewReference(urn, id)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, ok := defaults[ref.String()]
 			assert.False(t, ok)
 			defaults[ref.String()] = struct{}{}
@@ -501,11 +501,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	}
 
 	providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	providerBRef, err := providers.NewReference(newProviderURN("pkgA", "providerB", ""), "id2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	providerCRef, err := providers.NewReference(newProviderURN("pkgC", "providerC", ""), "id1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	invokes := int32(0)
 	noopProvider := &deploytest.Provider{
@@ -527,33 +527,33 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
 		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", "")
-		assert.NoError(t, perr)
+		require.NoError(t, perr)
 		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
-		assert.NoError(t, perr)
+		require.NoError(t, perr)
 		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", "")
-		assert.NoError(t, perr)
+		require.NoError(t, perr)
 
 		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
-		assert.NoError(t, perr)
+		require.NoError(t, perr)
 		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "", "")
-		assert.NoError(t, perr)
+		require.NoError(t, perr)
 		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "", "")
-		assert.NoError(t, perr)
+		require.NoError(t, perr)
 
 		return nil
 	}
 
 	// Create and iterate an eval source.
 	ctx, err := newTestPluginContext(t, program)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iter, err := NewEvalSource(ctx, runInfo, nil, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	reads := 0
 	for {
 		event, err := iter.Next()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if event == nil {
 			break
 		}
@@ -603,35 +603,35 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	}
 
 	// Create and iterate an eval source.
 	ctx, err := newTestPluginContext(t, program)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
 	iter, err := NewEvalSource(ctx, runInfo, nil, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	reads, registers := 0, 0
 	for {
 		event, err := iter.Next()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if event == nil {
 			break
@@ -645,7 +645,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			assert.True(t, providers.IsProviderType(goal.Type))
 			assert.Equal(t, "default", goal.Name)
 			ref, err := providers.NewReference(urn, id)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, ok := providerSource.GetProvider(ref)
 			assert.False(t, ok)
 			providerSource.registerProvider(ref, noopProvider)
@@ -748,9 +748,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			providerBRef, err := providers.NewReference(newProviderURN("pkgB", "providerB", ""), "id2")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			expectedReads, expectedInvokes, expectedRegisters := 3, 3, 1
 			reads, invokes, registers := 0, int32(0), 0
@@ -780,9 +780,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
-				aErrorAssert := assert.NoError
+				aErrorAssert := require.NoError
 				if tt.expectFail {
-					aErrorAssert = assert.Error
+					aErrorAssert = require.Error
 				}
 				var aPkgProvider string
 				if tt.hasExplicit {
@@ -792,30 +792,30 @@ func TestDisableDefaultProviders(t *testing.T) {
 				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", "")
 				aErrorAssert(t, perr)
 				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
-				assert.NoError(t, perr)
+				require.NoError(t, perr)
 				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
-				assert.NoError(t, perr)
+				require.NoError(t, perr)
 
 				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")
 				aErrorAssert(t, perr)
 				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "", "")
-				assert.NoError(t, perr)
+				require.NoError(t, perr)
 				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
-				assert.NoError(t, perr)
+				require.NoError(t, perr)
 
 				return nil
 			}
 
 			// Create and iterate an eval source.
 			ctx, err := newTestPluginContext(t, program)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			iter, err := NewEvalSource(ctx, runInfo, nil, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			for {
 				event, err := iter.Next()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if event == nil {
 					break
 				}
@@ -1013,7 +1013,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 
 			evalSource := NewEvalSource(pluginCtx, runInfo, nil, nil, EvalSourceOptions{})
 			defer func() {
-				assert.NoError(t, evalSource.Close(), "close eval source")
+				require.NoError(t, evalSource.Close(), "close eval source")
 			}()
 
 			var got plugin.ConstructOptions
@@ -1106,37 +1106,37 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 // 		// Triggers pkgA, v0.18.0.
 // 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "0.18.0")
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 		// Uses pkgA's already-instantiated provider.
 // 		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "0.18.0")
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		// Triggers pkgC, v0.18.0.
 // 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "0.18.0")
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		// Uses pkgA and pkgC's already-instantiated provider.
 // 		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "0.18.0")
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "0.18.0")
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "0.18.0")
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		return nil
 // 	}
 
 // 	ctx, err := newTestPluginContext(program)
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 
 // 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
 // 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 // 	registrations, reads := 0, 0
 // 	for {
 // 		event, err := iter.Next()
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		if event == nil {
 // 			break
@@ -1151,7 +1151,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 			// The name of the provider resource is derived from the version requested.
 // 			assert.Equal(t, "default_0_18_0", goal.Name)
 // 			ref, err := providers.NewReference(urn, id)
-// 			assert.NoError(t, err)
+// 			require.NoError(t, err)
 // 			_, ok := providerSource.GetProvider(ref)
 // 			assert.False(t, ok)
 // 			providerSource.registerProvider(ref, noopProvider)
@@ -1202,31 +1202,31 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 		// Triggers pkgA, v0.18.1.
 // 		_, err := resmon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.1", nil)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		// Re-uses pkgA's already-instantiated provider.
 // 		_, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.1", nil)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		// Triggers pkgA, v0.18.2
 // 		_, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.2", nil)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 		return nil
 // 	}
 
 // 	ctx, err := newTestPluginContext(program)
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 
 // 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
 // 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 // 	registered181, registered182 := false, false
 // 	for {
 // 		event, err := iter.Next()
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		if event == nil {
 // 			break
@@ -1248,7 +1248,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 				}
 
 // 				ref, err := providers.NewReference(urn, id)
-// 				assert.NoError(t, err)
+// 				require.NoError(t, err)
 // 				_, ok := providerSource.GetProvider(ref)
 // 				assert.False(t, ok)
 // 				providerSource.registerProvider(ref, noopProvider)
@@ -1667,7 +1667,7 @@ func TestEvalSourceIterator(t *testing.T) {
 			}
 			evt, err := iter.Next()
 			assert.Nil(t, evt)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	})
 	t.Run("Abort", func(t *testing.T) {
@@ -1752,7 +1752,7 @@ func TestParseSourcePosition(t *testing.T) {
 				assert.ErrorContains(t, err, tt.errContains, result)
 				assert.Equal(t, tt.expected, result)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -1932,7 +1932,7 @@ func TestDefaultProviders(t *testing.T) {
 					},
 				}
 				res, err := d.shouldDenyRequest(providers.ProviderRequest{})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.False(t, res)
 			})
 			t.Run("invalid list", func(t *testing.T) {
@@ -2128,7 +2128,7 @@ func TestInvoke(t *testing.T) {
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "some-property", res.Failures[0].Property)
 		assert.Equal(t, "expect failure", res.Failures[0].Reason)
 		// Ensure the channel is read from.
@@ -2458,7 +2458,7 @@ func TestCall(t *testing.T) {
 			Version: "1.0.0",
 			Args:    args,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t,
 			map[string]interface{}{
 				"result": float64(100),
@@ -2579,7 +2579,7 @@ func TestReadResource(t *testing.T) {
 			Version:                 "1.0.0",
 			AdditionalSecretOutputs: []string{"foo"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		wg.Wait()
 	})
 	t.Run("resource monitor shut down while sending resource registration", func(t *testing.T) {
@@ -2939,7 +2939,7 @@ func TestRegisterResource(t *testing.T) {
 			Remote:  true,
 		}
 		res, err := rm.RegisterResource(context.Background(), req)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []string{
 			"untrusted-urn-1",
 		}, res.PropertyDependencies["expected-key-1"].Urns)
@@ -2978,7 +2978,7 @@ func TestRegisterResource(t *testing.T) {
 				},
 			}
 			_, err := rm.RegisterResource(context.Background(), req)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t,
 				[]string{"a", "b", "c"},
 				req.AdditionalSecretOutputs)
@@ -3147,7 +3147,7 @@ func TestValidationFailures(t *testing.T) {
 		}
 
 		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		req := &pulumirpc.RegisterResourceRequest{
 			Version: "1.0.0",

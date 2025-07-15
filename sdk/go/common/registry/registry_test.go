@@ -131,11 +131,10 @@ func TestOnDemandRegistry(t *testing.T) {
 
 		call := func() {
 			result, err := r.GetPackage(ctx, "src", "pub", "nm", nil)
-			if assert.NoError(t, err) {
-				assert.Equal(t, "src", result.Source)
-				assert.Equal(t, "pub", result.Publisher)
-				assert.Equal(t, "nm", result.Name)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, "src", result.Source)
+			assert.Equal(t, "pub", result.Publisher)
+			assert.Equal(t, "nm", result.Name)
 		}
 
 		call()

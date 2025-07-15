@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProvider(t *testing.T) {
@@ -45,15 +46,15 @@ func TestProvider(t *testing.T) {
 		t.Run("no CancelF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			assert.NoError(t, prov.SignalCancellation(context.Background()))
+			require.NoError(t, prov.SignalCancellation(context.Background()))
 		})
 	})
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		prov := &Provider{}
-		assert.NoError(t, prov.Close())
+		require.NoError(t, prov.Close())
 		// Ensure idempotent.
-		assert.NoError(t, prov.Close())
+		require.NoError(t, prov.Close())
 	})
 	t.Run("GetPluginInfo", func(t *testing.T) {
 		t.Parallel()
@@ -62,7 +63,7 @@ func TestProvider(t *testing.T) {
 			Version: semver.MustParse("1.0.0"),
 		}
 		info, err := prov.GetPluginInfo(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "expected-name", info.Name)
 		// Ensure reference is passed correctly.
 		assert.Equal(t, &prov.Version, info.Version)
@@ -95,7 +96,7 @@ func TestProvider(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
 			b, err := prov.GetSchema(context.Background(), plugin.GetSchemaRequest{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, []byte("{}"), b.Schema)
 		})
 	})
@@ -139,7 +140,7 @@ func TestProvider(t *testing.T) {
 				},
 				AllowUnknowns: true,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
 			// Should return the news.
 			assert.Equal(t, resource.NewStringProperty("expected-value"), resp.Properties["expected"])
@@ -248,7 +249,7 @@ func TestProvider(t *testing.T) {
 				Name:   "name",
 				Parent: resource.URN("<parent-urn>"),
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	})
 	t.Run("Invoke", func(t *testing.T) {
@@ -269,7 +270,7 @@ func TestProvider(t *testing.T) {
 			resp, err := prov.Invoke(context.Background(), plugin.InvokeRequest{
 				Tok: "expected-tok",
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.True(t, called)
 			assert.Equal(t, expectedPropertyMap, resp.Properties)
 		})
@@ -277,7 +278,7 @@ func TestProvider(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
 			resp, err := prov.Invoke(context.Background(), plugin.InvokeRequest{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
 			assert.Equal(t, resource.PropertyMap{}, resp.Properties)
 		})
@@ -358,7 +359,7 @@ func TestProvider(t *testing.T) {
 				},
 			}
 			_, err := prov.Call(context.Background(), plugin.CallRequest{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	})
 	t.Run("GetMapping", func(t *testing.T) {
@@ -383,7 +384,7 @@ func TestProvider(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
 			resp, err := prov.GetMapping(context.Background(), plugin.GetMappingRequest{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, "", resp.Provider)
 			assert.Nil(t, resp.Data)
 		})
@@ -406,7 +407,7 @@ func TestProvider(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
 			mappingStrs, err := prov.GetMappings(context.Background(), plugin.GetMappingsRequest{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Empty(t, mappingStrs)
 		})
 	})

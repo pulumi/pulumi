@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -77,13 +77,13 @@ func WriteYarnRCForTest(root string) error {
 func NewEnvironment(t *testing.T) *Environment {
 	//nolint:usetesting // We control the lifecycle of the environment.
 	root, err := os.MkdirTemp("", "test-env")
-	assert.NoError(t, err, "creating temp directory")
-	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
+	require.NoError(t, err, "creating temp directory")
+	require.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
 	// We always use a clean PULUMI_HOME for each environment to avoid any potential conflicts with plugins or config.
 	//nolint:usetesting // We control the lifecycle of the environment.
 	home, err := os.MkdirTemp("", "test-env-home")
-	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
+	require.NoError(t, err, "creating temp PULUMI_HOME directory")
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{

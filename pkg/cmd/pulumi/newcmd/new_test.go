@@ -108,7 +108,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, orgStackName)
@@ -133,7 +133,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, orgStackName)
@@ -160,7 +160,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, fullStackName)
@@ -185,7 +185,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
 
@@ -209,7 +209,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
 
@@ -296,7 +296,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, projectName, proj.Name.String())
@@ -327,7 +327,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, projectName, proj.Name.String())
@@ -578,7 +578,7 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 			t.Parallel()
 			err := compareStackProjectName(b, tt.stackRef, tt.projectName)
 			if tt.valid {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				assert.Error(t, err)
 			}
@@ -643,7 +643,7 @@ func TestProjectExists(t *testing.T) {
 			if tt.hasErr {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -682,7 +682,7 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 			}
 
 			err := runNew(context.Background(), args)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -699,7 +699,7 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t,
+	require.NoError(t,
 		validateProjectNameInternal(
 			context.Background(), b, "moolumi", "some-project-name", false /* generateOnly */, display.Options{},
 			func(s string) error {
@@ -709,7 +709,7 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 		))
 
 	var called bool
-	assert.NoError(t,
+	require.NoError(t,
 		validateProjectNameInternal(
 			context.Background(), b, "moolumi", "existing-project-name", false /* generateOnly */, display.Options{},
 			func(s string) error {
@@ -787,7 +787,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			}
 
 			err := runNew(context.Background(), args)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			proj := loadProject(t, tempdir)
 			require.NoError(t, err)
@@ -824,7 +824,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	require.NoError(t, err)
 	proj := loadProject(t, tempdir)

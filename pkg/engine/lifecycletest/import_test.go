@@ -106,7 +106,7 @@ func TestImportOption(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if readID != "" {
 			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", "")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		} else {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:   inputs,
@@ -155,7 +155,7 @@ func TestImportOption(t *testing.T) {
 			assert.True(t, seenUpdate, "expected to see an update after the import")
 			return err
 		}, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
 	assert.Equal(t, expectedOutputs, snap.Resources[1].Outputs)
@@ -178,7 +178,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
@@ -198,7 +198,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
@@ -221,7 +221,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// This should call update not read, which just returns the passed inputs as outputs.
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
 	assert.Equal(t, inputs, snap.Resources[1].Outputs)
@@ -246,7 +246,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "5")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now clear the ID to import and run an initial update to create a resource that we will import-replace.
 	importID, inputs["foo"] = "", resource.NewStringProperty("bar")
@@ -263,7 +263,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "6")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 	// This will have just called create which returns the inputs as outputs.
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
@@ -287,7 +287,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "7")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// This will have 'same'd so the inputs and outputs will be the same as the lat run with create.
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
 	assert.Equal(t, inputs, snap.Resources[1].Outputs)
@@ -316,7 +316,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "8")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
@@ -337,7 +337,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "9")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
@@ -364,7 +364,7 @@ func TestImportOption(t *testing.T) {
 			}
 			return err
 		}, "10")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
@@ -423,7 +423,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 			// The import ID is deliberately not the same as the ID returned from Read.
 			ImportID: resource.ID("import-id"),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -450,7 +450,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 			}
 			return err
 		}, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
@@ -466,7 +466,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 			}
 			return err
 		}, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestImportUpdatedID(t *testing.T) {
@@ -500,7 +500,7 @@ func TestImportUpdatedID(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			ImportID: importID,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, actualID, resp.ID)
 		return nil
 	})
@@ -628,7 +628,7 @@ func TestImportPlan(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -640,7 +640,7 @@ func TestImportPlan(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Run an import.
 	snap, err = lt.ImportOp([]deploy.Import{{
@@ -649,7 +649,7 @@ func TestImportPlan(t *testing.T) {
 		ID:   "imported-id",
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
 
 	// Import should save the ID, inputs and outputs
@@ -706,7 +706,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 			ImportID:      "import-id",
 			IgnoreChanges: []string{"foo"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -717,7 +717,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[1].Outputs["foo"])
@@ -774,7 +774,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 		require.NoError(t, err)
 
 		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -786,7 +786,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Run an import with a different ID. This should fail.
 	_, err = lt.ImportOp([]deploy.Import{{
@@ -809,7 +809,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 			return err
 		}, "2")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }
 
@@ -863,7 +863,7 @@ func TestImportPlanEmptyState(t *testing.T) {
 		ID:   "imported-id",
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }
 
@@ -905,7 +905,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -917,7 +917,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	snap, err = lt.ImportOp([]deploy.Import{{
 		Type:     "pkgA:m:typA",
@@ -926,7 +926,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 		Provider: p.NewProviderURN("pkgA", "provA", ""),
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }
 
@@ -986,7 +986,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -998,7 +998,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Import specifying to use just foo and frob
 	snap, err = lt.ImportOp([]deploy.Import{{
@@ -1009,7 +1009,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 		Properties: []string{"foo", "frob"},
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 
 	// We should still have the baz output but will be missing its input
@@ -1075,7 +1075,7 @@ func TestImportIntoParent(t *testing.T) {
 		},
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
 }
 
@@ -1133,7 +1133,7 @@ func TestImportComponent(t *testing.T) {
 		},
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
 
 	// Ensure that the resource 2 is the component.
@@ -1207,7 +1207,7 @@ func TestImportRemoteComponent(t *testing.T) {
 		},
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 5)
 
 	// Ensure that the resource 3 is the component.
@@ -1271,7 +1271,7 @@ func TestImportInputDiff(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: upInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1292,7 +1292,7 @@ func TestImportInputDiff(t *testing.T) {
 			lt.AssertDisplay(t, events, filepath.Join("testdata", "output", t.Name(), "import"))
 			return err
 		}, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// 3 because Import magic's up a Stack resource.
 	assert.Len(t, snap.Resources, 3)
 
@@ -1308,7 +1308,7 @@ func TestImportInputDiff(t *testing.T) {
 			lt.AssertDisplay(t, events, filepath.Join("testdata", "output", t.Name(), "up"))
 			return err
 		}, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Update should have updated to the new inputs from the program.
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[1].ID)
@@ -1381,7 +1381,7 @@ func TestImportDefaultProvider(t *testing.T) {
 		ID:   "imported-id",
 	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 
 	// The default provider should have been created with the expected version.

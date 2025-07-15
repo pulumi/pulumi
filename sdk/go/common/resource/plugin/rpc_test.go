@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -41,14 +42,14 @@ func TestAssetSerialize(t *testing.T) {
 	text := "a test asset"
 	pk := resource.PropertyKey("a test asset uri")
 	anAsset, err := asset.FromText(text)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, text, anAsset.Text)
 	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", anAsset.Hash)
 	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(anAsset), MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Logf("%v", assetProps)
 	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, assetValue.IsAsset())
 	assetDes := assetValue.AssetValue()
 	assert.True(t, assetDes.IsText())
@@ -77,7 +78,7 @@ func TestAssetSerialize(t *testing.T) {
 	setProperty(pk, assetProps, resource.AssetURIProperty, "")
 
 	arch, err := archive.FromAssets(map[string]interface{}{"foo": anAsset})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	switch runtime.Version() {
 	case "go1.9":
 		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
@@ -86,9 +87,9 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", arch.Hash)
 	}
 	archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	archValue, err := UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, archValue.IsArchive())
 	archDes := archValue.ArchiveValue()
 	assert.True(t, archDes.IsAssets())
@@ -135,9 +136,9 @@ func TestComputedSerialize(t *testing.T) {
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.Input().Element.IsString())
 	}
@@ -145,9 +146,9 @@ func TestComputedSerialize(t *testing.T) {
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.Input().Element.IsNumber())
 	}
@@ -163,14 +164,14 @@ func TestComputedSkip(t *testing.T) {
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, cprop)
 	}
 	{
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, cprop)
 	}
 }
@@ -192,7 +193,7 @@ func TestComputedReject(t *testing.T) {
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), MarshalOptions{KeepUnknowns: true})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
 		assert.Nil(t, cpropU)
@@ -209,7 +210,7 @@ func TestAssetReject(t *testing.T) {
 	text := "a test asset"
 	pk := resource.PropertyKey("an asset URI")
 	asset, err := asset.FromText(text)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
@@ -217,14 +218,14 @@ func TestAssetReject(t *testing.T) {
 	}
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assetPropU, err := UnmarshalPropertyValue(pk, assetProps, opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
 		assert.Nil(t, assetPropU)
 	}
 
 	arch, err := archive.FromAssets(map[string]interface{}{"foo": asset})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), opts)
 		assert.EqualError(t, err, "unexpected Asset Archive property value for \"an asset URI\"")
@@ -232,7 +233,7 @@ func TestAssetReject(t *testing.T) {
 	}
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		archValue, err := UnmarshalPropertyValue(pk, archProps, opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"foo\"")
 		assert.Nil(t, archValue)
@@ -248,9 +249,9 @@ func TestUnsupportedSecret(t *testing.T) {
 	}))
 	pk := resource.PropertyKey("pk")
 	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	val, err := UnmarshalPropertyValue(pk, prop, MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, val.IsString())
 	assert.False(t, val.IsSecret())
 	assert.Equal(t, "foo", val.StringValue())
@@ -266,9 +267,9 @@ func TestSupportedSecret(t *testing.T) {
 	pk := resource.PropertyKey("pk")
 
 	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{KeepSecrets: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	val, err := UnmarshalPropertyValue(pk, prop, MarshalOptions{KeepSecrets: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, val.IsString())
 	assert.True(t, val.IsSecret())
 	assert.Equal(t, "foo", val.SecretValue().Element.StringValue())
@@ -283,7 +284,7 @@ func TestUnknownSig(t *testing.T) {
 	pk := resource.PropertyKey("pk")
 
 	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
 	assert.EqualError(t, err, "unrecognized signature 'foobar' in property map for \"pk\"")
 }
@@ -310,7 +311,7 @@ func TestSkipInternalKeys(t *testing.T) {
 		},
 	})
 	actual, err := MarshalProperties(props, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -749,7 +750,7 @@ func TestMarshalProperties(t *testing.T) {
 			t.Parallel()
 
 			actual, err := MarshalProperties(tt.props, tt.opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
@@ -763,40 +764,40 @@ func TestResourceReference(t *testing.T) {
 	rawProp := resource.MakeCustomResourceReference("fakeURN", "fakeID", "fakeVersion")
 	pk := resource.PropertyKey("pk")
 	prop, err := MarshalPropertyValue(pk, rawProp, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	actual, err := UnmarshalPropertyValue(pk, prop, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, rawProp, *actual)
 
 	// Test unmarshaling as an ID
 	opts.KeepResources = false
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
 
 	// Test marshaling as an ID
 	prop, err = MarshalPropertyValue(pk, rawProp, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	opts.KeepResources = true
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
 
 	// Test unmarshaling as a URN
 	rawProp = resource.MakeComponentResourceReference("fakeURN", "fakeVersion")
 	prop, err = MarshalPropertyValue(pk, rawProp, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	opts.KeepResources = false
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
 
 	// Test marshaling as a URN
 	prop, err = MarshalPropertyValue(pk, rawProp, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	opts.KeepResources = true
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
 }
 
@@ -870,9 +871,9 @@ func TestOutputValueRoundTrip(t *testing.T) {
 
 			opts := MarshalOptions{KeepOutputValues: true}
 			prop, err := MarshalPropertyValue("", tt.raw, opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			actual, err := UnmarshalPropertyValue("", prop, opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.raw, *actual)
 		})
 	}
@@ -1156,7 +1157,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 			t.Parallel()
 
 			actual, err := MarshalPropertyValue("", tt.raw, tt.opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
@@ -1586,7 +1587,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 			t.Parallel()
 
 			prop, err := UnmarshalPropertyValue("", tt.raw, tt.opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, prop)
 		})
 	}
@@ -1811,7 +1812,7 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 			t.Parallel()
 
 			actual, err := MarshalProperties(tt.props, tt.opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
@@ -1833,9 +1834,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		prop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsOutput())
 		assert.False(t, propU.OutputValue().Known)
 		assert.False(t, propU.OutputValue().Secret)
@@ -1844,9 +1845,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		prop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsOutput())
 		assert.False(t, propU.OutputValue().Known)
 		assert.False(t, propU.OutputValue().Secret)
@@ -1858,9 +1859,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		prop, err := MarshalPropertyValue(pk,
 			resource.NewSecretProperty(
 				&resource.Secret{Element: elem}), upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsOutput())
 		assert.True(t, propU.OutputValue().Known)
 		assert.True(t, propU.OutputValue().Secret)
@@ -1871,9 +1872,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		prop, err := MarshalPropertyValue(pk,
 			resource.NewSecretProperty(
 				&resource.Secret{Element: elem}), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsOutput())
 		assert.True(t, propU.OutputValue().Known)
 		assert.True(t, propU.OutputValue().Secret)
@@ -1887,9 +1888,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 			ID:  resource.MakeComputed(resource.NewStringProperty("")),
 		}
 		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsResourceReference())
 		assert.Equal(t, elem.URN, propU.ResourceReferenceValue().URN)
 		id := propU.ResourceReferenceValue().ID
@@ -1902,9 +1903,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 			ID:  resource.MakeComputed(resource.NewStringProperty("")),
 		}
 		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsResourceReference())
 		assert.Equal(t, elem.URN, propU.ResourceReferenceValue().URN)
 		id := propU.ResourceReferenceValue().ID
@@ -1933,7 +1934,7 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		}
 
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, propU.IsResourceReference())
 		assert.Equal(t, resource.URN(urn), propU.ResourceReferenceValue().URN)
 		id := propU.ResourceReferenceValue().ID

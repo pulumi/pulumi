@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,10 +36,10 @@ config:
 	require.NoError(t, err)
 	var projectStack ProjectStack
 	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestUnmarshalTime(t *testing.T) {
@@ -54,10 +53,10 @@ config:
 	require.NoError(t, err)
 	var projectStack ProjectStack
 	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestNoEmptyValueWarning(t *testing.T) {

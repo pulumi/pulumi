@@ -130,7 +130,7 @@ func TestManyGets(t *testing.T) {
 			defer wg.Done()
 
 			got, err := ps.Promise().Result(ctx)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, 42, got)
 		}()
 	}
@@ -184,7 +184,7 @@ func TestTryResult(t *testing.T) {
 	// TryResult should now return true and the result.
 	i, err, ok := p.TryResult()
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 42, i)
 }
 
@@ -212,7 +212,7 @@ func TestTryResultRace(t *testing.T) {
 
 	// Wait for the result promise.
 	i, err := result.Result(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 42, i)
 }
 

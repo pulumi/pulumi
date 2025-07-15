@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
@@ -129,7 +130,7 @@ func TestRemoteLifecycle(t *testing.T) {
 	randomSuffix := func() string {
 		b := make([]byte, 4)
 		_, err := rand.Read(b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return hex.EncodeToString(b)
 	}
 

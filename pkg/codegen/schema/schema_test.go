@@ -683,11 +683,11 @@ func TestImportResourceRef(t *testing.T) {
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
 				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 				AllowDanglingReferences: true,
@@ -707,7 +707,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
 	toURL := func(rawurl string) *url.URL {
 		parsed, err := url.Parse(rawurl)
-		assert.NoError(t, err, "failed to parse ref")
+		require.NoError(t, err, "failed to parse ref")
 
 		return parsed
 	}
@@ -873,7 +873,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	// No error as binding should work fine even with warnings
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
 	assert.Len(t, diags, 2)
 	for _, diag := range diags {
@@ -924,7 +924,7 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	// No error as binding should work fine even with warnings
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.NotNil(t, pkg)
 }
@@ -990,7 +990,7 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.NotNil(t, pkg)
 }
@@ -1086,7 +1086,7 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.NotNil(t, pkg)
 }
@@ -1146,7 +1146,7 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	// No error as binding should work fine even with warnings
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, pkg)
 	// assert that there is 1 warning in the diagnostics because of using ID as a property
 	assert.Len(t, diags, 1)
@@ -1198,7 +1198,7 @@ func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assert.NotNil(t, pkg)
 }
@@ -1543,7 +1543,7 @@ func TestReplaceOnChanges(t *testing.T) {
 			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
-			assert.NoError(t, err, "Import should be successful")
+			require.NoError(t, err, "Import should be successful")
 			resource, found := pkg.GetResource(tt.resource)
 			assert.True(t, found, "The resource should exist")
 			replaceOnChanges, errListErrors := resource.ReplaceOnChanges()
@@ -1845,7 +1845,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		},
 	}
 	pspec, err := p.MarshalSpec()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, ok := pspec.Resources[r.Token]
 	assert.True(t, ok)
 	assert.Contains(t, res.Language, "csharp")
@@ -2569,7 +2569,7 @@ func TestFunctionToken(t *testing.T) {
 				AllowDanglingReferences: true,
 			})
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, diags)
 
 			// Test marshaling

@@ -39,11 +39,11 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	doTest := func(marshal func(interface{}) ([]byte, error), unmarshal func([]byte, interface{}) error) {
 		ri := NewProjectRuntimeInfo("nodejs", nil)
 		byts, err := marshal(ri)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var riRountrip ProjectRuntimeInfo
 		err = unmarshal(byts, &riRountrip)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Nil(t, riRountrip.Options())
 
@@ -52,9 +52,9 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 			"stringOption": "hello",
 		})
 		byts, err = marshal(ri)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = unmarshal(byts, &riRountrip)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Equal(t, true, riRountrip.Options()["typescript"])
 		assert.Equal(t, "hello", riRountrip.Options()["stringOption"])
@@ -80,7 +80,7 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	// Test success
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
@@ -135,7 +135,7 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 
 	project.Config = validConfig
 	err := project.Validate()
-	assert.NoError(t, err, "There should be no validation error")
+	require.NoError(t, err, "There should be no validation error")
 
 	// validValues = ["hello"]
 	validValues := make([]interface{}, 0)
@@ -161,15 +161,15 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	}
 	project.Config = validConfigWithArray
 	err = project.Validate()
-	assert.NoError(t, err, "There should be no validation error")
+	require.NoError(t, err, "There should be no validation error")
 }
 
 func writeAndLoad(t *testing.T, str string) (*Project, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(str), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return LoadProject(path)
 }
 
@@ -263,7 +263,7 @@ func TestProjectLoadJSON(t *testing.T) {
 		proj, err := writeAndLoad(t, "{\"name\": \"project\", \"runtime\": \"test\"}")
 
 		// Assert.
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tokens.PackageName("project"), proj.Name)
 		assert.Equal(t, "test", proj.Runtime.Name())
 	})
@@ -276,7 +276,7 @@ func TestProjectLoadJSON(t *testing.T) {
 			"\"description\": null, \"main\": null, \"backend\": null}")
 
 		// Assert.
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, proj.Description)
 		assert.Equal(t, "", proj.Main)
 	})
@@ -405,26 +405,26 @@ func TestProjectLoadJSONInformativeErrors(t *testing.T) {
 func deleteFile(t *testing.T, file *os.File) {
 	if file != nil {
 		err := os.Remove(file.Name())
-		assert.NoError(t, err, "Error while deleting file")
+		require.NoError(t, err, "Error while deleting file")
 	}
 }
 
 func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProject(path)
 }
 
 func loadProjectStackFromText(t *testing.T, sink diag.Sink, project *Project, content string) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProjectStack(sink, project, path)
 }
@@ -436,10 +436,10 @@ func loadProjectStackFromJSONText(
 	content string,
 ) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProjectStack(sink, project, path)
 }
@@ -480,7 +480,7 @@ config:
   `
 
 	project, err := loadProjectFromText(t, projectContent)
-	assert.NoError(t, err, "Should be able to load the project")
+	require.NoError(t, err, "Should be able to load the project")
 	assert.Equal(t, 9, len(project.Config), "There are 9 config type definition")
 	// full integer config schema
 	integerSchemFull, ok := project.Config["integerSchemaFull"]
@@ -554,24 +554,24 @@ config:
 
 func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 	parsedKey, err := config.ParseKey(key)
-	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
+	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	value, valueError := configValue.Value(config.NopDecrypter)
-	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
 	return value
 }
 
 func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) interface{} {
 	parsedKey, err := config.ParseKey(key)
-	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
+	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	valueJSON, valueError := configValue.Value(config.NopDecrypter)
-	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
 	var value interface{}
 	err = json.Unmarshal([]byte(valueJSON), &value)
-	assert.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
+	require.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
 	return value
 }
 
@@ -590,13 +590,13 @@ config:
   test:instanceSize: t4.large`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -605,7 +605,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 
 	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
@@ -630,13 +630,13 @@ config:
   test:instanceSize: t4.large`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -645,7 +645,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
@@ -669,13 +669,13 @@ config:
   instanceSize: t4.large`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -684,7 +684,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 
 	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
@@ -708,13 +708,13 @@ config:
   aws:region: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -723,7 +723,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "9999", getConfigValue(t, stack.Config, "test:instanceSize"))
@@ -746,13 +746,13 @@ config:
   aws:answer: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -761,7 +761,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t3.micro", getConfigValue(t, stack.Config, "test:instanceSize"))
@@ -782,13 +782,13 @@ config:
   instanceSize: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -797,7 +797,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "42", getConfigValue(t, stack.Config, "test:instanceSize"))
@@ -886,13 +886,13 @@ config:
   aws:whatever: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -901,7 +901,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "{\"hello\":\"world\"}", getConfigValue(t, stack.Config, "test:instanceSize"))
@@ -927,13 +927,13 @@ config:
 `
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -953,7 +953,7 @@ runtime: dotnet
 config: ./some/path`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	assert.Equal(t, "./some/path", project.StackConfigDir, "Stack config dir is read from the config property")
 	assert.Equal(t, 0, len(project.Config), "Config should be empty")
 }
@@ -1010,13 +1010,13 @@ config:
 
 	ctx := context.Background()
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1025,12 +1025,12 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "there should no config type error")
+	require.NoError(t, configError, "there should no config type error")
 
 	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError = ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1057,13 +1057,13 @@ config:
 	projectStackYaml := ``
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1091,13 +1091,13 @@ config:
 	projectStackYaml := ``
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1127,13 +1127,13 @@ config:
 	projectStackYaml := ``
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1158,13 +1158,13 @@ config:
   another: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1189,7 +1189,7 @@ config:
 
 	crypter := config.Base64Crypter
 	encryptedValue, err := crypter.EncryptValue(context.Background(), "20")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	projectStackYamlValid := fmt.Sprintf(`
 config:
@@ -1204,13 +1204,13 @@ config:
 
 	ctx := context.Background()
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1219,12 +1219,12 @@ config:
 		stack.Config,
 		crypter,
 		crypter)
-	assert.NoError(t, configError, "there should no config type error")
+	require.NoError(t, configError, "there should no config type error")
 
 	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError = ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1362,13 +1362,13 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test success
 	proj, err := loadProjectFromText(t, "name: project\nruntime: test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
 
 	// Test null optionals should work
 	proj, err = loadProjectFromText(t, "name: project\nruntime: test\ndescription:\nmain: null\nbackend:\n")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, proj.Description)
 	assert.Equal(t, "", proj.Main)
 }
@@ -1917,13 +1917,13 @@ config:
   test:instanceSize: 18446744073709551615`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1932,7 +1932,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 
 	assert.Equal(t, 1, len(stack.Config), "Stack config now has three values")
 	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
@@ -1960,7 +1960,7 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Serialize to JSON
 		bytes, err := json.Marshal(proj)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Verify JSON contains the expected package formats
 		jsonStr := string(bytes)
@@ -1972,7 +1972,7 @@ func TestPackageValueSerialization(t *testing.T) {
 		// Deserialize back
 		var newProj Project
 		err = json.Unmarshal(bytes, &newProj)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Verify packages were correctly deserialized
 		specs := newProj.GetPackageSpecs()
@@ -2006,7 +2006,7 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Serialize to YAML
 		bytes, err := yaml.Marshal(proj)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Verify YAML contains the expected package formats
 		yamlStr := string(bytes)
@@ -2022,7 +2022,7 @@ func TestPackageValueSerialization(t *testing.T) {
 		// Deserialize back
 		var newProj Project
 		err = yaml.Unmarshal(bytes, &newProj)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Verify packages were correctly deserialized
 		specs := newProj.GetPackageSpecs()

@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStackName_AcceptsValidInput(t *testing.T) {
@@ -39,7 +40,7 @@ func TestParseStackName_AcceptsValidInput(t *testing.T) {
 
 		// Assert.
 		assert.Equal(t, tt, sn.String())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -123,7 +124,7 @@ func TestStackNameValidation_CanBeDisabled(t *testing.T) {
 	sn2, err := ParseStackName("")
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "", sn1.String())
 	assert.Equal(t, "", sn2.String())
 }

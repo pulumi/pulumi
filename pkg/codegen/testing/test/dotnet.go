@@ -21,7 +21,6 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -90,7 +89,7 @@ func GenerateDotnetBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 
 func GenerateDotnetYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram) {
 	err := os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "dotnet"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
@@ -160,9 +159,9 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 	// Clean up build result
 	defer func() {
 		err = os.RemoveAll(filepath.Join(dir, "bin"))
-		assert.NoError(t, err, "Failed to remove bin result")
+		require.NoError(t, err, "Failed to remove bin result")
 		err = os.RemoveAll(filepath.Join(dir, "obj"))
-		assert.NoError(t, err, "Failed to remove obj result")
+		require.NoError(t, err, "Failed to remove obj result")
 	}()
 	typeCheckDotnet(t, path, dependencies, pulumiSDKPath)
 }

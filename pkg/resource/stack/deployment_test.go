@@ -117,7 +117,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	)
 
 	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// assert some things about the deployment record:
 	assert.NotNil(t, dep)
@@ -285,7 +285,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	}
 
 	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, resource.NewPropertyValue(map[string]interface{}{
 		"component-resource":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
@@ -298,7 +298,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Parallel()
 
 	textAsset, err := rasset.FromText("alpha beta gamma")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	strProp := resource.NewStringProperty("strProp")
 
@@ -395,7 +395,7 @@ func TestCustomSerialization(t *testing.T) {
 		t.Parallel()
 
 		serializedPropMap, err := SerializeProperties(context.Background(), propMap, config.BlindingCrypter, false /* showSecrets */)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Now JSON encode the results?
 		b, err := json.Marshal(serializedPropMap)
@@ -461,7 +461,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 			},
 		},
 	}, b64.Base64SecretsProvider)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDeserializeInvalidResourceErrors(t *testing.T) {
@@ -565,7 +565,7 @@ func TestSerializePropertyValue(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
 		_, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -578,13 +578,13 @@ func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 
 	secret := resource.MakeSecret(resource.NewStringProperty("secret"))
 	_, err := SerializePropertyValue(ctx, secret, crypter, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	secret = resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 		resource.MakeSecret(resource.NewStringProperty("secret")),
 	}))
 	_, err = SerializePropertyValue(ctx, secret, crypter, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDeserializePropertyValue(t *testing.T) {
@@ -593,7 +593,7 @@ func TestDeserializePropertyValue(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		v := ObjectValueGenerator(6).Draw(t, "property value")
 		_, err := DeserializePropertyValue(v, config.NopDecrypter)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -625,14 +625,14 @@ func TestPropertyValueSchema(t *testing.T) {
 		require.NoError(t, err)
 
 		err = propertyValueSchema.Validate(wireObject)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}))
 
 	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("synthetic", rapid.MakeCheck(func(t *rapid.T) {
 		wireObject := ObjectValueGenerator(6).Draw(t, "wire object")
 		err := propertyValueSchema.Validate(wireObject)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}))
 }
 

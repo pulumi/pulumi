@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type promptAssertion[T any, I any] struct {
@@ -184,7 +185,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "pulumi/test-repo", d.Deployment.DeploymentSettings.GitHub.Repository)
@@ -260,7 +261,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "pulumi/test-repo", d.Deployment.DeploymentSettings.GitHub.Repository)
@@ -333,7 +334,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", d.Deployment.DeploymentSettings.SourceContext.Git.RepoURL)
@@ -393,7 +394,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", d.Deployment.DeploymentSettings.SourceContext.Git.RepoURL)
@@ -457,7 +458,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git",
@@ -525,7 +526,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git",
@@ -646,7 +647,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
 		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
 		assert.Equal(t, "https://example.com/pulumi/test-repo.git", d.Deployment.DeploymentSettings.SourceContext.Git.RepoURL)
@@ -685,7 +686,7 @@ func TestDSConfigureAdvancedSettings(t *testing.T) {
 
 		err := configureAdvancedSettings(d)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, d.Deployment.DeploymentSettings.Operation.Options.SkipInstallDependencies)
 		assert.True(t, d.Deployment.DeploymentSettings.Operation.Options.SkipIntermediateDeployments)
 
@@ -726,7 +727,7 @@ func TestDSConfigureAdvancedSettings(t *testing.T) {
 
 		err := configureAdvancedSettings(d)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.False(t, d.Deployment.DeploymentSettings.Operation.Options.SkipInstallDependencies)
 		assert.False(t, d.Deployment.DeploymentSettings.Operation.Options.SkipIntermediateDeployments)
 
@@ -771,7 +772,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 
 		err := configureImageRepository(d)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "image_name",
 			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
 		assert.Equal(t, "user",
@@ -830,7 +831,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 
 		err := configureImageRepository(d)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "image_name_new",
 			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
 		assert.Equal(t, "user_new",
@@ -866,7 +867,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 
 		err := configureImageRepository(d)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "image_name", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
 		assert.Nil(t, d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials)
 

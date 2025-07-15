@@ -39,9 +39,9 @@ func TestIsVirtualEnv(t *testing.T) {
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
 	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = cmd.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert the new venv directory is a virtual environment.
 	assert.True(t, IsVirtualEnv(venvDir))
@@ -110,13 +110,13 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
 	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = cmd.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a requirements.txt file in the temp directory.
 	requirementsFile := filepath.Join(tempdir, "requirements.txt")
-	assert.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
 
 	// Create a command to run pip from the virtual environment.
 	pipCmd := VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-r", "requirements.txt")

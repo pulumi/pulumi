@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBatches(t *testing.T) {
@@ -47,7 +48,7 @@ func TestTranspiledExampleTestsCovered(t *testing.T) {
 	// Check that all synced tests from pulumi/yaml are in test list
 	syncDir := filepath.Join("testdata", transpiledExamplesDir)
 	untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiYAMLProgramTests)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Emptyf(t, untestedTranspiledExamples,
 		"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
 }

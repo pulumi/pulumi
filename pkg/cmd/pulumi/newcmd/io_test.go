@@ -80,7 +80,7 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 
 			err := ErrorIfNotEmptyDirectory(path)
 			if tt.ok {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				assert.Error(t, err)
 			}

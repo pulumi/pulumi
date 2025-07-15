@@ -485,7 +485,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 		[]Template{orgTemplate{t: template1, org: "org1", source: source, backend: cmdBackend.BackendInstance}},
 		template)
 	t.Cleanup(func() {
-		assert.NoError(t, source.Close())
+		require.NoError(t, source.Close())
 	})
 
 	wTemplate, err := template[0].Download(ctx)
@@ -571,7 +571,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	require.Len(t, template, 1)
 	assert.Equal(t, "name1", template[0].Name())
 	t.Cleanup(func() {
-		assert.NoError(t, source.Close())
+		require.NoError(t, source.Close())
 	})
 
 	wTemplate, err := template[0].Download(ctx)

@@ -26,6 +26,7 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client) {
@@ -67,7 +68,7 @@ func TestRetryPostHTTP2(t *testing.T) {
 		// Check that the body's content length matches the sent data.
 		defer r.Body.Close()
 		content, err := io.ReadAll(r.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, strconv.Itoa(len(content)), r.Header.Get("Content-Length"))
 
 		// Check the message matches.
@@ -85,10 +86,10 @@ func TestRetryPostHTTP2(t *testing.T) {
 	server, client := http2ServerAndClient(http.HandlerFunc(handler))
 
 	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	res, err := DoWithRetry(req, client)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer res.Body.Close()
 
 	// Check that the request succeeded on the second try.

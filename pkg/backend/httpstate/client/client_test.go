@@ -126,7 +126,7 @@ func TestAPIVersionResponses(t *testing.T) {
 		context.Background(), nil,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
@@ -152,7 +152,7 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 	})
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGzip(t *testing.T) {
@@ -172,7 +172,7 @@ func TestGzip(t *testing.T) {
 
 	// POST /import
 	_, err := client.ImportStackDeployment(context.Background(), identifier, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tok := updateTokenStaticSource("")
 
@@ -180,17 +180,17 @@ func TestGzip(t *testing.T) {
 	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, nil, tok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// POST /events/batch
 	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, apitype.EngineEventBatch{}, tok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// POST /events/batch
 	_, err = client.BatchDecryptValue(context.Background(), identifier, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
@@ -205,23 +205,23 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	var serializedDeployment json.RawMessage
 	serializedDeployment, err := json.Marshal(deployment)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	untypedDeployment, err := json.Marshal(apitype.UntypedDeployment{
 		Version:    3,
 		Deployment: serializedDeployment,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var request apitype.PatchUpdateVerbatimCheckpointRequest
 
 	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
 		reader, err := gzip.NewReader(req.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer reader.Close()
 
 		err = json.NewDecoder(reader).Decode(&request)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return "{}"
 	})
@@ -241,12 +241,12 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 				Stack: tokens.MustParseStackName("stack"),
 			},
 		}, sequenceNumber, indented, updateTokenStaticSource("token"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {
 		var buf bytes.Buffer
 		err := json.Compact(&buf, []byte(raw))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return buf.String()
 	}
 
@@ -266,7 +266,7 @@ func TestGetCapabilities(t *testing.T) {
 
 		c := newMockClient(s)
 		resp, err := c.GetCapabilities(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Empty(t, resp.Capabilities)
 	})
@@ -293,7 +293,7 @@ func TestGetCapabilities(t *testing.T) {
 
 		c := newMockClient(s)
 		resp, err := c.GetCapabilities(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Capabilities, 2)
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
@@ -361,7 +361,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 			Project: "project",
 			Stack:   stack,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.SourceContext)
 		assert.NotNil(t, resp.SourceContext.Git)
@@ -470,7 +470,7 @@ func TestGetDefaultOrg(t *testing.T) {
 
 		// THEN
 		// We should gracefully handle the 404
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Empty(t, resp.GitHubLogin)
 	})

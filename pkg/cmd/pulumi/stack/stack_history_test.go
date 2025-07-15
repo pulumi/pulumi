@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildUpdatesJSONWithFailedDecryptedSecureObject(t *testing.T) {
@@ -53,7 +53,7 @@ func TestBuildUpdatesJSONWithFailedDecryptedSecureObject(t *testing.T) {
 	}
 
 	_, err := buildUpdatesJSON(update, mockDecrypter)
-	assert.NoError(t, err, "Expected config to not error and substitute ERROR_UNABLE_TO_DECRYPT")
+	require.NoError(t, err, "Expected config to not error and substitute ERROR_UNABLE_TO_DECRYPT")
 }
 
 type failingDecrypter struct{}
