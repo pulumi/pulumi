@@ -180,7 +180,7 @@ class RefreshResult(BaseResult):
 
 
 class RenameResult(BaseResult):
-    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+    def __init__(self, stdout: str, stderr: str, summary: Optional[UpdateSummary]):
         super().__init__(stdout, stderr)
         self.summary = summary
 
@@ -769,7 +769,7 @@ class Stack:
         # https://github.com/pulumi/pulumi/issues/20020
         # After the rename is successful in the backend, the internal state of this
         # Stack object MUST be updated to reflect the new name
-        self.name = new_stack_name
+        self.name = stack_name
 
         # Summary can be None, this case can happen if the stack was empty and had no history.
         summary = self.info(show_secrets and not self._remote)
