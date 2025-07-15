@@ -1081,3 +1081,14 @@ func TestParallelCgroups(t *testing.T) {
 	// Assert that the limited parallel count is 4, i.e. 1 CPU x 4.
 	assert.Equal(t, 4, limitedParallel, "Expected --parallel=4 in limited CPU context")
 }
+
+// Test for https://github.com/pulumi/pulumi/issues/20035 check --stack missing doesn't panic for the console command
+func TestConsoleCommandMissingStack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stdout, _ := e.RunCommand("pulumi", "console", "--stack", "no-org/no-project/this-does-not-exist")
+	assert.Contains(t, stdout, "Stack 'this-does-not-exist' does not exist. Run `pulumi stack init` to create a new stack.")
+}
