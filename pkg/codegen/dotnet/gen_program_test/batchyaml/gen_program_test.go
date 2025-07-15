@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
@@ -30,7 +30,7 @@ func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
 
 	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	test.GenerateDotnetYAMLBatchTest(t, rootDir, dotnet.GenerateProgram)
 }

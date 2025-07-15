@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -69,7 +70,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 
 	// Get resource outputs for mock stack.
 	outs, err := client.GetStackResourceOutputs(context.Background(), "fakeStack")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify resource outputs for resc1.
 	resc1Actual, exists := outs[resource.PropertyKey(testURN(typ, "resc1"))]

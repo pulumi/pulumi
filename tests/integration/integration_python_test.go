@@ -678,7 +678,7 @@ func TestPythonPylint(t *testing.T) {
 			}
 
 			err := integration.RunCommand(t, "pylint", []string{pylint, "__main__.py"}, cwd, opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		},
 		Quick: true,
 	}
@@ -693,23 +693,23 @@ func TestPythonResourceArgs(t *testing.T) {
 
 	// Generate example library from schema.
 	schemaBytes, err := os.ReadFile(filepath.Join(testdir, "schema.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	var spec schema.PackageSpec
-	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
+	require.NoError(t, json.Unmarshal(schemaBytes, &spec))
 	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	outdir := filepath.Join(testdir, "lib")
-	assert.NoError(t, os.RemoveAll(outdir))
+	require.NoError(t, os.RemoveAll(outdir))
 	for f, contents := range files {
 		outfile := filepath.Join(outdir, f)
-		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
-		assert.NoError(t, os.WriteFile(outfile, contents, 0o600))
+		require.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
+		require.NoError(t, os.WriteFile(outfile, contents, 0o600))
 	}
-	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
 
 	// Test the program.
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1508,7 +1508,7 @@ func TestPackageAddPython(t *testing.T) {
 			if pm.usePyProject {
 				pyprojectToml := make(map[string]any)
 				_, err := toml.DecodeFile(filepath.Join(e.CWD, "pyproject.toml"), &pyprojectToml)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				path := strings.Split(pm.pyprojectPath, ".")
 				data := pyprojectToml
@@ -1528,13 +1528,13 @@ func TestPackageAddPython(t *testing.T) {
 				assert.Equal(t, "sdks/random", pf)
 			} else {
 				b1, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Contains(t, string(b1), filepath.Join("sdks", "random"))
 
 				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
 				_, _ = e.RunCommand("pulumi", "package", "add", "random")
 				b2, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
 				var sdksRandomCount int
 				for _, line := range lines {
@@ -1581,7 +1581,7 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir", "requirements.txt"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(b), filepath.Join("sdks", "supabase"))
 
 	// Check that `supabase` was installed
@@ -1597,7 +1597,7 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	e.CWD = e.RootPath
 	a := about{}
 	err = json.Unmarshal([]byte(out), &a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	found := false
 	depList := []string{}
 	for _, dep := range a.Dependencies {

@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRegisterResourceErrorsOnMissingPendingNew(t *testing.T) {
@@ -158,7 +159,7 @@ func TestStepExecutor(t *testing.T) {
 				URN: "urn:pulumi:some-urn",
 			}})
 			// Does not error.
-			assert.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
+			require.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
 				urn: notInPlan,
 			}))
 			assert.True(t, cancelCalled)

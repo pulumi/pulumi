@@ -248,7 +248,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	)
 	require.NoError(t, err, "creating console")
 	defer func() {
-		assert.NoError(t, console.Close(), "close console")
+		require.NoError(t, console.Close(), "close console")
 	}()
 
 	expect := func(t *testing.T, s string) {
@@ -283,12 +283,12 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 			Stdout: console.Tty(),
 			Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
 		}).Prompt(stacks, projects)
-		assert.NoError(t, err, "prompt failed")
+		require.NoError(t, err, "prompt failed")
 		assert.Equal(t, []tokens.Name{"foo-project", "", "baz-project"}, projects)
 
 		// We need to close the TTY after we're done here
 		// so that ExpectEOF unblocks.
-		assert.NoError(t, console.Tty().Close(), "close tty")
+		require.NoError(t, console.Tty().Close(), "close tty")
 	}()
 	defer func() {
 		select {
@@ -335,7 +335,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	// ExpectEOF blocks until the console reaches EOF on its input.
 	// This will happen when the widget exits and closes the TTY.
 	_, err = console.ExpectEOF()
-	assert.NoError(t, err, "expect EOF")
+	require.NoError(t, err, "expect EOF")
 }
 
 func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
@@ -348,8 +348,8 @@ func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
 	ptty, tty, err := pty.Open()
 	require.NoError(t, err, "creating pseudo-terminal")
 	defer func() {
-		assert.NoError(t, ptty.Close())
-		assert.NoError(t, tty.Close())
+		require.NoError(t, ptty.Close())
+		require.NoError(t, tty.Close())
 	}()
 
 	err = (&stateUpgradeProjectNameWidget{

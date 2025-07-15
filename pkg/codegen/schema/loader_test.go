@@ -436,6 +436,6 @@ func TestPartialPackageLanguage(t *testing.T) {
 	assert.True(t, tl.wasCalled)
 
 	unknownL, err := ref.Language("unknown")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, unknownL)
 }

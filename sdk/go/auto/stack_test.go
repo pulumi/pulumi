@@ -107,7 +107,7 @@ func TestUpdatePlans(t *testing.T) {
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
 	stackConfig.SecretsProvider = "passphrase"
-	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
+	require.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi preview --
 	tempFile, err := os.CreateTemp(t.TempDir(), "update_plan.json")
@@ -220,7 +220,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 
 	defer func() {
 		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
-		assert.NoError(t, err, "failed to remove stack.")
+		require.NoError(t, err, "failed to remove stack.")
 	}()
 
 	configFile := filepath.Join(stack.Workspace().WorkDir(), "test.yaml")
@@ -390,14 +390,14 @@ func TestPreviewImportResources(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	tempDir := t.TempDir()
 	importFilePath := filepath.Join(tempDir, "import.json")
 	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
 	err = os.WriteFile(importFilePath, resources, 0o600)
-	assert.NoError(t, err, "error writing file")
+	require.NoError(t, err, "error writing file")
 
 	// Act
 	result, err := s.ImportResources(ctx,

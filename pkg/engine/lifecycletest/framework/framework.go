@@ -272,7 +272,7 @@ func (op TestOp) runWithContext(
 	if !opts.SkipDisplayTests {
 		// base64 encode the name if it contains special characters
 		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, name); !ok && name != "" {
-			assert.NoError(opts.T, err)
+			require.NoError(opts.T, err)
 			name = base64.StdEncoding.EncodeToString([]byte(name))
 			if len(name) > 64 {
 				name = name[0:64]
@@ -284,7 +284,7 @@ func (op TestOp) runWithContext(
 			testName = strings.ReplaceAll(testName, "]", "_")
 			testName = strings.ReplaceAll(testName, `"`, "_")
 			if ok, _ := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
-				assert.NoError(opts.T, err)
+				require.NoError(opts.T, err)
 				testName = base64.StdEncoding.EncodeToString([]byte(testName))
 			}
 		}
@@ -655,7 +655,7 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 				continue
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		var err error

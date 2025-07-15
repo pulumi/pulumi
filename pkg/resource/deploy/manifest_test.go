@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestManifest(t *testing.T) {
@@ -77,7 +78,7 @@ func TestManifest(t *testing.T) {
 						},
 					},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, apitype.ManifestV1{
 					Plugins: []apitype.PluginInfoV1{
 						{Name: "plugin", Path: "", Type: "", Version: "1.0.0"},
@@ -89,7 +90,7 @@ func TestManifest(t *testing.T) {
 				m, err := DeserializeManifest(apitype.ManifestV1{
 					Plugins: []apitype.PluginInfoV1{},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, apitype.ManifestV1{
 					Plugins: nil,
 				}, m.Serialize())

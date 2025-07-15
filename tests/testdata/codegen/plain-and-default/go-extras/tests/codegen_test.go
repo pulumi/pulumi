@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mocks int
@@ -46,7 +47,7 @@ func TestDefaults(t *testing.T) {
 		output, err := foo.NewModuleResource(ctx, "test", &foo.ModuleResourceArgs{
 			OptionalBool: pulumi.Bool(false),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equalf(t, *waitOut(t, output.OptionalBool).(*bool), false,
 			"Value has been set to false, make sure it doesn't change.")
 		return nil
@@ -56,7 +57,7 @@ func TestDefaults(t *testing.T) {
 		output, err := foo.NewModuleResource(ctx, "test", &foo.ModuleResourceArgs{
 			OptionalBool: pulumi.Bool(true),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equalf(t, *waitOut(t, output.OptionalBool).(*bool), true,
 			"Value has been set to true, make sure it doesn't change.")
 		return nil
@@ -64,7 +65,7 @@ func TestDefaults(t *testing.T) {
 
 	pulumiTest(t, "default value", func(ctx *pulumi.Context) error {
 		output, err := foo.NewModuleResource(ctx, "test", &foo.ModuleResourceArgs{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equalf(t, *waitOut(t, output.OptionalBool).(*bool), true,
 			"Default value is true, and the value has not been specified")
 		return nil
@@ -74,15 +75,13 @@ func TestDefaults(t *testing.T) {
 func pulumiTest(t *testing.T, name string, testBody func(*pulumi.Context) error) {
 	t.Run(name, func(t *testing.T) {
 		err := pulumi.RunErr(testBody, pulumi.WithMocks("project", "stack", mocks(0)))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
 func waitOut(t *testing.T, output pulumi.Output) interface{} {
 	result, err := waitOutput(output, 1*time.Second)
-	if !assert.NoError(t, err, "output not received") {
-		return nil
-	}
+	require.NoError(t, err, "output not received")
 	return result
 }
 

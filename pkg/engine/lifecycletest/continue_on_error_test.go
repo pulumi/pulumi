@@ -53,22 +53,22 @@ func TestDestroyContinueOnError(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "unrelated1", true, deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = monitor.RegisterResource("pkgA:m:typA", "unrelated2", true, deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resp.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "dependency", true, deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resp.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "anotherUnrelatedRes", true, deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -150,24 +150,24 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_FAIL, failingResp.Result)
 
 		failingResp2, err := monitor.RegisterResource("pkgB:m:typB", "failing2", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_FAIL, failingResp2.Result)
 
 		failingResp3, err := monitor.RegisterResource("pkgB:m:typB", "failing3", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_FAIL, failingResp3.Result)
 
 		respIndependent1, err := monitor.RegisterResource(
 			"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{SupportsResultReporting: true})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent1.Result)
 
 		respIndependent2, err := monitor.RegisterResource(
@@ -175,14 +175,14 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 				SupportsResultReporting: true,
 				Dependencies:            []resource.URN{respIndependent1.URN},
 			})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 		respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			Dependencies:            []resource.URN{respIndependent2.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
 
 		respDepOnFailing, err := monitor.RegisterResource(
@@ -190,7 +190,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 				SupportsResultReporting: true,
 				Dependencies:            []resource.URN{failingResp.URN},
 			})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, respDepOnFailing.Result)
 
 		return nil
@@ -280,7 +280,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 			SupportsResultReporting: true,
 			Inputs:                  ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if update {
 			assert.Equal(t, pulumirpc.Result_FAIL, resp.Result)
 		} else {
@@ -292,7 +292,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 			SupportsResultReporting: true,
 			Inputs:                  ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if update {
 			assert.Equal(t, pulumirpc.Result_FAIL, resp2.Result)
 		} else {
@@ -305,7 +305,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{
 					SupportsResultReporting: true,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent1.Result)
 
 			respIndependent2, err := monitor.RegisterResource(
@@ -313,14 +313,14 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 					SupportsResultReporting: true,
 					Dependencies:            []resource.URN{respIndependent1.URN},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 			respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
 				SupportsResultReporting: true,
 				Dependencies:            []resource.URN{respIndependent2.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
 		}
 
@@ -408,7 +408,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 			SupportsResultReporting: true,
 			Inputs:                  ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if update {
 			assert.Equal(t, pulumirpc.Result_FAIL, resp.Result)
 		} else {
@@ -421,7 +421,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{
 					SupportsResultReporting: true,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent1.Result)
 
 			respIndependent2, err := monitor.RegisterResource(
@@ -429,14 +429,14 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 					SupportsResultReporting: true,
 					Dependencies:            []resource.URN{respIndependent1.URN},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 			respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
 				SupportsResultReporting: true,
 				Dependencies:            []resource.URN{respIndependent2.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
 		}
 
@@ -508,7 +508,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 
 		respIndependent1, err := monitor.RegisterResource(
 			"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{SupportsResultReporting: false})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent1.Result)
 
 		respIndependent2, err := monitor.RegisterResource(
@@ -516,14 +516,14 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 				SupportsResultReporting: false,
 				Dependencies:            []resource.URN{respIndependent1.URN},
 			})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 		respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
 			SupportsResultReporting: false,
 			Dependencies:            []resource.URN{respIndependent2.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
 
 		return nil
@@ -586,7 +586,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 			assert.ErrorContains(t, err, "resource registration failed")
 			assert.Nil(t, resp)
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		if update {
@@ -594,20 +594,20 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{
 					SupportsResultReporting: false,
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			respIndependent2, err := monitor.RegisterResource(
 				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
 					SupportsResultReporting: false,
 					Dependencies:            []resource.URN{respIndependent1.URN},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
 				SupportsResultReporting: false,
 				Dependencies:            []resource.URN{respIndependent2.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -672,12 +672,12 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgB:m:typB", "failedUp", true, deploytest.ResourceOptions{
 				SupportsResultReporting: true,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		if !update {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "willBeDeleted", true, deploytest.ResourceOptions{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -783,46 +783,46 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 		parent, err := monitor.RegisterResource("pkgB:m:typB", "parent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_FAIL, parent.Result)
 
 		child, err := monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			Parent:                  parent.URN,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, child.Result)
 
 		deletedWith, err := monitor.RegisterResource("pkgB:m:typB", "deletedWith", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_FAIL, deletedWith.Result)
 
 		deletedWithDep, err := monitor.RegisterResource("pkgA:m:typA", "deletedWithDep", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			DeletedWith:             deletedWith.URN,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, deletedWithDep.Result)
 
 		propDep, err := monitor.RegisterResource("pkgB:m:typB", "propDep", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_FAIL, propDep.Result)
 
 		propDepChild, err := monitor.RegisterResource("pkgA:m:typA", "propDepChild", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			PropertyDeps:            map[resource.PropertyKey][]urn.URN{resource.PropertyKey("foo"): {propDep.URN}},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, propDepChild.Result)
 
 		independent, err := monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, independent.Result)
 
 		return nil
@@ -877,15 +877,15 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(resp.URN, resp.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -899,7 +899,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 
 	snap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 2)
 
@@ -924,10 +924,10 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provB", true, deploytest.ResourceOptions{
 			Version: "2.0.0",
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(resp.URN, resp.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),

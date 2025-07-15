@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newResource(name string) *resource.State {
@@ -59,7 +60,7 @@ func TestPendingOperationsDeployment(t *testing.T) {
 	})
 
 	_, err := NewDeployment(&plugin.Context{}, &Options{}, nil, &Target{}, snap, nil, NewNullSource("test"), nil, nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGlobUrn(t *testing.T) {

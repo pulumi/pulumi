@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 )
@@ -107,7 +108,7 @@ func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr
 	assert.NotEqual(t, -1, index)
 
 	v, err := convert.Convert(n.Val, cty.String)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if v.AsString() == "" || !assert.Len(t, tokens.Value, 1) {
 		return
 	}
@@ -235,7 +236,7 @@ func TestComments(t *testing.T) {
 
 	parser := NewParser()
 	err = parser.ParseFile(bytes.NewReader(contents), "comments_all.hcl")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, parser.Diagnostics, 0)
 

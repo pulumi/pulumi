@@ -54,9 +54,7 @@ func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
 
 func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
 	err := baseSnap.VerifyIntegrity()
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
 	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
@@ -116,19 +114,19 @@ func TestIdenticalSames(t *testing.T) {
 	same := deploy.NewSameStep(nil, nil, sameState, engineGeneratedSame)
 
 	mutation, err := manager.BeginMutation(same)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// No mutation was made
 	assert.Empty(t, sp.SavedSnapshots)
 
 	err = mutation.End(same, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Identical sames do not cause a snapshot mutation as part of `End`.
 	assert.Empty(t, sp.SavedSnapshots)
 
 	// Close must write the snapshot.
 	err = manager.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
@@ -149,9 +147,9 @@ func TestSamesWithEmptyDependencies(t *testing.T) {
 	resUpdated := NewResourceWithDeps(res.URN, []resource.URN{})
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(same, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
 }
 
@@ -161,7 +159,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	// Model reading from state file
 	state := map[string]interface{}{"defaults": []interface{}{}}
 	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	res := NewResourceWithInputs(aUniqueUrnResourceA, inputs)
 	snap := NewSnapshot([]*resource.State{
@@ -171,16 +169,16 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 
 	// Model passing into and back out of RPC layer (e.g. via `Check`)
 	marshalledInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	inputsUpdated, err := plugin.UnmarshalProperties(marshalledInputs, plugin.MarshalOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resUpdated := NewResourceWithInputs(res.URN, inputsUpdated)
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(same, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
 }
 
@@ -215,9 +213,9 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	// The engine first generates a Same for b:
 	bSame := deploy.NewSameStep(nil, nil, resourceB, resourceBUpdated)
 	mutation, err := manager.BeginMutation(bSame)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(bSame, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The snapshot should now look like this:
 	//   snapshot
@@ -235,9 +233,9 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	// The engine then generates a Same for a:
 	aSame := deploy.NewSameStep(nil, nil, resourceA, resourceAUpdated)
 	mutation, err = manager.BeginMutation(aSame)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(aSame, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The snapshot should now look like this:
 	//   snapshot
@@ -279,34 +277,34 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	provUpdated.Custom, provUpdated.Type = true, provider.Type
 	provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 	mutation, err := manager.BeginMutation(provSame)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = provSame.Apply()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(provSame, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
 	pUpdated := NewResource(resourceP.URN)
 	pUpdated.Protect = !resourceP.Protect
 	pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
 	mutation, err = manager.BeginMutation(pSame)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(pSame, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
 	aUpdated := NewResource(resourceA.URN)
 	aUpdated.Protect = !resourceA.Protect
 	aSame := deploy.NewSameStep(nil, nil, resourceA, aUpdated)
 	mutation, err = manager.BeginMutation(aSame)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(aSame, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// a `Close()` call is required to write back the snapshots.
 	// It is called in all of the references to SnapshotManager.
 	err = manager.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// DEFAULT behavior would cause more than 1 snapshot to be written,
 	// but the provided flag should only create 1 Snapshot
@@ -360,28 +358,28 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		provUpdated.Custom, provUpdated.Type = true, provider.Type
 		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 		mutation, err := manager.BeginMutation(provSame)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = provSame.Apply()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mutation.End(provSame, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, sp.SavedSnapshots)
 
 		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
 		pUpdated := NewResource(resourceP.URN)
 		pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
 		mutation, err = manager.BeginMutation(pSame)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mutation.End(pSame, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, sp.SavedSnapshots)
 
 		// The engine generates a Same for a. Because this is a meaningful change, the snapshot is written:
 		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
 		mutation, err = manager.BeginMutation(aSame)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mutation.End(aSame, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.NotEmpty(t, sp.SavedSnapshots)
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
@@ -392,7 +390,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.Equal(t, c, inSnapshot)
 
 		err = manager.Close()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Source position is not a meaningful change, and we batch them up for performance reasons
@@ -401,16 +399,16 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
 	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
 	mutation, err := manager.BeginMutation(sourceUpdatedSame)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = sourceUpdatedSame.Apply()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = mutation.End(sourceUpdatedSame, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, sp.SavedSnapshots)
 
 	// It should still write on close
 	err = manager.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
@@ -442,11 +440,11 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		provUpdated.Custom, provUpdated.Type = true, provider.Type
 		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 		mutation, err := manager.BeginMutation(provSame)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = provSame.Apply()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mutation.End(provSame, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, sp.SavedSnapshots)
 
 		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
@@ -454,21 +452,21 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		prov2Updated.Custom, prov2Updated.Type = true, provider.Type
 		prov2Same := deploy.NewSameStep(nil, nil, provider2, prov2Updated)
 		mutation, err = manager.BeginMutation(prov2Same)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = prov2Same.Apply()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mutation.End(prov2Same, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, sp.SavedSnapshots)
 
 		// The engine generates a Same for a. Because this is a meaningful change, the snapshot is written:
 		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
 		mutation, err = manager.BeginMutation(aSame)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, _, err = aSame.Apply()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mutation.End(aSame, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.NotEmpty(t, sp.SavedSnapshots)
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
@@ -477,7 +475,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.Equal(t, c, inSnapshot)
 
 		err = manager.Close()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -556,14 +554,10 @@ func TestVexingDeployment(t *testing.T) {
 	// the target of a Step that came before C, which depends on it.)
 	applyStep := func(step deploy.Step) {
 		mutation, err := manager.BeginMutation(step)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 
 		err = mutation.End(step, true)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 	}
 
 	// b now depends on nothing
@@ -635,14 +629,10 @@ func TestDeletion(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	err = mutation.End(step, true)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// the end mutation should mark the resource as "done".
 	// snap should then not put resourceA in the merged snapshot, since it has been deleted.
@@ -661,14 +651,10 @@ func TestFailedDelete(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	err = mutation.End(step, false /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// since we marked the mutation as not successful, the snapshot should still contain
 	// the resource we failed to delete.
@@ -685,9 +671,7 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the create step mutation should have placed a pending "creating" operation
 	// into the operations list
@@ -698,9 +682,7 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
 
 	err = mutation.End(step, true /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A successful creation should remove the "creating" operation from the operations list
 	// and persist the created resource in the snapshot.
@@ -718,9 +700,7 @@ func TestRecordingCreateFailure(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the create step mutation should have placed a pending "creating" operation
 	// into the operations list
@@ -731,9 +711,7 @@ func TestRecordingCreateFailure(t *testing.T) {
 	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
 
 	err = mutation.End(step, false /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A failed creation should remove the "creating" operation from the operations list
 	// and not persist the created resource in the snapshot.
@@ -756,9 +734,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the update mutation should have placed a pending "updating" operation into
 	// the operations list, with the resource's new inputs.
@@ -770,9 +746,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, true /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Completing the update should place the resource with the new inputs into the snapshot and clear the in
 	// flight operation.
@@ -797,9 +771,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the update mutation should have placed a pending "updating" operation into
 	// the operations list, with the resource's new inputs.
@@ -811,9 +783,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, false /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Failing the update should keep the old resource with old inputs in the snapshot while clearing the
 	// in flight operation.
@@ -834,9 +804,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the delete mutation should have placed a pending "deleting" operation into the operations list.
 	snap = sp.LastSnap()
@@ -846,9 +814,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	err = mutation.End(step, true /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A successful delete should remove the in flight operation and deleted resource from the snapshot.
 	snap = sp.LastSnap()
@@ -866,9 +832,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the delete mutation should have placed a pending "deleting" operation into the operations list.
 	snap = sp.LastSnap()
@@ -878,9 +842,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	err = mutation.End(step, false /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A failed delete should remove the in flight operation but leave the resource in the snapshot.
 	snap = sp.LastSnap()
@@ -900,9 +862,7 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, nil, resourceA)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list.
 	snap = sp.LastSnap()
@@ -911,9 +871,7 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	err = mutation.End(step, true /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A successful read should clear the in flight operation and put the new resource into the snapshot
 	snap = sp.LastSnap()
@@ -942,9 +900,7 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list
 	// with the inputs of the new read
@@ -957,9 +913,7 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, true /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A successful read should clear the in flight operation and replace the existing resource in the snapshot.
 	snap = sp.LastSnap()
@@ -980,9 +934,7 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, nil, resourceA)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list.
 	snap = sp.LastSnap()
@@ -991,9 +943,7 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	err = mutation.End(step, false /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A failed read should clear the in flight operation and leave the snapshot empty.
 	snap = sp.LastSnap()
@@ -1021,9 +971,7 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
 	mutation, err := manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list
 	// with the inputs of the new read
@@ -1036,9 +984,7 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, false /* successful */)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// A failed read should clear the in flight operation and leave the existing read in the snapshot with the
 	// old inputs.
@@ -1146,7 +1092,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	err := sm.saveSnapshot()
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
@@ -1169,7 +1115,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	err := sm.saveSnapshot()
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
@@ -1192,6 +1138,6 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	err := sm.saveSnapshot()
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }

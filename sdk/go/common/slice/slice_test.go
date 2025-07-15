@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrealloc(t *testing.T) {
@@ -94,7 +95,7 @@ func TestMapError(t *testing.T) {
 			assert.Fail(t, "should not be called")
 			return i, nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
@@ -106,7 +107,7 @@ func TestMapError(t *testing.T) {
 			assert.Fail(t, "should not be called")
 			return i, nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
@@ -116,7 +117,7 @@ func TestMapError(t *testing.T) {
 		input := []string{"1", "2", "3", "4"}
 		expected := []int{1, 2, 3, 4}
 		result, err := MapError(input, strconv.Atoi)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected, result)
 		assert.Equal(t, 4, cap(result))
 	})

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_checkMinimumGoVersion(t *testing.T) {
@@ -65,7 +66,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 			if tt.err != "" {
 				assert.EqualError(t, err, tt.err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

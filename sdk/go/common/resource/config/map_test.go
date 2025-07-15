@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -90,17 +91,17 @@ func TestMarshalMap(t *testing.T) {
 			t.Parallel()
 
 			yamlBytes, err := yaml.Marshal(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.ExpectedYAML, string(yamlBytes))
 			newYAMLMap, err := roundtripMapYAML(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Value, newYAMLMap)
 
 			jsonBytes, err := json.Marshal(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.ExpectedJSON, string(jsonBytes))
 			newJSONMap, err := roundtripMapJSON(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Value, newJSONMap)
 		})
 	}
@@ -219,34 +220,34 @@ func TestMarshalling(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		yamlBytes, err := yaml.Marshal(test.Value)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		t.Run(fmt.Sprintf("YAML: %s", yamlBytes), func(t *testing.T) {
 			t.Parallel()
 
 			var m Map
 			err := yaml.Unmarshal(yamlBytes, &m)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, m)
 
 			newM, err := roundtripMapYAML(m)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, m, newM)
 		})
 
 		jsonBytes, err := json.Marshal(test.Value)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		t.Run(fmt.Sprintf("JSON: %s", jsonBytes), func(t *testing.T) {
 			t.Parallel()
 
 			var m Map
 			err := json.Unmarshal(jsonBytes, &m)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, m)
 
 			newM, err := roundtripMapJSON(m)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, m, newM)
 		})
 	}
@@ -314,7 +315,7 @@ func TestDecrypt(t *testing.T) {
 
 			decrypter := NewBlindingDecrypter()
 			actual, err := test.Config.Decrypt(decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 
 			assert.Equal(t, len(test.SecureKeys) != 0, test.Config.HasSecureValue())
@@ -515,10 +516,10 @@ func TestGetSuccess(t *testing.T) {
 			t.Parallel()
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			v, ok, err := test.Config.Get(key, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if test.ExpectNotFound {
 				assert.False(t, ok)
 				assert.Equal(t, Value{}, v)
@@ -552,7 +553,7 @@ func TestGetFail(t *testing.T) {
 			config := make(Map)
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, found, err := config.Get(key, true /*path*/)
 			assert.False(t, found)
@@ -695,9 +696,9 @@ func TestRemoveSuccess(t *testing.T) {
 			t.Parallel()
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = test.Config.Remove(key, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, test.Config)
 		})
 	}
@@ -732,7 +733,7 @@ func TestRemoveFail(t *testing.T) {
 			t.Parallel()
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = test.Config.Remove(key, true /*path*/)
 			assert.EqualError(t, err, test.ExpectedError)
@@ -1238,10 +1239,10 @@ func TestSetSuccess(t *testing.T) {
 			}
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = test.Config.Set(key, test.Value, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, test.Config)
 		})
@@ -1351,7 +1352,7 @@ func TestSetFail(t *testing.T) {
 			}
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = test.Config.Set(key, NewValue("value"), true /*path*/)
 			assert.EqualError(t, err, test.ExpectedError)
@@ -1433,7 +1434,7 @@ func TestCopyMap(t *testing.T) {
 			t.Parallel()
 
 			newConfig, err := test.Config.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
 		})
@@ -1542,7 +1543,7 @@ func TestPropertyMap(t *testing.T) {
 
 			decrypter := nopCrypter{}
 			propMap, err := test.Config.AsDecryptedPropertyMap(context.Background(), decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, propMap)
 		})

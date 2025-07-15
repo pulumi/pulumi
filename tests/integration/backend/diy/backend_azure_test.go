@@ -19,7 +19,6 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +44,7 @@ func TestAzureLoginSasToken(t *testing.T) {
 
 	t.Cleanup(func() {
 		err := exec.Command("pulumi", "logout").Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	loginAndCreateStack(t, cloudURL)
 }
@@ -74,13 +73,13 @@ func TestAzureLoginAzLogin(t *testing.T) {
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
 		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		err := exec.Command("az", "logout").Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = exec.Command("pulumi", "logout").Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	loginAndCreateStack(t, cloudURL)

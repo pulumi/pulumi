@@ -66,7 +66,7 @@ func TestBuildTarget(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "go-build-target-test-stack")
 	e.RunCommand("pulumi", "preview")
 	_, err := os.Stat(filepath.Join(e.RootPath, "a.out"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // This checks that the Exit Status artifact from Go Run is not being produced
@@ -880,7 +880,7 @@ func TestTracePropagationGo(t *testing.T) {
 	integration.ProgramTest(t, opts)
 
 	store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi-update-initial.trace"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, store)
 
 	t.Run("traced `go list -m -json`", func(t *testing.T) {
@@ -897,7 +897,7 @@ func TestTracePropagationGo(t *testing.T) {
 				strings.Contains(m["args"], "list -m -json")
 		}
 		tr, err := FindTrace(store, isGoListTrace)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, tr)
 	})
 
@@ -912,7 +912,7 @@ func TestTracePropagationGo(t *testing.T) {
 			}
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 1, exportStackCounter)
 	})
 }
@@ -1291,9 +1291,9 @@ func TestPackageAddGo(t *testing.T) {
 	require.NotContains(t, stderr, "exited prematurely")
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify that the Pulumi.yaml file contains the random package with correct settings
 	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
@@ -1363,16 +1363,16 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 	assert.True(t, e.PathExists("sdks/netapp-cloudmanager/go.mod"))
 	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "netapp-cloudmanager", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25",
 		packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRename := false
 	containedRenames := make([]string, len(gomod.Replace))
@@ -1406,9 +1406,9 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	assert.True(t, e.PathExists("godir/sdks/supabase/go.mod"))
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRename := false
 	for _, r := range gomod.Replace {
@@ -1440,9 +1440,9 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	assert.True(t, e.PathExists("godir/sdks/b2/go.mod"))
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRenameSupabase := false
 	containsRenameBB := false
@@ -1557,47 +1557,47 @@ outer:
 			ColumnsStartAt1: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	reader := bufio.NewReader(conn)
 	// We need to read the response, but we don't actually care
 	// about it.  It just includes the capabilities of the
 	// debugger.
 	resp, err := dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.InitializeResponse{}, resp)
 	json, err := json.Marshal(debugEvent.Config)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
 		Request:   newDAPRequest(seq, "attach"),
 		Arguments: json,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	// read the initialized event, and then the response to the attach request.
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.InitializedEvent{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.AttachResponse{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
 		Request: newDAPRequest(seq, "continue"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.TerminatedEvent{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make sure the program finished successfully.
 	wg.Wait()
@@ -1705,7 +1705,7 @@ outer:
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Wait for the pulumi preview command to finish.
 	wg.Wait()

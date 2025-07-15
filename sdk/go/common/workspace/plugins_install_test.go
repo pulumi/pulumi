@@ -96,7 +96,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 
 func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginInfo {
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir()))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 
 	file := filepath.Join(dir, plugin.Dir(), plugin.File())
@@ -104,7 +104,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 		file += ".exe"
 	}
 	info, err = os.Stat(file)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, info.IsDir())
 
 	_, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
@@ -113,12 +113,12 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.True(t, HasPlugin(plugin))
 
 	has, err := HasPluginGTE(plugin)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, has)
 
 	skipMetadata := true
 	plugins, err := getPlugins(dir, skipMetadata)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 1, len(plugins))
 	assert.Equal(t, plugin.Name, plugins[0].Name)
 	assert.Equal(t, plugin.Kind, plugins[0].Kind)
@@ -142,7 +142,7 @@ func testDeletePlugin(t *testing.T, plugin PluginInfo) {
 	assert.True(t, anyPresent, "None of the expected plugin files were present before Delete")
 
 	err := plugin.Delete()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, path := range paths {
 		_, err := os.Stat(path)
@@ -159,12 +159,12 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 	dir, tarball, plugin := prepareTestDir(t, files)
 
 	err := plugin.Install(tarball, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
 
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir(), expectedDir))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 
 	testDeletePlugin(t, pluginInfo)
@@ -234,7 +234,7 @@ func TestConcurrentInstalls(t *testing.T) {
 		pluginInfo := assertPluginInstalled(t, dir, plugin)
 
 		b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, content, b)
 
 		return pluginInfo
@@ -249,7 +249,7 @@ func TestConcurrentInstalls(t *testing.T) {
 			defer wg.Done()
 
 			err := plugin.Install(tarball, false)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assertSuccess()
 		}()
@@ -269,21 +269,21 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	// Leftover temp dirs.
 	//nolint:usetesting // Need to use a specific location for the tmp dir
 	tempDir1, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//nolint:usetesting // Need to use a specific location for the tmp dir
 	tempDir2, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//nolint:usetesting // Need to use a specific location for the tmp dir
 	tempDir3, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Leftover partial file.
 	partialPath := filepath.Join(dir, plugin.Dir()+".partial")
 	err = os.WriteFile(partialPath, nil, 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = plugin.Install(tarball, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
 
@@ -302,15 +302,15 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	err := plugin.Install(tarball, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.False(t, HasPlugin(plugin))
 
 	has, err := HasPluginGTE(plugin)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, has)
 
 	skipMetadata := true

@@ -717,18 +717,18 @@ func TestExplicitProvider(t *testing.T) {
 
 				case "a":
 					prov, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.NotNil(t, defaultProvider)
 					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, defaultRef.String(), prov.String())
 
 				case "b":
 					prov, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.NotNil(t, explicitProvider)
 					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, explicitRef.String(), prov.String())
 				}
 			}
@@ -822,7 +822,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
 			assert.True(t, ok)
@@ -884,7 +884,7 @@ func TestCloudSecretProvider(t *testing.T) {
 			assert.Equal(t, secretsProvider.Type, "cloud")
 
 			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
 			assert.True(t, ok)
@@ -2276,10 +2276,10 @@ func TestPackageAddNode(t *testing.T) {
 			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			packagesJSON := make(map[string]any)
 			err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 			assert.True(t, ok)
@@ -2308,10 +2308,10 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 	assert.True(t, ok)
@@ -2326,7 +2326,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	// `--generate-only`).
 	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
 	_, err = os.Stat(nodeModulesPath)
-	assert.NoError(t, err, "node_modules directory should exist after pulumi convert")
+	require.NoError(t, err, "node_modules directory should exist after pulumi convert")
 }
 
 //nolint:paralleltest // mutates environment
@@ -2350,10 +2350,10 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	)
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 	assert.True(t, ok)

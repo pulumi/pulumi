@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -30,11 +31,11 @@ func TestMarshallNormalValueYAML(t *testing.T) {
 	v := NewValue("value")
 
 	b, err := yaml.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("value\n"), b)
 
 	newV, err := roundtripValueYAML(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -44,11 +45,11 @@ func TestMarshallSecureValueYAML(t *testing.T) {
 	v := NewSecureValue("value")
 
 	b, err := yaml.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("secure: value\n"), b)
 
 	newV, err := roundtripValueYAML(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -58,11 +59,11 @@ func TestMarshallNormalValueJSON(t *testing.T) {
 	v := NewValue("value")
 
 	b, err := json.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("\"value\""), b)
 
 	newV, err := roundtripValueJSON(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -72,11 +73,11 @@ func TestMarshallSecureValueJSON(t *testing.T) {
 	v := NewSecureValue("value")
 
 	b, err := json.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("{\"secure\":\"value\"}"), b)
 
 	newV, err := roundtripValueJSON(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -135,11 +136,11 @@ func TestHasSecureValue(t *testing.T) {
 			t.Parallel()
 
 			jsonBytes, err := json.Marshal(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var val object
 			err = json.Unmarshal(jsonBytes, &val)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, val.Secure())
 		})
@@ -196,12 +197,12 @@ func TestDecryptingValue(t *testing.T) {
 			t.Parallel()
 
 			actual, err := test.Value.Value(decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 
 			// Ensure the same value is returned when the NopDecrypter is used.
 			actualNop, err := test.Value.Value(NopDecrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Value.value, actualNop)
 		})
 	}
@@ -267,7 +268,7 @@ func TestSecureValues(t *testing.T) {
 			t.Parallel()
 
 			actual, err := test.Value.SecureValues(decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 		})
 	}
@@ -309,7 +310,7 @@ func TestCopyValue(t *testing.T) {
 			t.Parallel()
 
 			newConfig, err := test.Val.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
 		})

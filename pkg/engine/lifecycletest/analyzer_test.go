@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testRequiredPolicy struct {
@@ -89,7 +90,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -114,7 +115,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSimpleAnalyzeResourceFailure(t *testing.T) {
@@ -187,7 +188,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -251,7 +252,7 @@ func TestResourceRemediation(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
@@ -309,7 +310,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
@@ -328,7 +329,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	// Expect no error, valid snapshot, two resources:
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 }
@@ -465,7 +466,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)

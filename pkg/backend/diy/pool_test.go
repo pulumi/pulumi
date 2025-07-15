@@ -192,7 +192,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 				})
 			},
 			"wait": func(t *rapid.T) {
-				assert.NoError(t, pool.Wait())
+				require.NoError(t, pool.Wait())
 				assert.Zero(t, pending.Load())
 			},
 		})

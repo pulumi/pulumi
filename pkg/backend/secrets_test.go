@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests that an errorCatchingSecretsProvider correctly delegates its OfType method to the underlying provider.
@@ -37,7 +38,7 @@ func TestErrorCatchingSecretsProvider_OfType_Success(t *testing.T) {
 	manager, err := provider.OfType("test", nil)
 
 	// Assert
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, manager)
 	assert.IsType(t, &errorCatchingSecretsManager{}, manager)
 	assert.True(t, delegate.ofTypeCalled)
@@ -180,7 +181,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_Success(t *testing.T) {
 	plaintext, err := manager.DecryptValue(context.Background(), "encrypted")
 
 	// Assert
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedValue, plaintext)
 	assert.True(t, encDecrypter.decryptValueCalled)
 }
@@ -238,7 +239,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_ErrorIgnored(t *testing.T) {
 	plaintext, err := manager.DecryptValue(context.Background(), "encrypted")
 
 	// Assert
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "{}", plaintext)
 	assert.True(t, encDecrypter.decryptValueCalled)
 	assert.True(t, onDecryptErrorCalled)
@@ -283,7 +284,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_Success(t *testing.T) {
 	plaintexts, err := manager.BatchDecrypt(context.Background(), []string{"encrypted1", "encrypted2"})
 
 	// Assert
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedValues, plaintexts)
 	assert.True(t, encDecrypter.batchDecryptCalled)
 }
@@ -340,7 +341,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_ErrorIgnored(t *testing.T) {
 	plaintexts, err := manager.BatchDecrypt(context.Background(), []string{"encrypted1", "encrypted2"})
 
 	// Assert
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"{}", "{}"}, plaintexts)
 	assert.True(t, encDecrypter.batchDecryptCalled)
 	assert.True(t, onDecryptErrorCalled)

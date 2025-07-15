@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
 
@@ -43,7 +44,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 	}
@@ -58,7 +59,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		_, known, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.False(t, known)
 	}
 	// Test that rejected outputs do not run the apply, and instead flow the error.
@@ -88,7 +89,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
@@ -100,7 +101,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 44)
 	}
@@ -218,7 +219,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err := await(res)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"qux", "zed"}, v)
 
@@ -226,7 +227,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"foo", "bar"}, v)
 
@@ -234,7 +235,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res3)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed", v)
 
@@ -242,12 +243,12 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res4)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
 
 		v, known, _, _, err = await(res5)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
 	}
@@ -264,7 +265,7 @@ func TestToOutput{{.Name}}(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = ToOutput(out)
 	_, ok = out.({{.Name}}Input)
@@ -272,7 +273,7 @@ func TestToOutput{{.Name}}(t *testing.T) {
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 {{end}}
 
@@ -287,25 +288,25 @@ func TestTo{{.Name}}Output(t *testing.T) {
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.To{{.Name}}Output()
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = in.To{{.Name}}OutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out = out.To{{.Name}}OutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 {{end}}
 
@@ -317,56 +318,56 @@ func TestBuiltinConversions(t *testing.T) {
 	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
 	archiveV, known, _, _, err := await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, archiveIn, archiveV)
 
 	archiveOut := archiveIn.ToArchiveOutput()
 	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
 	archiveV, known, _, _, err = await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, archiveIn, archiveV)
 
 	assetIn := NewFileAsset("foo.zip")
 	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
 	assetV, known, _, _, err := await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, assetIn, assetV)
 
 	assetOut := assetIn.ToAssetOutput()
 	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
 	assetV, known, _, _, err = await(assetOrArchiveOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, assetIn, assetV)
 
 	idIn := ID("foo")
 	stringOut := idIn.ToStringOutput()
 	stringV, known, _, _, err := await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(idIn), stringV)
 
 	idOut := idIn.ToIDOutput()
 	stringOut = idOut.ToStringOutput()
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(idIn), stringV)
 
 	urnIn := URN("foo")
 	stringOut = urnIn.ToStringOutput()
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(urnIn), stringV)
 
 	urnOut := urnIn.ToURNOutput()
 	stringOut = urnOut.ToStringOutput()
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, string(urnIn), stringV)
 }
 
@@ -380,11 +381,11 @@ func Test{{.Name}}Elem(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Elem())
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, *(av.(*{{.ElemElementType}})), iv)
 }
@@ -402,16 +403,16 @@ func Test{{.Name}}Index(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 {{if .DefineToFunction}}
@@ -422,11 +423,11 @@ func TestTo{{.Name}}(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
 }
@@ -438,11 +439,11 @@ func TestTopLevelTo{{.Name}}Output(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
 }
@@ -460,16 +461,16 @@ func Test{{.Name}}Index(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, iv)
 }
 {{if .DefineToFunction}}
@@ -480,11 +481,11 @@ func TestTo{{.Name}}(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
 }
@@ -496,11 +497,11 @@ func TestTopLevelTo{{.Name}}Output(t *testing.T) {
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
 }
@@ -518,12 +519,12 @@ func TestAnyOutputAs{{.Name}}Output(t *testing.T) {
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, ev, av)
-}	
+}
 {{end}}

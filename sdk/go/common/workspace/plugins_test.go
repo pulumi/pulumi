@@ -644,7 +644,7 @@ func TestPluginDownload(t *testing.T) {
 
 		t.Run("Valid Checksum", func(t *testing.T) {
 			checksum, err := hex.DecodeString(chksum)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			spec := PluginSpec{
 				PluginDownloadURL: "",
@@ -836,7 +836,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest",
@@ -909,7 +909,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/latest" {
 				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
@@ -961,7 +961,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
 		}
@@ -1111,7 +1111,7 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.EqualError(t, err, tt.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.expected, actual)
 
@@ -1290,10 +1290,10 @@ plugins:
   - name: aws
     version: 1.0.0
     path: ../bin/aws`), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	proj, err := LoadProject(pyaml)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, proj.Plugins)
 	assert.Equal(t, 1, len(proj.Plugins.Providers))
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)

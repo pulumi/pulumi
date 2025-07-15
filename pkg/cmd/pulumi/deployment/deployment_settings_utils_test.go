@@ -37,18 +37,18 @@ func TestRepoLookup(t *testing.T) {
 		wd := "/"
 
 		rl, err := newRepoLookup(wd)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &noRepoLookupImpl{}, rl)
 
 		dir, err := rl.GetRootDirectory(wd)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, ".", dir)
 
 		branch := rl.GetBranchName()
 		assert.Equal(t, "", branch)
 
 		remote, err := rl.RemoteURL()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "", remote)
 
 		root := rl.GetRepoRoot()
@@ -62,11 +62,11 @@ func TestRepoLookup(t *testing.T) {
 		workDir := filepath.Join(repoDir, "goproj")
 
 		rl, err := newRepoLookup(workDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &repoLookupImpl{}, rl)
 
 		dir, err := rl.GetRootDirectory(filepath.Join(workDir, "something"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// should assure the directory is using linux path separator as deployments are
 		// currently run only on linux images.
 		assert.Equal(t, filepath.Join("goproj", "something"), dir)
@@ -75,7 +75,7 @@ func TestRepoLookup(t *testing.T) {
 		assert.Equal(t, "refs/heads/master", branch)
 
 		remote, err := rl.RemoteURL()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
 
 		assert.Equal(t, filepath.Dir(workDir), rl.GetRepoRoot())
@@ -229,7 +229,7 @@ func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
 	}
 
 	_, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return workDir
 }

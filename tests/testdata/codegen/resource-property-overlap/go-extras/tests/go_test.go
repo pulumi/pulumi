@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -36,7 +37,7 @@ func TestArrayOutputIndex(t *testing.T) {
 		wg.Wait()
 		return nil
 	}, pulumi.WithMocks("project", "stack", mocks(0)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type mocks int

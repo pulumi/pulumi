@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidatePolicyPackConfig(t *testing.T) {
@@ -84,7 +85,7 @@ func TestValidatePolicyPackConfig(t *testing.T) {
 			if test.ExpectError {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

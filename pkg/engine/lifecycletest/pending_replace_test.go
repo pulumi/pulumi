@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -120,7 +121,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resA.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		} else {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		}
@@ -133,7 +134,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, upSnap.Resources, 3)
 	assert.Equal(t, "default", upSnap.Resources[0].URN.Name())
@@ -193,7 +194,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	retrySnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), retryOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, retrySnap.Resources, 3)
 	assert.Equal(t, "default", retrySnap.Resources[0].URN.Name())
@@ -288,7 +289,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -298,7 +299,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
@@ -350,7 +351,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	assert.Len(t, removeSnap.Resources, 2)
@@ -440,7 +441,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -451,7 +452,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
@@ -510,7 +511,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	assert.Len(t, removeSnap.Resources, 0)
@@ -617,7 +618,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		if expectError {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
@@ -627,7 +628,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
@@ -682,7 +683,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	assert.Len(t, removeSnap.Resources, 2)
@@ -721,7 +722,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Dependencies: []resource.URN{a.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		} else {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		}
@@ -734,7 +735,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, upSnap.Resources, 3)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
@@ -813,7 +814,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 
 	secondUpSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, secondReplaceSnap), upOptions, false, p.BackendClient, nil, "3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, secondUpSnap.Resources, 3)
 	assert.Equal(t, secondUpSnap.Resources[0].URN.Name(), "default")

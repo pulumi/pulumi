@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -77,7 +78,7 @@ func TestRetainOnDelete(t *testing.T) {
 				Inputs:         ins,
 				RetainOnDelete: &retainOnDelete,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
@@ -90,7 +91,7 @@ func TestRetainOnDelete(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -100,7 +101,7 @@ func TestRetainOnDelete(t *testing.T) {
 		"foo": "baz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
@@ -108,7 +109,7 @@ func TestRetainOnDelete(t *testing.T) {
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
