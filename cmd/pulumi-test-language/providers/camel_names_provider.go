@@ -17,6 +17,7 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -162,7 +163,7 @@ func (p *CamelNamesProvider) Create(
 
 	value, ok := req.Properties["theInput"]
 	if !ok {
-		return plugin.CreateResponse{}, fmt.Errorf("missing theInput property")
+		return plugin.CreateResponse{}, errors.New("missing theInput property")
 	}
 
 	properties := resource.PropertyMap{

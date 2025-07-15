@@ -580,7 +580,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		}
 		control := importSet[pkg]
 		if control.ImportAs {
-			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(control.Pkg)))
+			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(PyName(control.Pkg))))
 		} else {
 			imports = append(imports, "import "+pkg)
 		}
@@ -634,7 +634,7 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func tokenToQualifiedName(pkg, module, member string) string {
-	components := strings.Split(module, "/")
+	components := strings.Split(strings.ToLower(module), "/")
 	for i, component := range components {
 		components[i] = PyName(component)
 	}
@@ -643,7 +643,7 @@ func tokenToQualifiedName(pkg, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
+	return fmt.Sprintf("%s%s.%s", EnsureKeywordSafe(PyName(pkg)), module, title(member))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
