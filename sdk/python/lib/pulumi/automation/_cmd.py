@@ -219,9 +219,10 @@ class PulumiCommand:
 
         def consumer(stream, callback, chunks):
             for line in iter(stream.readline, ""):
+                stripped = line.rstrip()
                 if callback:
-                    callback(line)
-                chunks.append(line)
+                    callback(stripped)
+                chunks.append(stripped)
             stream.close()
 
         with subprocess.Popen(
