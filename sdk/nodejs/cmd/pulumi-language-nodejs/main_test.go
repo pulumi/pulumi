@@ -104,7 +104,7 @@ func TestConfig(t *testing.T) {
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
 		str, err := host.constructConfig(rr)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.JSONEq(t, "{}", str)
 	})
 }

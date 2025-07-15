@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -177,5 +176,5 @@ func typeCheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPat
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
 	os.Remove(filepath.Join(dir, "main"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

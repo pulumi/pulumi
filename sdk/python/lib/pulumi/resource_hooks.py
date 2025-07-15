@@ -4,9 +4,6 @@ from typing import Any, Awaitable, Callable, Mapping, Optional, TypeVar, Union
 
 
 from .runtime.resource import register_resource_hook
-from .runtime.settings import (
-    _sync_monitor_supports_resource_hooks,
-)
 
 
 class ResourceHookArgs:
@@ -29,6 +26,10 @@ class ResourceHookArgs:
     """The URN of the resource that triggered the hook."""
     id: str
     """The ID of the resource that triggered the hook."""
+    name: str
+    """The name of the resource that triggered the hook."""
+    type: str
+    """The type of the resource that triggered the hook."""
     new_inputs: Optional[Mapping[str, Any]] = None
     """The new inputs of the resource that triggered the hook."""
     old_inputs: Optional[Mapping[str, Any]] = None
@@ -42,6 +43,8 @@ class ResourceHookArgs:
         self,
         urn: str,
         id: str,
+        name: str,
+        type: str,
         new_inputs: Optional[Mapping[str, Any]] = None,
         old_inputs: Optional[Mapping[str, Any]] = None,
         new_outputs: Optional[Mapping[str, Any]] = None,
@@ -49,6 +52,8 @@ class ResourceHookArgs:
     ):
         self.urn = urn
         self.id = id
+        self.name = name
+        self.type = type
         self.new_inputs = new_inputs
         self.old_inputs = old_inputs
         self.new_outputs = new_outputs
@@ -58,6 +63,8 @@ class ResourceHookArgs:
         return (
             f"ResourceHookArgs(urn={self.urn}, "
             + f"id={self.id}, "
+            + f"name={self.name}, "
+            + f"type_={self.type}, "
             + f"new_inputs={self.new_inputs}, "
             + f"old_inputs={self.old_inputs}, "
             + f"new_outputs={self.new_outputs}, "
@@ -105,11 +112,6 @@ class ResourceHook:
         func: ResourceHookFunction,
         opts: Optional[ResourceHookOptions] = None,
     ):
-        if not _sync_monitor_supports_resource_hooks():
-            raise Exception(
-                "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
-            )
-
         self.__doc__ = func.__doc__
         self.__name__ = func.__name__
         self.name = name

@@ -60,6 +60,11 @@ class AnalyzerStub(object):
                 request_serializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.SerializeToString,
                 response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.FromString,
                 )
+        self.Cancel = channel.unary_unary(
+                '/pulumirpc.Analyzer/Cancel',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class AnalyzerServicer(object):
@@ -133,6 +138,16 @@ class AnalyzerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Cancel(self, request, context):
+        """Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+        Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+        it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+        hard-closing any gRPC connection.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AnalyzerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -175,6 +190,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
                     servicer.ConfigureStack,
                     request_deserializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.FromString,
                     response_serializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.SerializeToString,
+            ),
+            'Cancel': grpc.unary_unary_rpc_method_handler(
+                    servicer.Cancel,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -323,5 +343,22 @@ class Analyzer(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/ConfigureStack',
             pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.SerializeToString,
             pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Cancel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Cancel',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

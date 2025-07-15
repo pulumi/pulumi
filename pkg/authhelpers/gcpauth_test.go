@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest
@@ -39,12 +40,12 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, credentials)
 
 	var creds map[string]interface{}
 	err = json.Unmarshal([]byte(os.Getenv("GOOGLE_CREDENTIALS")), &creds)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, creds["type"], "service_account")
 	assert.Equal(t, creds["project_id"], "your-project-id")
 	assert.Equal(t, creds["private_key_id"], "your-private-key-id")
@@ -76,11 +77,11 @@ func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, credentials)
 
 	token, err := credentials.TokenSource.Token()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	actualAccessToken := token.AccessToken
 	assert.Equal(t, expectedAccessToken, actualAccessToken)

@@ -803,6 +803,10 @@ type ConstructOptions struct {
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
 	RetainOnDelete *bool
+
+	// ResourceHooks specifies hooks to be executed before and after
+	// resource operations.
+	ResourceHooks map[resource.HookType][]string
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.

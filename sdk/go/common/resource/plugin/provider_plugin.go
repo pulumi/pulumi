@@ -1847,6 +1847,18 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	// Marshal the resource hook bindings.
+	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
+	if len(req.Options.ResourceHooks) > 0 {
+		resourceHook = &pulumirpc.ConstructRequest_ResourceHooksBinding{}
+		resourceHook.BeforeCreate = req.Options.ResourceHooks[resource.BeforeCreate]
+		resourceHook.AfterCreate = req.Options.ResourceHooks[resource.AfterCreate]
+		resourceHook.BeforeUpdate = req.Options.ResourceHooks[resource.BeforeUpdate]
+		resourceHook.AfterUpdate = req.Options.ResourceHooks[resource.AfterUpdate]
+		resourceHook.BeforeDelete = req.Options.ResourceHooks[resource.BeforeDelete]
+		resourceHook.AfterDelete = req.Options.ResourceHooks[resource.AfterDelete]
+	}
+
 	rpcReq := &pulumirpc.ConstructRequest{
 		Project:                 req.Info.Project,
 		Stack:                   req.Info.Stack,
@@ -1871,6 +1883,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		ReplaceOnChanges:        req.Options.ReplaceOnChanges,
 		RetainOnDelete:          req.Options.RetainOnDelete,
 		AcceptsOutputValues:     true,
+		ResourceHooks:           resourceHook,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
 		rpcReq.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{

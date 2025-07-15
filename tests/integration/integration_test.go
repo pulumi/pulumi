@@ -92,7 +92,7 @@ func TestStackTagValidation(t *testing.T) {
 		// Change the contents of the Description property of Pulumi.yaml.
 		yamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
 		err = integration.ReplaceInFile("description: ", "description: "+prefix, yamlPath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", stackName)
 		assert.Equal(t, "", stdout)
@@ -121,7 +121,7 @@ func TestStackInitValidation(t *testing.T) {
 		// Change the contents of the Description property of Pulumi.yaml.
 		yamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
 		err := integration.ReplaceInFile("description: ", "description: "+invalidYaml, yamlPath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
 		assert.Equal(t, "", stdout)
@@ -142,7 +142,7 @@ func TestConfigPaths(t *testing.T) {
 		Name:    "testing-config",
 		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "testing")
 
@@ -626,10 +626,10 @@ func TestProviderDownloadURL(t *testing.T) {
 	validate := func(t *testing.T, stdout []byte) {
 		deployment := &apitype.UntypedDeployment{}
 		err := json.Unmarshal(stdout, deployment)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		data := &apitype.DeploymentV3{}
 		err = json.Unmarshal(deployment.Deployment, data)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urlKey := "pluginDownloadURL"
 		getPluginDownloadURL := func(inputs map[string]interface{}) string {
 			internal, ok := inputs["__internal"].(map[string]interface{})
@@ -1038,7 +1038,7 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 			for _, res := range stackInfo.Deployment.Resources {
 				if res.URN.Type() == "testprovider:index:Random" {
 					ref, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					if err == nil {
 						gotProviders[res.URN.Name()] = ref.URN().Name()
 					}
@@ -1258,7 +1258,7 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 
 	// And check that Pulumi.<name>.yaml file is still there for the js project
 	_, err = os.Stat(filepath.Join(jsDir, "Pulumi."+stackName+".yaml"))
-	assert.NoError(e, err)
+	require.NoError(e, err)
 }
 
 func TestStackRmConfig_LocalProject(t *testing.T) {
@@ -1302,14 +1302,14 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 }
 
@@ -1329,7 +1329,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1357,9 +1357,9 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1387,7 +1387,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,

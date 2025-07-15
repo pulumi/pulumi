@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateProjectName(t *testing.T) {
@@ -77,7 +78,7 @@ func TestValidateProjectName(t *testing.T) {
 
 			err := ValidateProjectName(tt.give)
 			if tt.wantErr == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				assert.ErrorContains(t, err, tt.wantErr)
 			}

@@ -233,23 +233,17 @@ func TestStackCommands(t *testing.T) {
 				stackFile := path.Join(e.RootPath, "stack.json")
 				e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
 				stackJSON, err := os.ReadFile(stackFile)
-				if !assert.NoError(t, err) {
-					t.FailNow()
-				}
+				require.NoError(t, err)
 
 				var deployment apitype.UntypedDeployment
 				err = json.Unmarshal(stackJSON, &deployment)
-				if !assert.NoError(t, err) {
-					t.FailNow()
-				}
+				require.NoError(t, err)
 
 				deployment.Version = deploymentVersion
 				bytes, err := json.Marshal(deployment)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
-				if !assert.NoError(t, err) {
-					t.FailNow()
-				}
+				require.NoError(t, err)
 
 				stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "import", "--file", "stack.json")
 				assert.Empty(t, stdout)
@@ -279,21 +273,15 @@ func TestStackCommands(t *testing.T) {
 		stackFile := path.Join(e.RootPath, "stack.json")
 		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
 		stackJSON, err := os.ReadFile(stackFile)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		var deployment apitype.UntypedDeployment
 		err = json.Unmarshal(stackJSON, &deployment)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(
 			context.Background(),
 			&deployment, stack.DefaultSecretsProvider)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
 		// invalid resources in the snapshot.
 		res := snap.Resources[len(snap.Resources)-1]
@@ -302,22 +290,14 @@ func TestStackCommands(t *testing.T) {
 			Type:     resource.OperationTypeDeleting,
 		})
 		v3deployment, err := stack.SerializeDeployment(context.Background(), snap, false /* showSecrets */)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		data, err := json.Marshal(&v3deployment)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		deployment.Deployment = data
 		bytes, err := json.Marshal(&deployment)
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
 		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
@@ -343,7 +323,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Get the path to the backup directory for this project.
 		backupDir, err := getStackProjectBackupDir(e, "stack_outputs", stackName)
-		assert.NoError(t, err, "getting stack project backup path")
+		require.NoError(t, err, "getting stack project backup path")
 		defer func() {
 			if !t.Failed() {
 				// Cleanup the backup directory.
@@ -365,7 +345,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Verify the backup directory contains a single backup.
 		files, err := os.ReadDir(backupDir)
-		assert.NoError(t, err, "getting the files in backup directory")
+		require.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
 		assert.Equal(t, 1, len(files), "Files: %s", strings.Join(fileNames, ", "))
@@ -381,7 +361,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Verify the backup directory has been updated with 1 additional backups.
 		files, err = os.ReadDir(backupDir)
-		assert.NoError(t, err, "getting the files in backup directory")
+		require.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
 		assert.Equal(t, 2, len(files), "Files: %s", strings.Join(fileNames, ", "))
@@ -440,7 +420,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 	// Remove `encryptionsalt` from `Pulumi.imulup.yaml`.
 	preamble := "secretsprovider: passphrase\n"
 	err := os.WriteFile(stackFile, []byte(preamble), 0o600)
-	assert.NoError(t, err, "writing Pulumi.imulup.yaml")
+	require.NoError(t, err, "writing Pulumi.imulup.yaml")
 
 	// Now run pulumi destroy.
 	e.RunCommand("pulumi", "destroy", "--non-interactive", "--yes", "--skip-preview")
@@ -809,13 +789,13 @@ func filterOutAttrsFiles(files []os.DirEntry) []os.DirEntry {
 func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, before int64, after int64) {
 	assert.False(t, file.IsDir())
 	fi, err := file.Info()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, fi.Size() > 0)
 	split := strings.Split(file.Name(), ".")
 	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])
 	parsedTime, err := strconv.ParseInt(split[1], 10, 64)
-	assert.NoError(t, err, "parsing the time in the stack backup filename")
+	require.NoError(t, err, "parsing the time in the stack backup filename")
 	assert.True(t, parsedTime > before, "False: %v > %v", parsedTime, before)
 	assert.True(t, parsedTime < after, "False: %v < %v", parsedTime, after)
 }

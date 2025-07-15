@@ -1090,6 +1090,16 @@ message ConstructRequest {
     // may be used to communicate dependency information and so there is no need to populate
     // [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
     bool accepts_output_values = 25;
+
+    message ResourceHooksBinding {
+        repeated string before_create = 1;
+        repeated string after_create = 2;
+        repeated string before_update = 3;
+        repeated string after_update = 4;
+        repeated string before_delete = 5;
+        repeated string after_delete = 6;
+    }
+    optional ResourceHooksBinding resource_hooks = 26;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.

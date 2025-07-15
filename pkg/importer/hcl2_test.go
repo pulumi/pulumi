@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -267,18 +268,14 @@ func TestGenerateHCL2Definition(t *testing.T) {
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 	cases, err := readTestCases("testdata/cases.json")
-	if !assert.NoError(t, err) {
-		t.Fatal()
-	}
+	require.NoError(t, err)
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
 		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
-			if !assert.NoError(t, err) {
-				t.Fatal()
-			}
+			require.NoError(t, err)
 
 			snapshot := []*resource.State{
 				{
@@ -326,20 +323,17 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 
 			block, _, err := GenerateHCL2Definition(loader, state, importState)
-			if !assert.NoError(t, err) {
-				t.Fatal()
-			}
+			require.NoError(t, err)
 
 			text := fmt.Sprintf("%v", block)
 
 			parser := syntax.NewParser()
 			err = parser.ParseFile(strings.NewReader(text), string(state.URN)+".pp")
-			if !assert.NoError(t, err) || !assert.False(t, parser.Diagnostics.HasErrors()) {
-				t.Fatal()
-			}
+			require.NoError(t, err)
+			require.False(t, parser.Diagnostics.HasErrors())
 
 			p, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
 			if !assert.Len(t, p.Nodes, 1) {
@@ -419,7 +413,7 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 	block, _, err := GenerateHCL2Definition(loader, state, importState)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []model.BodyItem{&model.Attribute{
 		Name: "region",
 		Value: &model.TemplateExpression{
@@ -490,7 +484,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	_, _, err := GenerateHCL2Definition(schemaLoader, state, importState)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
@@ -531,9 +525,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		if !assert.NoError(t, err) {
-			t.Fatal()
-		}
+		require.NoError(t, err)
 		states = append(states, state)
 	}
 
@@ -622,9 +614,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		if !assert.NoError(t, err) {
-			t.Fatal()
-		}
+		require.NoError(t, err)
 		states = append(states, state)
 	}
 
@@ -711,9 +701,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		if !assert.NoError(t, err) {
-			t.Fatal()
-		}
+		require.NoError(t, err)
 		states = append(states, state)
 	}
 
@@ -783,9 +771,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		if !assert.NoError(t, err) {
-			t.Fatal()
-		}
+		require.NoError(t, err)
 		states = append(states, state)
 	}
 

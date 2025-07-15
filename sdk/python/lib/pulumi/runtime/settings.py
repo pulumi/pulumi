@@ -356,8 +356,8 @@ def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
 
 
-def _sync_monitor_supports_resource_hooks() -> bool:
-    return SETTINGS.feature_support.get("resourceHooks", False)
+async def monitor_supports_resource_hooks() -> bool:
+    return await monitor_supports_feature("resourceHooks")
 
 
 def reset_options(

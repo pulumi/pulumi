@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTruncateWithMiddleOut(t *testing.T) {
@@ -172,7 +173,7 @@ func TestExtractCopilotResponse(t *testing.T) {
 				assert.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -203,7 +204,7 @@ func TestCreateSummarizeUpdateRequestOmitsDefaults(t *testing.T) {
 	}`
 
 	jsonBytes, err := json.Marshal(updateRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// pretty marshal the expected output
 	assert.JSONEq(t, expectedOutput, string(jsonBytes))
 }
@@ -233,7 +234,7 @@ func TestCreateSummarizeUpdateRequestWithModelAndMaxLen(t *testing.T) {
 	}`
 
 	jsonBytes, err := json.Marshal(updateRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.JSONEq(t, expectedOutput, string(jsonBytes))
 }
 

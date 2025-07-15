@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Handle cancellation during construct

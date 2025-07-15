@@ -17,6 +17,7 @@
 package ints
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -37,12 +38,22 @@ func TestNodejsResourceHooks(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			text := "fun was called with length = 10"
 			found := false
+			textComp := "funComp was called with child"
+			foundComp := false
 			for _, event := range stackInfo.Events {
-				if event.DiagnosticEvent != nil && strings.Contains(event.DiagnosticEvent.Message, text) {
-					found = true
+				if event.DiagnosticEvent != nil {
+					if strings.Contains(event.DiagnosticEvent.Message, text) {
+						found = true
+					}
+					if strings.Contains(event.DiagnosticEvent.Message, textComp) {
+						foundComp = true
+					}
 				}
 			}
-			require.True(t, found, "expected hook to print a message")
+			b, err := json.Marshal(stackInfo.Events)
+			require.NoError(t, err)
+			require.True(t, found, "expected 'hook_fun' to print a message, got: %s", b)
+			require.True(t, foundComp, "expected 'hook_fun_comp' to print a message, got: %s", b)
 		},
 	})
 }

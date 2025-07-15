@@ -886,6 +886,10 @@ export class ResourceHookRequest extends jspb.Message {
     setUrn(value: string): ResourceHookRequest;
     getId(): string;
     setId(value: string): ResourceHookRequest;
+    getName(): string;
+    setName(value: string): ResourceHookRequest;
+    getType(): string;
+    setType(value: string): ResourceHookRequest;
 
     hasNewInputs(): boolean;
     clearNewInputs(): void;
@@ -921,6 +925,8 @@ export namespace ResourceHookRequest {
     export type AsObject = {
         urn: string,
         id: string,
+        name: string,
+        type: string,
         newInputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         newOutputs?: google_protobuf_struct_pb.Struct.AsObject,

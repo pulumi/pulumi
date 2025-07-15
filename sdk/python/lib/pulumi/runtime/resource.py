@@ -46,7 +46,7 @@ from .settings import (
     _get_callbacks,
     _get_rpc_manager,
     _sync_monitor_supports_transforms,
-    _sync_monitor_supports_resource_hooks,
+    monitor_supports_resource_hooks,
     handle_grpc_error,
 )
 
@@ -1263,7 +1263,7 @@ async def _prepare_resource_hooks(
             hooks, hook_type, []
         )
         for i, _hook in enumerate(hooks_for_type or []):
-            if not _sync_monitor_supports_resource_hooks():
+            if not await monitor_supports_resource_hooks():
                 raise Exception(
                     "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
                 )
@@ -1294,6 +1294,11 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
         return callbacks.register_resource_hook(hook)
 
     async def wrapper() -> None:
+        if not await monitor_supports_resource_hooks():
+            raise Exception(
+                "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
+            )
+
         result, exception = await _get_rpc_manager().do_rpc(
             "register resource hook", do_register
         )()

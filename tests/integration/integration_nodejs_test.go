@@ -717,18 +717,18 @@ func TestExplicitProvider(t *testing.T) {
 
 				case "a":
 					prov, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.NotNil(t, defaultProvider)
 					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, defaultRef.String(), prov.String())
 
 				case "b":
 					prov, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.NotNil(t, explicitProvider)
 					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, explicitRef.String(), prov.String())
 				}
 			}
@@ -822,7 +822,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
 			assert.True(t, ok)
@@ -884,7 +884,7 @@ func TestCloudSecretProvider(t *testing.T) {
 			assert.Equal(t, secretsProvider.Type, "cloud")
 
 			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
 			assert.True(t, ok)
@@ -1285,6 +1285,67 @@ func TestESMTS(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 	})
+}
+
+func TestESMTSAuto(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	e.RunCommand("pulumi", "up", "--yes")
+	// Validate the stack outputs
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	err = json.Unmarshal([]byte(stdout), &stackExport)
+	require.NoError(t, err)
+	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	require.True(t, ok)
+	require.Greater(t, len(resources), 0)
+	stack := resources[0].(map[string]any)
+	outputs, ok := stack["outputs"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 42.0, outputs["otherx"])
+	require.Contains(t,
+		outputs["res"],
+		"Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option",
+	)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
+}
+
+func TestESMTSAutoTypeCheck(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto-typecheck")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	stdout, _ := e.RunCommandExpectError("pulumi", "up", "--yes")
+	require.Contains(t, stdout, "index.ts(3,14): error TS2322: Type 'number' is not assignable to type 'string'.")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -2215,10 +2276,10 @@ func TestPackageAddNode(t *testing.T) {
 			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			packagesJSON := make(map[string]any)
 			err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 			assert.True(t, ok)
@@ -2247,10 +2308,10 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 	assert.True(t, ok)
@@ -2265,7 +2326,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	// `--generate-only`).
 	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
 	_, err = os.Stat(nodeModulesPath)
-	assert.NoError(t, err, "node_modules directory should exist after pulumi convert")
+	require.NoError(t, err, "node_modules directory should exist after pulumi convert")
 }
 
 //nolint:paralleltest // mutates environment
@@ -2289,10 +2350,10 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	)
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 	assert.True(t, ok)

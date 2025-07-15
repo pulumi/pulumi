@@ -61,11 +61,13 @@ func FuzzBashStackOutputWriter(f *testing.F) {
 		require.NoError(t, file.Close())
 
 		got, err := exec.Command(bash, file.Name()).Output()
+		//nolint:forbidigo // We enhance the error message show if the test fails
 		if !assert.NoError(t, err, "Failed script:\n%s", buff.String()) {
 			var exitErr *exec.ExitError
 			if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
 				t.Logf("stderr:\n%s", exitErr.Stderr)
 			}
+			t.FailNow()
 		}
 		assert.Equal(t, give+"\n", string(got))
 	})
@@ -105,6 +107,7 @@ func FuzzPowershellStackOutputWriter(f *testing.F) {
 		require.NoError(t, file.Close())
 
 		got, err := exec.Command(pwsh, "-File", file.Name()).Output()
+		//nolint:forbidigo // We enhance the error message show if the test fails
 		if !assert.NoError(t, err, "Failed script:\n%s", buff.String()) {
 			var exitErr *exec.ExitError
 			if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {

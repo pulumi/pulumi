@@ -699,7 +699,7 @@ func (d *Deployment) Close() error {
 // `isBeforeHook` is false, a hook returning an error will only generate a
 // warning.
 func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID, urn resource.URN,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error {
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
@@ -710,7 +710,7 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		err = hook.Callback(d.Ctx().Base(), urn, id, newInputs, oldInputs, newOutputs, oldOutputs)
+		err = hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs)
 		if err != nil {
 			if isBeforeHook {
 				return fmt.Errorf("before hook %q failed: %w", hookName, err)

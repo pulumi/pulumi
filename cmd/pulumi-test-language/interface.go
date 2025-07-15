@@ -56,7 +56,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
@@ -1364,7 +1364,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				l *tests.L, proj string, err error, p *deploy.Plan,
 				changes display.ResourceChanges, events []engine.Event,
 			) {
-				assert.NoErrorf(l, err, "expected no error in preview")
+				require.NoErrorf(l, err, "expected no error in preview")
 			}
 		}
 

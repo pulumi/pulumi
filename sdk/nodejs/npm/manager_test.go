@@ -46,9 +46,8 @@ func chdir(t *testing.T, dir string) {
 	t.Cleanup(func() {
 		require.NoError(t, os.Chdir(cwd)) // Restore directory
 		restoredDir, err := os.Getwd()
-		if assert.NoError(t, err) {
-			assert.Equal(t, cwd, restoredDir)
-		}
+		require.NoError(t, err)
+		assert.Equal(t, cwd, restoredDir)
 	})
 }
 
@@ -232,7 +231,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")
-	assert.NoError(t, os.Mkdir(pkgdir, 0o700))
+	require.NoError(t, os.Mkdir(pkgdir, 0o700))
 
 	// Write out a minimal package.json file that has at least one dependency.
 	packageJSONFilename := filepath.Join(pkgdir, "package.json")
@@ -243,7 +242,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	        "@pulumi/pulumi": "latest"
 	    }
 	}`)
-	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+	require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 
 	writeLockFile(t, pkgdir, packageManager)
 
@@ -253,7 +252,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	defer ptesting.YarnInstallMutex.Unlock()
 	out := iotest.LogWriter(t)
 	bin, err := Install(context.Background(), AutoPackageManager, pkgdir, production, out, out)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, packageManager, bin)
 }
 
@@ -311,9 +310,7 @@ func fakeNPMRegistry(t testing.TB) string {
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.Header().Set("Content-Length", strconv.Itoa(len(tarball)))
 			_, err := w.Write(tarball)
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			w.WriteHeader(http.StatusNotFound)

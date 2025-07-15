@@ -297,6 +297,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		true, /* isBeforeHook */
 		s.new.ID,
 		s.new.URN,
+		s.URN().Name(),
+		s.Type(),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		nil, /* newOutputs */
@@ -387,17 +389,21 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(
-		s.new.ResourceHooks[resource.AfterCreate],
-		false, /* isBeforeHook */
-		s.new.ID,
-		s.new.URN,
-		s.new.Inputs,
-		nil, /* oldInputs */
-		s.new.Outputs,
-		nil, /* oldOutputs */
-	); err != nil {
-		return resourceStatus, complete, err
+	if s.new.Custom {
+		if err := s.Deployment().RunHooks(
+			s.new.ResourceHooks[resource.AfterCreate],
+			false, /* isBeforeHook */
+			s.new.ID,
+			s.new.URN,
+			s.new.URN.Name(),
+			s.new.Type,
+			s.new.Inputs,
+			nil, /* oldInputs */
+			s.new.Outputs,
+			nil, /* oldOutputs */
+		); err != nil {
+			return resourceStatus, complete, err
+		}
 	}
 
 	return resourceStatus, complete, nil
@@ -525,6 +531,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		true, /* isBeforeHook */
 		s.old.ID,
 		s.old.URN,
+		s.URN().Name(),
+		s.Type(),
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -611,11 +619,18 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
+	// Unlike for Create and Update steps, where we run the after create/update
+	// hooks for components in `RegisterResourceOutputs`, we run the after delete hooks for both
+	// custom and component resources here in the step. When a component resource
+	// is deleted, we of course never run its constructor, and so there's never
+	// any `RegisterResourceOutputs` call.
 	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.AfterDelete],
 		false, /* isBeforeHook */
 		s.old.ID,
 		s.old.URN,
+		s.old.URN.Name(),
+		s.Type(),
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -781,6 +796,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		true, /* isBeforeHook */
 		s.new.ID,
 		s.new.URN,
+		s.URN().Name(),
+		s.Type(),
 		s.new.Inputs,
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -857,16 +874,25 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resourceStatus, nil, resourceError
 	}
 
-	if err := s.Deployment().RunHooks(s.new.ResourceHooks[resource.AfterUpdate],
-		false, /* isBeforeHook */
-		s.new.ID,
-		s.new.URN,
-		s.new.Inputs,
-		s.old.Inputs,
-		s.new.Outputs,
-		s.old.Outputs,
-	); err != nil {
-		return resourceStatus, nil, err
+	// For custom resources we run the after hooks at the completion of the
+	// step. For component resources, we instead run the after hooks when
+	// `RegisterResourceOutputs` is called for the resource. This happens in
+	// `stepExecutor.executeRegisterResourceOutputs.`
+	if s.old.Custom {
+		if err := s.Deployment().RunHooks(
+			s.new.ResourceHooks[resource.AfterUpdate],
+			false, /* isBeforeHook */
+			s.new.ID,
+			s.new.URN,
+			s.new.URN.Name(),
+			s.Type(),
+			s.new.Inputs,
+			s.old.Inputs,
+			s.new.Outputs,
+			s.old.Outputs,
+		); err != nil {
+			return resourceStatus, nil, err
+		}
 	}
 
 	return resourceStatus, complete, nil

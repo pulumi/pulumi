@@ -401,6 +401,11 @@ func (host *pluginHost) SignalCancellation() error {
 			err = pErr
 		}
 	}
+	for _, analyzer := range host.analyzers {
+		if aErr := analyzer.Cancel(context.TODO()); aErr != nil {
+			err = aErr
+		}
+	}
 	return err
 }
 

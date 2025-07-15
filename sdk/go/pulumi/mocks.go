@@ -366,7 +366,7 @@ func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.Registe
 func (m *mockMonitor) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Empty,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 type mockEngine struct {

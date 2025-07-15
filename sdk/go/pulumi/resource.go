@@ -22,8 +22,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
@@ -327,6 +329,75 @@ type CustomTimeouts struct {
 	Delete string
 }
 
+// ResourceHookOptions are the options for registering a resource hook.
+type ResourceHookOptions struct {
+	OnDryRun bool // Run the hook during dry run (preview) operations. Defaults to false.
+}
+
+// ResourceHookArgs represents the arguments passed to a resource hook.
+//
+// Depending on the hook type, only some of the new/old inputs/outputs are set.
+//
+// | Hook Type     | old_inputs | new_inputs | old_outputs | new_outputs |
+// | ------------- | ---------- | ---------- | ----------- | ----------- |
+// | before_create |            | ✓          |             |             |
+// | after_create  |            | ✓          |             | ✓           |
+// | before_update | ✓          | ✓          | ✓           |             |
+// | after_update  | ✓          | ✓          | ✓           | ✓           |
+// | before_delete | ✓          |            | ✓           |             |
+// | after_delete  | ✓          |            | ✓           |             |
+type ResourceHookArgs struct {
+	URN        URN                  // The URN of the resource that triggered the hook.
+	ID         ID                   // The ID of the resource that triggered the hook.
+	Name       string               // The name of the resource that triggered the hook.
+	Type       tokens.Type          // The type of the resource that triggered the hook.
+	NewInputs  resource.PropertyMap // The new inputs of the resource that triggered the hook.
+	OldInputs  resource.PropertyMap // The old inputs of the resource that triggered the hook.
+	NewOutputs resource.PropertyMap // The new outputs of the resource that triggered the hook.
+	OldOutputs resource.PropertyMap // The old outputs of the resource that triggered the hook.
+}
+
+// ResourceHookFunction is a function that can be registered as a resource hook
+type ResourceHookFunction func(args *ResourceHookArgs) error
+
+// ResourceHook is a named hook that can be registered as a resource hook.
+type ResourceHook struct {
+	Name     string               // The unqiue name of the resource hook.
+	Callback ResourceHookFunction // The function that will be called when the resource hook is triggered.
+	Opts     ResourceOptions      // The options for the resource hook.
+	// Tracks the registration of the resource hook. The future will resolve
+	// once the hook has been registered, or reject if any error
+	registered *promise.Promise[struct{}]
+}
+
+// ResourceHookBinding binds `ResourceHook` instances to a resource. The
+// resource hooks will be invoked during certain step of the lifecycle of the
+// resource.
+//
+// `before_${action}` hooks that raise an exception cause the action to fail.
+// `after_${action}` hooks that raise an exception will log a warning, but do
+// not cause the action or the deployment to fail.
+//
+// When running `pulumi destroy`, `before_delete` and `after_delete` resource
+// hooks require the operation to run with `--run-program`, to ensure that the
+// program which defines the hooks is available.
+type ResourceHookBinding struct {
+	BeforeCreate []*ResourceHook // Hooks to be invoked before the resource is created.
+	AfterCreate  []*ResourceHook // Hooks to be invoked after the resource is created.
+	BeforeUpdate []*ResourceHook // Hooks to be invoked before the resource is updated.
+	AfterUpdate  []*ResourceHook // Hooks to be invoked after the resource is updated.
+	// Hooks to be invoked before the resource is deleted.
+	//
+	// Note that delete hooks require that destroy operations are run with
+	// `--run-program`.
+	BeforeDelete []*ResourceHook
+	// Hooks to be invoked after the resource is deleted.
+	//
+	// Note that delete hooks require that destroy operations are run with
+	// `--run-program`.
+	AfterDelete []*ResourceHook
+}
+
 // ResourceOptions is a snapshot of one or more [ResourceOption]s.
 //
 // You cannot pass a ResourceOptions struct to a resource constructor.
@@ -421,6 +492,10 @@ type ResourceOptions struct {
 	// DeletedWith holds a container resource that, if deleted,
 	// also deletes this resource.
 	DeletedWith Resource
+
+	// Hooks are the optional resource hooks to bind to this resource. The hooks
+	// will be invoked during the lifecycle of the resource.
+	Hooks *ResourceHookBinding
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -457,6 +532,7 @@ type resourceOptions struct {
 	RetainOnDelete          *bool
 	DeletedWith             Resource
 	Parameterization        []byte
+	Hooks                   *ResourceHookBinding
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -520,6 +596,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		PluginDownloadURL:       ro.PluginDownloadURL,
 		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
+		Hooks:                   ro.Hooks,
 	}
 }
 
@@ -821,6 +898,25 @@ func Parent(r Resource) ResourceOrInvokeOption {
 func Protect(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Protect = &o
+	})
+}
+
+// If set, ResourceHooks are the resource hooks to bind to this resource. The
+// hooks will be invoked during the lifecycle of the resource.
+func ResourceHooks(hooks *ResourceHookBinding) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		if hooks == nil {
+			return
+		}
+		if ro.Hooks == nil {
+			ro.Hooks = &ResourceHookBinding{}
+		}
+		ro.Hooks.BeforeCreate = append(ro.Hooks.BeforeCreate, hooks.BeforeCreate...)
+		ro.Hooks.AfterCreate = append(ro.Hooks.AfterCreate, hooks.AfterCreate...)
+		ro.Hooks.BeforeUpdate = append(ro.Hooks.BeforeUpdate, hooks.BeforeUpdate...)
+		ro.Hooks.AfterUpdate = append(ro.Hooks.AfterUpdate, hooks.AfterUpdate...)
+		ro.Hooks.BeforeDelete = append(ro.Hooks.BeforeDelete, hooks.BeforeDelete...)
+		ro.Hooks.AfterDelete = append(ro.Hooks.AfterDelete, hooks.AfterDelete...)
 	})
 }
 

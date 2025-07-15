@@ -395,6 +395,17 @@ class Server implements grpc.UntypedServiceImplementation {
                     }
                 }
 
+                const resourceHooks: resource.ResourceHookBinding = {};
+                const binding = req.getResourceHooks();
+                if (binding) {
+                    resourceHooks.beforeCreate = binding.getBeforeCreateList().map((n) => new StubResourceHook(n));
+                    resourceHooks.afterCreate = binding.getAfterCreateList().map((n) => new StubResourceHook(n));
+                    resourceHooks.beforeUpdate = binding.getBeforeUpdateList().map((n) => new StubResourceHook(n));
+                    resourceHooks.afterUpdate = binding.getAfterUpdateList().map((n) => new StubResourceHook(n));
+                    resourceHooks.beforeDelete = binding.getBeforeDeleteList().map((n) => new StubResourceHook(n));
+                    resourceHooks.afterDelete = binding.getAfterDeleteList().map((n) => new StubResourceHook(n));
+                }
+
                 const opts: resource.ComponentResourceOptions = {
                     aliases: req.getAliasesList(),
                     dependsOn: dependsOn,
@@ -405,6 +416,7 @@ class Server implements grpc.UntypedServiceImplementation {
                     replaceOnChanges: req.getReplaceonchangesList(),
                     customTimeouts: req.getCustomtimeouts()?.toObject(),
                     retainOnDelete: req.getRetainondelete(),
+                    hooks: resourceHooks,
                 };
 
                 const deletedWith = req.getDeletedwith();
@@ -788,4 +800,23 @@ function createProviderResource(ref: string): resource.ProviderResource {
         return resourcePackage.constructProvider(urnName, type, urn);
     }
     return new resource.DependencyProviderResource(ref);
+}
+
+/**
+ * StubResourceHook is a resource hook that does nothing.
+ *
+ * We need to reconstruct {@link ResourceHook} instances here to set
+ * on the {@link ResourceOption}s, but we only have the name
+ * available to us. We also know that these hooks have already been
+ * registered when the remote component called register_resource, so we
+ * can construct dummy hooks here, that will be serialized back into
+ * list of hook names.
+ */
+class StubResourceHook extends resource.ResourceHook {
+    constructor(n: string) {
+        super(n, () => {
+            return;
+        });
+        this.__registered = Promise.resolve(); // Mark the hook as registered.
+    }
 }

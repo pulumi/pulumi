@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // ResourceHookFunction is the shape of a resource hook.
@@ -28,6 +29,8 @@ type ResourceHookFunction func(
 	ctx context.Context,
 	urn resource.URN,
 	id resource.ID,
+	name string,
+	typ tokens.Type,
 	newInputs resource.PropertyMap,
 	oldInputs resource.PropertyMap,
 	newOutputs resource.PropertyMap,

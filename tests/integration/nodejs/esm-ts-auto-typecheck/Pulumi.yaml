@@ -1,0 +1,3 @@
+name: esm-ts
+runtime: nodejs
+description: Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option

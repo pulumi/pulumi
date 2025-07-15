@@ -326,3 +326,7 @@ func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.Anal
 	// TODO: Implement stack analysis
 	return &pulumirpc.AnalyzeResponse{}, nil
 }
+
+func (srv *analyzerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
+	return &pbempty.Empty{}, nil
+}

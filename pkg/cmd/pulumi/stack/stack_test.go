@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShowStackName(t *testing.T) {
@@ -53,7 +54,7 @@ func TestShowStackName(t *testing.T) {
 			}
 
 			err := runStack(context.Background(), &s, &output, args)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected+"\n", output.String())
 		})
 	}

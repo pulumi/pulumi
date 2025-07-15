@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCapabilities(t *testing.T) {
@@ -26,7 +27,7 @@ func TestCapabilities(t *testing.T) {
 	t.Run("parse empty", func(t *testing.T) {
 		t.Parallel()
 		actual, err := CapabilitiesResponse{}.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{}, actual)
 	})
 	t.Run("parse delta v1", func(t *testing.T) {
@@ -40,7 +41,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{},
 		}, actual)
@@ -56,7 +57,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{
 				CheckpointCutoffSizeBytes: 1024,
@@ -75,7 +76,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{},
 		}, actual)
@@ -92,7 +93,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{
 				CheckpointCutoffSizeBytes: 1024,
@@ -107,7 +108,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			BatchEncryption: true,
 		}, actual)
@@ -121,7 +122,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			CopilotSummarizeErrorV1: true,
 		}, actual)
@@ -135,7 +136,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{}, actual)
 	})
 }

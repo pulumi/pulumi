@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -726,7 +727,7 @@ func GetLogs(
 		context.Background(),
 		*stackInfo.Deployment,
 		stack.DefaultSecretsProvider)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
 	if !assert.NotNil(t, tree) {
@@ -740,9 +741,7 @@ func GetLogs(
 
 	// Validate logs from example
 	logs, err := ops.GetLogs(query)
-	if !assert.NoError(t, err) {
-		return nil
-	}
+	require.NoError(t, err)
 
 	return logs
 }
@@ -860,7 +859,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	pt := ProgramTestManualLifeCycle(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	if !errors.Is(err, ErrTestFailed) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -1294,7 +1293,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 
 	destroyStack := func() {
 		destroyErr := pt.TestLifeCycleDestroy()
-		assert.NoError(pt.t, destroyErr)
+		require.NoError(pt.t, destroyErr)
 	}
 	if pt.opts.DestroyOnCleanup {
 		// Allow other tests to refer to this stack until the test is complete.

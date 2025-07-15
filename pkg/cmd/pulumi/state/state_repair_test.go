@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
@@ -74,7 +75,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 			err := fx.cmd.run(context.Background())
 
 			// Assert.
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Contains(t, fx.stdout.String(), "already valid")
 			assert.Nil(t, fx.imported, "Import should not have proceeded")
 		})
@@ -101,7 +102,7 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "will be reordered")
 	assert.NotContains(t, fx.stdout.String(), "will be modified")
 }
@@ -125,7 +126,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, fx.stdout.String(), "will be reordered")
 	assert.Contains(t, fx.stdout.String(), "will be modified")
 }
@@ -151,7 +152,7 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "will be reordered")
 	assert.Contains(t, fx.stdout.String(), "will be modified")
 }
@@ -176,7 +177,7 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "Confirm?")
 	assert.Nil(t, fx.imported, "Import should not have proceeded")
 }
@@ -201,7 +202,7 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "Confirm?")
 	assert.NotNil(t, fx.imported, "Import should have proceeded")
 }
@@ -219,7 +220,7 @@ func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, fx.stdout.String(), "Confirm?")
 	assert.NotNil(t, fx.imported, "Import should have proceeded")
 }
@@ -256,7 +257,7 @@ func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "State repaired successfully")
 	assert.Equal(t, "a", string(fx.imported.Resources[0].URN))
 	assert.Equal(t, "b", string(fx.imported.Resources[1].URN))
@@ -290,7 +291,7 @@ func newStateRepairCmdFixture(
 		},
 		ImportDeploymentF: func(_ context.Context, _ backend.Stack, d *apitype.UntypedDeployment) error {
 			err := json.Unmarshal(d.Deployment, &fx.imported)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		},
 	}

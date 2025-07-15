@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix `stack select` when local default-org differs from the service setting for default-org

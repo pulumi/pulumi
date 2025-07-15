@@ -1071,6 +1071,14 @@ export interface ResourceHookArgs {
      */
     id: ID;
     /**
+     * The name of the resource that triggered the hook.
+     */
+    name: string;
+    /**
+     * The type of the resource that triggered the hook.
+     */
+    type: string;
+    /**
      * The new inputs of the resource that triggered the hook.
      */
     newInputs?: Record<string, any>;

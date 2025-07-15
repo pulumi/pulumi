@@ -312,6 +312,10 @@ func (a *analyzerPlugin) Analyze(
 	return &pulumirpc.AnalyzeResponse{}, nil
 }
 
+func (a *analyzerPlugin) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 func (h *PolicySimpleLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {

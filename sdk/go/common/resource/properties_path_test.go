@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPropertyPath(t *testing.T) {
@@ -168,7 +169,7 @@ func TestPropertyPath(t *testing.T) {
 			t.Parallel()
 
 			parsed, err := ParsePropertyPath(c.path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.parsed, parsed)
 			assert.Equal(t, c.expected, parsed.String())
 
@@ -229,7 +230,7 @@ func TestPropertyPath(t *testing.T) {
 				t.Parallel()
 
 				parsed, err := ParsePropertyPath(c.path)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, c.expected, parsed)
 			})
 		}
@@ -401,7 +402,7 @@ func TestAddResizePropertyPath(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/5871:
 	// Ensure that adding a new element beyond the size of an array will resize it.
 	path, err := ParsePropertyPath("[1]")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, ok := path.Add(NewProperty([]PropertyValue{}), NewProperty(42.0))
 	assert.True(t, ok)
 }

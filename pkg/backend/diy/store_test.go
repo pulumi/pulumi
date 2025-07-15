@@ -464,7 +464,7 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 			}
 
 			exist, err := store.ProjectExists(ctx, tt.projectName)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.exist, exist)
 		})
 	}

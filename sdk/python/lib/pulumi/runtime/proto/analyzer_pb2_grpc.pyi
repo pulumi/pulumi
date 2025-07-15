@@ -84,6 +84,15 @@ class AnalyzerStub:
     This method is not always called, for example if the engine is just booting the analyzer up to call
     GetAnalyzerInfo.
     """
+    Cancel: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+    Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+    it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+    hard-closing any gRPC connection.
+    """
 
 class AnalyzerServicer(metaclass=abc.ABCMeta):
     """Analyzer provides a pluggable interface for checking resource definitions against some number of
@@ -160,6 +169,17 @@ class AnalyzerServicer(metaclass=abc.ABCMeta):
         """`ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
         This method is not always called, for example if the engine is just booting the analyzer up to call
         GetAnalyzerInfo.
+        """
+    
+    def Cancel(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty:
+        """Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+        Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+        it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+        hard-closing any gRPC connection.
         """
 
 def add_AnalyzerServicer_to_server(servicer: AnalyzerServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

@@ -58,7 +58,7 @@ func TestSanitizeArchivePath(t *testing.T) {
 			if tt.shouldFail {
 				assert.ErrorContains(t, err, "content filepath is tainted")
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -135,7 +135,7 @@ func TestRetrieveZIPTemplates_FailsOnInvalidURLs(t *testing.T) {
 
 	for _, templateURL := range cases {
 		parsed, err := url.Parse(templateURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Act.
 		_, err = RetrieveZIPTemplates(templateURL)
@@ -182,7 +182,7 @@ func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 		_, err := RetrieveZIPTemplates(server.URL + "/" + path)
 
 		// Assert.
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -253,15 +253,15 @@ func newTestServer(t *testing.T, zips map[string][]string) *httptest.Server {
 			for i := 0; i < len(dirs)-1; i++ {
 				path := strings.Join(dirs[:i+1], "/")
 				_, err := writer.Create(path + "/")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			fileHandle, err := writer.Create(file)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// All files contain the same piece of test content.
 			_, err = fileHandle.Write([]byte("test"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		writer.Close()
 
@@ -269,6 +269,6 @@ func newTestServer(t *testing.T, zips map[string][]string) *httptest.Server {
 		rw.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", zipName))
 
 		_, err := rw.Write(buf.Bytes())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}))
 }

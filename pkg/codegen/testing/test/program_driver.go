@@ -691,7 +691,7 @@ func TestProgramCodegen(
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
 				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
 				outfilePath := filepath.Join(testDir, testcase.OutputFile)
@@ -699,7 +699,7 @@ func TestProgramCodegen(
 				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
 			}
 			files, diags, err = testcase.GenProgram(program)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if expectNYIDiags {
 				var tmpDiags hcl.Diagnostics
 				for _, d := range diags {

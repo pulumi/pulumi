@@ -202,7 +202,7 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	t.Logf("stderr: %s", runResponse.Stderr)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, runResponse)
 
 	assert.Empty(t, runResponse.Messages)
@@ -377,7 +377,7 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 	t.Logf("stderr: %s", runResponse.Stderr)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, runResponse)
 
 	assert.Empty(t, runResponse.Messages)
