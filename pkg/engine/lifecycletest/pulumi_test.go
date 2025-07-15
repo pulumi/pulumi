@@ -142,7 +142,7 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 func TestMain(m *testing.M) {
 	grpcDefault := flag.Bool("grpc-plugins", false, "enable or disable gRPC providers by default")
-	if (runtime.GOOS == "windows" || runtime.GOOS == "darwin") && os.Getenv("PULUMI_FORCE_RUN_TESTS") == "" {
+	if (runtime.GOOS == "windows") && os.Getenv("PULUMI_FORCE_RUN_TESTS") == "" {
 		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
 		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
 		// re-enabling them is left as future work.
