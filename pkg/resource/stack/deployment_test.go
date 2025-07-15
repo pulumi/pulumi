@@ -249,10 +249,10 @@ func TestUnsupportedFeature(t *testing.T) {
 	}
 
 	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
-	assert.Nil(t, deployment)
+	require.Nil(t, deployment)
 	var expectedErr *ErrDeploymentUnsupportedFeatures
-	assert.ErrorAs(t, err, &expectedErr)
-	assert.Equal(t, []string{"unsupported-feature"}, expectedErr.Features)
+	require.ErrorAs(t, err, &expectedErr)
+	require.Equal(t, []string{"unsupported-feature"}, expectedErr.Features)
 }
 
 // TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.
