@@ -4799,13 +4799,13 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Version: version,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if !skipB {
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Version: version,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})

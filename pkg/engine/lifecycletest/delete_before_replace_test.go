@@ -892,14 +892,14 @@ func TestDBRParallel(t *testing.T) {
 				respA, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
 					Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"}),
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
 					Inputs:       resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"}),
 					Dependencies: []resource.URN{respA.URN},
 					PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return nil
 			}
@@ -916,7 +916,7 @@ func TestDBRParallel(t *testing.T) {
 					_, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
 						Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "bar"}),
 					})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					wg.Done()
 				}()
 
@@ -924,7 +924,7 @@ func TestDBRParallel(t *testing.T) {
 					_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
 						Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "bar"}),
 					})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					wg.Done()
 				}()
 

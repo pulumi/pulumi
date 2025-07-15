@@ -2442,7 +2442,7 @@ func TestViewsDestroyPreview(t *testing.T) {
 				"foo": resource.NewProperty("bar"),
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
