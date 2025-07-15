@@ -761,13 +761,12 @@ class Stack:
 
         args.extend(self._remote_args())
 
-        # https://github.com/pulumi/pulumi/issues/20020
         if self._remote and show_secrets:
             raise RuntimeError("can't enable `showSecrets` for remote workspaces")
 
-        # Execute the rename command.
         rename_result = self._run_pulumi_cmd_sync(args, on_output)
 
+        # https://github.com/pulumi/pulumi/issues/20020
         # After the rename is successful in the backend, the internal state of this
         # Stack object MUST be updated to reflect the new name
         self.name = new_stack_name
