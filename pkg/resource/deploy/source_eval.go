@@ -2088,6 +2088,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
 		PluginChecksums:         req.GetPluginChecksums(),
+		Hooks:                   req.GetHooks(),
 	}
 
 	// This might be a resource registation for a resource that another process requested to be constructed.
@@ -2354,7 +2355,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Grab the names for all of the hooks of a given type.
 	getHookNames := func(hookType resource.HookType) []string {
 		names := []string{}
-		hooks := req.GetHooks()
+		hooks := opts.GetHooks()
 		if hooks == nil {
 			return names
 		}
