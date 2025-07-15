@@ -5565,7 +5565,8 @@ proto.pulumirpc.TransformResourceOptions.toObject = function(includeInstance, ms
     deleteBeforeReplace: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
+    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+    hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5667,6 +5668,11 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
+      break;
+    case 16:
+      var value = new proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding;
+      reader.readMessage(value,proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.deserializeBinaryFromReader);
+      msg.setHooks(value);
       break;
     default:
       reader.skipField();
@@ -5797,6 +5803,14 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
   f = message.getPluginChecksumsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(15, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
+  }
+  f = message.getHooks();
+  if (f != null) {
+    writer.writeMessage(
+      16,
+      f,
+      proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.serializeBinaryToWriter
+    );
   }
 };
 
@@ -6246,6 +6260,43 @@ proto.pulumirpc.TransformResourceOptions.prototype.getPluginChecksumsMap = funct
 proto.pulumirpc.TransformResourceOptions.prototype.clearPluginChecksumsMap = function() {
   this.getPluginChecksumsMap().clear();
   return this;};
+
+
+/**
+ * optional RegisterResourceRequest.ResourceHooksBinding hooks = 16;
+ * @return {?proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getHooks = function() {
+  return /** @type{?proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding, 16));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding|undefined} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+*/
+proto.pulumirpc.TransformResourceOptions.prototype.setHooks = function(value) {
+  return jspb.Message.setWrapperField(this, 16, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearHooks = function() {
+  return this.setHooks(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.hasHooks = function() {
+  return jspb.Message.getField(this, 16) != null;
+};
 
 
 
