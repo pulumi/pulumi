@@ -30,7 +30,10 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -967,4 +970,171 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 	snap := p.Run(t, nil)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 1, len(snap.Resources)) // expect no default provider to be created for the invoke
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19904. Registering a transform that depends on a resource
+// that is registered after the transform starts running should not hang.
+func TestTransformOrdering(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		pcs := &promise.CompletionSource[*deploytest.RegisterResourceResponse]{}
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				if name == "resA" && opts.Provider == "" {
+					provider, err := pcs.Promise().Result(context.Background())
+					if err != nil {
+						return nil, nil, err
+					}
+					implicitProvider = string(provider.URN) + "::" + provider.ID.String()
+					opts.Provider = implicitProvider
+				}
+
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackTransform(callback)
+		require.NoError(t, err)
+
+		resA := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			return monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		})
+
+		go func() {
+			resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+			if err != nil {
+				pcs.MustReject(err)
+				return
+			}
+			pcs.MustFulfill(resp)
+		}()
+
+		_, err = resA.Result(context.Background())
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []lt.TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	snap := p.Run(t, nil)
+	require.NotNil(t, snap)
+	require.Equal(t, 2, len(snap.Resources))
+	assert.Equal(t, implicitProvider, snap.Resources[1].Provider)
+}
+
+// TestAssetArchiveRoundtrip is a regression test for https://github.com/pulumi/pulumi/issues/17792.
+// Most languages do not maintain the 'hash' data of assets and archives. We need to ensure the engine
+// rehydrates those before sending them to providers.
+func TestAssetArchiveRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Ensure the archive is rehydrated before we use it.
+					assert.Equal(t,
+						"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+						req.Properties["asset"].AssetValue().Hash)
+					assert.Equal(t,
+						"f19bab27a7f9d59cff97df356effce0047fefb13c8265e04d0874c0f09df4a16",
+						req.Properties["archive"].ArchiveValue().Hash)
+
+					return plugin.CreateResponse{
+						ID:         "some-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		callback1, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props["asset"].AssetValue().Hash = ""
+				props["archive"].ArchiveValue().Hash = ""
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		assetValue, err := asset.FromText("hello world")
+		require.NoError(t, err)
+		archiveValue, err := archive.FromAssets(map[string]interface{}{
+			"file.txt": assetValue,
+		})
+		require.NoError(t, err)
+
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"asset":   resource.NewAssetProperty(assetValue),
+				"archive": resource.NewArchiveProperty(archiveValue),
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t,
+			"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+			respA.Outputs["asset"].AssetValue().Hash)
+		assert.Equal(t,
+			"f19bab27a7f9d59cff97df356effce0047fefb13c8265e04d0874c0f09df4a16",
+			respA.Outputs["archive"].ArchiveValue().Hash)
+
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"asset":   resource.NewAssetProperty(assetValue),
+				"archive": resource.NewArchiveProperty(archiveValue),
+			},
+			Transforms: []*pulumirpc.Callback{
+				callback1,
+			},
+		})
+		require.NoError(t, err)
+		assert.Equal(t,
+			"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+			respB.Outputs["asset"].AssetValue().Hash)
+		assert.Equal(t,
+			"f19bab27a7f9d59cff97df356effce0047fefb13c8265e04d0874c0f09df4a16",
+			respB.Outputs["archive"].ArchiveValue().Hash)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
 }

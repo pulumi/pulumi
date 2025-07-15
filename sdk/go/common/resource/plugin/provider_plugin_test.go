@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -796,9 +797,12 @@ type stubClient struct {
 	DiffConfigF    func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
 	ConstructF     func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
 	ConfigureF     func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
+	CreateF        func(*pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error)
 	DeleteF        func(*pulumirpc.DeleteRequest) error
 	GetSchemaF     func(*pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error)
 	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
+	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
+	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
 }
 
 func (c *stubClient) DiffConfig(
@@ -834,6 +838,17 @@ func (c *stubClient) Configure(
 	return c.ResourceProviderClient.Configure(ctx, req, opts...)
 }
 
+func (c *stubClient) Create(
+	ctx context.Context,
+	req *pulumirpc.CreateRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.CreateResponse, error) {
+	if f := c.CreateF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Create(ctx, req, opts...)
+}
+
 func (c *stubClient) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
@@ -866,6 +881,28 @@ func (c *stubClient) GetPluginInfo(
 		return f()
 	}
 	return c.ResourceProviderClient.GetPluginInfo(ctx, in, opts...)
+}
+
+func (c *stubClient) Read(
+	ctx context.Context,
+	req *pulumirpc.ReadRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ReadResponse, error) {
+	if f := c.ReadF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Read(ctx, req, opts...)
+}
+
+func (c *stubClient) Update(
+	ctx context.Context,
+	req *pulumirpc.UpdateRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.UpdateResponse, error) {
+	if f := c.UpdateF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Update(ctx, req, opts...)
 }
 
 // Test for https://github.com/pulumi/pulumi/issues/14529, ensure a kubernetes DiffConfig error is ignored
@@ -998,4 +1035,85 @@ func TestGetProviderAttachPort(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, port)
 	})
+}
+
+func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		CreateF: func(req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+			reasons := []string{"create issue"}
+			detail := pulumirpc.ErrorResourceInitFailed{
+				Id:                  "some-id",
+				Reasons:             reasons,
+				RefreshBeforeUpdate: true,
+			}
+			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+		},
+		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+			reasons := []string{"read issue"}
+			detail := pulumirpc.ErrorResourceInitFailed{
+				Id:                  "some-id",
+				Reasons:             reasons,
+				RefreshBeforeUpdate: true,
+			}
+			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+		},
+		UpdateF: func(req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+			reasons := []string{"update issue"}
+			detail := pulumirpc.ErrorResourceInitFailed{
+				Id:                  "some-id",
+				Reasons:             reasons,
+				RefreshBeforeUpdate: true,
+			}
+			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+
+	_, err := p.Configure(context.Background(), ConfigureRequest{})
+	require.NoError(t, err, "configure failed")
+
+	var initErr *InitError
+
+	createResp, err := p.Create(context.Background(), CreateRequest{
+		URN:        urn,
+		Name:       urn.Name(),
+		Type:       urn.Type(),
+		Properties: resource.PropertyMap{},
+	})
+	assert.True(t, createResp.RefreshBeforeUpdate)
+	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
+
+	readResp, err := p.Read(context.Background(), ReadRequest{
+		URN:    urn,
+		Name:   urn.Name(),
+		Type:   urn.Type(),
+		ID:     "some-id",
+		Inputs: resource.PropertyMap{},
+		State:  resource.PropertyMap{},
+	})
+	assert.True(t, readResp.RefreshBeforeUpdate)
+	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
+
+	updateResp, err := p.Update(context.Background(), UpdateRequest{
+		URN:        urn,
+		Name:       urn.Name(),
+		Type:       urn.Type(),
+		ID:         "some-id",
+		OldInputs:  resource.PropertyMap{},
+		OldOutputs: resource.PropertyMap{},
+		NewInputs:  resource.PropertyMap{},
+	})
+	assert.True(t, updateResp.RefreshBeforeUpdate)
+	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
 }

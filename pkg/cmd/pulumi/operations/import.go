@@ -443,7 +443,7 @@ func getCurrentDeploymentForStack(
 	ctx context.Context,
 	s backend.Stack,
 ) (*deploy.Snapshot, error) {
-	deployment, err := s.ExportDeployment(ctx)
+	deployment, err := backend.ExportStackDeployment(ctx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -829,6 +829,7 @@ func NewImportCmd() *cobra.Command {
 			// Fetch the current stack.
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -883,7 +884,7 @@ func NewImportCmd() *cobra.Command {
 				return files, diagnostics, nil
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -917,7 +918,7 @@ func NewImportCmd() *cobra.Command {
 				Experimental:         env.Experimental.Value(),
 			}
 
-			_, err = s.Import(ctx, backend.UpdateOperation{
+			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

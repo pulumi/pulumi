@@ -185,6 +185,27 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the refresh.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
+// PolicyPacks specifies one or more policy packs to run as part of this update
+func PolicyPacks(packs ...string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPacks = packs
+	})
+}
+
+// PolicyPackConfigs specifies one or more paths to JSON files containing the config for the policy pack
+func PolicyPackConfigs(paths ...string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPackConfigs = paths
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -245,6 +266,8 @@ type Options struct {
 	AttachDebugger bool
 	// Run using the configuration values in the specified file rather than detecting the file name
 	ConfigFile string
+	// When set to true, run the program in the workspace to perform the refresh.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

@@ -523,7 +523,11 @@ type mockResourceMonitor struct {
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-var _ pulumi.MockResourceMonitor = (*mockResourceMonitor)(nil)
+var (
+	// Ensure we implement the appropriate interfaces for testing.
+	_ pulumi.MockResourceMonitor               = (*mockResourceMonitor)(nil)
+	_ pulumi.MockResourceMonitorWithMethodCall = (*mockResourceMonitor)(nil)
+)
 
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return m.CallF(args)

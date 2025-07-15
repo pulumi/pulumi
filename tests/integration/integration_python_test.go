@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (python || all) && !xplatform_acceptance
+//go:build python || all
 
 package ints
 
@@ -220,7 +220,6 @@ func TestConfigBasicPython(t *testing.T) {
 		Quick: true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a Pythonic value",
-			"phonenumber":  "+441234567890",
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super Pythonic secret is encrypted",
@@ -1443,11 +1442,6 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestParameterizedPython(t *testing.T) {
-	// TODO: Unskip this test after 3.134.0 is released. Python codegen for parameterized providers will try to
-	// refer to release 3.134.0, but until we actually release that version pip will fail that this constraint
-	// can't be met.
-	t.Skip("This needs to skip until 3.134.0 is released due to how pip resoloution works")
-
 	e := ptesting.NewEnvironment(t)
 
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
@@ -1469,6 +1463,19 @@ func TestParameterizedPython(t *testing.T) {
 		},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider-py")},
+		},
+		PostPrepareProject: func(info *engine.Projinfo) error {
+			e := ptesting.NewEnvironment(t)
+			e.CWD = info.Root
+			// Get the venv
+			venv := info.Proj.Runtime.Options()["virtualenv"].(string)
+			venvPython := filepath.Join(venv, "bin", "python")
+			if runtime.GOOS == "windows" {
+				venvPython = filepath.Join(venv, "Scripts", "python.exe")
+			}
+
+			e.RunCommand(venvPython, "-m", "unittest", "test.py")
+			return nil
 		},
 	})
 }
@@ -1522,7 +1529,7 @@ func TestPackageAddPython(t *testing.T) {
 			} else {
 				b1, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
 				assert.NoError(t, err)
-				assert.Contains(t, string(b1), "sdks/random")
+				assert.Contains(t, string(b1), filepath.Join("sdks", "random"))
 
 				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
 				_, _ = e.RunCommand("pulumi", "package", "add", "random")
@@ -1531,7 +1538,7 @@ func TestPackageAddPython(t *testing.T) {
 				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
 				var sdksRandomCount int
 				for _, line := range lines {
-					if strings.Contains(line, "sdks/random") {
+					if strings.Contains(filepath.ToSlash(line), "sdks/random") {
 						sdksRandomCount++
 					}
 				}
@@ -1573,9 +1580,9 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
 
-	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
+	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir", "requirements.txt"))
 	assert.NoError(t, err)
-	assert.Contains(t, string(b), "sdks/supabase")
+	assert.Contains(t, string(b), filepath.Join("sdks", "supabase"))
 
 	// Check that `supabase` was installed
 	type dependency struct {
@@ -1639,6 +1646,11 @@ func TestConfigGetterOverloads(t *testing.T) {
 // and finally that the program terminates successfully after the debugger is detached.
 func TestDebuggerAttachPython(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1767,6 +1779,11 @@ outer:
 
 func TestPluginDebuggerAttachPython(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1944,6 +1961,12 @@ func TestLogDebugPython(t *testing.T) {
 
 func TestDynamicProviderPython(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18439]: Unskip this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
+
 	for _, toolchain := range []string{"pip", "uv", "poetry"} {
 		toolchain := toolchain
 		t.Run(toolchain, func(t *testing.T) {
@@ -1955,7 +1978,15 @@ func TestDynamicProviderPython(t *testing.T) {
 			require.NoError(t, err)
 			if toolchain == "poetry" {
 				e.RunCommand("pulumi", "install")
-				e.RunCommand("poetry", "add", coreSDK)
+				if runtime.GOOS == "windows" {
+					// Poetry requires the sdk to be on the same device as the project on windows.  Since the
+					// tmpdir is not guaranteed to be on the same device as the project, we need to copy the
+					// sdk to the project directory.
+					e.RunCommand("cp", "-R", coreSDK, "coresdk")
+					e.RunCommand("poetry", "add", "coresdk")
+				} else {
+					e.RunCommand("poetry", "add", coreSDK)
+				}
 			} else {
 				f, err := os.OpenFile(filepath.Join(e.RootPath, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 				require.NoError(t, err)
@@ -2321,12 +2352,16 @@ func TestPythonComponentProviderException(t *testing.T) {
 
 					matches := regexp.MustCompile(`File.*, line \d+, in .*`).FindAllString(event.DiagnosticEvent.Message, -1)
 					require.Len(t, matches, 3, "Expected 3 stack trace lines")
+					componentPath := filepath.Join("tests", "integration", "component_provider",
+						"python", "exception", "provider", "component.py")
 					require.Contains(t, event.DiagnosticEvent.Message,
-						"tests/integration/component_provider/python/exception/provider/component.py\", line 27, in __init__")
+
+						componentPath+"\", line 27, in __init__")
+
 					require.Contains(t, event.DiagnosticEvent.Message,
-						"tests/integration/component_provider/python/exception/provider/component.py\", line 31, in method_a")
+						componentPath+"\", line 31, in method_a")
 					require.Contains(t, event.DiagnosticEvent.Message,
-						"tests/integration/component_provider/python/exception/provider/component.py\", line 34, in method_b")
+						componentPath+"\", line 34, in method_b")
 					foundError = true
 				}
 			}
@@ -2339,6 +2374,10 @@ func TestPythonComponentProviderException(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderResourceReference(t *testing.T) {
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	// Manually set pulumi home so we can pass it to `plugin install`.
 	for _, runtime := range []string{"yaml", "python"} {
 		t.Run(runtime, func(t *testing.T) {

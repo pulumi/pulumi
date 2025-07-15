@@ -47,7 +47,7 @@ export class Stack {
     /**
      * The name identifying the stack.
      */
-    readonly name: string;
+    name: string;
 
     /**
      * The {@link Workspace} the stack was created from.
@@ -229,6 +229,13 @@ Event: ${line}\n${e.toString()}`);
             if (opts.attachDebugger) {
                 args.push("--attach-debugger");
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -375,6 +382,13 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.attachDebugger) {
                 args.push("--attach-debugger");
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
             }
             applyGlobalOpts(opts, args);
         }
@@ -542,6 +556,96 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Performs a dry-run refresh of the stack, returning pending changes.
+     *
+     * @param opts
+     *  Options to customize the behavior of the refresh.
+     */
+    async previewRefresh(opts?: RefreshOptions): Promise<PreviewResult> {
+        const args = ["refresh", "--preview-only"];
+        args.push(...this.remoteArgs());
+
+        if (opts) {
+            if (opts.message) {
+                args.push("--message", opts.message);
+            }
+            if (opts.expectNoChanges) {
+                args.push("--expect-no-changes");
+            }
+            if (opts.clearPendingCreates) {
+                args.push("--clear-pending-creates");
+            }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
+            if (opts.target) {
+                for (const tURN of opts.target) {
+                    args.push("--target", tURN);
+                }
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
+            }
+            if (opts.parallel) {
+                args.push("--parallel", opts.parallel.toString());
+            }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
+            applyGlobalOpts(opts, args);
+        }
+
+        args.push("--exec-kind", execKind.local);
+
+        const logFile = createLogFile("refresh");
+        args.push("--event-log", logFile);
+
+        let summaryEvent: SummaryEvent | undefined;
+        const logPromise = this.readLines(logFile, (event) => {
+            if (event.summaryEvent) {
+                summaryEvent = event.summaryEvent;
+            }
+            if (opts?.onEvent) {
+                const onEvent = opts.onEvent;
+                onEvent(event);
+            }
+        });
+
+        let previewResult: CommandResult;
+        try {
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            throw e;
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
+
+        if (!summaryEvent) {
+            log.warn(
+                "Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.",
+            );
+        }
+
+        return {
+            stdout: previewResult.stdout,
+            stderr: previewResult.stderr,
+            changeSummary: summaryEvent?.resourceChanges || {},
+        };
+    }
+
+    /**
      * Deletes all resources in a stack. By default, this method will leave all
      * history and configuration intact. If `opts.remove` is set, the entire
      * stack and its configuration will also be deleted.
@@ -661,6 +765,8 @@ Event: ${line}\n${e.toString()}`);
         if (this.isRemote && options?.showSecrets) {
             throw new Error("can't enable `showSecrets` for remote workspaces");
         }
+
+        this.name = options.stackName;
 
         const summary = await this.info(!this.isRemote && options?.showSecrets);
 
@@ -1483,6 +1589,11 @@ export interface UpOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1588,6 +1699,11 @@ export interface PreviewOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1606,6 +1722,7 @@ export interface RefreshOptions extends GlobalOpts {
 
     /**
      * Only show a preview of the refresh, but don't perform the refresh itself.
+     * @deprecated Use `previewRefresh` instead.
      */
     previewOnly?: boolean;
 

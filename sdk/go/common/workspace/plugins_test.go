@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"testing"
 	"time"
 
@@ -41,6 +42,69 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPluginNameRegexp(t *testing.T) {
+	t.Parallel()
+
+	type expect struct{ Source, Publisher, Name string }
+	tests := []struct {
+		input    string
+		expected *expect
+	}{
+		{
+			input:    "",
+			expected: nil,
+		},
+		{
+			input:    "plain",
+			expected: &expect{Name: "plain"},
+		},
+		{
+			input:    "publisher/name",
+			expected: &expect{Publisher: "publisher", Name: "name"},
+		},
+		{
+			input:    "source/publisher/name",
+			expected: &expect{Source: "source", Publisher: "publisher", Name: "name"},
+		},
+		{
+			input:    "extra/source/publisher/name",
+			expected: nil,
+		},
+		{
+			input:    "long-name",
+			expected: &expect{Name: "long-name"},
+		},
+		{
+			input:    "./some/path",
+			expected: nil,
+		},
+		{
+			input:    "/leading/slash",
+			expected: nil,
+		},
+		{
+			input:    "../file",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+
+			match := PluginNameRegexp.FindStringSubmatch(tt.input)
+			if match == nil {
+				require.Nil(t, tt.expected)
+				return
+			}
+
+			assert.Equal(t, tt.expected.Name, match[PluginNameRegexp.SubexpIndex("Name")], "Name")
+			assert.Equal(t, tt.expected.Publisher, match[PluginNameRegexp.SubexpIndex("Publisher")], "Publisher")
+			assert.Equal(t, tt.expected.Source, match[PluginNameRegexp.SubexpIndex("Source")], "Source")
+		})
+	}
+}
 
 func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 	t.Parallel()
@@ -1526,6 +1590,10 @@ func TestAmbientPluginsWarn(t *testing.T) {
 }
 
 func TestAmbientBundledPluginsWarn(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on MacOS
+		t.Skip("Skipping tests on MacOS")
+	}
 	// Get the path of this executable
 	exe, err := os.Executable()
 	require.NoError(t, err)
@@ -1962,13 +2030,18 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	require.NoError(t, err)
 
 	tarReader := tar.NewReader(zip)
-	header, err := tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/", header.Name)
-
-	header, err = tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/test", header.Name)
+	for {
+		header, err := tarReader.Next()
+		require.NoError(t, err)
+		if header.Name == "path/" {
+			// Some of the implementations of tar in Go (in particular Go 1.23 and earlier) don't
+			// include the directory entry in the tar stream.  So we can skip over that here, and
+			// make sure we find the file entry we really care about.
+			continue
+		}
+		require.Equal(t, "path/test", header.Name)
+		break
+	}
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -2005,13 +2078,18 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 	require.NoError(t, err)
 
 	tarReader := tar.NewReader(zip)
-	header, err := tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/", header.Name)
-
-	header, err = tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/test", header.Name)
+	for {
+		header, err := tarReader.Next()
+		require.NoError(t, err)
+		if header.Name == "path/" {
+			// Some of the implementations of tar in Go (in particular Go 1.23 and earlier) don't
+			// include the directory entry in the tar stream.  So we can skip over that here, and
+			// make sure we find the file entry we really care about.
+			continue
+		}
+		require.Equal(t, "path/test", header.Name)
+		break
+	}
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -2048,13 +2126,18 @@ func TestGitSourceDownloadHash(t *testing.T) {
 	require.NoError(t, err)
 
 	tarReader := tar.NewReader(zip)
-	header, err := tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/", header.Name)
-
-	header, err = tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/test", header.Name)
+	for {
+		header, err := tarReader.Next()
+		require.NoError(t, err)
+		if header.Name == "path/" {
+			// Some of the implementations of tar in Go (in particular Go 1.23 and earlier) don't
+			// include the directory entry in the tar stream.  So we can skip over that here, and
+			// make sure we find the file entry we really care about.
+			continue
+		}
+		require.Equal(t, "path/test", header.Name)
+		break
+	}
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)

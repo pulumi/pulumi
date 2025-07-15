@@ -50,7 +50,7 @@ import (
 type analyzer struct {
 	ctx     *Context
 	name    tokens.QName
-	plug    *plugin
+	plug    *Plugin
 	client  pulumirpc.AnalyzerClient
 	version string
 }
@@ -92,9 +92,12 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`
+// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`. `hasPlugin` is a function that allows the
+// caller to configure how it is determined if the language plugin is available. If nil it will default to looking for
+// the plugin by path.
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
+	hasPlugin func(workspace.PluginSpec) bool,
 ) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
@@ -138,18 +141,25 @@ func NewPolicyAnalyzer(
 	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be moved to
 	// just be language runtimes like the rest).
 
-	var plug *plugin
-	var path string
+	var plug *Plugin
+	var foundLanguagePlugin bool
 	// Try to load the language plugin for the runtime, except for python and node that _for now_ continue using the
 	// legacy behavior.
 	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
-		path, err = workspace.GetPluginPath(
-			ctx.baseContext,
-			ctx.Diag,
-			workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin},
-			host.GetProjectPlugins())
+		if hasPlugin == nil {
+			hasPlugin = func(spec workspace.PluginSpec) bool {
+				path, err := workspace.GetPluginPath(
+					ctx.baseContext,
+					ctx.Diag,
+					spec,
+					host.GetProjectPlugins())
+				return err == nil && path != ""
+			}
+		}
+
+		foundLanguagePlugin = hasPlugin(workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
 	}
-	if path == "" || err != nil {
+	if !foundLanguagePlugin {
 		// Couldn't get a language plugin, fall back to the old behavior
 
 		// For historical reasons, the Node.js plugin name is just "policy".
@@ -203,13 +213,6 @@ func NewPolicyAnalyzer(
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
 
-		// newPlugin expects a path to a binary, not a folder so we make up a binary name here just so newPlugin will
-		// then look for PulumiPolicy.yaml in the right place.
-		//
-		// TODO(https://github.com/pulumi/pulumi/issues/19462): There's a few places we call down to plugin code where
-		// really it could be a file or a folder, we should stop abusing made up file names for this.
-		policyPackPath = filepath.Join(policyPackPath, "pulumi-analyzer-policy-"+string(name.Name()))
-
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
@@ -241,12 +244,16 @@ func NewPolicyAnalyzer(
 			Project:      opts.Project,
 			Organization: opts.Organization,
 		}
-		mconfig, err := MarshalProperties(resource.ToResourcePropertyMap(opts.Config),
-			MarshalOptions{KeepSecrets: true})
-		if err != nil {
-			return nil, fmt.Errorf("marshalling config: %w", err)
+		mconfig := make(map[string]string, len(opts.Config))
+		for k, v := range opts.Config {
+			mconfig[k.String()] = v
 		}
 		req.Config = mconfig
+		mkeys := make([]string, 0, len(opts.ConfigSecretKeys))
+		for _, k := range opts.ConfigSecretKeys {
+			mkeys = append(mkeys, k.String())
+		}
+		req.ConfigSecretKeys = mkeys
 
 		_, err = client.ConfigureStack(ctx.Request(), req)
 		if err != nil {
@@ -441,11 +448,17 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 			return nil, err
 		}
 
+		// The version from PulumiPolicy.yaml is used, if set, over the version from the diagnostic.
+		policyPackVersion := r.GetPolicyPackVersion()
+		if a.version != "" {
+			policyPackVersion = a.version
+		}
+
 		results[i] = Remediation{
 			PolicyName:        r.GetPolicyName(),
 			Description:       r.GetDescription(),
 			PolicyPackName:    r.GetPolicyPackName(),
-			PolicyPackVersion: r.GetPolicyPackVersion(),
+			PolicyPackVersion: policyPackVersion,
 			Properties:        tprops,
 			Diagnostic:        r.GetDiagnostic(),
 		}
@@ -596,6 +609,23 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
+}
+
+// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+func (a *analyzer) Cancel(ctx context.Context) error {
+	label := a.label() + ".Cancel()"
+	logging.V(7).Infof("%s executing", label)
+
+	_, err := a.client.Cancel(ctx, &emptypb.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(8).Infof("%s failed: err=%v", label, rpcError)
+		if rpcError.Code() == codes.Unimplemented {
+			return nil
+		}
+	}
+
+	return err
 }
 
 func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
@@ -857,7 +887,6 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic, version
 			PolicyPackVersion: policyPackVersion,
 			Description:       protoD.Description,
 			Message:           protoD.Message,
-			Tags:              protoD.Tags,
 			EnforcementLevel:  enforcementLevel,
 			URN:               resource.URN(protoD.Urn),
 		}
@@ -907,12 +936,14 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 
 // constructConfig JSON-serializes the configuration data.
 func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
-	if opts == nil || opts.Config.Len() == 0 {
+	if opts == nil || opts.Config == nil {
 		return "", nil
 	}
 
-	// We get rich property values here, but the envvar interface just expects JSON-like strings.
-	config, _ := PropertyMapToConfig(opts.Config)
+	config := make(map[string]string)
+	for k, v := range opts.Config {
+		config[k.String()] = v
+	}
 
 	configJSON, err := json.Marshal(config)
 	if err != nil {

@@ -203,8 +203,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			HostF: hostF,
 		},
 	}
 
@@ -336,8 +335,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			HostF: hostF,
 		},
 	}
 
@@ -837,8 +835,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			HostF: hostF,
 		},
 	}
 

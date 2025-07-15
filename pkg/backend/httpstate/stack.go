@@ -16,19 +16,18 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -116,6 +115,8 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
+	// escConfigEnv caches if we expect this stack to have its config stored in an ESC environment.
+	escConfigEnv *string
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -125,6 +126,11 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
 	if err != nil {
 		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
+	}
+
+	var escConfigEnv *string
+	if apistack.Config != nil {
+		escConfigEnv = &apistack.Config.Environment
 	}
 
 	// Now assemble all the pieces into a stack structure.
@@ -140,10 +146,64 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		currentOperation: apistack.CurrentOperation,
 		tags:             apistack.Tags,
 		b:                b,
-		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
+		escConfigEnv:     escConfigEnv,
 	}, nil
 }
-func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+
+// ConfigLocation returns the ESC environment of the stack config if applicable.
+func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
+	return backend.StackConfigLocation{
+		IsRemote: s.escConfigEnv != nil,
+		EscEnv:   s.escConfigEnv,
+	}
+}
+
+func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project,
+) (*workspace.ProjectStack, error) {
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return nil, err
+	}
+	stack, err := s.b.client.GetStack(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+	if stack.Config == nil {
+		return nil, nil
+	}
+	projectStack := &workspace.ProjectStack{
+		Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
+		SecretsProvider: stack.Config.SecretsProvider,
+		EncryptedKey:    stack.Config.EncryptedKey,
+		EncryptionSalt:  stack.Config.EncryptionSalt,
+		Config:          config.Map{},
+	}
+	return projectStack, nil
+}
+
+func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	if projectStack.Config != nil {
+		// TODO: https://github.com/pulumi/pulumi/issues/19557
+		return errors.New("cannot set config for a stack with cloud config")
+	}
+	imports := projectStack.Environment.Imports()
+	if len(imports) != 1 {
+		return errors.New("cloud stacks must have exactly 1 import")
+	}
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return err
+	}
+	err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
+		Environment:     imports[0],
+		SecretsProvider: projectStack.SecretsProvider,
+		EncryptedKey:    projectStack.EncryptedKey,
+		EncryptionSalt:  projectStack.EncryptionSalt,
+	})
+	return err
+}
+
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
@@ -168,68 +228,6 @@ func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 
 	s.snapshot.Store(&snap)
 	return snap, nil
-}
-
-func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
-	return backend.RemoveStack(ctx, s, force)
-}
-
-func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.StackReference, error) {
-	return backend.RenameStack(ctx, s, newName)
-}
-
-func (s *cloudStack) Preview(
-	ctx context.Context,
-	op backend.UpdateOperation,
-	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewStack(ctx, s, op, events)
-}
-
-func (s *cloudStack) Update(
-	ctx context.Context,
-	op backend.UpdateOperation,
-	events chan<- engine.Event,
-) (sdkDisplay.ResourceChanges,
-	error,
-) {
-	return backend.UpdateStack(ctx, s, op, events)
-}
-
-func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
-	imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
-	return backend.ImportStack(ctx, s, op, imports)
-}
-
-func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	error,
-) {
-	return backend.RefreshStack(ctx, s, op)
-}
-
-func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	error,
-) {
-	return backend.DestroyStack(ctx, s, op)
-}
-
-func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) error {
-	return backend.WatchStack(ctx, s, op, paths)
-}
-
-func (s *cloudStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
-}
-
-func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
-	return backend.ExportStackDeployment(ctx, s)
-}
-
-func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
 func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {

@@ -284,7 +284,6 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
-	p.Options.SkipDisplayTests = true
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 

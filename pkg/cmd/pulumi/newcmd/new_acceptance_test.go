@@ -299,8 +299,8 @@ func removeStack(t *testing.T, dir, name string) {
 }
 
 func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
-	_, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN")
-	if !ok {
+	token := os.Getenv("PULUMI_ACCESS_TOKEN")
+	if token == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 	if testing.Short() {

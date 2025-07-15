@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~foo,name<{%reset%}><{%reset%}>]
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 3%}>~foo,name<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~foo,name<{%reset%}><{%reset%}>]
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~foo,name<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> [diff: <{%fg 3%}>~foo,name<{%reset%}><{%reset%}>]
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%fg 9%}>deleted original<{%reset%}> [diff: <{%fg 3%}>~foo,name<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -109,6 +110,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	stack, err := cmd.parent.requireStack(
 		ctx,
+		cmd.parent.diags,
 		cmd.parent.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.parent.stackRef,
@@ -141,7 +143,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
+	projectStack, config, err := cmd.getStackConfig(ctx, cmdutil.Diag(), project, stack)
 	if err != nil {
 		return err
 	}
@@ -192,7 +194,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
-	if err = cmd.parent.saveProjectStack(stack, projectStack); err != nil {
+	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
@@ -200,10 +202,11 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 func (cmd *configEnvInitCmd) getStackConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	project *workspace.Project,
 	stack backend.Stack,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := cmd.parent.loadProjectStack(project, stack)
+	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -214,7 +217,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
+		if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
 			return nil, nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}

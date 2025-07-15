@@ -89,7 +89,14 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	}
 
 	// Link the package to the project
-	if err := LinkPackage(ws, language, root, pkg, out); err != nil {
+	if err := LinkPackage(&LinkPackageContext{
+		Workspace: ws,
+		Language:  language,
+		Root:      root,
+		Pkg:       pkg,
+		Out:       out,
+		Install:   true,
+	}); err != nil {
 		return nil, err
 	}
 

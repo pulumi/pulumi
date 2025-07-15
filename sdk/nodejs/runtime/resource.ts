@@ -29,6 +29,9 @@ import {
     ProviderResource,
     Resource,
     ResourceOptions,
+    ResourceHook,
+    ResourceHookBinding,
+    ResourceHookOptions,
     URN,
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
@@ -551,6 +554,9 @@ export function registerResource(
                     }
                 }
 
+                const hookPrefix = `${t}_${name}`;
+                const hooks = await prepareHooks(opts.hooks, hookPrefix);
+
                 const req = new resproto.RegisterResourceRequest();
                 req.setPackageref(packageRefStr || "");
                 req.setType(t);
@@ -595,6 +601,7 @@ export function registerResource(
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setTransformsList(callbacks);
                 req.setSupportsresultreporting(true);
+                req.setHooks(hooks);
 
                 if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                     throw new Error(
@@ -726,6 +733,7 @@ export function registerResource(
                 });
             })
             .catch((err) => {
+                log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
                 // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
                 done();
                 throw err;
@@ -979,6 +987,46 @@ export async function prepareResource(
     };
 }
 
+/**
+ * Prepare the hooks to bind to the resource. This ensures that all hook required registrations have completed.
+ * Hooks that are plain functions get wrapped in a `ResourceHook`.
+ *
+ * @param binding The resource hook binding.
+ * @param namePrefix The name prefix to use for plain function hooks.
+ */
+async function prepareHooks(
+    binding: ResourceHookBinding | undefined,
+    namePrefix: string,
+): Promise<resproto.RegisterResourceRequest.ResourceHooksBinding | undefined> {
+    if (!binding || Object.keys(binding).length === 0) {
+        return Promise.resolve(undefined);
+    }
+
+    const req = new resproto.RegisterResourceRequest.ResourceHooksBinding();
+
+    const hookTypes = [
+        { bindingKey: "beforeCreate", addMethod: "addBeforeCreate" },
+        { bindingKey: "afterCreate", addMethod: "addAfterCreate" },
+        { bindingKey: "beforeUpdate", addMethod: "addBeforeUpdate" },
+        { bindingKey: "afterUpdate", addMethod: "addAfterUpdate" },
+        { bindingKey: "beforeDelete", addMethod: "addBeforeDelete" },
+        { bindingKey: "afterDelete", addMethod: "addAfterDelete" },
+    ] as const;
+    for (const { bindingKey, addMethod } of hookTypes) {
+        let i = 0;
+        for (let hook of binding[bindingKey] ?? []) {
+            if (!ResourceHook.isInstance(hook)) {
+                hook = new ResourceHook(`${namePrefix}_${bindingKey}_${i}`, hook);
+            }
+            await hook.__registered;
+            req[addMethod](hook.name);
+            i++;
+        }
+    }
+
+    return req;
+}
+
 function addAll<T>(to: Set<T>, from: Set<T>) {
     for (const val of from) {
         to.add(val);
@@ -1147,4 +1195,17 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
+}
+
+export async function registerResourceHook(hook: ResourceHook) {
+    if (!getStore().supportsResourceHooks) {
+        throw new Error("The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI");
+    }
+
+    const callbackServer = getCallbacks();
+    if (callbackServer === undefined) {
+        throw new Error("Callback server could not initialize");
+    }
+
+    return callbackServer.registerResourceHook(hook);
 }

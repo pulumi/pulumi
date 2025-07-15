@@ -43,6 +43,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -57,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -874,6 +877,28 @@ func (b *diyBackend) ListStacks(
 	return summaries, nil, nil
 }
 
+func (b *diyBackend) ListStackNames(
+	ctx context.Context, filter backend.ListStackNamesFilter, _ backend.ContinuationToken) (
+	[]backend.StackReference, backend.ContinuationToken, error,
+) {
+	stacks, err := b.getStacks(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filteredStacks := slice.Prealloc[backend.StackReference](len(stacks))
+	for _, stackRef := range stacks {
+		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
+		stackProject, hasProject := stackRef.Project()
+		if filter.Project != nil && hasProject && string(stackProject) != *filter.Project {
+			continue
+		}
+		filteredStacks = append(filteredStacks, stackRef)
+	}
+
+	return filteredStacks, nil, nil
+}
+
 func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
@@ -893,7 +918,10 @@ func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force
 
 	// Don't remove stacks that still have resources.
 	if !force && checkpoint != nil && checkpoint.Latest != nil && len(checkpoint.Latest.Resources) > 0 {
-		return true, errors.New("refusing to remove stack because it still contains resources")
+		// If the one and only resource is the root stack we can carry on, the cloud backend allows removal from this state.
+		if len(checkpoint.Latest.Resources) > 1 || checkpoint.Latest.Resources[0].Type != tokens.RootStackType {
+			return true, errors.New("refusing to remove stack because it still contains resources")
+		}
 	}
 
 	return false, b.removeStack(ctx, diyStackRef)
@@ -1171,7 +1199,7 @@ func (b *diyBackend) apply(
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
+		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
 	}
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -1242,7 +1270,7 @@ func (b *diyBackend) apply(
 		StartTime:   start,
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
-		Config:      update.GetTarget().Config,
+		Config:      update.Target.Config,
 		Result:      backendUpdateResult,
 		EndTime:     end,
 		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to
@@ -1521,6 +1549,10 @@ func (b *diyBackend) getParallel() int {
 	return parallel
 }
 
-func (b *diyBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
-	return nil, errors.New("package registry is not supported by diy backends")
+func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
+	return nil, errors.New("cloud registry is not supported by diy backends")
+}
+
+func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
+	return unauthenticatedregistry.New(b.d, b.Env)
 }

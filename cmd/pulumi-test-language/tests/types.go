@@ -227,6 +227,9 @@ type LanguageTest struct {
 
 	// runs is a list of test runs to execute.
 	Runs []TestRun
+
+	// RunsShareSource indicates whether all runs share the same source code.
+	RunsShareSource bool
 }
 
 type TestRun struct {
@@ -237,6 +240,8 @@ type TestRun struct {
 	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges, []engine.Event)
 	// Assert resource changes during preview runs.
 	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges, []engine.Event)
-	// updateOptions can be used to set the update options for the engine.
+	// UpdateOptions can be used to set the update options for the engine.
 	UpdateOptions engine.UpdateOptions
+	// PolicyPacks is a map of policy packs to use for this test and their config.
+	PolicyPacks map[string]map[string]any
 }

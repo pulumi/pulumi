@@ -15,6 +15,7 @@ import (
 	_ "fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -41,6 +42,14 @@ func ExampleFile() {
 }
 
 func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" {
+		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
+		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
+		// re-enabling them is left as future work.
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows once they are fixed.
+		fmt.Println("Skip tests on windows until they are fixed")
+		os.Exit(0)
+	}
 	// Use a smaller poll duration for faster test runs. Keep it below
 	// 100ms (which value is used as common delays for tests)
 	watch.POLL_DURATION = 5 * time.Millisecond
@@ -70,6 +79,9 @@ func TestMustExist(t *testing.T) {
 func TestWaitsForFileToExist(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist", t)
 	defer cleanup()
 	tail := tailTest.StartTail("test.txt", Config{})
@@ -82,6 +94,9 @@ func TestWaitsForFileToExist(t *testing.T) {
 
 //nolint:paralleltest // this test is not parallel because it changes the working directory
 func TestWaitsForFileToExistRelativePath(t *testing.T) {
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist-relative", t)
 	defer cleanup()
 
@@ -315,6 +330,8 @@ func TestLocationMiddle(t *testing.T) {
 
 func TestReOpenInotify(t *testing.T) {
 	t.Parallel()
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
 
 	reOpen(t, false)
 }

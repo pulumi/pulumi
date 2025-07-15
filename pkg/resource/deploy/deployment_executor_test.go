@@ -15,10 +15,16 @@
 package deploy
 
 import (
+	"context"
+	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRebuildBaseStateDanglingParentsSimple(t *testing.T) {
@@ -186,4 +192,50 @@ func makeStepsAndExecutor(states ...*resource.State) (map[*resource.State]Step, 
 	}
 
 	return steps, ex
+}
+
+type source struct {
+	iterator SourceIterator
+}
+
+func (src *source) Close() error                { return nil }
+func (src *source) Project() tokens.PackageName { return "project" }
+func (src *source) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+	return src.iterator, nil
+}
+
+type iterator struct {
+	closed bool
+}
+
+func (iter *iterator) Cancel(context.Context) error {
+	iter.closed = true
+	return nil
+}
+
+func (iter *iterator) Next() (SourceEvent, error) {
+	// Return an error on iteration. This makes DeploymentExecutor.Execute
+	// return fairly early, letting us get away with mocking less of the system
+	// to test the closing behaviour.
+	// It also ensures we do call `Close` in the presence of an error.
+	return nil, errors.New("error")
+}
+
+func TestSourceIteratorClose(t *testing.T) {
+	t.Parallel()
+	iter := &iterator{}
+	ex := &deploymentExecutor{
+		deployment: &Deployment{
+			source: &source{iter},
+			opts:   &Options{},
+			ctx: &plugin.Context{
+				Diag: &deploytest.NoopSink{},
+			},
+		},
+		stepGen: &stepGenerator{},
+	}
+
+	_, err := ex.Execute(context.Background())
+	require.ErrorContains(t, err, "BAIL")
+	require.True(t, iter.closed, "The source iterator should be closed after execution")
 }

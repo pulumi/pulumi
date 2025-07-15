@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -362,7 +364,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
-	projStack, err := workspace.LoadProjectStack(proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"))
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"))
 	require.NoError(t, err)
 
 	assert.NotContains(t, projStack.Config, config.MustMakeKey("aws", "region"))
@@ -720,6 +722,9 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skip("Skipping test because PULUMI_ACCESS_TOKEN is not set")
+	}
 	tests := []struct {
 		argument string
 		prompted string
@@ -917,11 +922,87 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
+func ref[T any](v T) *T { return &v }
+
+//nolint:paralleltest // Sets a global mock backend
+func TestPulumiNewWithRegistryTemplates(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
+	mockRegistry := &backend.MockCloudRegistry{
+		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			return func(yield func(apitype.TemplateMetadata, error) bool) {
+				if !yield(apitype.TemplateMetadata{
+					Name: "template-1", Description: ref("Describe 1"),
+				}, nil) {
+					return
+				}
+				if !yield(apitype.TemplateMetadata{
+					Name: "template-2", Description: ref("Describe 2"),
+				}, nil) {
+					return
+				}
+			}
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return mockRegistry
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
+
+	newCmd := NewNewCmd()
+	var stdout, stderr bytes.Buffer
+	newCmd.SetOut(&stdout)
+	newCmd.SetErr(&stderr)
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
+
+	// Check that the normal prefix is still there
+	assert.Contains(t, stdout.String(), `
+Available Templates:
+`)
+	// Check that our org based templates are there
+	assert.Contains(t, stdout.String(), `
+  template-1                         Describe 1
+  template-2                         Describe 2
+`)
+
+	// Check that normal templates are there
+	assertTemplateContains(t, stdout.String(), `
+  aws-csharp                         A minimal AWS C# Pulumi program
+  aws-fsharp                         A minimal AWS F# Pulumi program
+  aws-go                             A minimal AWS Go Pulumi program
+  aws-java                           A minimal AWS Java Pulumi program
+  aws-javascript                     A minimal AWS JavaScript Pulumi program
+  aws-python                         A minimal AWS Python Pulumi program
+  aws-scala                          A minimal AWS Scala Pulumi program
+  aws-typescript                     A minimal AWS TypeScript Pulumi program
+  aws-visualbasic                    A minimal AWS VB.NET Pulumi program
+  aws-yaml                           A minimal AWS Pulumi YAML program
+`)
+	assert.Equal(t, "", stderr.String())
+}
+
 // TestPulumiNewWithoutPulumiAccessToken checks that we won't error if we run `pulumi new
 // --list-templates` without PULUMI_ACCESS_TOKEN set.
 func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-
+	tempdir := t.TempDir()
+	t.Setenv("PULUMI_HOME", tempdir)
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
@@ -954,27 +1035,6 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 		SupportsTemplatesF: func() bool { return false },
 		NameF:              func() string { return "mock" },
 	})
-
-	newCmd := NewNewCmd()
-	var stdout, stderr bytes.Buffer
-	newCmd.SetOut(&stdout)
-	newCmd.SetErr(&stderr)
-	newCmd.SetArgs([]string{"--list-templates"})
-	err := newCmd.Execute()
-	require.NoError(t, err)
-
-	// Check that normal templates are there
-	assert.Contains(t, stdout.String(), `
-Available Templates:
-  aiven-go                           A minimal Aiven Go Pulumi program
-`)
-	assert.Equal(t, "", stderr.String())
-}
-
-// We should be able to list the templates even when not logged in.
-// Regression test for https://github.com/pulumi/pulumi/issues/19073
-func TestPulumiNewNotLoggedIn(t *testing.T) {
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer

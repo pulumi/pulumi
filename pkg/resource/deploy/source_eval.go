@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/blang/semver"
@@ -32,6 +33,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -44,6 +46,7 @@ import (
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -55,7 +58,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -98,12 +100,14 @@ func NewEvalSource(
 	plugctx *plugin.Context,
 	runinfo *EvalRunInfo,
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
+	resourceHooks *ResourceHooks,
 	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
+		resourceHooks:       resourceHooks,
 		opts:                opts,
 	}
 }
@@ -112,6 +116,7 @@ type evalSource struct {
 	plugctx             *plugin.Context                                // the plugin context.
 	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
+	resourceHooks       *ResourceHooks                                 // the resource hook registry.
 	opts                EvalSourceOptions                              // options for the evaluation source.
 }
 
@@ -134,19 +139,38 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
-	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
+	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
-	config := resource.FromResourcePropertyMap(configMap)
+
+	// Keep track of any config keys that have secure values.
+	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
+
+	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert config to map: %w", err)
+	}
 
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
+	finChan := make(chan error)
+	programComplete := &promise.CompletionSource[struct{}]{}
 
 	mon, err := newResourceMonitor(
-		src, providers, regChan, regOutChan, regReadChan, config, tracingSpan)
+		src,
+		providers,
+		regChan,
+		regOutChan,
+		regReadChan,
+		finChan,
+		programComplete.Promise(),
+		config,
+		configSecretKeys,
+		tracingSpan,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
@@ -161,18 +185,19 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		loaderServer: loaderServer,
-		mon:          mon,
-		src:          src,
-		regChan:      regChan,
-		regOutChan:   regOutChan,
-		regReadChan:  regReadChan,
-		finChan:      make(chan error),
+		loaderServer:    loaderServer,
+		mon:             mon,
+		src:             src,
+		regChan:         regChan,
+		regOutChan:      regOutChan,
+		regReadChan:     regReadChan,
+		finChan:         finChan,
+		programComplete: programComplete,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(config)
+	iter.forkRun(config, configSecretKeys, configMap)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -185,14 +210,16 @@ type evalSourceIterator struct {
 	regChan      chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan   chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan  chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan      chan error                         // the channel that communicates completion.
-	done         bool                               // set to true when the evaluation is done.
-	aborted      bool                               // set to true when the iterator is aborted.
+	// the channel that communicates that no more events will be sent from the program.
+	finChan         chan error
+	programComplete *promise.CompletionSource[struct{}] // the completion source to record program completion.
+	done            bool                                // set to true when the evaluation is done.
+	aborted         bool                                // set to true when the iterator is aborted.
 }
 
-func (iter *evalSourceIterator) Close() error {
+func (iter *evalSourceIterator) Cancel(ctx context.Context) error {
 	// Cancel the monitor and reclaim any associated resources.
-	return iter.mon.Cancel()
+	return iter.mon.Cancel(ctx)
 }
 
 func (iter *evalSourceIterator) ResourceMonitor() SourceResourceMonitor {
@@ -246,7 +273,9 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 // forkRun performs the evaluation from a distinct goroutine. This function blocks until it's our turn to go.
 func (iter *evalSourceIterator) forkRun(
-	config property.Map,
+	config map[config.Key]string,
+	configSecretKeys []config.Key,
+	configPropertyMap resource.PropertyMap,
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
@@ -270,18 +299,20 @@ func (iter *evalSourceIterator) forkRun(
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress: iter.mon.Address(),
-				Stack:          iter.src.runinfo.Target.Name.String(),
-				Project:        string(iter.src.runinfo.Proj.Name),
-				Pwd:            iter.src.runinfo.Pwd,
-				Args:           iter.src.runinfo.Args,
-				Config:         config,
-				DryRun:         iter.src.opts.DryRun,
-				Parallel:       iter.src.opts.Parallel,
-				Organization:   string(iter.src.runinfo.Target.Organization),
-				Info:           programInfo,
-				LoaderAddress:  iter.loaderServer.Addr(),
-				AttachDebugger: iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
+				MonitorAddress:    iter.mon.Address(),
+				Stack:             iter.src.runinfo.Target.Name.String(),
+				Project:           string(iter.src.runinfo.Proj.Name),
+				Pwd:               iter.src.runinfo.Pwd,
+				Args:              iter.src.runinfo.Args,
+				Config:            config,
+				ConfigSecretKeys:  configSecretKeys,
+				ConfigPropertyMap: configPropertyMap,
+				DryRun:            iter.src.opts.DryRun,
+				Parallel:          iter.src.opts.Parallel,
+				Organization:      string(iter.src.runinfo.Target.Organization),
+				Info:              programInfo,
+				LoaderAddress:     iter.loaderServer.Addr(),
+				AttachDebugger:    iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
@@ -298,7 +329,24 @@ func (iter *evalSourceIterator) forkRun(
 		}
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.
-		iter.finChan <- run()
+		err := run()
+		if err != nil {
+			logging.V(5).Infof("Program exited with error: %s", err)
+		} else {
+			logging.V(5).Infof("Program exited with no error")
+		}
+
+		// Signal that the program as exited.
+		if err != nil {
+			iter.programComplete.Reject(err)
+		} else {
+			iter.programComplete.Fulfill(struct{}{})
+		}
+		// Signal that the program will not be generating further events. New
+		// SDKs will already have signalled to `iter.finChan` via
+		// `SignalAndWaitForShutdown`, but old SDKs signal completion here when
+		// they exit.
+		iter.finChan <- err
 	}()
 }
 
@@ -433,7 +481,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, nil, "", ""),
+			nil, nil, nil, "", nil, nil, nil, "", "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -609,6 +657,9 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 	}
 }
 
+// DialOptions returns dial options to be used for the gRPC client.
+type DialOptions func(metadata any) []grpc.DialOption
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
@@ -635,7 +686,12 @@ type resmon struct {
 	abortChan              chan bool                          // a channel that can abort iteration of resources.
 	cancel                 chan bool                          // a channel that can cancel the server.
 	done                   <-chan error                       // a channel that resolves when the server completes.
-	opts                   EvalSourceOptions                  // options for the resource monitor.
+	// a channel to signal that no more events will be sent from the program.
+	finChan             chan<- error
+	programComplete     *promise.Promise[struct{}] // a promise that resolves when the program has exited.
+	waitForShutdownChan chan struct{}              // a channel on which the runtime can wait before shutting down.
+	hasWaiter           atomic.Bool                // indicates whether something is waiting on `waitForShutdownChan`.
+	opts                EvalSourceOptions          // options for the resource monitor.
 
 	// the working directory for the resources sent to this monitor.
 	workingDirectory string
@@ -646,8 +702,10 @@ type resmon struct {
 	stackInvokeTransforms     []TransformInvokeFunction // invoke transformation functions
 	resourceTransformsLock    sync.Mutex
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
+	resourceHooks             *ResourceHooks
 	callbacksLock             sync.Mutex
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
+	grpcDialOptions           DialOptions
 
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -663,7 +721,10 @@ func newResourceMonitor(
 	regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
-	configMap property.Map,
+	finChan chan<- error,
+	programComplete *promise.Promise[struct{}],
+	config map[config.Key]string,
+	configSecretKeys []config.Key,
 	tracingSpan opentracing.Span,
 ) (*resmon, error) {
 	abortChan := make(chan bool)
@@ -683,24 +744,29 @@ func newResourceMonitor(
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		diagnostics:        src.plugctx.Diag,
-		providers:          provs,
-		defaultProviders:   d,
-		workingDirectory:   src.runinfo.Pwd,
-		sourcePositions:    newSourcePositions(src.runinfo.ProjectRoot),
-		pendingTransforms:  map[string][]TransformFunction{},
-		parents:            map[resource.URN]resource.URN{},
-		resGoals:           map[resource.URN]resource.Goal{},
-		componentProviders: map[resource.URN]map[string]string{},
-		regChan:            regChan,
-		regOutChan:         regOutChan,
-		regReadChan:        regReadChan,
-		abortChan:          abortChan,
-		cancel:             cancel,
-		opts:               src.opts,
-		callbacks:          map[string]*CallbacksClient{},
-		resourceTransforms: map[resource.URN][]TransformFunction{},
-		packageRefMap:      map[string]providers.ProviderRequest{},
+		diagnostics:         src.plugctx.Diag,
+		providers:           provs,
+		defaultProviders:    d,
+		workingDirectory:    src.runinfo.Pwd,
+		sourcePositions:     newSourcePositions(src.runinfo.ProjectRoot),
+		pendingTransforms:   map[string][]TransformFunction{},
+		parents:             map[resource.URN]resource.URN{},
+		resGoals:            map[resource.URN]resource.Goal{},
+		componentProviders:  map[resource.URN]map[string]string{},
+		regChan:             regChan,
+		regOutChan:          regOutChan,
+		regReadChan:         regReadChan,
+		abortChan:           abortChan,
+		cancel:              cancel,
+		finChan:             finChan,
+		programComplete:     programComplete,
+		waitForShutdownChan: make(chan struct{}, 1),
+		opts:                src.opts,
+		callbacks:           map[string]*CallbacksClient{},
+		resourceHooks:       src.resourceHooks,
+		resourceTransforms:  map[resource.URN][]TransformFunction{},
+		packageRefMap:       map[string]providers.ProviderRequest{},
+		grpcDialOptions:     src.plugctx.DialOptions,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -716,29 +782,11 @@ func newResourceMonitor(
 		return nil, err
 	}
 
-	configValues, configSecretKeys := plugin.PropertyMapToConfig(configMap)
-	constructConfig := make(map[config.Key]string, len(configValues))
-	constructConfigSecretKeys := make([]config.Key, 0, len(configSecretKeys))
-	for k, v := range configValues {
-		key, err := config.ParseKey(k)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse config key %q: %w", k, err)
-		}
-		constructConfig[key] = v
-	}
-	for _, k := range configSecretKeys {
-		key, err := config.ParseKey(k)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse config key %q: %w", k, err)
-		}
-		constructConfigSecretKeys = append(constructConfigSecretKeys, key)
-	}
-
 	resmon.constructInfo = plugin.ConstructInfo{
 		Project:          string(src.runinfo.Proj.Name),
 		Stack:            src.runinfo.Target.Name.String(),
-		Config:           constructConfig,
-		ConfigSecretKeys: constructConfigSecretKeys,
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
 		DryRun:           src.opts.DryRun,
 		Parallel:         src.opts.Parallel,
 		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),
@@ -763,7 +811,16 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 		return client, nil
 	}
 
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if rm.grpcDialOptions != nil {
+		opts := rm.grpcDialOptions(map[string]interface{}{
+			"mode": "client",
+			"kind": "callbacks",
+		})
+		dialOpts = append(dialOpts, opts...)
+	}
+
+	conn, err := grpc.NewClient(target, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -779,9 +836,19 @@ func (rm *resmon) Address() string {
 }
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
-func (rm *resmon) Cancel() error {
+func (rm *resmon) Cancel(ctx context.Context) error {
+	// By closing `rm.cancel` we cancel all in flight steps and initiate the
+	// graceful shutdown of the server. We won't accept any new connections, but
+	// pending connections will be allowed to complete.
+	//
+	// We need to do this before receiving from `rm.programCompleteChan`,
+	// otherwise we may deadlock: For example a `RegisterResource` call will not
+	// return to the program until we cancel, and we will never write to
+	// `rm.programCompleteChan` unless the program exits.
 	close(rm.cancel)
-	errs := []error{<-rm.done}
+	close(rm.waitForShutdownChan)                   // Signal to the program that we are ready to shutdown ...
+	_, programErr := rm.programComplete.Result(ctx) // ... and wait for the program to complete.
+	errs := []error{<-rm.done, programErr}
 	for _, client := range rm.callbacks {
 		errs = append(errs, client.Close())
 	}
@@ -969,6 +1036,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "parameterization":
 		// N.B This serves a dual purpose of also indicating that package references are supported.
+		hasSupport = true
+	case "resourceHooks":
 		hasSupport = true
 	}
 
@@ -1398,11 +1467,12 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			name, typ, custom, parent, props, opts)
 
 		mopts := plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			WorkingDirectory: rm.workingDirectory,
+			KeepUnknowns:       true,
+			KeepSecrets:        true,
+			KeepResources:      true,
+			KeepOutputValues:   true,
+			WorkingDirectory:   rm.workingDirectory,
+			ComputeAssetHashes: true,
 		}
 
 		mprops, err := plugin.MarshalProperties(props, mopts)
@@ -1561,6 +1631,119 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 
 	rm.stackInvokeTransforms = append(rm.stackInvokeTransforms, wrapped)
 	return &emptypb.Empty{}, nil
+}
+
+// SignalAndWaitForShutdown lets the resource monitor know that no more events
+// will be generated. This call blocks until the resource monitor is finished,
+// which will happen once all the steps have executed. This allows the language
+// runtime to stay running and handle callback requests, even after the user
+// program has completed. Runtime SDKs should call this after executing the
+// user's program. This can only be called once.
+func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	logging.V(6).Infof("SignalAndWaitForShutdown waiting ...")
+	if rm.hasWaiter.CompareAndSwap(false, true) {
+		rm.finChan <- nil        // Let the source iterator know there will be no more events ...
+		<-rm.waitForShutdownChan // and then wait for the resource monitor to tell us it's done.
+	} else {
+		return &emptypb.Empty{}, errors.New("Already waiting for shutdown")
+	}
+	logging.V(6).Infof("SignalAndWaitForShutdown completed")
+	return &emptypb.Empty{}, nil
+}
+
+// Wrap the resource hook callback so the engine can call the callback server in
+// the language runtime, which will then execute the hook. The wrapper takes
+// care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) (ResourceHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	) error {
+		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
+		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			if err != nil {
+				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
+			}
+		}
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			if err != nil {
+				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
+			}
+		}
+		if newOutputs != nil {
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
+			if err != nil {
+				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			if err != nil {
+				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
+			}
+		}
+		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
+			Urn:        string(urn),
+			Id:         string(id),
+			Name:       name,
+			Type:       string(typ),
+			NewInputs:  mNewInputs,
+			OldInputs:  mOldInputs,
+			NewOutputs: mNewOutputs,
+			OldOutputs: mOldOutputs,
+		})
+		if err != nil {
+			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ResourceHook %q call error: %v", name, err)
+			return err
+		}
+		var response pulumirpc.ResourceHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return fmt.Errorf("unmarshaling resource hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ResourceHook %s returned %q", name, response.Error)
+		if response.Error != "" {
+			return errors.New(response.Error)
+		}
+		return nil
+	}, nil
+}
+
+func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
+	*emptypb.Empty, error,
+) {
+	logging.V(6).Infof("RegisterResourceHook %q", req.Name)
+	wrapped, err := rm.wrapResourceHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	hook := ResourceHook{
+		Name:     req.Name,
+		Callback: wrapped,
+		OnDryRun: req.OnDryRun,
+	}
+	err = rm.resourceHooks.RegisterResourceHook(hook)
+	return nil, err
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
@@ -1907,8 +2090,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		PluginChecksums:         req.GetPluginChecksums(),
 	}
 
-	// This might be a resource registation for a resource that another process requested to be constructed. If so we'll
-	// have saved the pending transforms for this and we should use those rather than what is on the request.
+	// This might be a resource registation for a resource that another process requested to be constructed.
+	// If so we'll have saved the pending transforms for this and we should use those rather than what is on
+	// the request. ourTransforms is the list of transforms declared on _this_ resource, we save it later to
+	// the resourceTransforms map. transforms is a collected list of _all_ transforms that need to run on this
+	// resource, including those from parents and the stack.
+	var ourTransforms []TransformFunction
 	var transforms []TransformFunction
 	pendingKey := fmt.Sprintf("%s::%s::%s", parent, t, name)
 	err = func() error {
@@ -1916,34 +2103,27 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defer rm.pendingTransformsLock.Unlock()
 
 		if pending, ok := rm.pendingTransforms[pendingKey]; ok {
-			transforms = pending
+			delete(rm.pendingTransforms, pendingKey) // Remove the pending transforms, we don't need them again.
+			ourTransforms = pending
 		} else {
-			transforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
+			ourTransforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
 			if err != nil {
 				return err
 			}
 			// We only need to save this for remote calls
-			if remote && len(transforms) > 0 {
-				rm.pendingTransforms[pendingKey] = transforms
+			if remote && len(ourTransforms) > 0 {
+				// Make a copy of the slice here, otherwise later appends will modify what we save here.
+				rm.pendingTransforms[pendingKey] = ourTransforms
 			}
 		}
+		// Copy our transforms into the transforms slice, so we can run them later.
+		transforms = append(transforms, ourTransforms...)
 		return nil
 	}()
 	if err != nil {
 		return nil, err
 	}
-
-	// Before we calculate anything else run the transformations. First run the transforms for this resource,
-	// then it's parents etc etc
-	for _, transform := range transforms {
-		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
-		if err != nil {
-			return nil, err
-		}
-		props = newProps
-		opts = newOpts
-	}
-	// Lookup our parents transformations and run those
+	// Lookup our parents transformations and add those to the list of transforms to run.
 	err = func() error {
 		// Function exists to scope the lock
 		rm.resourceTransformsLock.Lock()
@@ -1953,15 +2133,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		current := parent
 		for current != "" {
-			if transforms, ok := rm.resourceTransforms[current]; ok {
-				for _, transform := range transforms {
-					newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
-					if err != nil {
-						return err
-					}
-					props = newProps
-					opts = newOpts
-				}
+			if parentTransforms, ok := rm.resourceTransforms[current]; ok {
+				transforms = append(transforms, parentTransforms...)
 			}
 			current = rm.parents[current]
 		}
@@ -1970,25 +2143,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-
-	// Then lock the stack transformations and run all of those
-	err = func() error {
+	// Then lock the stack transformations and collect all of those
+	func() {
 		// Function exists to scope the lock
 		rm.stackTransformsLock.Lock()
 		defer rm.stackTransformsLock.Unlock()
 
-		for _, transform := range rm.stackTransforms {
-			newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
-			if err != nil {
-				return err
-			}
-			props = newProps
-			opts = newOpts
-		}
-		return nil
+		transforms = append(transforms, rm.stackTransforms...)
 	}()
-	if err != nil {
-		return nil, err
+
+	// Before we calculate anything else run the transformations. First run the transforms for this resource,
+	// then it's parents, then the stack
+	for _, transform := range transforms {
+		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
+		if err != nil {
+			return nil, err
+		}
+		props = newProps
+		opts = newOpts
 	}
 
 	// We handle updating the providers map to include the providers field of the parent if
@@ -2179,6 +2351,42 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
+	// Grab the names for all of the hooks of a given type.
+	getHookNames := func(hookType resource.HookType) []string {
+		names := []string{}
+		hooks := req.GetHooks()
+		if hooks == nil {
+			return names
+		}
+		hooksValue := reflect.ValueOf(hooks)
+		if hooksValue.IsValid() {
+			hooks := reflect.Indirect(hooksValue).FieldByName(string(hookType))
+			if hooks.IsValid() {
+				hooks := hooks.Interface().([]string)
+				names = append(names, hooks...)
+			}
+		}
+		return names
+	}
+
+	var resourceHooks map[resource.HookType][]string
+	for _, hookType := range []resource.HookType{
+		resource.BeforeCreate,
+		resource.AfterCreate,
+		resource.BeforeUpdate,
+		resource.AfterUpdate,
+		resource.BeforeDelete,
+		resource.AfterDelete,
+	} {
+		names := getHookNames(hookType)
+		if len(names) > 0 {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[hookType] = append(resourceHooks[hookType], names...)
+		}
+	}
+
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
 	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
@@ -2192,9 +2400,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -2224,6 +2432,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
 			RetainOnDelete:          retainOnDelete,
+			ResourceHooks:           resourceHooks,
 		}
 		if customTimeouts != nil {
 			options.CustomTimeouts = &plugin.CustomTimeouts{
@@ -2234,27 +2443,46 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
-		constructResult, err := provider.Construct(ctx, plugin.ConstructRequest{
-			Info:    rm.constructInfo,
-			Type:    t,
-			Name:    name,
-			Parent:  parent,
-			Inputs:  props,
-			Options: options,
-		})
-		if err != nil {
-			var rpcError error
-			rpcError, ok := rpcerror.FromError(err)
-			if !ok {
-				rpcError = err
-			}
-			message := errorToMessage(rpcError, props)
-			rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
+		// Run construct in a go routine so we can react to a cancellation on rm.cancel.
+		var constructResult plugin.ConstructResult
+		constructDone := make(chan error)
+		go func() {
+			constructResult, err = provider.Construct(ctx, plugin.ConstructRequest{
+				Info:    rm.constructInfo,
+				Type:    t,
+				Name:    name,
+				Parent:  parent,
+				Inputs:  props,
+				Options: options,
+			})
+			if err != nil {
+				var rpcError error
+				rpcError, ok := rpcerror.FromError(err)
+				if !ok {
+					rpcError = err
+				}
+				message := errorToMessage(rpcError, props)
+				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
-			rm.abortChan <- true
-			<-rm.cancel
-			return nil, rpcerror.New(codes.Unknown, "resource monitor shut down")
+				rm.abortChan <- true
+				constructDone <- rpcerror.New(codes.Unknown, "resource monitor shut down")
+			}
+			close(constructDone)
+		}()
+
+		select {
+		case err := <-constructDone:
+			if err != nil {
+				logging.V(5).Infof("ResourceMonitor.RegisterResource construct returned an error, name=%s err=%s",
+					name, err)
+				return nil, err
+			}
+		case <-rm.cancel:
+			logging.V(5).Infof("ResourceMonitor.RegisterResource construct canceled, name=%s", name)
+			return nil, rpcerror.New(codes.Unavailable,
+				"resource monitor shut down while waiting for construct to complete")
 		}
+
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
@@ -2308,7 +2536,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
 			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			sourcePosition, resourceHooks,
 		)
 
 		if goal.Parent != "" {
@@ -2359,7 +2587,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()
-			rm.resourceTransforms[result.State.URN] = transforms
+			rm.resourceTransforms[result.State.URN] = ourTransforms
 		}()
 		if !custom {
 			func() {

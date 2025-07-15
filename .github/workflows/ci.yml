@@ -159,7 +159,7 @@ jobs:
             generate-matrix \
             --kind unit-test \
             "$CODEGEN_TESTS_FLAG" \
-            --platform ubuntu-latest \
+            --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
             --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
@@ -193,7 +193,6 @@ jobs:
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
-              --tags all xplatform_acceptance \
               --platform windows-latest \
               --version-set current \
               --partition-module pkg 1 \
@@ -212,7 +211,6 @@ jobs:
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
-              --tags all xplatform_acceptance \
               --platform macos-latest \
               --version-set current \
               --partition-module pkg 1 \

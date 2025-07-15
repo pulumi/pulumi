@@ -15,9 +15,11 @@
 package lifecycletest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -29,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,12 +76,12 @@ func TestSimpleAnalyzer(t *testing.T) {
 			assert.Equal(t, "test-proj", opts.Project)
 			assert.Equal(t, "test", opts.Stack)
 
-			assert.Equal(t, property.NewMap(map[string]property.Value{
-				opts.Project + ":bool":   property.New(true),
-				opts.Project + ":float":  property.New(1.5),
-				opts.Project + ":string": property.New("hello"),
-				opts.Project + ":obj":    property.New(property.NewMap(map[string]property.Value{"key": property.New("value")})),
-			}), opts.Config)
+			assert.Equal(t, map[config.Key]string{
+				config.MustMakeKey(opts.Project, "bool"):   "true",
+				config.MustMakeKey(opts.Project, "float"):  "1.5",
+				config.MustMakeKey(opts.Project, "string"): "hello",
+				config.MustMakeKey(opts.Project, "obj"):    "{\"key\":\"value\"}",
+			}, opts.Config)
 
 			return &deploytest.Analyzer{}, nil
 		}),
@@ -352,7 +353,7 @@ func TestRemediateFailure(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "context canceled")
 		return nil
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
@@ -503,4 +504,46 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 	}
 
 	p.Run(t, nil)
+}
+
+func TestAnalyzerCancellation(t *testing.T) {
+	t.Parallel()
+
+	gracefulShutdown := false
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				CancelF: func() error {
+					gracefulShutdown = true
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
+		},
+	}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
+
+	op := lt.TestOp(Update)
+	_, err := op.RunWithContext(ctx, project, target, p.Options, false, nil, nil)
+
+	assert.Error(t, err)
+	assert.True(t, gracefulShutdown)
 }

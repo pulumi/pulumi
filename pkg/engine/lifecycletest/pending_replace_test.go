@@ -115,12 +115,15 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{resA.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{resA.URN},
+			})
+			assert.NoError(t, err)
+		} else {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		}
 
 		return nil
 	})
@@ -279,10 +282,14 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
-
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 
@@ -299,6 +306,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 
 	// Operation 2 -- return a replacing diff and interrupt it with a failing
 	// create.
+	expectError = true
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -323,6 +331,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
 
 	// Operation 3 -- resume the replacement with the same program.
+	expectError = false
 	deleteCalled = false
 	createCalled = false
 
@@ -425,9 +434,14 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 
 		return nil
 	})
@@ -445,6 +459,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	// Operation 2 -- return a replacing diff and interrupt it with a failing
 	// create.
+	expectError = true
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -470,6 +485,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	// Operation 3 -- resume the replacement with a program that removes the
 	// resource.
+	expectError = false
 	deleteCalled = false
 	createCalled = false
 
@@ -595,10 +611,14 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
-
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 
@@ -615,6 +635,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 
 	// Operation 2 -- return a replacing diff and interrupt it with a failing
 	// create.
+	expectError = true
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -642,6 +663,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	// non-replacing diff (for the purposes of the test we do this by mocking the
 	// Diff call rather than updating the program, but the effect should be the
 	// same).
+	expectError = false
 	deleteCalled = false
 	createCalled = false
 
@@ -694,12 +716,15 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		a, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			DeleteBeforeReplace: &dbr,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{a.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{a.URN},
+			})
+			assert.NoError(t, err)
+		} else {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		}
 
 		return nil
 	})

@@ -129,22 +129,13 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	return nil
 }
 
-type updateInfo struct {
-	project workspace.Project
-	target  deploy.Target
-}
-
-func (u *updateInfo) GetRoot() string {
-	// These tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
-	return "/"
-}
-
-func (u *updateInfo) GetProject() *workspace.Project {
-	return &u.project
-}
-
-func (u *updateInfo) GetTarget() *deploy.Target {
-	return &u.target
+func NewUpdateInfo(project workspace.Project, target deploy.Target) engine.UpdateInfo {
+	return engine.UpdateInfo{
+		// The tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
+		Root:    "/",
+		Project: &project,
+		Target:  &target,
+	}
 }
 
 func ImportOp(imports []deploy.Import) TestOp {
@@ -207,7 +198,7 @@ func (op TestOp) runWithContext(
 	backendClient deploy.BackendClient, validate ValidateFunc, name string,
 ) (*deploy.Plan, *deploy.Snapshot, error) {
 	// Create an appropriate update info and context.
-	info := &updateInfo{project: project, target: target}
+	info := NewUpdateInfo(project, target)
 
 	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
 	done := make(chan bool)
@@ -238,6 +229,9 @@ func (op TestOp) runWithContext(
 	}
 
 	updateOpts := opts.Options()
+	// We want to always run with plan generation to ensure that plans _can_ be generated.
+	// This is to prevent regressions such as https://github.com/pulumi/pulumi/pull/19750.
+	updateOpts.GeneratePlan = true
 	defer func() {
 		if updateOpts.Host != nil {
 			contract.IgnoreClose(updateOpts.Host)
@@ -673,17 +667,12 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			continue
 		}
 
-		if err != nil {
-			if result.IsBail(err) {
-				t.Logf("Got unexpected bail result: %v", err)
-				t.FailNow()
-			} else {
-				t.Logf("Got unexpected error result: %v", err)
-				t.FailNow()
-			}
+		errString := "unexpected error result"
+		if result.IsBail(err) {
+			errString = "unexpected bail result"
 		}
 
-		assert.NoError(t, err)
+		require.NoError(t, err, errString)
 	}
 
 	p.run++

@@ -48,6 +48,8 @@ var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
 	"the final deployment. See #10668.")
 
+var APIURL = env.String("API", "The URL to use for the Pulumi service.")
+
 var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself.")
 
 var EnableLegacyDiff = env.Bool("ENABLE_LEGACY_DIFF", "")
@@ -183,3 +185,5 @@ Currently this disables validation of the following formats:
 This should only be used in cases where current data does not conform to the format and either cannot be migrated
 without using the system itself, or show that the validation is too strict. Over time entries in the list above will be
 removed and enforced to be validated.`)
+
+var DisableRegistryResolve = env.Bool("DISABLE_REGISTRY_RESOLVE", "Use the Pulumi Registry to resolve package names")

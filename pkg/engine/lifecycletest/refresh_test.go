@@ -38,7 +38,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestParallelRefresh(t *testing.T) {
@@ -1278,9 +1280,8 @@ func TestRefreshWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1414,9 +1415,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1544,9 +1544,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1679,9 +1678,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1822,9 +1820,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1936,12 +1933,134 @@ func TestRefreshWithBigProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 			UpdateOptions: engine.UpdateOptions{
 				Parallel: parallel,
 			},
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
+	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+
+	// Change the program inputs to check we don't changed inputs to the provider
+	programInputs["foo"] = resource.NewStringProperty("qux")
+	// Run a refresh
+	snap, err = lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Inputs should match what the provider returned, not what was in the program.
+	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19561. Run a refresh with a resource that
+// changes type but is aliased. The provider should see the new type.
+func TestRefreshWithAlias(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						// We should see the new type here.
+						assert.Equal(t, tokens.Type("pkgA:m:typB"), req.Type)
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
+								Inputs:  req.Inputs,
+								Outputs: readOutputs,
+							},
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		// First time we should see the create outputs, second time the read outputs
+		if programExecutions == 1 {
+			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: programInputs,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, createOutputs, resp.Outputs)
+		} else {
+			// Register the resource with a different type, but with an alias.
+			resp, err := monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
+				Inputs: programInputs,
+				Aliases: []*pulumirpc.Alias{{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Type: "pkgA:m:typA",
+						},
+					},
+				}},
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, readOutputs, resp.Outputs)
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
 		},
 	}
 

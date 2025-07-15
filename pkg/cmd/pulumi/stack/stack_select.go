@@ -47,6 +47,7 @@ func newStackSelectCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -90,7 +91,7 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider)
+					s, err := InitStack(ctx, sink, ws, b, stack, root, false, secretsProvider, false /*useRemoteConfig*/)
 					if err != nil {
 						return err
 					}
@@ -103,6 +104,7 @@ func newStackSelectCmd() *cobra.Command {
 			// If no stack was given, prompt the user to select a name from the available ones.
 			stack, err := ChooseStack(
 				ctx,
+				sink,
 				ws,
 				b,
 				OfferNew|SetCurrent,

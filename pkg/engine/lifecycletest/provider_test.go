@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -1389,9 +1390,12 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			name: "default-blocked",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.NoError(t, err)
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				assert.NoError(t, err)
+				require.Error(t, err)
+				require.Regexp(t,
+					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
+					err.Error())
 
 				return nil
 			},
@@ -1423,9 +1427,12 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			name: "wildcard",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.NoError(t, err)
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				assert.NoError(t, err)
+				require.Error(t, err)
+				require.Regexp(t,
+					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
+					err.Error())
 
 				return nil
 			},
@@ -1835,7 +1842,7 @@ func TestRefreshLegacyState(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	snapshot := &deploy.Snapshot{
@@ -1946,6 +1953,7 @@ func TestInternalFiltered(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
+		// Skip display tests as the delete events seem unstable
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
@@ -1997,7 +2005,7 @@ func TestProviderSameStep(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2051,7 +2059,7 @@ func TestMalformedProvider(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()

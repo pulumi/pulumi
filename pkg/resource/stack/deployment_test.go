@@ -108,6 +108,12 @@ func TestDeploymentSerialization(t *testing.T) {
 		"",
 		nil,
 		nil,
+		false,
+		"",
+		map[resource.HookType][]string{
+			resource.BeforeCreate: {"hook1"},
+			resource.AfterDelete:  {"hook2"},
+		},
 	)
 
 	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
@@ -121,6 +127,10 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, 2, len(dep.Dependencies))
 	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
 	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
+	assert.Equal(t, map[resource.HookType][]string{
+		"BeforeCreate": {"hook1"},
+		"AfterDelete":  {"hook2"},
+	}, dep.ResourceHooks)
 
 	// assert some things about the inputs:
 	assert.NotNil(t, dep.Inputs)

@@ -28,17 +28,19 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvCmd(stackRef *string) *cobra.Command {
+func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
-		ws:               pkgWorkspace.Instance,
+		diags:            cmdutil.Diag(),
+		ws:               ws,
 		requireStack:     cmdStack.RequireStack,
 		loadProjectStack: cmdStack.LoadProjectStack,
 		saveProjectStack: cmdStack.SaveProjectStack,
@@ -67,12 +69,14 @@ type configEnvCmd struct {
 
 	interactive bool
 	color       colors.Colorization
+	diags       diag.Sink
 
 	ssml cmdStack.SecretsManagerLoader
 	ws   pkgWorkspace.Context
 
 	requireStack func(
 		ctx context.Context,
+		sink diag.Sink,
 		ws pkgWorkspace.Context,
 		lm cmdBackend.LoginManager,
 		stackName string,
@@ -80,9 +84,14 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
-	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
+	loadProjectStack func(
+		ctx context.Context,
+		diags diag.Sink,
+		project *workspace.Project,
+		stack backend.Stack,
+	) (*workspace.ProjectStack, error)
 
-	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
+	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error
 
 	stackRef *string
 }
@@ -105,6 +114,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 
 	stack, err := cmd.requireStack(
 		ctx,
+		cmd.diags,
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.stackRef,
@@ -120,7 +130,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := cmd.loadProjectStack(project, stack)
+	projectStack, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -212,7 +222,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		}
 	}
 
-	if err = cmd.saveProjectStack(*stack, projectStack); err != nil {
+	if err = cmd.saveProjectStack(ctx, *stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

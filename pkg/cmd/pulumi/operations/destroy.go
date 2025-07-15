@@ -55,6 +55,7 @@ func NewDestroyCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
+	var client string
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -159,7 +160,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
+				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, client, jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
 					targetDependents, "", cmdStack.ConfigFile, runProgram)
@@ -194,6 +195,7 @@ func NewDestroyCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -204,7 +206,7 @@ func NewDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
@@ -228,7 +230,7 @@ func NewDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = config.GetStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, ssml, s, proj)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -302,7 +304,7 @@ func NewDestroyCmd() *cobra.Command {
 				DestroyProgram:            runProgram,
 			}
 
-			_, destroyErr := s.Destroy(ctx, backend.UpdateOperation{
+			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -322,7 +324,7 @@ func NewDestroyCmd() *cobra.Command {
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
 				} else if remove {
-					_, err = s.Remove(ctx, false)
+					_, err = backend.RemoveStack(ctx, s, false)
 					if err != nil {
 						return err
 					}
@@ -451,6 +453,10 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	return cmd
 }

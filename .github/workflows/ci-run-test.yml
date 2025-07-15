@@ -57,7 +57,7 @@ on:
           {
             "dotnet": "8.0.x",
             "go": "1.18.x",
-            "nodejs": "16.x",
+            "nodejs": "20.x",
             "python": "3.9.x"
           }
       continue-on-error:
@@ -359,7 +359,7 @@ jobs:
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: Create GCP service account key file
         run: |
-          echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+          echo -n '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
       - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}

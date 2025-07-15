@@ -22,6 +22,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -75,7 +77,7 @@ func TestConfigSet(t *testing.T) {
 
 	for _, c := range cases {
 		c := c
-		t.Run("", func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			project := workspace.Project{
 				Name: "testProject",
 			}
@@ -86,12 +88,20 @@ func TestConfigSet(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
+				},
 			}
 
 			configSetCmd := &configSetCmd{
 				Path: c.path,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
+				LoadProjectStack: func(
+					_ context.Context,
+					diags diag.Sink,
+					project *workspace.Project,
+					_ backend.Stack,
+				) (*workspace.ProjectStack, error) {
+					return workspace.LoadProjectStackBytes(diags, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
 
@@ -101,7 +111,9 @@ func TestConfigSet(t *testing.T) {
 				stack.ConfigFile = ""
 			}()
 
-			err := configSetCmd.Run(ctx, c.args, &project, &s)
+			ws := &pkgWorkspace.MockContext{}
+
+			err := configSetCmd.Run(ctx, ws, c.args, &project, &s)
 			require.NoError(t, err)
 
 			// verify the config was set
@@ -191,13 +203,17 @@ func TestConfigSetTypes(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
+				},
 			}
 
 			configSetCmd := &configSetCmd{
 				Path: c.path,
 				Type: c.typ,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
+				LoadProjectStack: func(_ context.Context, d diag.Sink, project *workspace.Project, _ backend.Stack,
+				) (*workspace.ProjectStack, error) {
+					return workspace.LoadProjectStackBytes(d, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
 
@@ -207,7 +223,9 @@ func TestConfigSetTypes(t *testing.T) {
 				stack.ConfigFile = ""
 			}()
 
-			err := configSetCmd.Run(ctx, c.args, &project, &s)
+			ws := &pkgWorkspace.MockContext{}
+
+			err := configSetCmd.Run(ctx, ws, c.args, &project, &s)
 			require.NoError(t, err)
 
 			// verify the config was set

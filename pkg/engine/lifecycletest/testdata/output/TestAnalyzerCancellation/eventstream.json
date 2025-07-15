@@ -1,0 +1,5 @@
+{"sequence":0,"timestamp":0,"policyLoadEvent":{}}
+{"sequence":0,"timestamp":0,"preludeEvent":{"config":{}}}
+{"sequence":0,"timestamp":0,"diagnosticEvent":{"prefix":"\u003c{%fg 1%}\u003eerror: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eupdate canceled\u003c{%reset%}\u003e\n","color":"raw","severity":"error"}}
+{"sequence":0,"timestamp":0,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":1,"resourceChanges":{},"PolicyPacks":{"analyzerA":""}}}
+{"sequence":0,"timestamp":0,"cancelEvent":{}}

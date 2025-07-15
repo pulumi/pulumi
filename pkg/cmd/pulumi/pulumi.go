@@ -70,12 +70,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -173,7 +175,7 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() *cobra.Command {
+func NewPulumiCmd() (*cobra.Command, func()) {
 	var cwd string
 	var logFlow bool
 	var logToStderr bool
@@ -185,6 +187,17 @@ func NewPulumiCmd() *cobra.Command {
 	var memProfileRate int
 
 	updateCheckResult := make(chan *diag.Diag)
+
+	cleanup := func() {
+		logging.Flush()
+		cmdutil.CloseTracing()
+
+		if profiling != "" {
+			if err := cmdutil.CloseProfiling(profiling); err != nil {
+				logging.Warningf("could not close profiling: %v", err)
+			}
+		}
+	}
 
 	cmd := &cobra.Command{
 		Use:           "pulumi",
@@ -282,7 +295,7 @@ func NewPulumiCmd() *cobra.Command {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
-				metadata := getCLIMetadata(cmd)
+				metadata := getCLIMetadata(cmd, os.Environ())
 				go func() {
 					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
@@ -299,15 +312,6 @@ func NewPulumiCmd() *cobra.Command {
 			checkVersionMsg, ok := <-updateCheckResult
 			if ok && checkVersionMsg != nil && !isJSON {
 				cmdutil.Diag().Warningf(checkVersionMsg)
-			}
-
-			logging.Flush()
-			cmdutil.CloseTracing()
-
-			if profiling != "" {
-				if err := cmdutil.CloseProfiling(profiling); err != nil {
-					logging.Warningf("could not close profiling: %v", err)
-				}
 			}
 		},
 	}
@@ -343,13 +347,13 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newcmd.NewNewCmd(),
-				config.NewConfigCmd(),
+				config.NewConfigCmd(pkgWorkspace.Instance),
 				cmdStack.NewStackCmd(),
-				console.NewConsoleCmd(),
+				console.NewConsoleCmd(pkgWorkspace.Instance),
 				operations.NewImportCmd(),
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
-				install.NewInstallCmd(),
+				install.NewInstallCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -358,7 +362,7 @@ func NewPulumiCmd() *cobra.Command {
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
-				cancel.NewCancelCmd(),
+				cancel.NewCancelCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -370,12 +374,12 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				auth.NewLoginCmd(),
-				auth.NewLogoutCmd(),
+				auth.NewLoginCmd(pkgWorkspace.Instance),
+				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
-				deployment.NewDeploymentCmd(),
+				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -390,13 +394,14 @@ func NewPulumiCmd() *cobra.Command {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				cmdVersion.NewVersionCmd(),
-				about.NewAboutCmd(),
+				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
 			},
 		},
@@ -414,9 +419,9 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				convert.NewConvertCmd(),
+				convert.NewConvertCmd(pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
-				logs.NewLogsCmd(),
+				logs.NewLogsCmd(pkgWorkspace.Instance),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -452,7 +457,7 @@ func NewPulumiCmd() *cobra.Command {
 	// completion command as a recommended best practice.
 	cmd.CompletionOptions.DisableDefaultCmd = true
 
-	return cmd
+	return cmd, cleanup
 }
 
 // haveNewerDevVersion checks whethere we have a newer dev version available.
@@ -519,6 +524,7 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		willPrompt := canPrompt &&
 			((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
 				(!isCurVerDev && oldestAllowedVer.GT(curVer)))
+
 		if willPrompt {
 			lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 		}
@@ -548,12 +554,12 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 }
 
 // getCLIMetadata returns a map of metadata about the given CLI command.
-func getCLIMetadata(cmd *cobra.Command) map[string]string {
+func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
 	if cmd == nil {
 		return nil
 	}
 
-	command := cmd.Name()
+	command := cmd.CommandPath()
 
 	var flags strings.Builder
 	i := 0
@@ -567,9 +573,19 @@ func getCLIMetadata(cmd *cobra.Command) map[string]string {
 		}
 	})
 
+	env := []string{}
+	for _, e := range environ {
+		parts := strings.Split(e, "=")
+		if len(parts) == 2 && strings.HasPrefix(parts[0], "PULUMI_") {
+			env = append(env, parts[0])
+		}
+	}
+	envString := strings.Join(env, " ")
+
 	metadata := map[string]string{
-		"Command": command,
-		"Flags":   flags.String(),
+		"Command":     command,
+		"Flags":       flags.String(),
+		"Environment": envString,
 	}
 
 	return metadata
@@ -583,11 +599,14 @@ func getCLIVersionInfo(
 	metadata map[string]string,
 ) (semver.Version, semver.Version, semver.Version, int, error) {
 	creds, err := workspace.GetStoredCredentials()
+	apiToken := creds.AccessTokens[creds.Current]
+
 	if err != nil || creds.Current != cloudURL {
+		apiToken = ""
 		metadata = nil
 	}
 
-	client := client.NewClient(cloudURL, "" /*apiToken*/, false, cmdutil.Diag())
+	client := client.NewClient(cloudURL, apiToken, false, cmdutil.Diag())
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	latest, oldest, dev, cacheMS, err := client.GetCLIVersionInfo(ctx, metadata)
@@ -708,13 +727,38 @@ type cachedVersionInfo struct {
 func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersion bool) string {
 	cmd := getUpgradeCommand(isDevVersion)
 
-	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
+	// If the current version is "very old", we'll return a more urgent message. "Very old" is defined as more than 24
+	// minor versions behind when the major versions are the same. Assuming a release cadence of on average 1 minor
+	// version per week, this translates to roughly 6 months. Note that we don't consider major version differences, since
+	// it's hard to know what we'd want to do in those cases. E.g. it might be that a new version of Pulumi is radically
+	// different, rather than "just improved", and so we don't want to warn about that.
+	prefix := "A new version of Pulumi is available."
+
+	minorDiff := diffMinorVersions(current, latest)
+	if minorDiff > 24 {
+		prefix = colors.SpecAttention +
+			"You are running a very old version of Pulumi and should upgrade as soon as possible." + colors.Reset
+	}
+
+	msg := fmt.Sprintf("%s To upgrade from version '%s' to '%s', ", prefix, current, latest)
 	if cmd != "" {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
+}
+
+// diffMinorVersions compares two semver versions.
+//   - If the major versions of the two versions are the same, it returns the difference in their minor versions. This
+//     difference will be a positive number if v2 is greater than v1 and a negative number if v1 is greater than v2.
+//   - If the major versions differ, it returns 0.
+func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
+	if v1.Major != v2.Major {
+		return 0
+	}
+
+	return (int64)(v2.Minor - v1.Minor) //nolint:gosec
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how

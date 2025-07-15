@@ -292,6 +292,13 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.ConfigFile != "" {
 		sharedArgs = append(sharedArgs, "--config-file="+preOpts.ConfigFile)
 	}
+	if preOpts.RunProgram != nil {
+		if *preOpts.RunProgram {
+			sharedArgs = append(sharedArgs, "--run-program=true")
+		} else {
+			sharedArgs = append(sharedArgs, "--run-program=false")
+		}
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -436,6 +443,13 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.ConfigFile != "" {
 		sharedArgs = append(sharedArgs, "--config-file="+upOpts.ConfigFile)
+	}
+	if upOpts.RunProgram != nil {
+		if *upOpts.RunProgram {
+			sharedArgs = append(sharedArgs, "--run-program=true")
+		} else {
+			sharedArgs = append(sharedArgs, "--run-program=false")
+		}
 	}
 
 	// Apply the remote args, if needed.
@@ -1015,8 +1029,8 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 	args := slice.Prealloc[string](len(destroyOpts.Target))
 
-	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
 	args = append(args, "destroy")
+	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}

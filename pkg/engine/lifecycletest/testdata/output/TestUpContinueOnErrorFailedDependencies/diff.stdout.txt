@@ -1,0 +1,16 @@
+<{%fg 2%}>+ pulumi:providers:pkgB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::parent]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::deletedWith]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::propDep]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::independent]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

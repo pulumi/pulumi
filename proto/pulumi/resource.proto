@@ -39,9 +39,21 @@ service ResourceMonitor {
     // Register an invoke transform for the stack
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
+    // Register a resource hook that can be called by the engine during certain
+    // steps of a resource's lifecycle.
+    rpc RegisterResourceHook(RegisterResourceHookRequest) returns (google.protobuf.Empty) {}
+
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     // Multiple requests are idempotent and guaranteed to return the same result.
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
+
+    // SignalAndWaitForShutdown lets the resource monitor know that no more
+    // events will be generated. This call blocks until the resource monitor is
+    // finished, which will happen once all the steps have executed. This allows
+    // the language runtime to stay running and handle callback requests, even
+    // after the user program has completed. Runtime SDKs should call this after
+    // executing the user's program. This can only be called once.
+    rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -150,6 +162,18 @@ message RegisterResourceRequest {
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 
     string packageRef = 33; // a reference from RegisterPackageRequest.
+
+    message ResourceHooksBinding {
+        repeated string before_create = 1;
+        repeated string after_create = 2;
+        repeated string before_update = 3;
+        repeated string after_update = 4;
+        repeated string before_delete = 5;
+        repeated string after_delete = 6;
+    }
+
+    // The resource hooks that should run at certain points in the resource's lifecycle.
+    optional ResourceHooksBinding hooks = 34;
 }
 
 enum Result {
@@ -273,6 +297,23 @@ message TransformInvokeOptions {
     map<string, bytes> plugin_checksums = 4;
 }
 
+// ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
+message ResourceHookRequest {
+    string urn = 1; // the urn of the resource for which the hook is called.
+    string id = 2; // the optional urn of the resource for which the hook is called.
+    string name = 3; // the name of the resource for which the hook is called.
+    string type = 4; // the type of the resource for which the hook is called.
+    google.protobuf.Struct new_inputs = 5; // the optional checked new inputs of the resource.
+    google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
+    google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
+    google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
+}
+
+// ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
+message ResourceHookResponse {
+    string error = 1; // an optional error message to return from the hook.
+}
+
 message RegisterPackageRequest {
     string name = 1; // the plugin name.
     string version = 2; // the plugin version.
@@ -292,4 +333,12 @@ message Parameterization {
     string name = 1; // the parameterized package name.
     string version = 2; // the parameterized package version.
     bytes value = 3; // the parameter value for the parameterized package.
+}
+
+message RegisterResourceHookRequest {
+    // The name of the hook. Must be unique within a program, registering the
+    // same name twice is an error.
+    string name = 1;
+    Callback callback = 2; // the callback that the engine can call to run the hook.
+    bool on_dry_run = 3; // whether to run the hook on dry runs.
 }

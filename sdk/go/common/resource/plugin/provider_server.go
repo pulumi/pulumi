@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -136,11 +137,12 @@ func (p *providerServer) Handshake(
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
-		SupportsViews:    req.SupportsViews,
+		EngineAddress:               req.EngineAddress,
+		RootDirectory:               req.RootDirectory,
+		ProgramDirectory:            req.ProgramDirectory,
+		ConfigureWithUrn:            req.ConfigureWithUrn,
+		SupportsViews:               req.SupportsViews,
+		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		return nil, err
@@ -566,8 +568,9 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	return &pulumirpc.CreateResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -629,9 +632,10 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
-		Inputs:     rpcInputs,
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -700,7 +704,10 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
+	return &pulumirpc.UpdateResponse{
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
 }
 
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
@@ -807,12 +814,26 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
+
+	var hooks map[resource.HookType][]string
+	binding := req.GetResourceHooks()
+	if binding != nil {
+		hooks := make(map[resource.HookType][]string)
+		hooks[resource.BeforeCreate] = binding.GetBeforeCreate()
+		hooks[resource.AfterCreate] = binding.GetAfterCreate()
+		hooks[resource.BeforeUpdate] = binding.GetBeforeUpdate()
+		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
+		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
+		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+	}
+
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
 		Protect:              req.Protect,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
+		ResourceHooks:        hooks,
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
@@ -980,19 +1001,9 @@ func (p *providerServer) GetMappings(ctx context.Context,
 
 // unmarshalViews is a helper that unmarshals a slice of views from gRPC into a slice of View structs.
 func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error) {
-	if len(views) == 0 {
-		return nil, nil
-	}
-
-	result := make([]View, len(views))
-	for i, v := range views {
-		uv, err := unmarshalView(v, opts)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = uv
-	}
-	return result, nil
+	return slice.MapError(views, func(v *pulumirpc.View) (View, error) {
+		return unmarshalView(v, opts)
+	})
 }
 
 // unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.

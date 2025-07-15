@@ -1,0 +1,20 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA0 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA0 <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA1 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA1 <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA2 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA2 <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA3 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA3 <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA4 <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA4 <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    5 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

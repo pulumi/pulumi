@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -22,6 +21,10 @@ type analyzer struct {
 
 func (a *analyzer) Handshake(ctx context.Context, req *pulumirpc.AnalyzerHandshakeRequest) (*pulumirpc.AnalyzerHandshakeResponse, error) {
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
+}
+
+func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
@@ -38,24 +41,15 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 		return nil, fmt.Errorf("expected dry run to be true, got false")
 	}
 
-	actualConfig, err := plugin.UnmarshalProperties(req.Config, plugin.MarshalOptions{
-		KeepSecrets: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	expectedConfig := map[string]string{
+		"test-project:bool":   "true",
+		"test-project:float":  "1.5",
+		"test-project:string": "hello",
+		"test-project:obj":    "{\"key\":\"value\"}",
 	}
 
-	expectedConfig := resource.PropertyMap{
-		"test-project:bool":   resource.NewBoolProperty(true),
-		"test-project:float":  resource.NewNumberProperty(1.5),
-		"test-project:string": resource.NewStringProperty("hello"),
-		"test-project:obj": resource.NewObjectProperty(resource.PropertyMap{
-			"key": resource.NewStringProperty("value"),
-		}),
-	}
-
-	if !actualConfig.DeepEquals(expectedConfig) {
-		return nil, fmt.Errorf("expected config to be %v, got %v", expectedConfig, actualConfig)
+	if !reflect.DeepEqual(req.Config, expectedConfig) {
+		return nil, fmt.Errorf("expected config to be %v, got %v", expectedConfig, req.Config)
 	}
 
 	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil

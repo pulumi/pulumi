@@ -60,6 +60,8 @@ func TestClosePanic(t *testing.T) {
 func TestIsLocalPluginPath(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	tests := []struct {
 		name     string
 		path     string
@@ -141,7 +143,7 @@ func TestIsLocalPluginPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := IsLocalPluginPath(tt.path)
+			result := IsLocalPluginPath(ctx, tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

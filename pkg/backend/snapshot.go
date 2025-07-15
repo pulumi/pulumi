@@ -191,7 +191,7 @@ type sameSnapshotMutation struct {
 // mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
 // step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
 // this step can be elided.
-func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
+func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	old := step.Old()
 	new := step.New()
 
@@ -201,7 +201,10 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	contract.Assertf(old.External == new.External,
 		"either both or neither resource must be external, got %v (old) != %v (new)",
 		old.External, new.External)
-	contract.Assertf(!step.IsSkippedCreate(), "create cannot be skipped for step")
+
+	if sameStep, isSameStep := step.(*deploy.SameStep); isSameStep {
+		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for SameStep")
+	}
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
@@ -293,6 +296,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		}
 	}
 
+	if !reflect.DeepEqual(old.ResourceHooks, new.ResourceHooks) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ResourceHooks")
+		return true
+	}
+
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint. Likewise source positions are purely metadata and do not affect the system correctness, so
 	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when
@@ -307,7 +315,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() bool {
-		sameStep := step.(*deploy.SameStep)
+		sameStep, isSameStep := step.(*deploy.SameStep)
 
 		ssm.manager.markOperationComplete(step.New())
 		if successful {
@@ -317,7 +325,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
 			// doesn't exist at all.  That way when the program runs the next time, we'll actually
 			// create it.
-			if sameStep.IsSkippedCreate() {
+			if isSameStep && sameStep.IsSkippedCreate() {
 				return false
 			}
 
@@ -328,7 +336,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			//
 			// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
 			// changes.
-			if !ssm.mustWrite(sameStep) {
+			if !ssm.mustWrite(step) {
 				logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
 				return false
 			}
@@ -508,8 +516,9 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// have changed.
 		// The exception to this is persisted refreshes, which are not elided and are treated as normal operations.
 		// These can either update or delete a resource.
-		refreshStep := step.(*deploy.RefreshStep)
-		if refreshStep.Persisted() {
+		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
+		viewStep, isViewStep := step.(*deploy.ViewStep)
+		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
 			if successful {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {

@@ -298,6 +298,25 @@ func TestPackageGetSchema(t *testing.T) {
 	// Sub-schema is a very simple empty schema with the name set from the argument given
 	assert.Equal(t, "parameter", schema.Name)
 
+	// Now try and get the parameterized schema from within a Pulumi project with a packages declaration.
+	err = os.WriteFile(
+		filepath.Join(e.CWD, "Pulumi.yaml"),
+		[]byte(fmt.Sprintf(`name: project
+runtime: yaml
+packages:
+  tp: %s
+backend:
+  url: '%s'`,
+			providerDir,
+			e.LocalURL(),
+		)), 0o600)
+	require.NoError(t, err)
+
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "tp", "parameter")
+	schema = bindSchema("testprovider", schemaJSON)
+	// Sub-schema is a very simple empty schema with the name set from the argument given
+	assert.Equal(t, "parameter", schema.Name)
+
 	// get-schema '.' works
 	e.CWD = providerDir
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", ".", "parameter")
@@ -500,8 +519,32 @@ func TestPluginRun(t *testing.T) {
 
 	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
-	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
-	assert.Contains(t, stderr, "flag: help requested")
+}
+
+// Test that we can run a local file plugin via `pulumi plugin run`.
+func TestPluginRunFile(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// build the test provider to a binary
+	providerDir, err := filepath.Abs("../testprovider")
+	require.NoError(t, err)
+	binaryPath := filepath.Join(e.CWD, "pulumi-resource-testprovider")
+	if runtime.GOOS == "windows" {
+		binaryPath += ".exe"
+	}
+
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = providerDir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Building the test provider should work: %s", string(output))
+
+	_, stderr := e.RunCommand("pulumi", "plugin", "run", "--kind=resource", binaryPath, "--", "--help")
+
+	expect := fmt.Sprintf("Usage of %s:", binaryPath)
+	assert.Contains(t, stderr, expect)
 }
 
 func TestInstall(t *testing.T) {

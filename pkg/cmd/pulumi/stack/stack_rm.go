@@ -19,7 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -69,8 +70,9 @@ func newStackRmCmd() *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
-				backend.DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				stack,
 				LoadOnly,
 				opts,
@@ -89,7 +91,7 @@ func newStackRmCmd() *cobra.Command {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
-			hasResources, err := s.Remove(ctx, force)
+			hasResources, err := backend.RemoveStack(ctx, s, force)
 			if err != nil {
 				if hasResources {
 					return fmt.Errorf(

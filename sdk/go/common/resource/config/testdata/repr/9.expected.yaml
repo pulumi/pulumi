@@ -7,7 +7,7 @@ paths:
       c: d
     string: '{"a":"b","c":"d"}'
     redacted: '{"a":"b","c":"d"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAACH/gB4AAgFjBnN0cmluZwwDAAFkAWEGc3RyaW5nDAMAAWI=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAACH/gB4AAgFhBnN0cmluZwwDAAFiAWMGc3RyaW5nDAMAAWQ=
     secure: false
     isObject: true
   my:mapKey.a:
@@ -17,7 +17,6 @@ paths:
     object: DhAABnN0cmluZwwDAAFi
     secure: false
     isObject: false
-    type: 1
   my:mapKey.c:
     value: d
     string: d
@@ -25,4 +24,3 @@ paths:
     object: DhAABnN0cmluZwwDAAFk
     secure: false
     isObject: false
-    type: 1

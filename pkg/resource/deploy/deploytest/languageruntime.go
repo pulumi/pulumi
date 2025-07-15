@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -132,7 +133,9 @@ func (p *languageRuntime) GetProgramDependencies(
 	return nil, nil
 }
 
-func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+func (p *languageRuntime) RunPlugin(ctx context.Context, info plugin.RunPluginInfo) (
+	io.Reader, io.Reader, *promise.Promise[int32], error,
+) {
 	return nil, nil, nil, errors.New("inline plugins are not currently supported")
 }
 
@@ -154,4 +157,8 @@ func (p *languageRuntime) GenerateProgram(map[string]string, string, bool) (map[
 
 func (p *languageRuntime) Pack(string, string) (string, error) {
 	return "", errors.New("Pack is not supported")
+}
+
+func (p *languageRuntime) Link(plugin.ProgramInfo, map[string]string) error {
+	return errors.New("Link is not supported")
 }

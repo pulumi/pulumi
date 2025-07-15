@@ -44,7 +44,12 @@ from .rpc import deserialize_properties, serialize_properties
 from ..invoke import InvokeOptions, InvokeTransform
 
 if TYPE_CHECKING:
-    from ..resource import Alias, ResourceOptions, ResourceTransform
+    from ..resource import (
+        Alias,
+        ResourceOptions,
+        ResourceTransform,
+    )
+    from ..resource_hooks import ResourceHook
 
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -236,6 +241,92 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             # Remove the transform since we didn't manage to actually register it.
             self._transforms.pop(transform)
             self._callbacks.pop(callback.token)
+            raise
+
+    def do_register_resource_hook(
+        self, hook: ResourceHook
+    ) -> resource_pb2.RegisterResourceHookRequest:
+        log.debug(f"do_register_resource_hook {hook.name}")
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.ResourceHookRequest = (
+                resource_pb2.ResourceHookRequest.FromString(s)
+            )
+
+            try:
+                from ..resource_hooks import ResourceHookArgs
+
+                new_inputs = (
+                    deserialize_properties(
+                        request.new_inputs,
+                        keep_unknowns=True,
+                    )
+                    if request.new_inputs
+                    else None
+                )
+                old_inputs = (
+                    deserialize_properties(
+                        request.old_inputs,
+                        keep_unknowns=True,
+                    )
+                    if request.old_inputs
+                    else None
+                )
+                new_outputs = (
+                    deserialize_properties(
+                        request.new_outputs,
+                        keep_unknowns=True,
+                    )
+                    if request.new_outputs
+                    else None
+                )
+                old_outputs = (
+                    deserialize_properties(
+                        request.old_outputs,
+                        keep_unknowns=True,
+                    )
+                    if request.old_outputs
+                    else None
+                )
+
+                maybeAwaitable = hook(
+                    ResourceHookArgs(
+                        urn=request.urn,
+                        id=request.id,
+                        name=request.name,
+                        type=request.type,
+                        new_inputs=new_inputs,
+                        old_inputs=old_inputs,
+                        new_outputs=new_outputs,
+                        old_outputs=old_outputs,
+                    )
+                )
+                if isinstance(maybeAwaitable, Awaitable):
+                    await maybeAwaitable
+                return resource_pb2.ResourceHookResponse()
+            except Exception as e:  # noqa: BLE001 catch blind exception
+                log.debug(f"Exception while executing hook: {str(e)}")
+                return resource_pb2.ResourceHookResponse(error=str(e))
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        callback = callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+        return resource_pb2.RegisterResourceHookRequest(
+            name=hook.name,
+            callback=callback,
+            on_dry_run=hook.opts.on_dry_run if hook.opts else False,
+        )
+
+    def register_resource_hook(self, hook: ResourceHook) -> None:
+        req = self.do_register_resource_hook(hook)
+        try:
+            self._monitor.RegisterResourceHook(req)
+        except:
+            # Remove the hook since we didn't manage to actually register it.
+            self._callbacks.pop(req.callback.token)
             raise
 
     def _resource_options(

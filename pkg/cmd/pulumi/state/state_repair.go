@@ -126,6 +126,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 	s, err := cmdStack.RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		cmd.Workspace,
 		cmd.LoginManager,
 		cmd.Args.Stack,
@@ -222,7 +223,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		return err
 	}
 
-	err = s.ImportDeployment(ctx, &apitype.UntypedDeployment{
+	err = backend.ImportStackDeployment(ctx, s, &apitype.UntypedDeployment{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	})

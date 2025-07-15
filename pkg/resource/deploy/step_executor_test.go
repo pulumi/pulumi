@@ -154,7 +154,9 @@ func TestStepExecutor(t *testing.T) {
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
-			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{
+				URN: "urn:pulumi:some-urn",
+			}})
 			// Does not error.
 			assert.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
 				urn: notInPlan,
@@ -183,7 +185,7 @@ func TestStepExecutor(t *testing.T) {
 			}
 			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
 			assert.ErrorIs(t, se.executeStep(0, &CreateStep{
-				new: &resource.State{URN: "some-urn"},
+				new: &resource.State{URN: "urn:pulumi:some-urn"},
 			}), expectedErr)
 		})
 		t.Run("disallow mark id secret", func(t *testing.T) {
@@ -212,7 +214,7 @@ func TestStepExecutor(t *testing.T) {
 			}
 			step := &CreateStep{
 				new: &resource.State{
-					URN: "some-urn",
+					URN: "urn:pulumi:some-urn",
 					AdditionalSecretOutputs: []resource.PropertyKey{
 						"id",
 						"non-existent-property",

@@ -90,6 +90,14 @@ from .output import (
     deferred_output,
 )
 
+from .resource_hooks import (
+    ResourceHookArgs,
+    ResourceHookFunction,
+    ResourceHook,
+    ResourceHookBinding,
+    ResourceHookOptions,
+)
+
 from .log import (
     debug,
     info,
@@ -172,6 +180,12 @@ __all__ = [
     "UNKNOWN",
     "contains_unknowns",
     "deferred_output",
+    # resource_hooks
+    "ResourceHookArgs",
+    "ResourceHookFunction",
+    "ResourceHook",
+    "ResourceHookBinding",
+    "ResourceHookOptions",
     # log
     "debug",
     "info",

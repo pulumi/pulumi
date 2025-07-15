@@ -34,7 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -50,7 +50,7 @@ import (
 type langhost struct {
 	ctx     *Context
 	runtime string
-	plug    *plugin
+	plug    *Plugin
 	client  pulumirpc.LanguageRuntimeClient
 }
 
@@ -63,7 +63,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		return nil, err
 	}
 
-	var plug *plugin
+	var plug *Plugin
 	var client pulumirpc.LanguageRuntimeClient
 	if attachPort != nil {
 		port := *attachPort
@@ -96,7 +96,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			)
 		}
 
-		plug = &plugin{
+		plug = &Plugin{
 			Conn: conn,
 			// Nothing to kill.
 			Kill: func() error {
@@ -381,12 +381,16 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 // deployment is occurring and it may safely depend on these.
 func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,%s,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
-		h.runtime, info.Pwd, info.Info, len(info.Args), info.Project, info.Stack, info.Config.Len(), info.DryRun)
-
-	config, configSecretKeys := PropertyMapToConfig(info.Config)
-
-	rawConfig := resource.ToResourcePropertyMap(info.Config)
-	configPropertyMap, err := MarshalProperties(rawConfig,
+		h.runtime, info.Pwd, info.Info, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
+	config := make(map[string]string, len(info.Config))
+	for k, v := range info.Config {
+		config[k.String()] = v
+	}
+	configSecretKeys := make([]string, len(info.ConfigSecretKeys))
+	for i, k := range info.ConfigSecretKeys {
+		configSecretKeys[i] = k.String()
+	}
+	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
 		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return "", false, err
@@ -655,7 +659,9 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 	return results, nil
 }
 
-func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
+	io.Reader, io.Reader, *promise.Promise[int32], error,
+) {
 	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
 		h.runtime, info.Info.String())
 
@@ -664,9 +670,9 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		return nil, nil, nil, err
 	}
 
-	ctx, kill := context.WithCancel(h.ctx.Request())
+	rctx, kill := context.WithCancel(ctx)
 
-	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
+	resp, err := h.client.RunPlugin(rctx, &pulumirpc.RunPluginRequest{
 		Pwd:            info.WorkingDirectory,
 		Args:           info.Args,
 		Env:            info.Env,
@@ -684,13 +690,30 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 	outr, outw := io.Pipe()
 	errr, errw := io.Pipe()
 
+	cts := &promise.CompletionSource[int32]{}
+
 	go func() {
 		for {
 			logging.V(10).Infoln("Waiting for plugin message")
 			msg, err := resp.Recv()
 			if err != nil {
-				contract.IgnoreError(outw.CloseWithError(err))
-				contract.IgnoreError(errw.CloseWithError(err))
+				// If there was an error receiving then signal that the plugin has exited.
+				// If err is just EOF then the plugin has exited normally, and we can exitcode 0
+				err1 := outw.Close()
+				err2 := errw.Close()
+				if errors.Is(err, io.EOF) {
+					cts.Fulfill(0)
+				} else {
+					// We need this condition because although `Join` will ignore nil errors it won't return the
+					// original error if it's the only one. That is `Join(err, nil, nil) != err`. Because of that our
+					// later "is this a grpc error" check doesn't work because it sees a `joinError` instead of a
+					// `grpcError`.
+					if err1 != nil || err2 != nil {
+						err = errors.Join(err, err1, err2)
+					}
+					cts.Reject(err)
+				}
+				kill()
 				break
 			}
 
@@ -704,16 +727,23 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 				n, err := errw.Write(value.Stderr)
 				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
 				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
-			} else if _, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
+			} else if code, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
 				// If stdout and stderr are empty we've flushed and are returning the exit code
-				outw.Close()
-				errw.Close()
+				err1 := outw.Close()
+				err2 := errw.Close()
+				err = errors.Join(err1, err2)
+				if err != nil {
+					cts.Reject(err)
+				} else {
+					cts.Fulfill(code.Exitcode)
+				}
+				kill()
 				break
 			}
 		}
 	}()
 
-	return outr, errr, kill, nil
+	return outr, errr, cts.Promise(), nil
 }
 
 func (h *langhost) GenerateProject(
@@ -856,4 +886,29 @@ func languageHandshake(
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
+}
+
+func (h *langhost) Link(
+	info ProgramInfo, localDependencies map[string]string,
+) error {
+	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, localDependencies)
+	logging.V(7).Infof("%s executing", label)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return err
+	}
+
+	_, err = h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+		Info:              minfo,
+		LocalDependencies: localDependencies,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return nil
 }

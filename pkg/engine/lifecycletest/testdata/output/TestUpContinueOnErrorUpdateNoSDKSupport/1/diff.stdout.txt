@@ -1,8 +1,8 @@
 <{%reset%}>  pulumi:providers:pkgB: (same)
-<{%reset%}>    [id=4d99d995-4270-452c-bed5-7ab880588909]
+<{%reset%}>    [id=68017a3e-66eb-4b61-92b2-12a3de8ffec8]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgB:m:typB: (update)
-<{%reset%}>    [id=0c2e7c67-f6dd-4c1d-a928-6dabe9af8ce3]
+<{%reset%}>    [id=0c03b09d-2245-4cdb-a2c4-1345a580b31e]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::failing]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)

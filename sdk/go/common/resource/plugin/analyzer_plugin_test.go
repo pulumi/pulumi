@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
@@ -41,7 +40,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
 	}
 
-	configDecrypted, err := configMap.AsDecryptedPropertyMap(context.Background(), config.NopDecrypter)
+	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
 	require.NoError(t, err)
 
 	opts := PolicyAnalyzerOptions{
@@ -49,7 +48,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 		Project:      proj,
 		Stack:        "test-stack",
 		DryRun:       true,
-		Config:       resource.FromResourcePropertyMap(configDecrypted),
+		Config:       configDecrypted,
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer")
@@ -63,7 +62,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-analyzer-policy-test")
 
-	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts)
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts, nil)
 	require.NoError(t, err)
 
 	err = analyzer.Close()
@@ -83,7 +82,7 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 	// Pass `nil` for the config, this is used for example in `pulumi policy
 	// publish`, which does not run in the context of a stack.
-	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", nil)
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", nil, nil)
 	require.NoError(t, err)
 
 	err = analyzer.Close()
@@ -104,7 +103,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
 	}
 
-	configDecrypted, err := configMap.AsDecryptedPropertyMap(context.Background(), config.NopDecrypter)
+	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
 	require.NoError(t, err)
 
 	opts := PolicyAnalyzerOptions{
@@ -112,7 +111,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 		Project:      proj,
 		Stack:        "test-stack",
 		DryRun:       true,
-		Config:       resource.FromResourcePropertyMap(configDecrypted),
+		Config:       configDecrypted,
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-language")
@@ -126,7 +125,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
 
-	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts)
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts, nil)
 	require.NoError(t, err)
 
 	err = analyzer.Close()

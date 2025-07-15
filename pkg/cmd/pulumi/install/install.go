@@ -35,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func NewInstallCmd() *cobra.Command {
+func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var reinstall bool
 	var noPlugins, noDependencies bool
 	var useLanguageVersionTools bool
@@ -94,7 +94,7 @@ func NewInstallCmd() *cobra.Command {
 			}
 
 			// Load the project
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			proj, root, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -191,7 +191,7 @@ func installPackagesFromProject(pctx *plugin.Context, proj *workspace.Project, r
 		fmt.Printf("Installing package '%s'...\n", name)
 
 		installSource := packageSpec.Source
-		if !plugin.IsLocalPluginPath(installSource) && packageSpec.Version != "" {
+		if !plugin.IsLocalPluginPath(pctx.Base(), installSource) && packageSpec.Version != "" {
 			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
 		}
 

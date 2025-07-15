@@ -139,22 +139,37 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 	return nil
 }
 
+type LinkPackageContext struct {
+	// The workspace context for the project to which the SDK package is being linked.
+	Workspace pkgWorkspace.Context
+	// The programming language of the SDK package being linked.
+	Language string
+	// The root directory of the project to which the SDK package is being linked.
+	Root string
+	// The schema of the Pulumi package from which the SDK being linked was generated.
+	Pkg *schema.Package
+	// The output directory where the SDK package to be linked is located.
+	Out string
+	// True if the linked SDK package should be installed into the project it is being added to. If this is false, the
+	// package will be linked (e.g. an entry added to package.json), but not installed (e.g. its contents unpacked into
+	// node_modules).
+	Install bool
+}
+
 // LinkPackage links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
-func LinkPackage(
-	ws pkgWorkspace.Context, language string, root string, pkg *schema.Package, out string,
-) error {
-	switch language {
+func LinkPackage(ctx *LinkPackageContext) error {
+	switch ctx.Language {
 	case "nodejs":
-		return linkNodeJsPackage(ws, root, pkg, out)
+		return linkNodeJsPackage(ctx)
 	case "python":
-		return linkPythonPackage(ws, root, pkg, out)
+		return linkPythonPackage(ctx)
 	case "go":
-		return linkGoPackage(root, pkg, out)
+		return linkGoPackage(ctx)
 	case "dotnet":
-		return linkDotnetPackage(root, pkg, out)
+		return linkDotnetPackage(ctx)
 	case "java":
-		return printJavaLinkInstructions(root, pkg, out)
+		return printJavaLinkInstructions(ctx)
 	default:
 		break
 	}
@@ -173,37 +188,78 @@ func getNodeJSPkgName(pkg *schema.Package) string {
 }
 
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
-func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
-	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
-	proj, _, err := ws.ReadProject()
+func linkNodeJsPackage(ctx *LinkPackageContext) error {
+	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
+	proj, _, err := ctx.Workspace.ReadProject()
 	if err != nil {
 		return err
 	}
-	relOut, err := filepath.Rel(root, out)
+	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
 	}
-	packageSpecifier := fmt.Sprintf("%s@file:%s", getNodeJSPkgName(pkg), relOut)
+
+	// Depending on whether we want to install the linked package, we have to pick one of two paths:
+	//
+	// * For cases where we do want to install linked SDKs (where ctx.Install is true), we can use the typical `npm add`,
+	//   `pnpm add` commands, etc. These will take care of both modifying the package.json file and installing the SDK
+	//   into node_modules.
+	// * For cases where we do not want to install linked SDKs (where ctx.Install is false), we only want to modify the
+	//   package.json file. In this case, we can use the `pkg set` commands that many package managers support.
 	var addCmd *exec.Cmd
 	options := proj.Runtime.Options()
-	if packagemanager, ok := options["packagemanager"]; ok {
-		if pm, ok := packagemanager.(string); ok {
-			switch pm {
-			case "npm":
-				fallthrough
-			case "yarn":
-				fallthrough
-			case "pnpm":
-				addCmd = exec.Command(pm, "add", packageSpecifier)
-			default:
-				return fmt.Errorf("unsupported package manager: %s", pm)
+
+	if ctx.Install {
+		// Installing -- use the `add` commands.
+
+		packageSpecifier := fmt.Sprintf("%s@file:%s", getNodeJSPkgName(ctx.Pkg), relOut)
+		if packagemanager, ok := options["packagemanager"]; ok {
+			if pm, ok := packagemanager.(string); ok {
+				switch pm {
+				case "npm":
+					fallthrough
+				case "yarn":
+					fallthrough
+				case "pnpm":
+					addCmd = exec.Command(pm, "add", packageSpecifier)
+				default:
+					return fmt.Errorf("unsupported package manager: %s", pm)
+				}
+			} else {
+				return fmt.Errorf("package manager option must be a string: %v", packagemanager)
 			}
 		} else {
-			return fmt.Errorf("package manager option must be a string: %v", packagemanager)
+			// Assume npm if no packagemanager is specified
+			addCmd = exec.Command("npm", "add", packageSpecifier)
 		}
 	} else {
-		// Assume npm if no packagemanager is specified
-		addCmd = exec.Command("npm", "add", packageSpecifier)
+		// Not installing -- use the `pkg set` commands.
+
+		// `pkg set` lets us directly modify the package.json file. Since we want to set an entry in the `dependencies`
+		// section, we'll pass it a string of the form "dependencies.<packageName>=file:<path-to-package>".
+		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", getNodeJSPkgName(ctx.Pkg), relOut)
+		if packagemanager, ok := options["packagemanager"]; ok {
+			if pm, ok := packagemanager.(string); ok {
+				switch pm {
+				case "npm":
+					fallthrough
+				case "pnpm":
+					addCmd = exec.Command(pm, "pkg", "set", packageSpecifier)
+				case "yarn":
+					// Yarn doesn't have a `pkg` command. Currently, however, we only support Yarn Classic, for which the
+					// recommended install method is through `npm`. Consequently, we can use `npm pkg set` for Yarn as well, since
+					// this will only modify the package.json file and not actually perform any dependency management.
+					addCmd = exec.Command("npm", "pkg", "set", packageSpecifier)
+				default:
+					return fmt.Errorf("unsupported package manager: %s", pm)
+				}
+			} else {
+				return fmt.Errorf("package manager option must be a string: %v", packagemanager)
+			}
+		} else {
+			// Assume npm if no packagemanager is specified
+			addCmd = exec.Command("npm", "pkg", "set", packageSpecifier)
+		}
 	}
 
 	addCmd.Stdout = os.Stdout
@@ -213,7 +269,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		return fmt.Errorf("error executing node package manager command %s: %w", addCmd.String(), err)
 	}
 
-	return printNodeJsImportInstructions(os.Stdout, pkg, options)
+	return printNodeJsImportInstructions(os.Stdout, ctx.Pkg, options)
 }
 
 // printNodeJsImportInstructions prints instructions for importing the NodeJS SDK to the specified writer.
@@ -240,20 +296,20 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 }
 
 // linkPythonPackage links a locally generated SDK to an existing Python project.
-func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
-	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg.Name, out)
+func linkPythonPackage(ctx *LinkPackageContext) error {
+	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Println()
-	proj, _, err := ws.ReadProject()
+	proj, _, err := ctx.Workspace.ReadProject()
 	if err != nil {
 		return err
 	}
-	packageSpecifier, err := filepath.Rel(root, out)
+	packageSpecifier, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
 	}
 
 	modifyRequirements := func(virtualenv string) error {
-		fPath := filepath.Join(root, "requirements.txt")
+		fPath := filepath.Join(ctx.Root, "requirements.txt")
 		fBytes, err := os.ReadFile(fPath)
 		if err != nil {
 			return fmt.Errorf("error opening requirments.txt: %w", err)
@@ -275,27 +331,30 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		}
 
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-			Root:       root,
+			Root:       ctx.Root,
 			Virtualenv: virtualenv,
 		})
 		if err != nil {
 			return fmt.Errorf("error resolving toolchain: %w", err)
 		}
 		if virtualenv != "" {
-			if err := tc.EnsureVenv(context.TODO(), root, false, /* useLanguageVersionTools */
+			if err := tc.EnsureVenv(context.TODO(), ctx.Root, false, /* useLanguageVersionTools */
 				true /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("error ensuring virtualenv is setup: %w", err)
 			}
 		}
-		cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
-		if err != nil {
-			return fmt.Errorf("error preparing pip install command: %w", err)
-		}
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		err = cmd.Run()
-		if err != nil {
-			return fmt.Errorf("error running %s: %w", cmd.String(), err)
+
+		if ctx.Install {
+			cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
+			if err != nil {
+				return fmt.Errorf("error preparing pip install command: %w", err)
+			}
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+			err = cmd.Run()
+			if err != nil {
+				return fmt.Errorf("error running %s: %w", cmd.String(), err)
+			}
 		}
 
 		return nil
@@ -318,9 +377,21 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 					return errors.New("virtualenv option must be a string")
 				}
 			case "poetry":
-				depAddCmd = exec.Command("poetry", "add", packageSpecifier)
+				args := []string{"add"}
+				if !ctx.Install {
+					args = append(args, "--lock")
+				}
+
+				args = append(args, packageSpecifier)
+				depAddCmd = exec.Command("poetry", args...)
 			case "uv":
-				depAddCmd = exec.Command("uv", "add", packageSpecifier)
+				args := []string{"add"}
+				if !ctx.Install {
+					args = append(args, "--no-sync")
+				}
+
+				args = append(args, packageSpecifier)
+				depAddCmd = exec.Command("uv", args...)
 			default:
 				return fmt.Errorf("unsupported package manager: %s", tc)
 			}
@@ -343,18 +414,18 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		}
 	}
 
-	pyInfo, ok := pkg.Language["python"].(python.PackageInfo)
+	pyInfo, ok := ctx.Pkg.Language["python"].(python.PackageInfo)
 	var importName string
 	var packageName string
 	if ok && pyInfo.PackageName != "" {
 		importName = pyInfo.PackageName
 		packageName = pyInfo.PackageName
 	} else {
-		importName = strings.ReplaceAll(pkg.Name, "-", "_")
+		importName = strings.ReplaceAll(ctx.Pkg.Name, "-", "_")
 	}
 
 	if packageName == "" {
-		packageName = python.PyPack(pkg.Namespace, pkg.Name)
+		packageName = python.PyPack(ctx.Pkg.Namespace, ctx.Pkg.Name)
 	}
 
 	fmt.Println()
@@ -366,8 +437,8 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 }
 
 // linkGoPackage links a locally generated SDK to an existing Go project.
-func linkGoPackage(root string, pkg *schema.Package, out string) error {
-	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", pkg.Name, out)
+func linkGoPackage(ctx *LinkPackageContext) error {
+	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 
 	// All go code is placed under a relative package root so it is nested one
 	// more directory deep equal to the package name.  This extra path is equal
@@ -375,13 +446,13 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 	// as the base package name.
 	//
 	// (see pulumi-language-go  GeneratePackage for the pathPrefix).
-	relOut, err := filepath.Rel(root, out)
+	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
 	}
-	if pkg.Parameterization == nil {
+	if ctx.Pkg.Parameterization == nil {
 		// Go SDK Gen replaces all "-" in the name.  See pkg/codegen/gen.go:goPackage
-		name := strings.ReplaceAll(pkg.Name, "-", "")
+		name := strings.ReplaceAll(ctx.Pkg.Name, "-", "")
 		relOut = filepath.Join(relOut, name)
 	}
 	if runtime.GOOS == "windows" {
@@ -393,15 +464,15 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 		return fmt.Errorf("could not find sdk path %s: %w", relOut, err)
 	}
 
-	if err := pkg.ImportLanguages(map[string]schema.Language{"go": go_gen.Importer}); err != nil {
+	if err := ctx.Pkg.ImportLanguages(map[string]schema.Language{"go": go_gen.Importer}); err != nil {
 		return err
 	}
-	goInfo, ok := pkg.Language["go"].(go_gen.GoPackageInfo)
+	goInfo, ok := ctx.Pkg.Language["go"].(go_gen.GoPackageInfo)
 	if !ok {
 		return errors.New("failed to import go language info")
 	}
 
-	gomodFilepath := filepath.Join(root, "go.mod")
+	gomodFilepath := filepath.Join(ctx.Root, "go.mod")
 	gomodFileContent, err := os.ReadFile(gomodFilepath)
 	if err != nil {
 		return fmt.Errorf("cannot read mod file: %w", err)
@@ -419,7 +490,7 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 		}
 
 		if modulePath == "" {
-			modulePath = extractModulePath(pkg.Reference())
+			modulePath = extractModulePath(ctx.Pkg.Reference())
 		}
 	}
 
@@ -438,7 +509,7 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 		return fmt.Errorf("error writing go.mod: %w", err)
 	}
 
-	fmt.Printf("Go mod file updated to use local sdk for %s\n", pkg.Name)
+	fmt.Printf("Go mod file updated to use local sdk for %s\n", ctx.Pkg.Name)
 	// TODO: Also generate instructions using the default import path in cases where ImportBasePath is empty.
 	// See https://github.com/pulumi/pulumi/issues/18410
 	if goInfo.ImportBasePath != "" {
@@ -461,11 +532,11 @@ func csharpPackageName(pkgName string) string {
 
 // linkDotnetPackage links a locally generated SDK to an existing .NET project.
 // Also prints instructions for modifying the csproj file for DefaultItemExcludes cleanup.
-func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
-	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", pkg.Name, out)
+func linkDotnetPackage(ctx *LinkPackageContext) error {
+	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Println()
 
-	relOut, err := filepath.Rel(root, out)
+	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
 	}
@@ -478,8 +549,8 @@ func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
 	}
 
 	namespace := "Pulumi"
-	if pkg.Namespace != "" {
-		namespace = pkg.Namespace
+	if ctx.Pkg.Namespace != "" {
+		namespace = ctx.Pkg.Namespace
 	}
 
 	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
@@ -488,20 +559,20 @@ func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your .NET code with:")
 	fmt.Println()
-	fmt.Printf("  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(pkg.Name))
+	fmt.Printf("  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(ctx.Pkg.Name))
 	fmt.Println()
 	return nil
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Java
 // project, in the absence of us attempting to perform this linking automatically.
-func printJavaLinkInstructions(root string, pkg *schema.Package, out string) error {
-	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", pkg.Name, out)
+func printJavaLinkInstructions(ctx *LinkPackageContext) error {
+	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Java project, complete the following steps:")
 	fmt.Println()
 	fmt.Println("1. Copy the contents of the generated SDK to your Java project:")
-	fmt.Printf("     cp -r %s/src/* %s/src\n", out, root)
+	fmt.Printf("     cp -r %s/src/* %s/src\n", ctx.Out, ctx.Root)
 	fmt.Println()
 	fmt.Println("2. Add the SDK's dependencies to your Java project's build configuration.")
 	fmt.Println("   If you are using Maven, add the following dependencies to your pom.xml:")
@@ -666,7 +737,9 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close()
+	defer func() {
+		contract.IgnoreError(pctx.Host.CloseProvider(p))
+	}()
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
@@ -778,13 +851,9 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 	// Note that if a local folder has a name that could match an downloadable plugin, we
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
-	if !plugin.IsLocalPluginPath(packageSource) {
-		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, nil, "")
-		if err != nil {
-			return nil, err
-		}
+	if !plugin.IsLocalPluginPath(pctx.Base(), packageSource) {
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(descriptor)
+		provider, err := pctx.Host.Provider(descriptor)
 		if err != nil {
 			// There is an executable or directory with the same name, so suggest that
 			if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
@@ -806,7 +875,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 					if depErr != nil {
 						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
 					}
-					return host.Provider(descriptor)
+					return pctx.Host.Provider(descriptor)
 				}
 			}
 
@@ -817,7 +886,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 			}
 
 			log := func(sev diag.Severity, msg string) {
-				host.Log(sev, "", msg, 0)
+				pctx.Host.Log(sev, "", msg, 0)
 			}
 
 			_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
@@ -825,7 +894,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 				return nil, err
 			}
 
-			p, err := host.Provider(descriptor)
+			p, err := pctx.Host.Provider(descriptor)
 			if err != nil {
 				return nil, err
 			}
@@ -841,17 +910,11 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		return nil, fmt.Errorf("could not find file %s", packageSource)
 	} else if err != nil {
 		return nil, err
-	} else if info.IsDir() {
-		// If it's a directory we need to add a fake provider binary to the path because that's what NewProviderFromPath
-		// expects.
-		packageSource = filepath.Join(packageSource, "pulumi-resource-"+info.Name())
-	} else {
-		if !isExecutable(info) {
-			if p, err := filepath.Abs(packageSource); err == nil {
-				packageSource = p
-			}
-			return nil, fmt.Errorf("plugin at path %q not executable", packageSource)
+	} else if !info.IsDir() && !isExecutable(info) {
+		if p, err := filepath.Abs(packageSource); err == nil {
+			packageSource = p
 		}
+		return nil, fmt.Errorf("plugin at path %q not executable", packageSource)
 	}
 
 	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)

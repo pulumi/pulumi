@@ -29,6 +29,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -49,6 +50,39 @@ const (
 	// 20s before we give up on a copilot request
 	CopilotRequestTimeout = 20 * time.Second
 )
+
+// TemplatePublishOperationID uniquely identifies a template publish operation.
+type TemplatePublishOperationID string
+
+// StartTemplatePublishRequest is the request body for starting a template publish operation.
+type StartTemplatePublishRequest struct {
+	// Version is the semantic version of the template.
+	Version semver.Version `json:"version"`
+}
+
+// StartTemplatePublishResponse is the response from initiating a template publish.
+// It returns a presigned URL to upload the template archive.
+type StartTemplatePublishResponse struct {
+	// OperationID uniquely identifies the publishing operation.
+	OperationID TemplatePublishOperationID `json:"operationID"`
+	// UploadURLs contains the presigned URLs for uploading template artifacts.
+	UploadURLs TemplateUploadURLs `json:"uploadURLs"`
+}
+
+// TemplateUploadURLs contains the presigned URLs for uploading template artifacts.
+type TemplateUploadURLs struct {
+	// Archive is the URL for uploading the template archive.
+	Archive string `json:"archive"`
+}
+
+// PublishTemplateVersionCompleteRequest is the request body for completing a template publish operation.
+type PublishTemplateVersionCompleteRequest struct {
+	// OpID is the operation ID from the StartTemplatePublishResponse.
+	OpID TemplatePublishOperationID `json:"operationID"`
+}
+
+// PublishTemplateVersionCompleteResponse is the response from completing a template publish operation.
+type PublishTemplateVersionCompleteResponse struct{}
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
@@ -134,8 +168,9 @@ func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, r
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
-	respObj interface{}, opts httpCallOptions,
+func (pc *Client) restCallWithOptions(
+	ctx context.Context, method, path string, queryObj, reqObj,
+	respObj any, opts httpCallOptions,
 ) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
@@ -231,6 +266,14 @@ func publishPackagePath(source, publisher, name string) string {
 
 func completePackagePublishPath(source, publisher, name, version string) string {
 	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+}
+
+func publishTemplatePath(source, publisher, name string) string {
+	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions", source, publisher, name)
+}
+
+func completeTemplatePublishPath(source, publisher, name string, version semver.Version) string {
+	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
@@ -1103,19 +1146,6 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	return resp.Token, nil
 }
 
-// InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
-func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier,
-	token UpdateTokenSource,
-) error {
-	req := apitype.PatchUpdateCheckpointRequest{
-		IsInvalid: true,
-	}
-
-	// It is safe to retry this PATCH operation, because it is logically idempotent.
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
-}
-
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
 func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token UpdateTokenSource,
@@ -1482,9 +1512,18 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
+	if resp.StatusCode >= 400 {
+		// For other error status codes, return the body as an error if it's readable, otherwise a generic error
+		errorMsg := string(body)
+		if errorMsg == "" {
+			errorMsg = fmt.Sprintf("Copilot API returned error status: %d", resp.StatusCode)
+		}
+		return "", errors.New(errorMsg)
+	}
+
 	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {
-		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
+		return "", fmt.Errorf("unable to parse Copilot response: %s", string(body))
 	}
 
 	if copilotResp.Error != "" {
@@ -1555,6 +1594,78 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	return nil
 }
 
+// StartTemplatePublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) StartTemplatePublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+) (*StartTemplatePublishResponse, error) {
+	req := StartTemplatePublishRequest{
+		Version: version,
+	}
+	var resp StartTemplatePublishResponse
+	err := pc.restCall(ctx, "POST", publishTemplatePath(source, publisher, name), nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("start template publish failed: %w", err)
+	}
+	return &resp, nil
+}
+
+// CompleteTemplatePublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) CompleteTemplatePublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+	operationID TemplatePublishOperationID,
+) error {
+	completeReq := PublishTemplateVersionCompleteRequest{
+		OpID: operationID,
+	}
+
+	requestPath := completeTemplatePublishPath(source, publisher, name, version)
+	err := pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
+	if err != nil {
+		return fmt.Errorf("failed to complete template publishing operation %q: %w", operationID, err)
+	}
+
+	return nil
+}
+
+// PublishTemplate is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePublishOp) error {
+	resp, err := pc.StartTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version)
+	if err != nil {
+		return fmt.Errorf("failed to start template publish: %w", err)
+	}
+
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURLs.Archive, input.Archive)
+	if err != nil {
+		return fmt.Errorf("failed to create upload request: %w", err)
+	}
+	putReq.Header.Set("Content-Type", "application/gzip")
+
+	uploadResp, err := pc.do(ctx, putReq)
+	if err != nil {
+		return fmt.Errorf("failed to upload archive: %w", err)
+	} else if uploadResp.StatusCode != http.StatusOK {
+		body, bodyErr := readBody(uploadResp)
+		if bodyErr != nil {
+			return fmt.Errorf("failed to upload archive: %s", uploadResp.Status)
+		}
+		return fmt.Errorf("failed to upload archive: %s - %s", uploadResp.Status, string(body))
+	}
+
+	err = pc.CompleteTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version, resp.OperationID)
+	if err != nil {
+		return fmt.Errorf("failed to complete template publish: %w", err)
+	}
+
+	return nil
+}
+
 func (pc *Client) GetPackage(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
@@ -1568,8 +1679,51 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
-func (pc *Client) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-	url := "/preview/registry/packages?limit=499"
+// GetTemplate is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	v := "latest"
+	if version != nil {
+		v = version.String()
+	}
+	url := fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
+	var resp apitype.TemplateMetadata
+	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+	return resp, err
+}
+
+// DownloadTemplate takes a downloadURL, which is a full URL (not a path). The URL can be
+// one of two situations:
+//
+// - An URL for the client: `api.pulumi.com/api/orgs/{org}/template/download?name={template-name}`
+// - A foreign URL: `api.github.com/blobs/4328791917840`
+//
+// We want to use the full method receiver with configured credentials if and only if we
+// are targeting the correct URL. If we are targeting another URL, we should use a fresh
+// client without tokens.
+func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	if after, ok := strings.CutPrefix(downloadURL, pc.apiURL); ok {
+		downloadURL = after
+	} else {
+		// Set pc to the new client. This only sets the local variable. It is very
+		// different from *pc = *NewClient().
+		pc = NewClient(downloadURL, "", true, pc.diag)
+		downloadURL = ""
+	}
+
+	var bytes io.ReadCloser
+	header := make(http.Header, 1)
+	header.Add("Accept", "application/x-tar")
+	err := pc.restCallWithOptions(ctx, "GET", downloadURL, nil, nil, &bytes, httpCallOptions{
+		Header: header,
+	})
+	return bytes, err
+}
+
+func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+	url := "/api/preview/registry/packages?limit=499"
 	if name != nil {
 		url += "&name=" + *name
 	}
@@ -1588,6 +1742,40 @@ func (pc *Client) SearchByName(ctx context.Context, name *string) iter.Seq2[apit
 				return
 			}
 			for _, v := range resp.Packages {
+				if !f(v, nil) {
+					return
+				}
+			}
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
+}
+
+// ListTemplates is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+	url := "/api/preview/registry/templates?limit=499"
+	if name != nil {
+		url += "&name=" + *name
+	}
+
+	var continuationToken *string
+	return func(f func(apitype.TemplateMetadata, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "&continuationToken=" + *continuationToken
+			}
+			var resp apitype.ListTemplatesResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.TemplateMetadata{}, err)
+				return
+			}
+			for _, v := range resp.Templates {
 				if !f(v, nil) {
 					return
 				}

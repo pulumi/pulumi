@@ -71,6 +71,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 
 			if sourceStackName == "" && destStackName == "" {
@@ -78,6 +79,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			}
 			sourceStack, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				sourceStackName,
@@ -92,6 +94,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			}
 			destStack, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				destStackName,
@@ -190,11 +193,11 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.
-		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true)
+		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmdutil.Diag(), cmd.ws, dest, "", false, true)
 		if err != nil {
 			return err
 		}
-		ps, err := cmdStack.LoadProjectStack(project, dest)
+		ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, dest)
 		if err != nil {
 			return err
 		}

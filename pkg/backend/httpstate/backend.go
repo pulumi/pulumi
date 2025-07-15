@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -62,11 +63,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-)
-
-const (
-	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
-	defaultURLEnvVar = "PULUMI_API"
 )
 
 type PulumiAILanguage string
@@ -148,7 +144,8 @@ func ValueOrDefaultURL(ws pkgWorkspace.Context, cloudURL string) string {
 	}
 
 	// Otherwise, respect the PULUMI_API override.
-	if cloudURL := os.Getenv(defaultURLEnvVar); cloudURL != "" {
+
+	if cloudURL := env.APIURL.Value(); cloudURL != "" {
 		return cloudURL
 	}
 
@@ -1049,7 +1046,7 @@ func (b *cloudBackend) ListStacks(
 	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
 	// this has the added benefit of ensuring that the default org is consistent for the duration of the
 	// operation, even if the user changes their default org mid-process.
-	defaultOrg, err := b.GetDefaultOrg(ctx)
+	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1072,6 +1069,31 @@ func (b *cloudBackend) ListStacks(
 	}
 
 	return backendSummaries, outContToken, nil
+}
+
+func (b *cloudBackend) ListStackNames(
+	ctx context.Context, filter backend.ListStackNamesFilter, inContToken backend.ContinuationToken) (
+	[]backend.StackReference, backend.ContinuationToken, error,
+) {
+	// Convert ListStackNamesFilter to ListStacksFilter (without tag fields)
+	stacksFilter := backend.ListStacksFilter{
+		Organization: filter.Organization,
+		Project:      filter.Project,
+	}
+
+	// For the cloud backend, we can reuse ListStacks since the API already returns data efficiently.
+	// We just extract the stack references from the summaries.
+	summaries, outContToken, err := b.ListStacks(ctx, stacksFilter, inContToken)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stackRefs := slice.Prealloc[backend.StackReference](len(summaries))
+	for _, summary := range summaries {
+		stackRefs = append(stackRefs, summary.Name())
+	}
+
+	return stackRefs, outContToken, nil
 }
 
 func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
@@ -1592,7 +1614,7 @@ func (b *cloudBackend) runEngineAction(
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op, update, token)
+	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1601,7 +1623,9 @@ func (b *cloudBackend) runEngineAction(
 	// will signal all events have been proceed when a value is written to the displayDone channel.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-	go u.RecordAndDisplayEvents(
+
+	go b.recordAndDisplayEvents(
+		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
@@ -1623,8 +1647,8 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var snapshotManager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !dryRun {
-		persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+		persister := b.newSnapshotPersister(ctx, update, tokenSource)
+		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -1695,7 +1719,7 @@ func (b *cloudBackend) runEngineAction(
 	if updateErr != nil {
 		status = apitype.UpdateStatusFailed
 	}
-	completeErr := u.Complete(status)
+	completeErr := b.completeUpdate(ctx, tokenSource, update, status)
 	if completeErr != nil {
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
@@ -2370,6 +2394,10 @@ func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Ma
 	return nil, nil
 }
 
-func (b *cloudBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
-	return newCloudPackageRegistry(b.client), nil
+func (b *cloudBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
+	return newCloudRegistry(b.client), nil
+}
+
+func (b *cloudBackend) GetReadOnlyCloudRegistry() registry.Registry {
+	return newCloudRegistry(b.client)
 }

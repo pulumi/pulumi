@@ -21,6 +21,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func skipIfNoCredentials(t *testing.T) {
+	// In CI we always set GOOGLE_APPLICATION_CREDENTIALS to a filename, but that file might be
+	// empty if we have no credentials.  Check for that here.
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
+	st, err := os.Stat(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	if err != nil {
+		t.Skipf("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set: %v", err)
+	}
+	if st.Size() == 0 {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is set to an empty file")
+	}
+}
+
 //nolint:paralleltest // this test sets the global login state
 func TestGcpLogin(t *testing.T) {
 	err := os.Chdir("project")
@@ -30,9 +45,7 @@ func TestGcpLogin(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	if _, ok := os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); !ok {
-		t.Skip("GOOGLE_APPLICATION_CREDENTIALS not set, skipping test")
-	}
+	skipIfNoCredentials(t)
 
 	cloudURL := "gs://pulumitesting"
 	loginAndCreateStack(t, cloudURL)

@@ -113,6 +113,17 @@ function deserialize_pulumirpc_RegisterPackageResponse(buffer_arg) {
   return pulumi_resource_pb.RegisterPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterResourceHookRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterResourceHookRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceHookRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceHookRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterResourceHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
@@ -283,6 +294,19 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  // Register a resource hook that can be called by the engine during certain
+// steps of a resource's lifecycle.
+registerResourceHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterResourceHookRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterResourceHookRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterResourceHookRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 // Multiple requests are idempotent and guaranteed to return the same result.
 registerPackage: {
@@ -295,6 +319,23 @@ registerPackage: {
     requestDeserialize: deserialize_pulumirpc_RegisterPackageRequest,
     responseSerialize: serialize_pulumirpc_RegisterPackageResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterPackageResponse,
+  },
+  // SignalAndWaitForShutdown lets the resource monitor know that no more
+// events will be generated. This call blocks until the resource monitor is
+// finished, which will happen once all the steps have executed. This allows
+// the language runtime to stay running and handle callback requests, even
+// after the user program has completed. Runtime SDKs should call this after
+// executing the user's program. This can only be called once.
+signalAndWaitForShutdown: {
+    path: '/pulumirpc.ResourceMonitor/SignalAndWaitForShutdown',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 

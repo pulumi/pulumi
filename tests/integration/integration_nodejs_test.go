@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (nodejs || all) && !xplatform_acceptance
+//go:build nodejs || all
 
 package ints
 
@@ -490,7 +490,6 @@ func TestConfigBasicNodeJS(t *testing.T) {
 		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
-			"phonenumber":  "+441234567890",
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
@@ -1286,6 +1285,67 @@ func TestESMTS(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 	})
+}
+
+func TestESMTSAuto(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	e.RunCommand("pulumi", "up", "--yes")
+	// Validate the stack outputs
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	err = json.Unmarshal([]byte(stdout), &stackExport)
+	require.NoError(t, err)
+	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	require.True(t, ok)
+	require.Greater(t, len(resources), 0)
+	stack := resources[0].(map[string]any)
+	outputs, ok := stack["outputs"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 42.0, outputs["otherx"])
+	require.Contains(t,
+		outputs["res"],
+		"Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option",
+	)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
+}
+
+func TestESMTSAutoTypeCheck(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto-typecheck")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	stdout, _ := e.RunCommandExpectError("pulumi", "up", "--yes")
+	require.Contains(t, stdout, "index.ts(3,14): error TS2322: Type 'number' is not assignable to type 'string'.")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -2187,6 +2247,15 @@ func TestParameterizedNode(t *testing.T) {
 
 			return nil
 		},
+		PostPrepareProject: func(project *engine.Projinfo) error {
+			// Run the mocha tests
+			cmd := exec.Command("npx", "mocha", "--require", "ts-node/register", "*.spec.ts")
+			cmd.Dir = project.Root
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "failed to run mocha tests: %s", string(out))
+
+			return nil
+		},
 	})
 }
 
@@ -2204,7 +2273,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
-			assert.True(t, e.PathExists("sdks/random"))
+			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
 			assert.NoError(t, err)
@@ -2219,7 +2288,7 @@ func TestPackageAddNode(t *testing.T) {
 			cf, ok = cf.(string)
 			assert.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", cf)
+			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
 		})
 	}
 }
@@ -2238,7 +2307,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
-	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir/package.json"))
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
 	assert.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
@@ -2251,7 +2320,56 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	cf, ok = cf.(string)
 	assert.True(t, ok)
 
-	assert.Equal(t, "file:sdks/supabase", cf)
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
+
+	// Assert that we have a node_modules directory as a result of a successful install (since we didn't pass
+	// `--generate-only`).
+	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
+	_, err = os.Stat(nodeModulesPath)
+	assert.NoError(t, err, "node_modules directory should exist after pulumi convert")
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand(
+		"pulumi", "convert",
+		"--from", "terraform",
+		"--language", "typescript",
+		"--out", "nodedir",
+		"--generate-only",
+	)
+
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
+	assert.NoError(t, err)
+	packagesJSON := make(map[string]any)
+	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+	assert.NoError(t, err)
+
+	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+	assert.True(t, ok)
+	cf, ok := dependencies["@pulumi/supabase"]
+	assert.True(t, ok)
+	cf, ok = cf.(string)
+	assert.True(t, ok)
+
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
+
+	// Assert that we don't have a node_modules directory, since we passed `--generate-only`.
+	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
+	_, err = os.Stat(nodeModulesPath)
+	// It must be a patherror
+	var pathErr *os.PathError
+	assert.ErrorAs(t, err, &pathErr, "node_modules directory should not exist after pulumi convert --generate-only")
 }
 
 func TestConstructFailuresNode(t *testing.T) {
@@ -2407,6 +2525,12 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 
 func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")
@@ -2447,6 +2571,11 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 
 func TestPackagesInstall(t *testing.T) {
 	t.Parallel()
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packages-install")
@@ -2488,6 +2617,12 @@ func TestInstallLocalPlugin(t *testing.T) {
 
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")

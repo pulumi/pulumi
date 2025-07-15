@@ -916,3 +916,48 @@ export namespace LanguageHandshakeResponse {
     export type AsObject = {
     }
 }
+
+export class LinkRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): LinkRequest;
+
+    getLocalDependenciesMap(): jspb.Map<string, string>;
+    clearLocalDependenciesMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkRequest): LinkRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkRequest;
+    static deserializeBinaryFromReader(message: LinkRequest, reader: jspb.BinaryReader): LinkRequest;
+}
+
+export namespace LinkRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+
+        localDependenciesMap: Array<[string, string]>,
+    }
+}
+
+export class LinkResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkResponse): LinkResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkResponse;
+    static deserializeBinaryFromReader(message: LinkResponse, reader: jspb.BinaryReader): LinkResponse;
+}
+
+export namespace LinkResponse {
+    export type AsObject = {
+    }
+}

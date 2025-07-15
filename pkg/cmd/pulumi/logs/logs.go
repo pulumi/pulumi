@@ -23,8 +23,9 @@ import (
 
 	mobytime "github.com/moby/moby/api/types/time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -38,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLogsCmd() *cobra.Command {
+func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
 	var follow bool
 	var since string
@@ -57,7 +58,6 @@ func NewLogsCmd() *cobra.Command {
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -70,8 +70,9 @@ func NewLogsCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
-				backend.DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				stackName,
 				cmdStack.LoadOnly,
 				opts,
@@ -80,7 +81,7 @@ func NewLogsCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -127,7 +128,7 @@ func NewLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(ctx, stack.DefaultSecretsProvider, cfg, operations.LogQuery{
+				logs, err := backend.GetStackLogs(ctx, stack.DefaultSecretsProvider, s, cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})

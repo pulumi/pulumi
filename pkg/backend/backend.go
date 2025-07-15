@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -89,6 +90,14 @@ type ListStacksFilter struct {
 	Project      *string
 	TagName      *string
 	TagValue     *string
+}
+
+// ListStackNamesFilter describes optional filters when listing stack names.
+// This filter does not contain tag fields since they cannot be efficiently
+// implemented for the DIY backend.
+type ListStackNamesFilter struct {
+	Organization *string
+	Project      *string
 }
 
 // ContinuationToken is an opaque string used for paginated backend requests. If non-nil, means
@@ -163,6 +172,10 @@ type Backend interface {
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
+	// ListStackNames returns a list of stack references without metadata for all known stacks in the target backend.
+	// This is a more efficient method for scenarios like stack selection where only stack names are needed.
+	ListStackNames(ctx context.Context, filter ListStackNamesFilter, inContToken ContinuationToken) (
+		[]StackReference, ContinuationToken, error)
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.
@@ -242,8 +255,17 @@ type Backend interface {
 	// to ListTemplates.
 	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 
-	// GetPackageRegistry returns a PackageRegistry object tied to this backend
-	GetPackageRegistry() (PackageRegistry, error)
+	// GetCloudRegistry returns a CloudRegistry object tied to this backend. Not
+	// all backends are required to support GetCloudRegistry. Those that don't
+	// should return a non-nil error when GetCloudRegistry is called.
+	//
+	// CloudRegistry is a superset of [registry.Registry] that supports publishing
+	// packages and templates.
+	GetCloudRegistry() (CloudRegistry, error)
+
+	// GetReadOnlyCloudRegistry retusn a [registry.Registry] object tied to this
+	// backend. All backends should support GetReadOnlyCloudRegistry.
+	GetReadOnlyCloudRegistry() registry.Registry
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.

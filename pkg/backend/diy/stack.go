@@ -16,16 +16,13 @@ package diy
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
@@ -53,7 +50,18 @@ func newStack(ref *diyBackendReference, b *diyBackend) backend.Stack {
 	}
 }
 
-func (s *diyStack) Ref() backend.StackReference { return s.ref }
+func (s *diyStack) Ref() backend.StackReference                 { return s.ref }
+func (s *diyStack) ConfigLocation() backend.StackConfigLocation { return backend.StackConfigLocation{} }
+
+func (s *diyStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	return nil, errors.New("remote config not implemented for the DIY backend")
+}
+
+func (s *diyStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	// TODO: https://github.com/pulumi/pulumi/issues/19557
+	return errors.New("remote config not implemented for the DIY backend")
+}
+
 func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if v := s.snapshot.Load(); v != nil {
 		return *v, nil
@@ -69,59 +77,6 @@ func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provide
 }
 func (s *diyStack) Backend() backend.Backend              { return s.b }
 func (s *diyStack) Tags() map[apitype.StackTagName]string { return nil }
-
-func (s *diyStack) Remove(ctx context.Context, force bool) (bool, error) {
-	return backend.RemoveStack(ctx, s, force)
-}
-
-func (s *diyStack) Rename(ctx context.Context, newName tokens.QName) (backend.StackReference, error) {
-	return backend.RenameStack(ctx, s, newName)
-}
-
-func (s *diyStack) Preview(
-	ctx context.Context,
-	op backend.UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, display.ResourceChanges, error) {
-	return backend.PreviewStack(ctx, s, op, events)
-}
-
-func (s *diyStack) Update(ctx context.Context,
-	op backend.UpdateOperation, events chan<- engine.Event,
-) (display.ResourceChanges, error) {
-	return backend.UpdateStack(ctx, s, op, events)
-}
-
-func (s *diyStack) Import(ctx context.Context, op backend.UpdateOperation,
-	imports []deploy.Import,
-) (display.ResourceChanges, error) {
-	return backend.ImportStack(ctx, s, op, imports)
-}
-
-func (s *diyStack) Refresh(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, error) {
-	return backend.RefreshStack(ctx, s, op)
-}
-
-func (s *diyStack) Destroy(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, error) {
-	return backend.DestroyStack(ctx, s, op)
-}
-
-func (s *diyStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) error {
-	return backend.WatchStack(ctx, s, op, paths)
-}
-
-func (s *diyStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
-}
-
-func (s *diyStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
-	return backend.ExportStackDeployment(ctx, s)
-}
-
-func (s *diyStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	return backend.ImportStackDeployment(ctx, s, deployment)
-}
 
 func (s *diyStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
 	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)

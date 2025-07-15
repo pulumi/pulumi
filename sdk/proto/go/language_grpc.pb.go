@@ -94,6 +94,8 @@ type LanguageRuntimeClient interface {
 	// [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
 	// to standardise e.g. provider publishing workflows.
 	Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error)
+	// `Link` links a local dependency into a project.
+	Link(ctx context.Context, in *LinkRequest, opts ...grpc.CallOption) (*LinkResponse, error)
 }
 
 type languageRuntimeClient struct {
@@ -277,6 +279,15 @@ func (c *languageRuntimeClient) Pack(ctx context.Context, in *PackRequest, opts 
 	return out, nil
 }
 
+func (c *languageRuntimeClient) Link(ctx context.Context, in *LinkRequest, opts ...grpc.CallOption) (*LinkResponse, error) {
+	out := new(LinkResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/Link", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LanguageRuntimeServer is the server API for LanguageRuntime service.
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
@@ -352,6 +363,8 @@ type LanguageRuntimeServer interface {
 	// [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
 	// to standardise e.g. provider publishing workflows.
 	Pack(context.Context, *PackRequest) (*PackResponse, error)
+	// `Link` links a local dependency into a project.
+	Link(context.Context, *LinkRequest) (*LinkResponse, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -400,6 +413,9 @@ func (UnimplementedLanguageRuntimeServer) GeneratePackage(context.Context, *Gene
 }
 func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*PackResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) Link(context.Context, *LinkRequest) (*LinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Link not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
 
@@ -672,6 +688,24 @@ func _LanguageRuntime_Pack_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LanguageRuntime_Link_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Link(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/Link",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Link(ctx, req.(*LinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LanguageRuntime_ServiceDesc is the grpc.ServiceDesc for LanguageRuntime service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -726,6 +760,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Pack",
 			Handler:    _LanguageRuntime_Pack_Handler,
+		},
+		{
+			MethodName: "Link",
+			Handler:    _LanguageRuntime_Link_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

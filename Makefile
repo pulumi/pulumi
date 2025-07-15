@@ -40,14 +40,14 @@ LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
 
 ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 .make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
-	cd sdk && go mod download
-	cd pkg && go mod download
-	cd tests && go mod download
+	cd sdk && ../scripts/retry go mod download
+	cd pkg && ../scripts/retry go mod download
+	cd tests && ../scripts/retry go mod download
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
 PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
-PROTO_CKSUM = cksum ${PROTO_FILES} | sort --key=3
+PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
 build-proto: build_proto
 build_proto:
 	@printf "Protobuffer interfaces are ....... "
@@ -83,7 +83,7 @@ build_display_wasm:: .make/ensure/go
 
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
-build:: build_proto .make/ensure/go dist build_display_wasm
+build:: build_proto .make/ensure/go bin/pulumi build_display_wasm
 
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
@@ -102,8 +102,6 @@ install_cover:: build_cover
 developer_docs::
 	cd developer-docs && make html
 
-install_all:: install
-
 dist::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
@@ -119,9 +117,17 @@ lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
 	# JSON schema says regexps should conform to ECMA 262.
 	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
+	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
+        # on the `ensure` target here because that installs extra dependencies, that we don't
+	# need here, and don't necessarily have installed in CI.
+	cd sdk/nodejs && make ensure
 	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
+	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
+        # on the `ensure` target here because that installs extra dependencies, that we don't
+	# need here, and don't necessarily have installed in CI.
+	cd sdk/nodejs && make ensure
 	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix

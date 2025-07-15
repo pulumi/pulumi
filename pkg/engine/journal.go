@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -85,8 +84,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			switch e.Step.Op() {
 			case deploy.OpSame:
 				step, ok := e.Step.(*deploy.SameStep)
-				contract.Assertf(ok, "expected *deploy.SameStep, got %T", e.Step)
-				if !step.IsSkippedCreate() {
+				if !ok || !step.IsSkippedCreate() {
 					resources = append(resources, e.Step.New())
 					dones[e.Step.Old()] = true
 				}
@@ -114,9 +112,9 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpImport, deploy.OpImportReplacement:
 				resources = append(resources, e.Step.New())
 			case deploy.OpRefresh:
-				step, ok := e.Step.(*deploy.RefreshStep)
-				contract.Assertf(ok, "expected *deploy.RefreshStep, got %T", e.Step)
-				if step.Persisted() {
+				refreshStep, isRefreshStep := e.Step.(*deploy.RefreshStep)
+				viewStep, isViewStep := e.Step.(*deploy.ViewStep)
+				if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
 					} else {

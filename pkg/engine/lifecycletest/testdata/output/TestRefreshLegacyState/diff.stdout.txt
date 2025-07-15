@@ -1,0 +1,6 @@
+<{%reset%}>  providers:pulumi:pkgA: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::providers:pulumi:pkgA::prov]
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

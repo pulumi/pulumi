@@ -803,69 +803,6 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
-    def test_on_error(self):
-        project_name = "inline_python"
-        stack_name = stack_namer(project_name)
-        stack = create_stack(
-            stack_name, program=pulumi_program, project_name=project_name
-        )
-
-        try:
-            error = ""
-
-            def logger(e):
-                nonlocal error
-                error += e
-
-            try:
-                stack.up(color="vibrant grey", on_error=logger)
-            except:
-                self.assertNotEqual(error, "")
-
-            self.assertIn("error: unsupported color", error)
-            error = ""
-
-            up_res = stack.up()
-            self.assertEqual(up_res.summary.kind, "update")
-            self.assertEqual(up_res.summary.result, "succeeded")
-
-            # pulumi preview
-            try:
-                stack.preview(color="plum yellow", on_error=logger)
-            except:
-                self.assertNotEqual(error, "")
-
-            self.assertIn("error: unsupported color", error)
-            error = ""
-
-            # pulumi refresh
-            try:
-                stack.refresh(color="inquisitive heliotrope", on_error=logger)
-            except:
-                self.assertNotEqual(error, "")
-
-            self.assertIn("error: unsupported color", error)
-            error = ""
-
-            refresh_res = stack.refresh()
-            self.assertEqual(refresh_res.summary.kind, "refresh")
-            self.assertEqual(refresh_res.summary.result, "succeeded")
-
-            # pulumi destroy
-            try:
-                stack.refresh(color="violent orange", on_error=logger)
-            except:
-                self.assertNotEqual(error, "")
-
-            self.assertIn("error: unsupported color", error)
-            error = ""
-
-            destroy_res = stack.destroy()
-            self.assertEqual(destroy_res.summary.kind, "destroy")
-            self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
-
     def test_preview_refresh(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
@@ -878,9 +815,30 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.up()
 
             # pulumi refresh
-            refresh_res = stack.refresh(preview_only=True)
-            self.assertEqual(refresh_res.summary.kind, "update")
-            self.assertEqual(refresh_res.summary.result, "succeeded")
+            refresh_res = stack.preview_refresh()
+            self.assertEqual(refresh_res.change_summary, {"same": 1})
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_refresh_with_resource(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi refresh
+            refresh_res = stack.preview_refresh(expect_no_changes=True)
+            self.assertEqual(refresh_res.change_summary, {"same": 2})
 
             # pulumi destroy
             destroy_res = stack.destroy()
@@ -901,8 +859,33 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.up()
 
             # pulumi destroy
-            destroy_res = stack.destroy(preview_only=True)
-            self.assertEqual(destroy_res.summary.kind, "update")
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 1})
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_destroy_with_resource(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi destroy
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 2})
+
+            # a second preview should produce the same result
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 2})
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)

@@ -32,6 +32,8 @@ type PlanSpec struct {
 	Operation OperationSpec
 	// The set of target URNs that will be passed to the operation, if any.
 	TargetURNs []resource.URN
+	// Whether to refresh the snapshot before executing the operation.
+	Refresh bool
 }
 
 // The type of operations that may be executed as part of a PlanSpec.
@@ -62,6 +64,8 @@ func (ps *PlanSpec) Executors(t lt.TB, hostF deploytest.PluginHostFactory) (lt.T
 		}
 	}
 
+	opts.Refresh = ps.Refresh
+
 	var op lt.TestOp
 	switch ps.Operation {
 	case PlanOperationUpdate:
@@ -90,6 +94,7 @@ func (ps *PlanSpec) Pretty(indent string) string {
 	} else {
 		rendered += fmt.Sprintf("\n%s  No targets", indent)
 	}
+	rendered += fmt.Sprintf("\n%s  Refresh: %t", indent, ps.Refresh)
 
 	return rendered
 }
@@ -104,6 +109,9 @@ type PlanSpecOptions struct {
 
 	// A generator for the maximum number of resources to target in a plan.
 	TargetCount *rapid.Generator[int]
+
+	// Whether to refresh the snapshot before executing the plan.
+	Refresh *rapid.Generator[bool]
 }
 
 // Returns a copy of the given PlanSpecOptions with the given overrides applied.
@@ -117,6 +125,9 @@ func (pso PlanSpecOptions) With(overrides PlanSpecOptions) PlanSpecOptions {
 	if overrides.TargetCount != nil {
 		pso.TargetCount = overrides.TargetCount
 	}
+	if overrides.Refresh != nil {
+		pso.Refresh = overrides.Refresh
+	}
 
 	return pso
 }
@@ -127,6 +138,7 @@ var defaultPlanSpecOptions = PlanSpecOptions{
 	Operation:     rapid.SampledFrom(operationSpecs),
 	SourceTargets: nil,
 	TargetCount:   rapid.IntRange(0, 5),
+	Refresh:       rapid.Bool(),
 }
 
 var operationSpecs = []OperationSpec{
@@ -165,6 +177,7 @@ func GeneratedPlanSpec(ss *SnapshotSpec, pso PlanSpecOptions) *rapid.Generator[*
 		ps := &PlanSpec{
 			Operation:  op,
 			TargetURNs: targetURNs,
+			Refresh:    pso.Refresh.Draw(t, "PlanSpec.Refresh"),
 		}
 
 		return ps

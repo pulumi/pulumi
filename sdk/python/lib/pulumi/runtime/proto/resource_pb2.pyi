@@ -312,6 +312,40 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class ResourceHooksBinding(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        BEFORE_CREATE_FIELD_NUMBER: builtins.int
+        AFTER_CREATE_FIELD_NUMBER: builtins.int
+        BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+        AFTER_UPDATE_FIELD_NUMBER: builtins.int
+        BEFORE_DELETE_FIELD_NUMBER: builtins.int
+        AFTER_DELETE_FIELD_NUMBER: builtins.int
+        @property
+        def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def after_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def before_update(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def after_update(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def before_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def after_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        def __init__(
+            self,
+            *,
+            before_create: collections.abc.Iterable[builtins.str] | None = ...,
+            after_create: collections.abc.Iterable[builtins.str] | None = ...,
+            before_update: collections.abc.Iterable[builtins.str] | None = ...,
+            after_update: collections.abc.Iterable[builtins.str] | None = ...,
+            before_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
@@ -345,6 +379,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     TRANSFORMS_FIELD_NUMBER: builtins.int
     SUPPORTSRESULTREPORTING_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
+    HOOKS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -431,6 +466,9 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     """true if the request is from an SDK that supports the result field in the response."""
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
+    @property
+    def hooks(self) -> global___RegisterResourceRequest.ResourceHooksBinding:
+        """The resource hooks that should run at certain points in the resource's lifecycle."""
     def __init__(
         self,
         *,
@@ -467,9 +505,12 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
         supportsResultReporting: builtins.bool = ...,
         packageRef: builtins.str = ...,
+        hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_hooks", b"_hooks"]) -> typing_extensions.Literal["hooks"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
     @typing.overload
@@ -1022,6 +1063,75 @@ class TransformInvokeOptions(google.protobuf.message.Message):
 global___TransformInvokeOptions = TransformInvokeOptions
 
 @typing_extensions.final
+class ResourceHookRequest(google.protobuf.message.Message):
+    """ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NEW_OUTPUTS_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """the urn of the resource for which the hook is called."""
+    id: builtins.str
+    """the optional urn of the resource for which the hook is called."""
+    name: builtins.str
+    """the name of the resource for which the hook is called."""
+    type: builtins.str
+    """the type of the resource for which the hook is called."""
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked new inputs of the resource."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked old inputs of the resource."""
+    @property
+    def new_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional new outputs of the resource."""
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional old outputs of the resource."""
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        id: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___ResourceHookRequest = ResourceHookRequest
+
+@typing_extensions.final
+class ResourceHookResponse(google.protobuf.message.Message):
+    """ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ERROR_FIELD_NUMBER: builtins.int
+    error: builtins.str
+    """an optional error message to return from the hook."""
+    def __init__(
+        self,
+        *,
+        error: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["error", b"error"]) -> None: ...
+
+global___ResourceHookResponse = ResourceHookResponse
+
+@typing_extensions.final
 class RegisterPackageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1114,3 +1224,31 @@ class Parameterization(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
 global___Parameterization = Parameterization
+
+@typing_extensions.final
+class RegisterResourceHookRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    CALLBACK_FIELD_NUMBER: builtins.int
+    ON_DRY_RUN_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """The name of the hook. Must be unique within a program, registering the
+    same name twice is an error.
+    """
+    @property
+    def callback(self) -> pulumi.callback_pb2.Callback:
+        """the callback that the engine can call to run the hook."""
+    on_dry_run: builtins.bool
+    """whether to run the hook on dry runs."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        callback: pulumi.callback_pb2.Callback | None = ...,
+        on_dry_run: builtins.bool = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["callback", b"callback"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["callback", b"callback", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
+
+global___RegisterResourceHookRequest = RegisterResourceHookRequest

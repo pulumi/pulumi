@@ -219,7 +219,6 @@ func HasChanges(changes display.ResourceChanges) bool {
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	*deploy.Plan, display.ResourceChanges, error,
 ) {
-	contract.Requiref(u != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
@@ -415,6 +414,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
 				if err != nil {
 					errs <- err
+					plugctx.Diag.Infof(diag.Message("", "LoadPolicyPackConfigFromFile %s"), err.Error())
 					return
 				}
 			}
@@ -422,11 +422,13 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
 			if err != nil {
 				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				plugctx.Diag.Infof(diag.Message("", "ReconcilePolicyPackConfig %s"), err.Error())
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
 			if err = analyzer.Configure(config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				plugctx.Diag.Infof(diag.Message("", "Configure %s"), err.Error())
 				return
 			}
 		}(i, pack)
@@ -454,7 +456,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 
 func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context,
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
 ) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
@@ -487,17 +489,17 @@ func newUpdateSource(ctx context.Context,
 	//
 
 	// Decrypt the configuration.
-	config, err := target.Config.AsDecryptedPropertyMap(ctx, target.Decrypter)
+	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
 		return nil, err
 	}
-	pconfig := resource.FromResourcePropertyMap(config)
 	analyzerOpts := &plugin.PolicyAnalyzerOptions{
-		Organization: target.Organization.String(),
-		Project:      proj.Name.String(),
-		Stack:        target.Name.String(),
-		Config:       pconfig,
-		DryRun:       opts.DryRun,
+		Organization:     target.Organization.String(),
+		Project:          proj.Name.String(),
+		Stack:            target.Name.String(),
+		Config:           config,
+		ConfigSecretKeys: target.Config.SecureKeys(),
+		DryRun:           opts.DryRun,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
@@ -517,7 +519,7 @@ func newUpdateSource(ctx context.Context,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, deploy.EvalSourceOptions{
+	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
@@ -650,7 +652,14 @@ func (acts *updateActions) OnResourceStepPost(
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
@@ -669,7 +678,11 @@ func (acts *updateActions) OnResourceStepPost(
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
-		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh || step.Op() == deploy.OpDelete {
+		// Additionally, emit the event for views with outputs.
+		if step.Res().Custom ||
+			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
+			step.Op() == deploy.OpDelete ||
+			step.Res().ViewOf != "" {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
@@ -819,7 +832,14 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {

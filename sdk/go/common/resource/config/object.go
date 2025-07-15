@@ -354,7 +354,7 @@ func (c object) SecureValues(dec Decrypter) ([]string, error) {
 
 // marshalValue converts the receiver into a Value.
 func (c object) marshalValue() (v Value, err error) {
-	v.value, v.secure, v.object, v.typ, err = c.MarshalString()
+	v.value, v.secure, v.object, err = c.MarshalString()
 	return
 }
 
@@ -385,33 +385,19 @@ func (c object) marshalObjectValue(root bool) any {
 
 // MarshalString returns the receiver's string representation. The string representation is accompanied by bools that
 // indicate whether the receiver is secure and whether it is an object.
-func (c object) MarshalString() (text string, secure, object bool, typ Type, err error) {
+func (c object) MarshalString() (text string, secure, object bool, err error) {
 	switch v := c.value.(type) {
-	case bool:
+	case bool, int64, uint64, float64:
 		bytes, err := c.MarshalJSON()
-		return string(bytes), false, false, TypeBool, err
-	case int64, uint64:
-		bytes, err := c.MarshalJSON()
-		// If this is a uint64 then we need to cast to TypeFloat because TypeInt is signed.
-		if _, ok := v.(uint64); ok {
-			return string(bytes), false, false, TypeFloat, err
-		}
-		return string(bytes), false, false, TypeInt, err
-	case float64:
-		bytes, err := c.MarshalJSON()
-		return string(bytes), false, false, TypeFloat, err
+		return string(bytes), false, false, err
 	case string:
-		typ := TypeString
-		if c.secure {
-			typ = TypeUnknown
-		}
-		return v, c.secure, false, typ, nil
+		return v, c.secure, false, nil
 	default:
 		bytes, err := c.MarshalJSON()
 		if err != nil {
-			return "", false, false, TypeUnknown, err
+			return "", false, false, err
 		}
-		return string(bytes), c.Secure(), true, TypeUnknown, nil
+		return string(bytes), c.Secure(), true, nil
 	}
 }
 

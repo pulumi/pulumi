@@ -356,6 +356,10 @@ def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
 
 
+async def monitor_supports_resource_hooks() -> bool:
+    return await monitor_supports_feature("resourceHooks")
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
@@ -412,4 +416,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("transforms"),
         monitor_supports_feature("invokeTransforms"),
         monitor_supports_feature("parameterization"),
+        monitor_supports_feature("resourceHooks"),
     )

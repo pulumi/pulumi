@@ -102,7 +102,7 @@ type ContinueResourceRefreshEvent interface {
 
 	URN() resource.URN
 	Old() *resource.State
-	Aliases() []resource.URN
+	New() *resource.State
 	Invalid() bool
 }
 
@@ -110,7 +110,7 @@ type continueResourceRefreshEvent struct {
 	RegisterResourceEvent
 	urn     resource.URN    // the URN of the resource being processed.
 	old     *resource.State // the old state of the resource being processed.
-	aliases []resource.URN  // the aliases of the resource being processed.
+	new     *resource.State // the new state of the resource being processed.
 	invalid bool            // whether the resource is invalid.
 }
 
@@ -126,10 +126,81 @@ func (g *continueResourceRefreshEvent) Old() *resource.State {
 	return g.old
 }
 
-func (g *continueResourceRefreshEvent) Aliases() []resource.URN {
-	return g.aliases
+func (g *continueResourceRefreshEvent) New() *resource.State {
+	return g.new
 }
 
 func (g *continueResourceRefreshEvent) Invalid() bool {
 	return g.invalid
+}
+
+// ContinueResourceImportEvent is a step that asks the engine to continue provisioning a resource after an import, it is
+// always created from a base RegisterResourceEvent.
+type ContinueResourceImportEvent interface {
+	RegisterResourceEvent
+
+	Error() error
+	URN() resource.URN
+	New() *resource.State
+	Old() *resource.State
+	Provider() plugin.Provider
+	Invalid() bool
+	Recreating() bool
+	RandomSeed() []byte
+	IsImported() bool
+}
+
+type continueResourceImportEvent struct {
+	RegisterResourceEvent
+	err        error
+	urn        resource.URN // the URN of the resource being processed.
+	old        *resource.State
+	new        *resource.State
+	provider   plugin.Provider
+	invalid    bool
+	recreating bool
+	randomSeed []byte
+	// whether the resource is actually imported, or if we're just continuing the step generation for a
+	// normal resource.
+	isImported bool
+}
+
+var _ ContinueResourceImportEvent = (*continueResourceImportEvent)(nil)
+
+func (g *continueResourceImportEvent) event() {}
+
+func (g *continueResourceImportEvent) Error() error {
+	return g.err
+}
+
+func (g *continueResourceImportEvent) URN() resource.URN {
+	return g.urn
+}
+
+func (g *continueResourceImportEvent) Old() *resource.State {
+	return g.old
+}
+
+func (g *continueResourceImportEvent) New() *resource.State {
+	return g.new
+}
+
+func (g *continueResourceImportEvent) Provider() plugin.Provider {
+	return g.provider
+}
+
+func (g *continueResourceImportEvent) Invalid() bool {
+	return g.invalid
+}
+
+func (g *continueResourceImportEvent) Recreating() bool {
+	return g.recreating
+}
+
+func (g *continueResourceImportEvent) RandomSeed() []byte {
+	return g.randomSeed
+}
+
+func (g *continueResourceImportEvent) IsImported() bool {
+	return g.isImported
 }

@@ -133,6 +133,12 @@ func (m *MockLanguageRuntimeClient) Pack(
 	panic("not implemented")
 }
 
+func (m *MockLanguageRuntimeClient) Link(
+	ctx context.Context, in *pulumirpc.LinkRequest, opts ...grpc.CallOption,
+) (*pulumirpc.LinkResponse, error) {
+	panic("not implemented")
+}
+
 func (m *MockLanguageRuntimeClient) Handshake(
 	ctx context.Context, req *pulumirpc.LanguageHandshakeRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.LanguageHandshakeResponse, error) {
@@ -162,7 +168,7 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	}
 
 	// Test that the plugin is run with the correct working directory.
-	_, _, _, err = host.RunPlugin(RunPluginInfo{
+	_, _, _, err = host.RunPlugin(pCtx.Request(), RunPluginInfo{
 		WorkingDirectory: "/tmp",
 	})
 	require.Equal(t, returnErr, err)

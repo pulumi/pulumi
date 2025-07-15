@@ -105,7 +105,7 @@ func TestParsePort(t *testing.T) {
 func TestHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	startServer := func(healthService bool) (*grpc.Server, *plugin) {
+	startServer := func(healthService bool) (*grpc.Server, *Plugin) {
 		listener, _ := net.Listen("tcp", "127.0.0.1:0")
 		server := grpc.NewServer()
 
@@ -134,7 +134,7 @@ func TestHealthCheck(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		return server, &plugin{Conn: conn}
+		return server, &Plugin{Conn: conn}
 	}
 
 	tests := []struct {
@@ -208,6 +208,109 @@ func TestStartupFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
 
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin", "test-plugin"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin/test-plugin]: not implemented")
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin]: not implemented")
+}
+
+func TestNonZeroExitcode(t *testing.T) {
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	pluginPath, err := filepath.Abs("./testdata/provider-language")
+	require.NoError(t, err)
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
+
+	// Check exec.LookPath finds the plugin
+	file, err := exec.LookPath("pulumi-language-test")
+	require.NoError(t, err)
+	require.Contains(t, file, "pulumi-language-test")
+
+	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "1")
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: exit status 1")
+
+	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
+	tmp := t.TempDir()
+	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
+	package main
+	import "os"
+
+	func main() {
+		os.Exit(1)
+	}
+	`), 0o600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
+	module test-plugin-exit
+	go 1.24
+	`), 0o600)
+	require.NoError(t, err)
+
+	// Build and run the program
+	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
+	cmd.Dir = tmp
+	stdout, err := cmd.CombinedOutput()
+	t.Log(string(stdout))
+	require.NoError(t, err)
+
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, "test-plugin-exit"))
+	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
+	// separately.
+	require.ErrorContains(t, err, "could not read plugin [")
+	require.ErrorContains(t, err, "test-plugin-exit]: exit status 1")
+}
+
+// Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
+func TestZeroExitcode(t *testing.T) {
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	pluginPath, err := filepath.Abs("./testdata/provider-language")
+	require.NoError(t, err)
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
+
+	// Check exec.LookPath finds the plugin
+	file, err := exec.LookPath("pulumi-language-test")
+	require.NoError(t, err)
+	require.Contains(t, file, "pulumi-language-test")
+
+	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "0")
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: EOF")
+
+	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
+	tmp := t.TempDir()
+	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
+	package main
+	import "os"
+
+	func main() {
+		os.Exit(0)
+	}
+	`), 0o600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
+	module test-plugin-exit
+	go 1.24
+	`), 0o600)
+	require.NoError(t, err)
+
+	// Build and run the program
+	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
+	cmd.Dir = tmp
+	stdout, err := cmd.CombinedOutput()
+	t.Log(string(stdout))
+	require.NoError(t, err)
+
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, "test-plugin-exit"))
+	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
+	// separately.
+	require.ErrorContains(t, err, "could not read plugin [")
+	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
 }

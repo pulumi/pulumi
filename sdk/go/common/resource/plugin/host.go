@@ -36,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
@@ -104,7 +103,7 @@ type Host interface {
 
 // IsLocalPluginPath determines if a plugin source refers to a local path rather than a downloadable plugin.
 // A plugin is considered local if it doesn't match the plugin name regexp and doesn't have a download URL.
-func IsLocalPluginPath(source string) bool {
+func IsLocalPluginPath(ctx context.Context, source string) bool {
 	// If the source starts with ./ or ../ or / it's definitely a local path
 	if strings.HasPrefix(source, "./") || strings.HasPrefix(source, "..") || strings.HasPrefix(source, "/") {
 		return true
@@ -112,7 +111,7 @@ func IsLocalPluginPath(source string) bool {
 
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
-	pluginSpec, err := workspace.NewPluginSpec(context.TODO(), source, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(ctx, source, apitype.ResourcePlugin, nil, "", nil)
 	var pluginErr workspace.PluginVersionNotFoundError
 	if err != nil && !errors.As(err, &pluginErr) {
 		// If we can't parse it as a plugin spec, assume it's a local path
@@ -161,7 +160,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 
 	for name, pkg := range packages {
 		// Skip downloadable plugins, so that only local folder paths remain.
-		if !IsLocalPluginPath(pkg.Source) {
+		if !IsLocalPluginPath(ctx.baseContext, pkg.Source) {
 			continue
 		}
 
@@ -279,11 +278,12 @@ func parsePluginOpts(
 
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
-	Organization string
-	Project      string
-	Stack        string
-	Config       property.Map
-	DryRun       bool
+	Organization     string
+	Project          string
+	Stack            string
+	Config           map[config.Key]string
+	ConfigSecretKeys []config.Key
+	DryRun           bool
 }
 
 type pluginLoadRequest struct {
@@ -417,7 +417,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts)
+		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts, nil)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -606,6 +606,12 @@ func (host *defaultHost) SignalCancellation() error {
 			if err := plug.Plugin.SignalCancellation(host.ctx.Request()); err != nil {
 				result = multierror.Append(result, fmt.Errorf(
 					"Error signaling cancellation to resource provider '%s': %w", plug.Info.Name, err))
+			}
+		}
+		for _, plug := range host.analyzerPlugins {
+			if err := plug.Plugin.Cancel(host.ctx.Request()); err != nil {
+				result = multierror.Append(result, fmt.Errorf(
+					"Error signaling cancellation to analyzer '%s': %w", plug.Info.Name, err))
 			}
 		}
 		return nil, result

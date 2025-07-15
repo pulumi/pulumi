@@ -17,15 +17,18 @@ include ../../build/common.mk
 TEST_ALL_DEPS ?= build
 
 ensure:: .make/ensure/uv
-	uv venv --allow-existing
-	uv sync --dev
+	../../scripts/retry uv venv --allow-existing
+	../../scripts/retry uv sync --dev
 
 build_package:: ensure
 	uv run -m build --outdir ./build --installer uv
 
-build_plugin::
+build_plugin: ../../bin/pulumi-language-python
+
+.PHONY: ../../bin/pulumi-language-python
+../../bin/pulumi-language-python:
 	go build -C cmd/pulumi-language-python \
-		-o ../../../../bin/pulumi-language-python \
+		-o ../../$@ \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 

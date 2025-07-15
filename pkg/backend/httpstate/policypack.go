@@ -81,7 +81,7 @@ func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context) (string, error) {
 		return policyPackPath, nil
 	}
 
-	fmt.Printf("Installing policy pack %s %s...\r\n", policy.Name, version)
+	fmt.Fprintf(os.Stderr, "Installing policy pack %s %s...\r\n", policy.Name, version)
 
 	// PolicyPack has not been downloaded and installed. Do this now.
 
@@ -332,8 +332,8 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("installing dependencies: %w", err)
 	}
 
-	fmt.Println("Finished installing policy pack\r")
-	fmt.Println()
+	fmt.Fprintln(os.Stderr, "Finished installing policy pack\r")
+	fmt.Fprintln(os.Stderr)
 
 	return nil
 }

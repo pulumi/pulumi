@@ -53,6 +53,12 @@ service Analyzer {
     // This method is not always called, for example if the engine is just booting the analyzer up to call
     // GetAnalyzerInfo.
     rpc ConfigureStack(AnalyzerStackConfigureRequest) returns (AnalyzerStackConfigureResponse) {}
+
+    // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+    // Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+    // it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+    // hard-closing any gRPC connection.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // `AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed.
@@ -65,8 +71,13 @@ message AnalyzerStackConfigureRequest {
     string organization = 3;
     // True if this is a preview/dry run.
     bool dry_run = 4;
-    // The configuration of the stack being analyzed as a property map.
-    google.protobuf.Struct config = 5;
+
+    reserved 5; // This was used to send stack config as property values.
+
+    // A list of configuration keys whose values should be treated as secrets.
+    repeated string config_secret_keys = 6;
+    // The configuration of the stack being analyzed.
+    map<string, string> config = 7;
 }
 
 // `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.
@@ -173,7 +184,11 @@ message AnalyzeDiagnostic {
     string policyPackVersion = 3;          // Version of the policy pack.
     string description = 4;                // Description of policy rule. e.g., "encryption enabled."
     string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
-    repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
+
+    // Keywords/terms to associate with a policy, e.g., "cost". This was unused by the engine and policy SDKs.
+    reserved 6;
+    reserved "tags";
+
     EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
     string urn = 8;                        // URN of the resource that violates the policy.
 }
