@@ -227,7 +227,7 @@ function tracingIsEnabled(tracingUrl: string | boolean): boolean {
 /**
  * Check if the entrypoint actually exists on disk, and emit a warning if it does not.
  */
-const existsEntrypoint = (packageRoot: string, entrypoint: string, fallback: string): string => {
+function resolveEntrypoint(packageRoot: string, entrypoint: string, fallback: string): string {
     const p = path.join(packageRoot, entrypoint);
     if (fs.existsSync(p)) {
         return p;
@@ -235,7 +235,7 @@ const existsEntrypoint = (packageRoot: string, entrypoint: string, fallback: str
         log.warn(`Could not find entry point '${entrypoint}' specified in package.json; using '${fallback}' instead`);
         return fallback;
     }
-};
+}
 
 /** @internal */
 export async function run(
@@ -288,13 +288,13 @@ export async function run(
         // Check if package.json specifies an entrypoint via `exports`
         // https://nodejs.org/api/packages.html#package-entry-points
         if (typeof packageObject.exports === "string") {
-            program = existsEntrypoint(packageRoot, packageObject.exports, program);
+            program = resolveEntrypoint(packageRoot, packageObject.exports, program);
         } else if (typeof packageObject.exports === "object") {
             const mainExport = packageObject.exports["."];
             if (typeof mainExport === "string") {
-                program = existsEntrypoint(packageRoot, mainExport, program);
+                program = resolveEntrypoint(packageRoot, mainExport, program);
             } else if (typeof mainExport === "object") {
-                program = existsEntrypoint(
+                program = resolveEntrypoint(
                     packageRoot,
                     mainExport.default || mainExport.require || mainExport.import,
                     program,
@@ -304,7 +304,7 @@ export async function run(
             // Finally check if `main` is set in package.json
             // https://nodejs.org/api/packages.html#main-entry-point-export
             if (packageObject["main"]) {
-                program = existsEntrypoint(packageRoot, packageObject["main"], program);
+                program = resolveEntrypoint(packageRoot, packageObject["main"], program);
             }
         }
     }
