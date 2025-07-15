@@ -1,0 +1,6 @@
+name: ts-type-stripping
+runtime:
+  name: nodejs
+  options:
+    typescript: false # Disable running via ts-node
+description: Run Pulumi without ts-node, using Node.js's type stripping
