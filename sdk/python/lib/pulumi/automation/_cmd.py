@@ -218,7 +218,7 @@ class PulumiCommand:
         stderr_chunks: List[str] = []
 
         def consumer(stream, callback, chunks):
-            for line in iter(stream.readline, ''):
+            for line in iter(stream.readline, ""):
                 if callback:
                     callback(line)
                 chunks.append(line)
@@ -235,8 +235,12 @@ class PulumiCommand:
             assert process.stdout is not None
             assert process.stderr is not None
 
-            stdout = threading.Thread(target=consumer, args=(process.stdout, on_output, stdout_chunks))
-            stderr = threading.Thread(target=consumer, args=(process.stderr, on_error, stderr_chunks))
+            stdout = threading.Thread(
+                target=consumer, args=(process.stdout, on_output, stdout_chunks)
+            )
+            stderr = threading.Thread(
+                target=consumer, args=(process.stderr, on_error, stderr_chunks)
+            )
 
             stdout.start()
             stderr.start()
