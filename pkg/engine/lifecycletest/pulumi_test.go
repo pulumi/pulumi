@@ -639,7 +639,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
 		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			cancel()
 
 			return nil
