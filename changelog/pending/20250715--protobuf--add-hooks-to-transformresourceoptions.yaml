@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: protobuf
+  description: Add hooks to TransformResourceOptions

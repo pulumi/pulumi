@@ -260,6 +260,7 @@ message TransformResourceOptions {
     repeated string additional_secret_outputs = 13;
     map<string, string> providers = 14;
     map<string, bytes> plugin_checksums = 15;
+    RegisterResourceRequest.ResourceHooksBinding hooks = 16;
 }
 
 message TransformRequest {
