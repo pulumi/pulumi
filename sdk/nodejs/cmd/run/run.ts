@@ -22,6 +22,11 @@ import * as path from "path";
 import * as semver from "semver";
 import * as url from "url";
 import * as util from "util";
+// @ts-ignore This is available in all of our supported Node.js versions, but
+// our version of @types/node does not know this. However we can't update our
+// @types/node version because we need to continue supporting TypeScript 3.8.3.
+// https://nodejs.org/api/module.html#moduleregisterspecifier-parenturl-options
+import { register } from "module";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { Inputs } from "../../output";
@@ -254,6 +259,33 @@ export async function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
+    const hasEntrypoint = argv._[0] !== ".";
+    let program: string = argv._[0];
+    if (!path.isAbsolute(program)) {
+        // If this isn't an absolute path, make it relative to the working directory.
+        program = path.join(process.cwd(), program);
+    }
+
+    const packageRoot = await npmPackageRootFromProgramPath(program);
+    const packageObject = packageObjectFromProjectRoot(packageRoot);
+
+    // If there is no entrypoint set in Pulumi.yaml via the main
+    // option, look for an entrypoint defined in package.json
+    if (!hasEntrypoint && packageObject["main"]) {
+        const packageMainPath = path.join(packageRoot, packageObject["main"]);
+        if (fs.existsSync(packageMainPath)) {
+            program = packageMainPath;
+        } else {
+            log.warn(
+                `Could not find entry point '${packageMainPath}' specified in package.json; ` +
+                    `using '${program}' instead`,
+            );
+        }
+    }
+
+    // Import path for `ts-node/esm`, if available.
+    let tsNodeESMRequire = "";
+
     span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
@@ -278,8 +310,7 @@ export async function run(
         }
 
         const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
-        const tsn: typeof tsnode = require(tsnodeRequire);
-        tsn.register({
+        const options = {
             compiler: typescriptRequire,
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
@@ -287,21 +318,59 @@ export async function run(
             // use (Which might just be ./tsconfig.yaml)
             project: tsConfigPath,
             skipProject: skipProject,
-            compilerOptions: {
-                target: "es6",
+            compilerOptions: {},
+        };
+
+        // See if we can use the automatic ESM mode. We require that:
+        // * the project is an ES module (package.json specifies `type: "module"`).
+        // * have TypeScript >= 4.7, which introduces support for `module: "nodenext"` in tsconfig.json.
+        // * node is running without any other custom loader, we don't want to interfere with any custom setup.
+        // * ts-node/esm is available, this is only available in recent ts-node versions, but we're stuck
+        //   shipping a vendored version of 7.0.1. Users are free to install a more recent version in their
+        //   project, and we'll see if we can load that.
+        const isModule = packageObject["type"] === "module";
+        const ts = require(typescriptRequire);
+        const tsVersion = semver.parse(ts.version);
+        const hasLoaders = process.execArgv.find((arg) => arg === "--loader");
+        try {
+            tsNodeESMRequire = require.resolve("ts-node/esm");
+        } catch (err) {
+            // ts-node/esm not available, we'll use ts-node instead
+        }
+
+        if (
+            isModule &&
+            tsVersion &&
+            tsVersion.compare(new semver.SemVer("4.7.0")) > 0 &&
+            !hasLoaders &&
+            tsNodeESMRequire
+        ) {
+            // All the conditions for automatic ESM mode are fullfilled.
+            options.compilerOptions = {
+                target: "ES2022", // TS >= 4.6 and Node >= 20 support this
+                module: "nodenext",
+                moduleResolution: "nodenext",
+                sourceMap: "true",
+                ...compilerOptions,
+            };
+            // We're on a recent ts-node with esm, we use the offical module.register API to setup our hooks.
+            // https://nodejs.org/api/module.html#moduleregisterspecifier-parenturl-options
+            register("./hooks.js", url.pathToFileURL(__filename), {
+                data: options,
+            });
+        } else {
+            // We're not in ESM mode, or running an older version of ts-node.
+            // Let ts-node deal with registration.
+            const tsn: typeof tsnode = require(tsnodeRequire);
+            options.compilerOptions = {
+                target: "ES2020", // TypeScript 3.8 supports this
                 module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",
                 ...compilerOptions,
-            },
-        });
-    }
-
-    const hasEntrypoint = argv._[0] !== ".";
-    let program: string = argv._[0];
-    if (!path.isAbsolute(program)) {
-        // If this isn't an absolute path, make it relative to the working directory.
-        program = path.join(process.cwd(), program);
+            };
+            tsn.register(options);
+        }
     }
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
@@ -395,23 +464,7 @@ ${defaultErrorMessage(err)}`,
         const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
 
         try {
-            const packageRoot = await npmPackageRootFromProgramPath(program);
-            const packageObject = packageObjectFromProjectRoot(packageRoot);
             let programExport: any;
-
-            // If there is no entrypoint set in Pulumi.yaml via the main
-            // option, look for an entrypoint defined in package.json
-            if (!hasEntrypoint && packageObject["main"]) {
-                const packageMainPath = path.join(packageRoot, packageObject["main"]);
-                if (fs.existsSync(packageMainPath)) {
-                    program = packageMainPath;
-                } else {
-                    log.warn(
-                        `Could not find entry point '${packageMainPath}' specified in package.json; ` +
-                            `using '${program}' instead`,
-                    );
-                }
-            }
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
@@ -419,7 +472,30 @@ ${defaultErrorMessage(err)}`,
                 // See https://github.com/nodejs/node/blob/master/lib/internal/modules/run_main.js#L74.
                 const mainPath: string =
                     require("module").Module._findPath(path.resolve(program), null, true) || program;
-                const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
+                let main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
+                const stat = await fspromises.lstat(url.fileURLToPath(main));
+                const isDirectory = stat.isDirectory();
+                // If we're using ts-node/esm, we need to ensure the path to the entrypoint is a file, not a directory.
+                if (isDirectory && tsNodeESMRequire !== "") {
+                    let index;
+                    if (fs.existsSync(path.join(mainPath, "index.js"))) {
+                        index = "index.js";
+                    } else if (fs.existsSync(path.join(mainPath, "index.mjs"))) {
+                        index = "index.mjs";
+                    } else if (fs.existsSync(path.join(mainPath, "index.ts"))) {
+                        index = "index.ts";
+                    } else if (fs.existsSync(path.join(mainPath, "index.mts"))) {
+                        index = "index.mts";
+                    } else {
+                        throw new Error(`No entrypoint found in ${mainPath}`);
+                    }
+                    if (main.startsWith("file:")) {
+                        const mainFilePath = url.fileURLToPath(main);
+                        main = url.pathToFileURL(path.join(mainFilePath, index)).href;
+                    } else {
+                        main = path.join(main, index);
+                    }
+                }
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
