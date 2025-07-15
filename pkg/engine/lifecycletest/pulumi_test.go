@@ -657,6 +657,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 
 	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "BAIL: canceled")
 	assert.True(t, gracefulShutdown)
 }
 
