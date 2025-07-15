@@ -359,7 +359,7 @@ type ResourceV3 struct {
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// TODO[pulumi/pulumi#19705]: RefreshBeforeUpdate and ViewOf to be moved to ResourceV4.
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"replaceOnChanges,omitempty"`
+	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 	// ResourceHooks is a map of hook types to lists of hook names for the given type.
