@@ -221,16 +221,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 
 	snapshot, err := b.getSnapshot(ctx, secretsProvider, stackRef)
 	if err != nil {
-		switch err {
-		case stack.ErrDeploymentSchemaVersionTooOld:
-			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-				stackRef.Name())
-		case stack.ErrDeploymentSchemaVersionTooNew:
-			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-				"Please update your version of the Pulumi CLI", stackRef.Name())
-		default:
-			return nil, fmt.Errorf("could not deserialize deployment: %w", err)
-		}
+		return nil, stack.FormatDeploymentDeserializationError(err, stackRef.Name().String())
 	}
 
 	return &deploy.Target{

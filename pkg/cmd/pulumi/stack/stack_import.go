@@ -85,7 +85,7 @@ func newStackImportCmd() *cobra.Command {
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
 			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, stack.DefaultSecretsProvider)
 			if err != nil {
-				return checkDeploymentVersionError(err, s.Ref().Name().String())
+				return stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 			}
 			if err := SaveSnapshot(ctx, s, snapshot, force); err != nil {
 				return err

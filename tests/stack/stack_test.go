@@ -214,7 +214,7 @@ func TestStackCommands(t *testing.T) {
 		t.Parallel()
 
 		versions := []int{
-			apitype.DeploymentSchemaVersionCurrent + 1,
+			stack.DeploymentSchemaVersionLatest + 1,
 			stack.DeploymentSchemaVersionOldestSupported - 1,
 		}
 

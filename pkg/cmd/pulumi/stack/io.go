@@ -547,15 +547,3 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 	}
 	return nil
 }
-
-func checkDeploymentVersionError(err error, stackName string) error {
-	switch err {
-	case stack.ErrDeploymentSchemaVersionTooOld:
-		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-			stackName)
-	case stack.ErrDeploymentSchemaVersionTooNew:
-		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-			"Please update your version of the Pulumi CLI", stackName)
-	}
-	return fmt.Errorf("could not deserialize deployment: %w", err)
-}

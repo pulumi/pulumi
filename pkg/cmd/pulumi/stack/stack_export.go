@@ -103,7 +103,7 @@ func newStackExportCmd() *cobra.Command {
 				// log show secrets event
 				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 				if err != nil {
-					return checkDeploymentVersionError(err, stackName)
+					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}
 
 				serializedDeployment, err := stack.SerializeDeployment(ctx, snap, true)
