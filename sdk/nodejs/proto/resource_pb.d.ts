@@ -687,6 +687,11 @@ export class TransformResourceOptions extends jspb.Message {
     getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
     clearPluginChecksumsMap(): void;
 
+    hasHooks(): boolean;
+    clearHooks(): void;
+    getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
+    setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): TransformResourceOptions;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
     static toObject(includeInstance: boolean, msg: TransformResourceOptions): TransformResourceOptions.AsObject;
@@ -716,6 +721,7 @@ export namespace TransformResourceOptions {
         providersMap: Array<[string, string]>,
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+        hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
     }
 }
 
