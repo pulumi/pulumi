@@ -180,7 +180,7 @@ class RefreshResult(BaseResult):
 
 
 class RenameResult(BaseResult):
-    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+    def __init__(self, stdout: str, stderr: str, summary: Optional[UpdateSummary]):
         super().__init__(stdout, stderr)
         self.summary = summary
 
@@ -760,13 +760,20 @@ class Stack:
         args.extend(extra_args)
 
         args.extend(self._remote_args())
-        rename_result = self._run_pulumi_cmd_sync(args, on_output)
 
         if self._remote and show_secrets:
             raise RuntimeError("can't enable `showSecrets` for remote workspaces")
 
+        rename_result = self._run_pulumi_cmd_sync(args, on_output)
+
+        # https://github.com/pulumi/pulumi/issues/20020
+        # After the rename is successful in the backend, the internal state of this
+        # Stack object MUST be updated to reflect the new name
+        self.name = stack_name
+
+        # Summary can be None, this case can happen if the stack was empty and had no history.
         summary = self.info(show_secrets and not self._remote)
-        assert summary is not None
+
         return RenameResult(
             stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
         )
