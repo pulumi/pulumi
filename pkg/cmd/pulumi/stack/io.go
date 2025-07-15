@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -547,23 +546,4 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 		return fmt.Errorf("could not import deployment: %w", err)
 	}
 	return nil
-}
-
-func checkDeploymentVersionError(err error, stackName string) error {
-	var unsupportedErr *stack.ErrDeploymentUnsupportedFeatures
-
-	switch {
-	case errors.As(err, &unsupportedErr):
-		return fmt.Errorf(
-			"the stack '%s' uses features that are not supported by this version of the Pulumi CLI: %s. "+
-				"Please update your version of the Pulumi CLI",
-			stackName, strings.Join(unsupportedErr.Features, ", "))
-	case errors.Is(err, stack.ErrDeploymentSchemaVersionTooOld):
-		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-			stackName)
-	case errors.Is(err, stack.ErrDeploymentSchemaVersionTooNew):
-		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-			"Please update your version of the Pulumi CLI", stackName)
-	}
-	return fmt.Errorf("could not deserialize deployment: %w", err)
 }
