@@ -268,7 +268,7 @@ func runConvert(
 				// local dependencies are set up correctly
 				for name, pkg := range packageBlockDescriptors {
 					if pkg.Parameterization != nil {
-						pkgName := fmt.Sprintf("@pulumi/%s", pkg.Parameterization.Name)
+						pkgName := "@pulumi/" + pkg.Parameterization.Name
 						relOut := filepath.Join("sdks", pkg.Parameterization.Name)
 						localDependencies[name] = fmt.Sprintf("%s@file:%s", pkgName, relOut)
 					}
