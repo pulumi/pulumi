@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Support reading v4 checkpoints/deployments

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python/automation
-  description: Fix wrong name after stack rename 
