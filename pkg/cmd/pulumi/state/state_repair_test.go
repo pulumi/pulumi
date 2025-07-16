@@ -204,7 +204,7 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "Confirm?")
-	assert.NotNil(t, fx.imported, "Import should have proceeded")
+	require.NotNil(t, fx.imported, "Import should have proceeded")
 }
 
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
@@ -222,7 +222,7 @@ func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.NotContains(t, fx.stdout.String(), "Confirm?")
-	assert.NotNil(t, fx.imported, "Import should have proceeded")
+	require.NotNil(t, fx.imported, "Import should have proceeded")
 }
 
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable

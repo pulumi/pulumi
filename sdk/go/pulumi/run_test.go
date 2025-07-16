@@ -208,7 +208,7 @@ func TestRegisterResource(t *testing.T) {
 			"bang": String("gnab"),
 		}, &res2)
 		require.NoError(t, err)
-		assert.NotNil(t, res2.rawOutputs)
+		require.NotNil(t, res2.rawOutputs)
 
 		id, known, secret, deps, err = await(res2.ID())
 		require.NoError(t, err)
@@ -240,7 +240,7 @@ func TestRegisterResource(t *testing.T) {
 			"bang": String("gnab"),
 		}, &res3)
 		require.NoError(t, err)
-		assert.NotNil(t, res3.rawOutputs)
+		require.NotNil(t, res3.rawOutputs)
 		output := InternalGetRawOutputs(&res3.ResourceState)
 		rawOutputsTmp, _, _, _, err := await(output)
 		require.NoError(t, err)
@@ -973,7 +973,7 @@ func TestExportResource(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	require.NoError(t, err)
 
-	assert.NotNil(t, internal.GetOutputValue(anyout))
+	require.NotNil(t, internal.GetOutputValue(anyout))
 }
 
 type testResource2Input interface {

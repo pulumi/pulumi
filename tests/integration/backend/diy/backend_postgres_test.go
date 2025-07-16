@@ -232,7 +232,7 @@ func TestPostgresBackend(t *testing.T) {
 	require.NoError(t, err, "Failed to export deployment")
 	require.NotNil(t, exportedDeployment, "Exported deployment should not be nil")
 	assert.Equal(t, apitype.DeploymentSchemaVersionCurrent, exportedDeployment.Version)
-	assert.NotNil(t, exportedDeployment.Deployment, "Deployment data should not be nil")
+	require.NotNil(t, exportedDeployment.Deployment, "Deployment data should not be nil")
 
 	// Test stack-level export
 	stackExport, err := backend.ExportStackDeployment(ctx, stack1)
@@ -267,7 +267,7 @@ func TestPostgresBackend(t *testing.T) {
 		// It's okay if there's no previous deployment
 		assert.Contains(t, err.Error(), "no previous deployment", "Error should be about no previous deployment")
 	} else {
-		assert.NotNil(t, latestConfig, "Latest config should not be nil if no error")
+		require.NotNil(t, latestConfig, "Latest config should not be nil if no error")
 	}
 
 	// Test secrets management and configuration
@@ -277,13 +277,13 @@ func TestPostgresBackend(t *testing.T) {
 	projectStack := &workspace.ProjectStack{}
 	secretsManager, err := b.DefaultSecretManager(projectStack)
 	if err == nil {
-		assert.NotNil(t, secretsManager, "Default secrets manager should not be nil")
+		require.NotNil(t, secretsManager, "Default secrets manager should not be nil")
 	}
 
 	// Test stack-level secrets manager
 	stackSecretsManager, err := stack1.DefaultSecretManager(projectStack)
 	if err == nil {
-		assert.NotNil(t, stackSecretsManager, "Stack secrets manager should not be nil")
+		require.NotNil(t, stackSecretsManager, "Stack secrets manager should not be nil")
 	}
 
 	// Test detailed configuration operations with actual values
@@ -464,13 +464,13 @@ func TestPostgresBackendMultipleTables(t *testing.T) {
 	require.NoError(t, err)
 	stack1, err := backend1.CreateStack(ctx, stackRef1, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, stack1)
+	require.NotNil(t, stack1)
 
 	stackRef2, err := backend2.ParseStackReference(stackName)
 	require.NoError(t, err)
 	stack2, err := backend2.CreateStack(ctx, stackRef2, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, stack2)
+	require.NotNil(t, stack2)
 
 	// Verify each backend only sees its own stack
 	stacks1, _, err := backend1.ListStacks(ctx, backend.ListStacksFilter{}, nil)

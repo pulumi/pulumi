@@ -1073,7 +1073,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 
 	// Assert.
 	assert.ErrorContains(t, err, "failed to verify snapshot")
-	assert.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
 func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) {
@@ -1116,7 +1116,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 
 	// Assert.
 	require.NoError(t, err)
-	assert.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
 //nolint:paralleltest // mutates global state

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestMappable ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
@@ -160,7 +161,7 @@ func TestCopy(t *testing.T) {
 		"b": 42,
 	})
 	dst := src.Copy()
-	assert.NotNil(t, dst)
+	require.NotNil(t, dst)
 	assert.Equal(t, len(src), len(dst))
 	assert.Equal(t, src["a"], dst["a"])
 	assert.Equal(t, src["b"], dst["b"])

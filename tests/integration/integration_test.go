@@ -1085,11 +1085,11 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 					"AdditionalSecretOutputs(%s)", name)
 
 			case "CustomTimeouts":
-				if ct := res.CustomTimeouts; assert.NotNil(t, ct, "CustomTimeouts(%s)", name) {
-					assert.Equal(t, float64(60), ct.Create, "CustomTimeouts.Create(%s)", name)
-					assert.Equal(t, float64(120), ct.Update, "CustomTimeouts.Update(%s)", name)
-					assert.Equal(t, float64(180), ct.Delete, "CustomTimeouts.Delete(%s)", name)
-				}
+				ct := res.CustomTimeouts
+				require.NotNil(t, ct, "CustomTimeouts(%s)", name)
+				assert.Equal(t, float64(60), ct.Create, "CustomTimeouts.Create(%s)", name)
+				assert.Equal(t, float64(120), ct.Update, "CustomTimeouts.Update(%s)", name)
+				assert.Equal(t, float64(180), ct.Delete, "CustomTimeouts.Delete(%s)", name)
 
 			case "DeletedWith":
 				assert.Equal(t, urns["getDeletedWithMe"], res.DeletedWith, "DeletedWith(%s)", name)

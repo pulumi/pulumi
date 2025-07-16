@@ -1828,7 +1828,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			Parent: string(urn),
 		})
-		assert.NotNil(t, snap.Parent, "parent was not set")
+		require.NotNil(t, snap.Parent, "parent was not set")
 	})
 
 	t.Run("AdditionalSecretOutputs", func(t *testing.T) {
@@ -1899,7 +1899,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			DeletedWith: string(urn),
 		})
-		assert.NotNil(t, snap.DeletedWith, "deletedWith was not set")
+		require.NotNil(t, snap.DeletedWith, "deletedWith was not set")
 	})
 
 	t.Run("DeleteBeforeReplace", func(t *testing.T) {

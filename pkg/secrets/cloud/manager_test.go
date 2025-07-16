@@ -94,7 +94,7 @@ func TestSecretsProviderOverride(t *testing.T) {
 
 		_, createSecretsManagerError = NewCloudSecretsManager(stackConfig, "test://bar", false)
 		msg := "NewCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error"
-		assert.NotNil(t, createSecretsManagerError, msg)
+		require.NotNil(t, createSecretsManagerError, msg)
 	})
 
 	t.Run("with override", func(t *testing.T) {

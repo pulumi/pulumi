@@ -203,7 +203,7 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 
 	// Assert.
 	require.NoError(t, err)
-	assert.NotNil(t, runResponse)
+	require.NotNil(t, runResponse)
 
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
@@ -378,7 +378,7 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 
 	// Assert.
 	require.NoError(t, err)
-	assert.NotNil(t, runResponse)
+	require.NotNil(t, runResponse)
 
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)

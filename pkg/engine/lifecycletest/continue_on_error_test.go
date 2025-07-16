@@ -92,13 +92,13 @@ func TestDestroyContinueOnError(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 7) // We expect 5 resources + 2 providers
 
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed delete")
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::dependency"), snap.Resources[1].URN)
@@ -344,7 +344,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 3, len(snap.Resources)) // 2 resources + 1 provider
 
 	update = true
@@ -354,7 +354,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	// Run an update to create the resource
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	expectedURNs := []string{
 		"urn:pulumi:test::test::pulumi:providers:pkgB::default",
 		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
@@ -461,7 +461,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
 
 	update = true
@@ -471,7 +471,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	// Run an update to create the resource
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
@@ -630,7 +630,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
 
 	update = true
@@ -640,7 +640,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	// Run an update to create the resource
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
@@ -701,7 +701,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2) // We expect 1 resource + 1 provider
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::willBeDeleted"), snap.Resources[1].URN)
@@ -709,7 +709,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	update = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed create")
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1) // We expect 1 provider
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 }

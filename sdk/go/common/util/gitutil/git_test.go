@@ -532,7 +532,7 @@ func TestParseAuthURL(t *testing.T) {
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NotNil(t, auth)
 		assert.Equal(t, "user: git, name: ssh-public-keys", auth.String())
 		assert.Contains(t, parser.sshKeys, "github.com")
 	})
@@ -553,7 +553,7 @@ func TestParseAuthURL(t *testing.T) {
 		// This isn't an error because the connection should fall back to the
 		// SSH agent for auth.
 		require.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NotNil(t, auth)
 	})
 
 	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
@@ -581,7 +581,7 @@ func TestParseAuthURL(t *testing.T) {
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NotNil(t, auth)
 		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
 	})
 

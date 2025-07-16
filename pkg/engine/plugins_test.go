@@ -53,18 +53,18 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	})
 
 	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
-	assert.NotNil(t, defaultProviders)
+	require.NotNil(t, defaultProviders)
 
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
 	awsVer := aws.Version
-	assert.NotNil(t, awsVer)
+	require.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.1", awsVer.String())
 
 	kubernetes, ok := defaultProviders[tokens.Package("kubernetes")]
 	assert.True(t, ok)
 	kubernetesVer := kubernetes.Version
-	assert.NotNil(t, kubernetesVer)
+	require.NotNil(t, kubernetesVer)
 	assert.Equal(t, "0.22.0", kubernetesVer.String())
 	assert.Equal(t, "com.server.url", kubernetes.PluginDownloadURL)
 }
@@ -89,11 +89,11 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	})
 
 	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
-	assert.NotNil(t, defaultProviders)
+	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
 	awsVer := aws.Version
-	assert.NotNil(t, awsVer)
+	require.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.1", awsVer.String())
 }
 
@@ -124,11 +124,11 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	})
 
 	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
-	assert.NotNil(t, defaultProviders)
+	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
 	awsVer := aws.Version
-	assert.NotNil(t, awsVer)
+	require.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.2-dev.1553126336", awsVer.String())
 }
 
@@ -152,11 +152,11 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	})
 
 	defaultProviders := computeDefaultProviderPackages(languagePlugins, snapshotPlugins)
-	assert.NotNil(t, defaultProviders)
+	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
 	awsVer := aws.Version
-	assert.NotNil(t, awsVer)
+	require.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.0", awsVer.String())
 }
 

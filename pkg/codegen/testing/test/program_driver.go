@@ -599,7 +599,7 @@ func TestProgramCodegen(
 		t.Skip("TestProgramCodegen is skipped on Windows")
 	}
 
-	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
+	require.NotNil(t, testcase.TestCases, "Caller must provide test cases")
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 

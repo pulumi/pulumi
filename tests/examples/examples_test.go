@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -41,7 +42,7 @@ func TestAccMinimal(t *testing.T) {
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Simple runtime validation that just ensures the checkpoint was written and read.
-				assert.NotNil(t, stackInfo.Deployment)
+				require.NotNil(t, stackInfo.Deployment)
 			},
 			RunBuild: true,
 		})
@@ -234,7 +235,7 @@ func TestAccSecrets(t *testing.T) {
 			},
 			Quick: true,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
+				require.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
 
 				isEncrypted := func(v interface{}) bool {
 					if m, ok := v.(map[string]interface{}); ok {

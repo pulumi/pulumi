@@ -162,7 +162,7 @@ func TestOutputState_nil(t *testing.T) {
 
 	var os *OutputState
 
-	assert.NotNil(t, os.elementType())
+	require.NotNil(t, os.elementType())
 	assert.Empty(t, os.dependencies())
 
 	// should be a no-op

@@ -139,7 +139,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	require.NoError(t, err)
 
 	p := loadProject(t, tempdir)
-	assert.NotNil(t, p)
+	require.NotNil(t, p)
 
 	assert.Equal(t, p.Name.String(), numericProjectName)
 
