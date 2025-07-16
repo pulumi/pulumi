@@ -31,10 +31,11 @@ from typing import (
     TypedDict,
 )
 import grpc
+from semver import VersionInfo
 
 from ._cmd import CommandResult, OnOutput
 from ._config import ConfigValue, ConfigMap
-from .errors import StackNotFoundError
+from .errors import StackNotFoundError, InvalidVersionError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
 from ._server import LanguageServer
@@ -544,6 +545,22 @@ class Stack:
             change_summary=summary_events[0].resource_changes,
         )
 
+    def _check_inline_support(self) -> None:
+        """
+        Check the installed version of the Pulumi CLI supports inline programs for refresh and destroy operations.
+        """
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.181.
+        ver = VersionInfo(3)
+        if self.workspace.pulumi_command.version is not None:
+            ver = self.workspace.pulumi_command.version
+
+        # 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
+        if not (ver >= VersionInfo(3, 181)):
+            raise InvalidVersionError(
+                "The installed version of the CLI does not support this operation. Please "
+                "upgrade to at least version 3.181.0."
+            )
+
     def refresh(
         self,
         parallel: Optional[int] = None,
@@ -568,6 +585,7 @@ class Stack:
         suppress_progress: Optional[bool] = None,
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
+        program: Optional[PulumiFn] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -598,6 +616,7 @@ class Stack:
         :param config_file: Path to a Pulumi config file to use for this update.
         :returns: RefreshResult
         """
+        program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["refresh"]
 
@@ -616,7 +635,32 @@ class Stack:
         args.extend(extra_args)
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        kind = ExecKind.LOCAL.value
+        on_exit = None
+
+        if program:
+            self._check_inline_support()
+
+            kind = ExecKind.INLINE.value
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+            language_server = LanguageServer(program)
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
+                language_server, server
+            )
+
+            port = server.add_insecure_port(address="127.0.0.1:0")
+            server.start()
+
+            def on_exit_fn():
+                server.stop(0)
+
+            on_exit = on_exit_fn
+
+            args.append(f"--client=127.0.0.1:{port}")
+
         args.extend(["--exec-kind", kind])
 
         log_watcher_thread = None
@@ -634,7 +678,7 @@ class Stack:
         try:
             refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
 
         # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
         # load the project file.
@@ -802,6 +846,7 @@ class Stack:
         preview_only: Optional[bool] = None,
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
+        program: Optional[PulumiFn] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -831,6 +876,7 @@ class Stack:
         :param config_file: Path to a Pulumi config file to use for this update.
         :returns: DestroyResult
         """
+        program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["destroy"]
 
@@ -848,7 +894,32 @@ class Stack:
         args.extend(extra_args)
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        kind = ExecKind.LOCAL.value
+        on_exit = None
+
+        if program:
+            self._check_inline_support()
+
+            kind = ExecKind.INLINE.value
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+            language_server = LanguageServer(program)
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
+                language_server, server
+            )
+
+            port = server.add_insecure_port(address="127.0.0.1:0")
+            server.start()
+
+            def on_exit_fn():
+                server.stop(0)
+
+            on_exit = on_exit_fn
+
+            args.append(f"--client=127.0.0.1:{port}")
+
         args.extend(["--exec-kind", kind])
 
         log_watcher_thread = None
@@ -866,7 +937,7 @@ class Stack:
         try:
             destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
 
         # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
         # load the project file.
