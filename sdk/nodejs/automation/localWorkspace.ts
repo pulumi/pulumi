@@ -25,7 +25,16 @@ import { ExecutorImage, RemoteGitProgramArgs } from "./remoteWorkspace";
 import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { TagMap } from "./tag";
-import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
+import {
+    ConfigOptions,
+    Deployment,
+    GetAllConfigOptions,
+    PluginInfo,
+    PulumiFn,
+    StackSummary,
+    WhoAmIResult,
+    Workspace,
+} from "./workspace";
 
 const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
@@ -308,7 +317,7 @@ export class LocalWorkspace implements Workspace {
                     loadProjectSettings(wsOpts.workDir);
                 } catch (e) {
                     // If it failed to find the project settings file, set a default project.
-                    if (e.toString().includes("failed to find project settings")) {
+                    if ((e as Error).toString().includes("failed to find project settings")) {
                         wsOpts.projectSettings = defaultProject(args.projectName);
                     } else {
                         throw e;
@@ -652,9 +661,16 @@ export class LocalWorkspace implements Workspace {
      *  The key contains a path to a property in a map or list to get
      */
     async getConfig(stackName: string, key: string, path?: boolean): Promise<ConfigValue> {
+        return this.getConfigWithOptions(stackName, key, { path });
+    }
+
+    async getConfigWithOptions(stackName: string, key: string, opts?: ConfigOptions): Promise<ConfigValue> {
         const args = ["config", "get"];
-        if (path) {
+        if (opts?.path) {
             args.push("--path");
+        }
+        if (opts?.configFile) {
+            args.push("--config-file", opts.configFile);
         }
         args.push(key, "--json", "--stack", stackName);
         const result = await this.runPulumiCmd(args);
@@ -670,8 +686,54 @@ export class LocalWorkspace implements Workspace {
      *  The stack to read config from
      */
     async getAllConfig(stackName: string): Promise<ConfigMap> {
-        const result = await this.runPulumiCmd(["config", "--show-secrets", "--json", "--stack", stackName]);
-        return JSON.parse(result.stdout);
+        return this.getAllConfigWithOptions(stackName, { showSecrets: true });
+    }
+
+    /**
+     * Returns the config map for the specified stack name, scoped to the
+     * current workspace. {@link LocalWorkspace} reads this config from the
+     * matching `Pulumi.stack.yaml` file.
+     *
+     * @param stackName
+     *  The stack to read config from
+     * @param opts
+     *  The options to use for the config lookup, including path and configFile options
+     */
+    async getAllConfigWithOptions(stackName: string, opts?: GetAllConfigOptions): Promise<ConfigMap> {
+        const args = ["config"];
+        if (opts) {
+            if (opts.configFile) {
+                args.push("--config-file", opts.configFile);
+            }
+            if (opts.showSecrets) {
+                args.push("--show-secrets");
+            }
+        }
+        args.push("--json");
+        args.push("--stack");
+        args.push(stackName);
+
+        const result = await this.runPulumiCmd(args);
+        const val: ConfigMap = {};
+
+        // If there was a command error, throw it this is needed to avoid
+        // AssertionError [ERR_ASSERTION]: Missing expected rejection.
+        if (result.err) {
+            throw new Error(result.stderr);
+        }
+
+        try {
+            const config = JSON.parse(result.stdout);
+            for (const key in config) {
+                if (Object.prototype.hasOwnProperty.call(config, key)) {
+                    val[key] = config[key];
+                }
+            }
+        } catch {
+            // If we can't parse the JSON, return an empty config map
+            return val;
+        }
+        return val;
     }
 
     /**
@@ -689,9 +751,32 @@ export class LocalWorkspace implements Workspace {
      *  The key contains a path to a property in a map or list to set
      */
     async setConfig(stackName: string, key: string, value: ConfigValue, path?: boolean): Promise<void> {
+        return this.setConfigWithOptions(stackName, key, value, { path });
+    }
+
+    /**
+     * Sets the specified key-value pair on the provided stack name, with options. {@link LocalWorkspace} writes this value to the matching config file.
+     * @param stackName
+     *  The stack to operate on
+     * @param key
+     *  The config key to set
+     * @param value
+     *  The value to set
+     * @param opts
+     *  The options to use for the config lookup
+     **/
+    async setConfigWithOptions(
+        stackName: string,
+        key: string,
+        value: ConfigValue,
+        opts?: ConfigOptions,
+    ): Promise<void> {
         const args = ["config", "set"];
-        if (path) {
+        if (opts?.path) {
             args.push("--path");
+        }
+        if (opts?.configFile) {
+            args.push("--config-file", opts.configFile);
         }
         const secretArg = value.secret ? "--secret" : "--plaintext";
         args.push(key, "--stack", stackName, secretArg, "--non-interactive", "--", value.value);
@@ -711,15 +796,28 @@ export class LocalWorkspace implements Workspace {
      *  The keys contain a path to a property in a map or list to set
      */
     async setAllConfig(stackName: string, config: ConfigMap, path?: boolean): Promise<void> {
+        return this.setAllConfigWithOptions(stackName, config, { path });
+    }
+
+    /**
+     * Sets all values in the provided config map for the specified stack name, with options. {@link LocalWorkspace} writes the config to the matching config file.
+     * @param stackName
+     *  The stack to operate on
+     * @param config
+     *  The {@link ConfigMap} to upsert against the existing config
+     * @param opts
+     *  The options to use for the config lookup
+     **/
+    async setAllConfigWithOptions(stackName: string, config: ConfigMap, opts?: ConfigOptions): Promise<void> {
         const args = ["config", "set-all", "--stack", stackName];
-        if (path) {
-            args.push("--path");
+        // Note: --path is only supported for the config set command, not config set-all
+        if (opts?.configFile) {
+            args.push("--config-file", opts.configFile);
         }
         for (const [key, value] of Object.entries(config)) {
             const secretArg = value.secret ? "--secret" : "--plaintext";
             args.push(secretArg, `${key}=${value.value}`);
         }
-
         await this.runPulumiCmd(args);
     }
 
@@ -736,9 +834,25 @@ export class LocalWorkspace implements Workspace {
      *  The key contains a path to a property in a map or list to remove
      */
     async removeConfig(stackName: string, key: string, path?: boolean): Promise<void> {
+        return this.removeConfigWithOptions(stackName, key, { path });
+    }
+
+    /**
+     * Removes the specified key-value pair on the provided stack name, with options. {@link LocalWorkspace} removes the config from the matching config file.
+     * @param stackName
+     *  The stack to operate on
+     * @param key
+     *  The config key to remove
+     * @param opts
+     *  The options to use for the config lookup
+     **/
+    async removeConfigWithOptions(stackName: string, key: string, opts?: ConfigOptions): Promise<void> {
         const args = ["config", "rm", key, "--stack", stackName];
-        if (path) {
+        if (opts?.path) {
             args.push("--path");
+        }
+        if (opts?.configFile) {
+            args.push("--config-file", opts.configFile);
         }
         await this.runPulumiCmd(args);
     }
@@ -756,9 +870,27 @@ export class LocalWorkspace implements Workspace {
      *  The keys contain a path to a property in a map or list to remove
      */
     async removeAllConfig(stackName: string, keys: string[], path?: boolean): Promise<void> {
+        return this.removeAllConfigWithOptions(stackName, keys, { path });
+    }
+
+    /**
+     * Removes all values in the provided key list for the specified stack name with options.
+     * {@link LocalWorkspace} writes this value to the matching config file.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param keys
+     *  The list of keys to remove from the underlying config
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async removeAllConfigWithOptions(stackName: string, keys: string[], opts?: ConfigOptions): Promise<void> {
         const args = ["config", "rm-all", "--stack", stackName];
-        if (path) {
+        if (opts?.path) {
             args.push("--path");
+        }
+        if (opts?.configFile) {
+            args.push("--config-file", opts.configFile);
         }
         args.push(...keys);
         await this.runPulumiCmd(args);

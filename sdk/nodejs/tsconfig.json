@@ -113,6 +113,7 @@
         "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
         "tests/runtime/testdata/nested/project/index.ts",
         "tests/automation/cmd.spec.ts",
+        "tests/automation/configOptions.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
