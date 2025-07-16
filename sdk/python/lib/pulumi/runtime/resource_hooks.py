@@ -34,6 +34,8 @@ class StubResourceHook(ResourceHook):
     """
 
     def __init__(self, name: str):
+        # Note: we intentionally do not call super here, because we do not
+        # want to kick off a registration for this hook.
         self.name = name
         self.callback = noop
         self.opts = None
