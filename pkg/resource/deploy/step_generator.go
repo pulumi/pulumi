@@ -2035,11 +2035,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, nil, fmt.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					return nil, nil, fmt.Errorf(
+						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, nil, fmt.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					return nil, nil, fmt.Errorf(
+						"%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
 		}
