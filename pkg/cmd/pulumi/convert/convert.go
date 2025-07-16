@@ -256,9 +256,28 @@ func runConvert(
 			projectJSON := string(projectBytes)
 
 			var diags hcl.Diagnostics
-			ds, err := languagePlugin.GenerateProject(
+			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
+			diags = append(diags, ds...)
+			if err != nil {
+				return diags, fmt.Errorf("error parsing pcl: %w", err)
+			}
+
+			localDependencies := map[string]string{}
+			if language == "nodejs" {
+				// If we're generating a nodejs program, we need to ensure that the
+				// local dependencies are set up correctly
+				for name, pkg := range packageBlockDescriptors {
+					if pkg.Parameterization != nil {
+						pkgName := fmt.Sprintf("@pulumi/%s", pkg.Parameterization.Name)
+						relOut := filepath.Join("sdks", pkg.Parameterization.Name)
+						localDependencies[name] = fmt.Sprintf("%s@file:%s", pkgName, relOut)
+					}
+				}
+			}
+
+			ds, err = languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), nil /*localDependencies*/)
+				strict, grpcServer.Addr(), localDependencies)
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
@@ -288,12 +307,6 @@ func runConvert(
 				})
 			if err != nil {
 				return nil, fmt.Errorf("copying files from source directory: %w", err)
-			}
-
-			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
-			diags = append(diags, ds...)
-			if err != nil {
-				return diags, fmt.Errorf("error parsing pcl: %w", err)
 			}
 
 			err = generateAndLinkSdksForPackages(
@@ -545,10 +558,15 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
+		packageSource := pkg.Name
+		if pkg.Version != nil {
+			packageSource += "@" + pkg.Version.String()
+		}
+
 		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
 			pctx,
-			pkg.Name,
-			pkg.Parameterization.Value,
+			packageSource,
+			pkg.Parameterization,
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)

@@ -778,7 +778,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 func SchemaFromSchemaSourceValueArgs(
 	pctx *plugin.Context,
 	packageSource string,
-	parameterizationValue []byte,
+	parameterization *schema.ParameterizationDescriptor,
 ) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
@@ -798,12 +798,19 @@ func SchemaFromSchemaSourceValueArgs(
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close()
+
+	defer func() {
+		contract.IgnoreError(pctx.Host.CloseProvider(p))
+	}()
 
 	var request plugin.GetSchemaRequest
-	if parameterizationValue != nil {
+	if parameterization != nil {
 		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeValue{Value: parameterizationValue},
+			Parameters: &plugin.ParameterizeValue{
+				Name:    parameterization.Name,
+				Version: parameterization.Version,
+				Value:   parameterization.Value,
+			},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)

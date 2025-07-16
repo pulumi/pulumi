@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs
+  description: Fix converting program to NodeJS when it depends on multiple parameterized packages
