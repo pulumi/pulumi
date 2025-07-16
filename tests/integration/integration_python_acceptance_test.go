@@ -755,12 +755,12 @@ python = "^3.9"
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/17877
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestUvWindowsError(t *testing.T) {
 	if runtime.GOOS != "windows" {
-		t.Parallel()
+		t.Skip()
 	}
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
