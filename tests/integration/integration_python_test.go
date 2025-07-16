@@ -1576,8 +1576,9 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	// terraform converter 1.2.1 uses terraform-provider 0.8.1
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "1.2.1")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.1")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir", "requirements.txt"))
