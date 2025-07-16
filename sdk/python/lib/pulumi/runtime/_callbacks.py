@@ -147,7 +147,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result_props = await serialize_properties(result.props, {})
 
             result_opts = (
-                await self._transformation_resource_options(result.opts)
+                await self._transformation_resource_options(result.opts, request.name)
                 if result.opts is not None
                 else None
             )
@@ -407,6 +407,11 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.version:
             ropts.version = opts.version
 
+        if opts.hooks:
+            from .resource_hooks import _binding_from_proto
+
+            ropts.hooks = _binding_from_proto(opts.hooks)
+
         return ropts
 
     def _alias(self, alias: alias_pb2.Alias) -> Union[str, Alias]:
@@ -431,7 +436,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         return a
 
     async def _transformation_resource_options(
-        self, opts: ResourceOptions
+        self,
+        opts: ResourceOptions,
+        resource_name: str,
     ) -> resource_pb2.TransformResourceOptions:
         from ._depends_on import (
             _resolve_depends_on_urns,
@@ -440,6 +447,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             _create_custom_timeouts,
             _create_provider_ref,
             create_alias_spec,
+            _prepare_resource_hooks,
         )
         from ..resource import (
             Alias,
@@ -478,6 +486,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.additional_secret_outputs:
             additional_secret_outputs = list(opts.additional_secret_outputs)
 
+        hooks = await _prepare_resource_hooks(opts.hooks, resource_name)
+
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,
             custom_timeouts=custom_timeouts,
@@ -485,6 +495,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             ignore_changes=ignore_changes,
             replace_on_changes=replace_on_changes,
             additional_secret_outputs=additional_secret_outputs,
+            hooks=hooks,
         )
 
         if opts.deleted_with is not None:
