@@ -1090,5 +1090,6 @@ func TestConsoleCommandMissingStack(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	stdout, _ := e.RunCommand("pulumi", "console", "--stack", "no-org/no-project/this-does-not-exist")
-	assert.Contains(t, stdout, "Stack 'this-does-not-exist' does not exist. Run `pulumi stack init` to create a new stack.")
+	assert.Contains(t, stdout,
+		"Stack 'this-does-not-exist' does not exist. Run `pulumi stack init` to create a new stack.")
 }
