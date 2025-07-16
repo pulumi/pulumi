@@ -3,6 +3,9 @@ environments:
   test-org-2/default/env: true
   test-org/default/env: true
   test-org/default/env-2: true
+  test-org/project-a/env: true
+  test-org/project-a/env-2: true
+  test-org/project-b/env: true
   test-user/default/env: true
   test-user/default/env-2: true
 
@@ -12,6 +15,9 @@ default/env
 default/env-2
 test-org/default/env
 test-org/default/env-2
+test-org/project-a/env
+test-org/project-a/env-2
+test-org/project-b/env
 test-org-2/default/env
 
 ---

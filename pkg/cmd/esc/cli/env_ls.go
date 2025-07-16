@@ -39,10 +39,15 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 			}
 
 			sort.Slice(allEnvs, func(i, j int) bool {
-				if allEnvs[i].Organization == allEnvs[j].Organization {
-					return allEnvs[i].Name < allEnvs[j].Name
+				ei, ej := allEnvs[i], allEnvs[j]
+
+				if ei.Organization == ej.Organization {
+					if ei.Project == ej.Project {
+						return ei.Name < ej.Name
+					}
+					return ei.Project < ej.Project
 				}
-				return allEnvs[i].Organization < allEnvs[j].Organization
+				return ei.Organization < ej.Organization
 			})
 
 			for _, e := range allEnvs {
