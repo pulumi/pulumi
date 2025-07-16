@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix a panic in the `console` command when a non-existant stack was passed as a --stack argument
