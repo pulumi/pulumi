@@ -269,7 +269,10 @@ func (op TestOp) runWithContext(
 		return plan, nil, errors.Join(errs...)
 	}
 
-	if !opts.SkipDisplayTests {
+	// We always skip display tests on Windows to avoid issues where snapshots generated on Linux or macOS are not
+	// compatible with Windows due to e.g. line endings ("\n" vs "\r\n").
+	skipDisplayTests := opts.SkipDisplayTests || runtime.GOOS == "windows"
+	if !skipDisplayTests {
 		// base64 encode the name if it contains special characters
 		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, name); !ok && name != "" {
 			require.NoError(opts.T, err)
