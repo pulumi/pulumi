@@ -666,7 +666,7 @@ func validateTestDirArchive(t *testing.T, arch *rarchive.Archive, expected int) 
 			break
 		}
 		require.NoError(t, err)
-		assert.NotNil(t, blob)
+		require.NotNil(t, blob)
 
 		// Check for duplicates
 		_, ok := subs[name]
@@ -725,7 +725,7 @@ perferendis doloribus asperiores repellat…
 func assertAssetTextEquals(t *testing.T, asset *rasset.Asset, expect string) {
 	blob, err := asset.Read()
 	require.NoError(t, err)
-	assert.NotNil(t, blob)
+	require.NotNil(t, blob)
 	assertAssetBlobEquals(t, blob, expect)
 }
 

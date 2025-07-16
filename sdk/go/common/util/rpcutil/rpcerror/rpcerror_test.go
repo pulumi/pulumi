@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -67,9 +68,7 @@ func TestWrap(t *testing.T) {
 
 	assert.Equal(t, codes.Aborted, rpcErr.Code())
 	assert.Equal(t, "fourth error", rpcErr.Message())
-	if !assert.NotNil(t, rpcErr.Cause()) {
-		t.FailNow()
-	}
+	require.NotNil(t, rpcErr.Cause())
 
 	cause := rpcErr.Cause()
 	assert.Equal(t, "third error: second error: first error", cause.Message())
@@ -92,9 +91,7 @@ func TestWrapWithoutBase(t *testing.T) {
 
 	assert.Equal(t, codes.Unauthenticated, rpcErr.Code())
 	assert.Equal(t, "second error", rpcErr.Message())
-	if !assert.NotNil(t, rpcErr.Cause()) {
-		t.FailNow()
-	}
+	require.NotNil(t, rpcErr.Cause())
 
 	cause := rpcErr.Cause()
 	assert.Equal(t, "first error", cause.Message())
@@ -109,9 +106,8 @@ func TestFromErrorRoundtrip(t *testing.T) {
 	// This scenario is exactly what RPC clients will see if they receive
 	// an error off the wire
 	rpcErr, ok := FromError(status.Err())
-	if !assert.True(t, ok) || !assert.NotNil(t, rpcErr) {
-		t.FailNow()
-	}
+	require.True(t, ok)
+	require.NotNil(t, rpcErr)
 
 	assert.Equal(t, codes.NotFound, rpcErr.Code())
 	assert.Equal(t, "this is a raw gRPC error", rpcErr.Message())
@@ -120,9 +116,8 @@ func TestFromErrorRoundtrip(t *testing.T) {
 	// This is an elaborate no-op, but it's a different code path so it's still
 	// useful to test
 	rpcErrAgain, ok := FromError(rpcErr)
-	if !assert.True(t, ok) || !assert.NotNil(t, rpcErr) {
-		t.FailNow()
-	}
+	require.True(t, ok)
+	require.NotNil(t, rpcErr)
 
 	assert.Equal(t, codes.NotFound, rpcErrAgain.Code())
 	assert.Equal(t, "this is a raw gRPC error", rpcErrAgain.Message())
@@ -135,17 +130,15 @@ func TestErrorString(t *testing.T) {
 	err := errors.New("oh no")
 	withCause := Wrap(codes.NotFound, err, "thing failed")
 	unwrapped, ok := FromError(withCause)
-	if !assert.True(t, ok) || !assert.NotNil(t, unwrapped) {
-		t.FailNow()
-	}
+	assert.True(t, ok)
+	require.NotNil(t, unwrapped)
 
 	assert.Equal(t, "thing failed: oh no", unwrapped.Error())
 
 	withoutCause := New(codes.NotFound, "thing failed 2")
 	unwrapped, ok = FromError(withoutCause)
-	if !assert.True(t, ok) || !assert.NotNil(t, unwrapped) {
-		t.FailNow()
-	}
+	require.True(t, ok)
+	require.NotNil(t, unwrapped)
 
 	assert.Equal(t, "thing failed 2", unwrapped.Error())
 }

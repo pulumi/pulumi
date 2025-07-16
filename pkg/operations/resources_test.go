@@ -50,29 +50,25 @@ func TestTodo(t *testing.T) {
 	// Table child
 	table, ok := components.GetChild("cloud:table:Table", "todo")
 	assert.True(t, ok)
-	if !assert.NotNil(t, table) {
-		return
-	}
+	require.NotNil(t, table)
 	assert.Equal(t, 2, len(table.State.Inputs))
 	assert.Equal(t, "id", table.State.Inputs["primaryKey"].StringValue())
 	assert.Equal(t, 1, len(table.Children))
 	table, ok = table.GetChild("aws:dynamodb/table:Table", "todo")
 	assert.True(t, ok)
-	assert.NotNil(t, table)
+	require.NotNil(t, table)
 
 	// Endpoint child
 	endpoint, ok := components.GetChild("cloud:http:HttpEndpoint", "todo")
 	assert.True(t, ok)
-	if !assert.NotNil(t, endpoint) {
-		return
-	}
+	require.NotNil(t, endpoint)
 	assert.Equal(t, 5, len(endpoint.State.Inputs))
 	assert.Equal(t,
 		"https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/", endpoint.State.Inputs["url"].StringValue())
 	assert.Equal(t, 14, len(endpoint.Children))
 	endpoint, ok = endpoint.GetChild("aws:apigateway/restApi:RestApi", "todo")
 	assert.True(t, ok)
-	assert.NotNil(t, endpoint)
+	require.NotNil(t, endpoint)
 
 	// Nonexistant resource.
 	r, ok := endpoint.GetChild("garden:ornimentation/gnome", "stone")
@@ -89,21 +85,17 @@ func TestCrawler(t *testing.T) {
 	// Topic child
 	topic, ok := components.GetChild("cloud:topic:Topic", "countDown")
 	assert.True(t, ok)
-	if !assert.NotNil(t, topic) {
-		return
-	}
+	require.NotNil(t, topic)
 	assert.Equal(t, 0, len(topic.State.Inputs))
 	assert.Equal(t, 1, len(topic.Children))
 	topic, ok = topic.GetChild("aws:sns/topic:Topic", "countDown")
 	assert.True(t, ok)
-	assert.NotNil(t, topic)
+	require.NotNil(t, topic)
 
 	// Timer child
 	heartbeat, ok := components.GetChild("cloud:timer:Timer", "heartbeat")
 	assert.True(t, ok)
-	if !assert.NotNil(t, heartbeat) {
-		return
-	}
+	require.NotNil(t, heartbeat)
 	assert.Equal(t, 1, len(heartbeat.State.Inputs))
 	assert.Equal(t, "rate(5 minutes)", heartbeat.State.Inputs["scheduleExpression"].StringValue())
 	assert.Equal(t, 4, len(heartbeat.Children))
@@ -111,9 +103,7 @@ func TestCrawler(t *testing.T) {
 	// Function child of timer
 	function, ok := heartbeat.GetChild("cloud:function:Function", "heartbeat")
 	assert.True(t, ok)
-	if !assert.NotNil(t, function) {
-		return
-	}
+	require.NotNil(t, function)
 	assert.Equal(t, 1, len(function.State.Inputs))
 	assert.Equal(t, 3, len(function.Children))
 }

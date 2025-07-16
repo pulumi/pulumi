@@ -39,7 +39,7 @@ func TestErrorCatchingSecretsProvider_OfType_Success(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.NotNil(t, manager)
+	require.NotNil(t, manager)
 	assert.IsType(t, &errorCatchingSecretsManager{}, manager)
 	assert.True(t, delegate.ofTypeCalled)
 }

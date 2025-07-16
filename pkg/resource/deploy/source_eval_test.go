@@ -1795,7 +1795,7 @@ func TestDefaultProviders(t *testing.T) {
 				},
 			}
 			req := d.normalizeProviderRequest(providers.NewProviderRequest(tokens.Package("pkg"), nil, "", nil, nil))
-			assert.NotNil(t, req)
+			require.NotNil(t, req)
 			assert.Equal(t, &v1, req.Version())
 			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
 			assert.Equal(t, map[string][]byte{"key": []byte("expected-checksum-value")}, req.PluginChecksums())

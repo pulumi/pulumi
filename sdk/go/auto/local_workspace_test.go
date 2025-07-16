@@ -206,15 +206,15 @@ func TestRemoveWithForce(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -292,15 +292,15 @@ func TestNewStackLocalSource(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx, optup.UserAgent(agent))
@@ -405,15 +405,15 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -2391,15 +2391,15 @@ func TestStructuredOutput(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	var upEvents []events.EngineEvent
@@ -3270,8 +3270,8 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
 		t.FailNow()
 	}
-	assert.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
-	assert.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
+	require.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
+	require.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
 
 	// cleanup
 	_, err = s.Destroy(ctx)

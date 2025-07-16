@@ -27,7 +27,7 @@ func TestSessionCache(t *testing.T) {
 	// Create a default session in us-west-2.
 	sess1, err := getAWSSession("us-west-2", "", "", "", "", false)
 	require.NoError(t, err)
-	assert.NotNil(t, sess1)
+	require.NotNil(t, sess1)
 	assert.Equal(t, "us-west-2", *sess1.Config.Region)
 
 	// Create a session with explicit credentials and ensure they're set.

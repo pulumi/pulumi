@@ -659,8 +659,8 @@ func TestImportPlan(t *testing.T) {
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
-		assert.NotNil(t, r.Created)
-		assert.NotNil(t, r.Modified)
+		require.NotNil(t, r.Created)
+		require.NotNil(t, r.Modified)
 	}
 }
 
@@ -1395,8 +1395,8 @@ func TestImportDefaultProvider(t *testing.T) {
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
-		assert.NotNil(t, r.Created)
-		assert.NotNil(t, r.Modified)
+		require.NotNil(t, r.Created)
+		require.NotNil(t, r.Modified)
 	}
 }
 

@@ -42,7 +42,7 @@ func TestPrealloc(t *testing.T) {
 		t.Parallel()
 
 		result := Prealloc[string](5)
-		assert.NotNil(t, result)
+		require.NotNil(t, result)
 		assert.Equal(t, 0, len(result))
 		assert.Equal(t, 5, cap(result))
 	})

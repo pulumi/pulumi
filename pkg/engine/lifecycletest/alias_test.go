@@ -1305,7 +1305,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Run an update to create the starting A resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 
@@ -1313,7 +1313,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 
@@ -1321,7 +1321,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	// Because we made the B first that's what should end up in the state file
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[1].URN)
@@ -1408,7 +1408,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	// Run an update for initial state with "resA", "resB with resA as its parent", and "resB with no parent".
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1419,7 +1419,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1483,7 +1483,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
 	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
 	assert.False(t, snap.Resources[0].Custom)
@@ -1501,7 +1501,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that A is now a custom
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	// Now two because we'll have a provider now
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), snap.Resources[1].Type)
@@ -1520,7 +1520,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	// Assert that A is now a custom
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	// Back to one because the provider should have been cleaned up as well
 	assert.Len(t, snap.Resources, 1)
 	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
@@ -1595,7 +1595,7 @@ func TestParentAlias(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 
 	// Now run again with the rearranged parents, we don't expect to see any replaces
@@ -1610,7 +1610,7 @@ func TestParentAlias(t *testing.T) {
 			return err
 		}, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 }
 
@@ -1671,7 +1671,7 @@ func TestEmptyParentAlias(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 
 	// Now run again with the rearranged parents, we don't expect to see any replaces
@@ -1686,7 +1686,7 @@ func TestEmptyParentAlias(t *testing.T) {
 			return err
 		}, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 }
 
@@ -1793,7 +1793,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	// Run an update for initial state with "resA", "resB", and "resC".
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1810,7 +1810,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
@@ -1823,7 +1823,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
@@ -1925,7 +1925,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// Run an update for initial state with "resA"
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1934,7 +1934,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resAX"), snap.Resources[1].URN)
@@ -1944,7 +1944,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)

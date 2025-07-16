@@ -56,7 +56,7 @@ func TestStackCommands(t *testing.T) {
 
 		stacks, current := integration.GetStacks(e)
 		assert.Equal(t, 1, len(stacks))
-		assert.NotNil(t, current)
+		require.NotNil(t, current)
 		if current == nil {
 			t.Logf("stacks: %v, current: %v", stacks, current)
 			t.Fatalf("No current stack?")

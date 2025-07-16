@@ -307,7 +307,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			plugin, err := determinePackageDependency(pipInstallTest)
 			require.NoError(t, err)
-			assert.NotNil(t, plugin)
+			require.NotNil(t, plugin)
 			assert.Equal(t, "thing1", plugin.Name)
 			assert.Equal(t, "vthing2", plugin.Version)
 			assert.Equal(t, "thing3", plugin.Server)
