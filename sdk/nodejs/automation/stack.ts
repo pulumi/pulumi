@@ -16,6 +16,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as pathlib from "path";
 import * as readline from "readline";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
@@ -462,6 +463,17 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Check the installed version of the Pulumi CLI supports inline programs for refresh and destroy operations.
+     */
+    private checkInlineSupport(): void {
+        const ver = semver.parse(this.workspace.pulumiVersion) ?? semver.parse("3.0.0")!;
+        // 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
+        if (semver.lt(ver, "3.181.0")) {
+            throw new Error(`destroy with inline programs requires Pulumi version >= 3.181.0`);
+        }
+    }
+
+    /**
      * Compares the current stack’s resource state with the state known to exist
      * in the actual cloud provider. Any such changes are adopted into the
      * current stack.
@@ -535,13 +547,46 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            this.checkInlineSupport();
+
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
         args.push("--exec-kind", kind);
 
         let refResult: CommandResult;
         try {
             refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
+            onExit(didError);
             await cleanUp(logFile, await logPromise);
         }
 
@@ -722,13 +767,46 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            this.checkInlineSupport();
+
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
         args.push("--exec-kind", kind);
 
         let desResult: CommandResult;
         try {
             desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
+            onExit(didError);
             await cleanUp(logFile, await logPromise);
         }
 
