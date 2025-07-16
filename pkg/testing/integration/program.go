@@ -55,7 +55,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -730,9 +729,7 @@ func GetLogs(
 	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
-	if !assert.NotNil(t, tree) {
-		return nil
-	}
+	require.NotNil(t, tree)
 
 	cfg := map[config.Key]string{
 		config.MustMakeKey(provider, "region"): region,

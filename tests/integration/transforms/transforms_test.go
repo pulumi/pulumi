@@ -61,10 +61,10 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundRes3 = true
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			optionalPrefix := res.Inputs["prefix"]
-			assert.NotNil(t, optionalPrefix)
+			require.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix)
 			length := res.Inputs["length"]
-			assert.NotNil(t, length)
+			require.NotNil(t, length)
 			// length should be secret
 			secret, ok := length.(map[string]interface{})
 			assert.True(t, ok, "length should be a secret")
@@ -80,7 +80,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 			optionalPrefix := res.Inputs["prefix"]
-			assert.NotNil(t, optionalPrefix)
+			require.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix)
 		}
 		// "res5" should have mutated the length
@@ -88,7 +88,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundRes5 = true
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			length := res.Inputs["length"]
-			assert.NotNil(t, length)
+			require.NotNil(t, length)
 			assert.Equal(t, 20.0, length)
 		}
 		// "res6" should have changed the provider

@@ -95,7 +95,7 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	require.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NotNil(t, sm)
 }
 
 func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
@@ -127,7 +127,7 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	require.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NotNil(t, sm)
 }
 
 func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
@@ -149,7 +149,7 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	require.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NotNil(t, sm)
 }
 
 func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {

@@ -121,7 +121,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -217,10 +217,10 @@ func TestStackOutputsNodeJS(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Equal(t, 0, len(stackRes.Inputs))
 				assert.Equal(t, 2, len(stackRes.Outputs))
@@ -400,16 +400,16 @@ func TestStackParenting(t *testing.T) {
 			//
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 
 				urns := make(map[string]resource.URN)
 				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
+					require.NotNil(t, res)
 
 					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
@@ -455,7 +455,7 @@ func TestStackDependencyGraph(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
 			sawFirst := false
@@ -692,7 +692,7 @@ func TestExplicitProvider(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 
 			// Expect one stack resource, two provider resources, and two custom resources.
@@ -718,7 +718,7 @@ func TestExplicitProvider(t *testing.T) {
 				case "a":
 					prov, err := providers.ParseReference(res.Provider)
 					require.NoError(t, err)
-					assert.NotNil(t, defaultProvider)
+					require.NotNil(t, defaultProvider)
 					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
 					require.NoError(t, err)
 					assert.Equal(t, defaultRef.String(), prov.String())
@@ -726,15 +726,15 @@ func TestExplicitProvider(t *testing.T) {
 				case "b":
 					prov, err := providers.ParseReference(res.Provider)
 					require.NoError(t, err)
-					assert.NotNil(t, explicitProvider)
+					require.NotNil(t, explicitProvider)
 					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
 					require.NoError(t, err)
 					assert.Equal(t, explicitRef.String(), prov.String())
 				}
 			}
 
-			assert.NotNil(t, defaultProvider)
-			assert.NotNil(t, explicitProvider)
+			require.NotNil(t, defaultProvider)
+			require.NotNil(t, explicitProvider)
 		},
 	})
 }
@@ -818,7 +818,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
+			require.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
@@ -835,7 +835,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	brokenTestOptions := testOptions.With(integration.ProgramTestOptions{
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
+			require.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
@@ -880,7 +880,7 @@ func TestCloudSecretProvider(t *testing.T) {
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
+			require.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "cloud")
 
 			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
@@ -945,7 +945,7 @@ func TestEnumOutputNode(t *testing.T) {
 		Dir:          filepath.Join("enums", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
 			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
 			assert.Equal(t, "My Burgundy Rubber tree is from Pulumi Planters Inc.", stack.Outputs["mySentence"])
@@ -971,10 +971,10 @@ func TestConstructSlowNode(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 			}
@@ -1030,7 +1030,7 @@ func optsForConstructPlainNode(
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -1150,7 +1150,7 @@ func TestGetResourceNode(t *testing.T) {
 		Dependencies:             []string{"@pulumi/pulumi"},
 		AllowEmptyPreviewChanges: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
 
 			out, ok := stack.Outputs["secret"].(map[string]interface{})
@@ -1447,7 +1447,7 @@ func TestMainOverridesPackageJSON(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "This is the entrypoint from Pulumi.yaml", stack.Outputs["text"])
 		},
 	})
@@ -1827,7 +1827,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - `base` resource
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
-				assert.NotNil(t, stackInfo.Deployment)
+				require.NotNil(t, stackInfo.Deployment)
 				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
 			},
 		})
@@ -1852,7 +1852,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - `base` resource
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
-				assert.NotNil(t, stackInfo.Deployment)
+				require.NotNil(t, stackInfo.Deployment)
 				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
 			},
 		})

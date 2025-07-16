@@ -41,7 +41,7 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
 
 	require.NoError(t, err)
-	assert.NotNil(t, credentials)
+	require.NotNil(t, credentials)
 
 	var creds map[string]interface{}
 	err = json.Unmarshal([]byte(os.Getenv("GOOGLE_CREDENTIALS")), &creds)
@@ -78,7 +78,7 @@ func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
 
 	require.NoError(t, err)
-	assert.NotNil(t, credentials)
+	require.NotNil(t, credentials)
 
 	token, err := credentials.TokenSource.Token()
 	require.NoError(t, err)

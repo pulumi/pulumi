@@ -832,7 +832,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 		},
 	}
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 7 resources
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
@@ -968,7 +968,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 		},
 	}
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 1, len(snap.Resources)) // expect no default provider to be created for the invoke
 }
 

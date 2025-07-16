@@ -664,7 +664,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	}
 
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 
 	// Change the property Foo, should now replace
 	resourceProperties = &testResourceInputs{
@@ -673,7 +673,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	expectedOps = []display.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
 
 	snap = p.Run(t, snap)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 }
 
 type remoteComponentArgs struct {

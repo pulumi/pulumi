@@ -60,7 +60,7 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 		[]string{mappingFile},
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
@@ -113,7 +113,7 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
@@ -174,7 +174,7 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "otherProvider", nil /*hint*/)
@@ -235,7 +235,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "yetAnotherProvider", nil /*hint*/)
@@ -295,7 +295,7 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
@@ -381,7 +381,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
@@ -449,7 +449,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
@@ -517,7 +517,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
@@ -581,7 +581,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "aws", &MapperPackageHint{
@@ -648,7 +648,7 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 		nil, /*mappings*/
 	)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 

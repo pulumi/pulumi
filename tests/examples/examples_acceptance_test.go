@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
@@ -39,7 +40,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Simple runtime validation that just ensures the checkpoint was written and read.
-				assert.NotNil(t, stackInfo.Deployment)
+				require.NotNil(t, stackInfo.Deployment)
 			},
 			RunBuild: true,
 			CloudURL: integration.MakeTempBackend(t),

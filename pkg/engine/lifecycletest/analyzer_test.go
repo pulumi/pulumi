@@ -272,7 +272,7 @@ func TestResourceRemediation(t *testing.T) {
 
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 
 	// Ensure the rewritten properties have been applied to the inputs:
@@ -330,7 +330,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 
 	// Expect no error, valid snapshot, two resources:
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 }
 
@@ -371,8 +371,8 @@ func TestRemediateFailure(t *testing.T) {
 
 	project := p.GetProject()
 	snap, res := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
-	assert.NotNil(t, snap)
+	require.NotNil(t, res)
+	require.NotNil(t, snap)
 	assert.Equal(t, 0, len(snap.Resources))
 }
 

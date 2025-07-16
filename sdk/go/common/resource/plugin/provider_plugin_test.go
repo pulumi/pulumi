@@ -464,7 +464,7 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			require.NoError(t, err)
 
 			// Assert.
-			assert.NotNil(t, got, "Delete was not called")
+			require.NotNil(t, got, "Delete was not called")
 			assert.Equal(t, tt.want, got)
 		})
 	}
