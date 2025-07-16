@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Allow transforms to set resource hooks

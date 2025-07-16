@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: pkg
-  description: Update pulumi-java to v1.16.0
