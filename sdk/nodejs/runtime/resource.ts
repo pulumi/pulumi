@@ -33,6 +33,7 @@ import {
     ResourceHookBinding,
     ResourceHookOptions,
     URN,
+    ResourceHookFunction,
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
@@ -993,8 +994,10 @@ export async function prepareResource(
  *
  * @param binding The resource hook binding.
  * @param namePrefix The name prefix to use for plain function hooks.
+ *
+ * @internal
  */
-async function prepareHooks(
+export async function prepareHooks(
     binding: ResourceHookBinding | undefined,
     namePrefix: string,
 ): Promise<resproto.RegisterResourceRequest.ResourceHooksBinding | undefined> {
@@ -1025,6 +1028,62 @@ async function prepareHooks(
     }
 
     return req;
+}
+
+/**
+ * StubResourceHook is a resource hook that does nothing.
+ *
+ * Note that we do not subclass {@link ResourceHook} here, because we do
+ * not want to call the super constructor, which would cause a hook
+ * registration.
+ *
+ * We need to reconstruct {@link ResourceHook} instances to set on the
+ * {@link ResourceOption}, but we only have the name available to us. We also
+ * know that these hooks have already been registered, so we can construct
+ * dummy hooks here, that will later be serialized back into list of hook
+ * names.
+ *
+ * @internal
+ */
+export class StubResourceHook {
+    public name: string;
+    public callback: ResourceHookFunction;
+    public opts?: ResourceHookOptions;
+    public __registered: Promise<void>;
+    public readonly __pulumiResourceHook: boolean = true;
+
+    constructor(name: string) {
+        this.name = name;
+        this.callback = () => {
+            return;
+        };
+        this.__registered = Promise.resolve();
+    }
+
+    public static isInstance(obj: any): obj is ResourceHook {
+        return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
+    }
+}
+
+/**
+ * Convert a hook binding from a protobuf message to an {@link ResourceHookBinding} with {@link StubHook}s.
+ *
+ * @internal
+ */
+export function hookBindingFromProto(
+    protoBinding: resproto.RegisterResourceRequest.ResourceHooksBinding | undefined,
+): ResourceHookBinding | undefined {
+    if (protoBinding) {
+        const resourceHooks: ResourceHookBinding = {};
+        resourceHooks.beforeCreate = protoBinding.getBeforeCreateList().map((n) => new StubResourceHook(n));
+        resourceHooks.afterCreate = protoBinding.getAfterCreateList().map((n) => new StubResourceHook(n));
+        resourceHooks.beforeUpdate = protoBinding.getBeforeUpdateList().map((n) => new StubResourceHook(n));
+        resourceHooks.afterUpdate = protoBinding.getAfterUpdateList().map((n) => new StubResourceHook(n));
+        resourceHooks.beforeDelete = protoBinding.getBeforeDeleteList().map((n) => new StubResourceHook(n));
+        resourceHooks.afterDelete = protoBinding.getAfterDeleteList().map((n) => new StubResourceHook(n));
+        return resourceHooks;
+    }
+    return;
 }
 
 function addAll<T>(to: Set<T>, from: Set<T>) {
