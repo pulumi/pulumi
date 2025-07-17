@@ -320,11 +320,12 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 		logging.V(8).Infof("Decompressing %q", header.Name)
 
 		path := filepath.Clean(header.Name)
-		if !filepath.IsLocal(path) {
-			return fmt.Errorf("refusing to write non-local path %q", path)
-		}
-
 		target := filepath.Join(dst, path)
+
+		// Ensure the target path is within the destination directory
+		if !strings.HasPrefix(target, filepath.Clean(dst)+string(os.PathSeparator)) {
+			return fmt.Errorf("refusing to write outside destination directory: %q", target)
+		}
 
 		// Ensure that we can write the directory
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
