@@ -1349,6 +1349,45 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestTSWithPackageExports(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "ts-with-package-exports"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestESMWithPackageExports(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-with-package-exports"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestTSTypeStripping(t *testing.T) {
+	t.Parallel()
+	// Skip this test if Node.js version is too old for automatic type stripping
+	nodeVersionOutput, err := exec.Command("node", "--version").Output()
+	require.NoError(t, err, "unable to determine Node.js version: %v", nodeVersionOutput)
+	nodeVersionStr := strings.TrimSpace(string(nodeVersionOutput))
+	nodeVersionStr = strings.TrimPrefix(nodeVersionStr, "v")
+	var major, minor int
+	_, err = fmt.Sscanf(nodeVersionStr, "%d.%d", &major, &minor)
+	require.NoError(t, err, "unable to parse Node.js version %s", nodeVersionStr)
+	if major < 23 || (major == 23 && minor < 6) {
+		t.Skipf("Skipping: Node.js version %d.%d is less than 23.6", major, minor)
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel:   true,
+		Dir:          filepath.Join("nodejs", "ts-type-stripping"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestTSWithPackageJsonInParentDir(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "ts-with-package-json-in-parent-dir"),

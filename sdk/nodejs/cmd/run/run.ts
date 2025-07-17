@@ -224,6 +224,19 @@ function tracingIsEnabled(tracingUrl: string | boolean): boolean {
     return nonzeroLength && experimentalEnabled;
 }
 
+/**
+ * Check if the entrypoint actually exists on disk, and emit a warning if it does not.
+ */
+function resolveEntrypoint(packageRoot: string, entrypoint: string, fallback: string): string {
+    const p = path.join(packageRoot, entrypoint);
+    if (fs.existsSync(p)) {
+        return p;
+    } else {
+        log.warn(`Could not find entry point '${entrypoint}' specified in package.json; using '${fallback}' instead`);
+        return fallback;
+    }
+}
+
 /** @internal */
 export async function run(
     argv: minimist.ParsedArgs,
@@ -271,15 +284,28 @@ export async function run(
 
     // If there is no entrypoint set in Pulumi.yaml via the main
     // option, look for an entrypoint defined in package.json
-    if (!hasEntrypoint && packageObject["main"]) {
-        const packageMainPath = path.join(packageRoot, packageObject["main"]);
-        if (fs.existsSync(packageMainPath)) {
-            program = packageMainPath;
+    if (!hasEntrypoint) {
+        // Check if package.json specifies an entrypoint via `exports`
+        // https://nodejs.org/api/packages.html#package-entry-points
+        if (typeof packageObject.exports === "string") {
+            program = resolveEntrypoint(packageRoot, packageObject.exports, program);
+        } else if (typeof packageObject.exports === "object") {
+            const mainExport = packageObject.exports["."];
+            if (typeof mainExport === "string") {
+                program = resolveEntrypoint(packageRoot, mainExport, program);
+            } else if (typeof mainExport === "object") {
+                program = resolveEntrypoint(
+                    packageRoot,
+                    mainExport.default || mainExport.require || mainExport.import,
+                    program,
+                );
+            }
         } else {
-            log.warn(
-                `Could not find entry point '${packageMainPath}' specified in package.json; ` +
-                    `using '${program}' instead`,
-            );
+            // Finally check if `main` is set in package.json
+            // https://nodejs.org/api/packages.html#main-entry-point-export
+            if (packageObject["main"]) {
+                program = resolveEntrypoint(packageRoot, packageObject["main"], program);
+            }
         }
     }
 
@@ -469,14 +495,12 @@ ${defaultErrorMessage(err)}`,
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
                 // Use the same behavior for loading the main entrypoint as `node <program>`.
-                // See https://github.com/nodejs/node/blob/master/lib/internal/modules/run_main.js#L74.
-                const mainPath: string =
-                    require("module").Module._findPath(path.resolve(program), null, true) || program;
-                let main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
-                const stat = await fspromises.lstat(url.fileURLToPath(main));
+                // See https://github.com/nodejs/node/blob/v20.x/lib/internal/modules/run_main.js#L23
+                let mainPath = await fspromises.realpath(path.resolve(program));
+                const stat = await fspromises.lstat(mainPath);
                 const isDirectory = stat.isDirectory();
-                // If we're using ts-node/esm, we need to ensure the path to the entrypoint is a file, not a directory.
-                if (isDirectory && tsNodeESMRequire !== "") {
+                // We need to ensure the path to the entrypoint is a file, not a directory.
+                if (isDirectory) {
                     let index;
                     if (fs.existsSync(path.join(mainPath, "index.js"))) {
                         index = "index.js";
@@ -489,13 +513,9 @@ ${defaultErrorMessage(err)}`,
                     } else {
                         throw new Error(`No entrypoint found in ${mainPath}`);
                     }
-                    if (main.startsWith("file:")) {
-                        const mainFilePath = url.fileURLToPath(main);
-                        main = url.pathToFileURL(path.join(mainFilePath, index)).href;
-                    } else {
-                        main = path.join(main, index);
-                    }
+                    mainPath = path.join(mainPath, index);
                 }
+                const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
