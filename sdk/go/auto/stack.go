@@ -641,9 +641,12 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 		o.ApplyOption(refreshOpts)
 	}
 
-	args, err := refreshOptsToCmd(refreshOpts, s, true /*isPreview*/)
+	args, server, err := refreshOptsToCmd(refreshOpts, s, true /*isPreview*/)
 	if err != nil {
 		return res, fmt.Errorf("failed to prepare preview refresh command: %w", err)
+	}
+	if server != nil {
+		defer contract.IgnoreClose(server)
 	}
 
 	var summaryEvents []apitype.SummaryEvent
@@ -712,9 +715,12 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		o.ApplyOption(refreshOpts)
 	}
 
-	args, err := refreshOptsToCmd(refreshOpts, s, false /*isPreview*/)
+	args, server, err := refreshOptsToCmd(refreshOpts, s, false /*isPreview*/)
 	if err != nil {
 		return res, fmt.Errorf("failed to prepare refresh command: %w", err)
+	}
+	if server != nil {
+		defer contract.IgnoreClose(server)
 	}
 
 	if len(refreshOpts.EventStreams) > 0 {
@@ -765,7 +771,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	return res, nil
 }
 
-func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) ([]string, error) {
+func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) ([]string, io.Closer, error) {
 	args := slice.Prealloc[string](len(o.Target))
 
 	args = append(args, "refresh")
@@ -829,22 +835,23 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) ([]string
 	args = append(args, s.remoteArgs()...)
 
 	kind := constant.ExecKindAutoLocal
+	var closer io.Closer
 	if program := s.Workspace().Program(); program != nil {
 		if s.Workspace().PulumiCommand().Version().LT(semver.Version{Major: 3, Minor: 181}) {
-			return nil, errors.New("Pulumi CLI version >= 3.181.0 is required to use --client with refresh")
+			return nil, nil, errors.New("Pulumi CLI version >= 3.181.0 is required to use --client with refresh")
 		}
 
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		defer contract.IgnoreClose(server)
+		closer = server
 
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
 	}
 	args = append(args, "--exec-kind="+kind)
 
-	return args, nil
+	return args, closer, nil
 }
 
 func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (PreviewResult, error) {
@@ -860,9 +867,12 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 		o.ApplyOption(destroyOpts)
 	}
 
-	args, err := destroyOptsToCmd(destroyOpts, s)
+	args, server, err := destroyOptsToCmd(destroyOpts, s)
 	if err != nil {
 		return res, fmt.Errorf("failed to prepare preview destroy command: %w", err)
+	}
+	if server != nil {
+		defer contract.IgnoreClose(server)
 	}
 	args = append(args, "--preview-only")
 
@@ -984,9 +994,12 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		o.ApplyOption(destroyOpts)
 	}
 
-	args, err := destroyOptsToCmd(destroyOpts, s)
+	args, server, err := destroyOptsToCmd(destroyOpts, s)
 	if err != nil {
 		return res, fmt.Errorf("failed to prepare destroy command: %w", err)
+	}
+	if server != nil {
+		defer contract.IgnoreClose(server)
 	}
 	args = append(args, "--yes", "--skip-preview")
 
@@ -1048,7 +1061,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	return res, nil
 }
 
-func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) ([]string, error) {
+func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) ([]string, io.Closer, error) {
 	args := slice.Prealloc[string](len(destroyOpts.Target))
 
 	args = append(args, "destroy")
@@ -1101,16 +1114,17 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) ([]string, erro
 	}
 
 	kind := constant.ExecKindAutoLocal
+	var closer io.Closer
 	if program := s.Workspace().Program(); program != nil {
 		if s.Workspace().PulumiCommand().Version().LT(semver.Version{Major: 3, Minor: 181}) {
-			return nil, errors.New("Pulumi CLI version >= 3.181.0 is required to use --client with destroy")
+			return nil, nil, errors.New("Pulumi CLI version >= 3.181.0 is required to use --client with destroy")
 		}
 
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		defer contract.IgnoreClose(server)
+		closer = server
 
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
 	}
@@ -1119,7 +1133,7 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) ([]string, erro
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
 
-	return args, nil
+	return args, closer, nil
 }
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().

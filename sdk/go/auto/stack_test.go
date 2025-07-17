@@ -265,7 +265,7 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args, err := destroyOptsToCmd(
+	args, _, err := destroyOptsToCmd(
 		&optdestroy.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
 		},
@@ -293,7 +293,7 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args, err := refreshOptsToCmd(
+	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
 		},
@@ -320,11 +320,11 @@ func TestRefreshOptsDiff(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
 	require.NoError(t, err)
 
-	argsUp, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
+	argsUp, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
 	require.NoError(t, err)
 	assert.Contains(t, argsUp, "--diff", argsUp)
 
-	argsPreview, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
+	argsPreview, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
 	require.NoError(t, err)
 	assert.Contains(t, argsPreview, "--diff", argsUp)
 }
@@ -343,7 +343,7 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args, err := refreshOptsToCmd(
+	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ClearPendingCreates: true,
 		},
