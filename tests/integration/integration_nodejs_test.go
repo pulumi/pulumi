@@ -2951,3 +2951,17 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20068
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsOnBeforeExit(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "before-exit"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+	})
+}
