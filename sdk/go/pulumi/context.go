@@ -423,6 +423,16 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
 			opts.RetainOnDelete = flatten(rpcReq.Options.RetainOnDelete)
 			opts.Version = rpcReq.Options.Version
+
+			if rpcReq.Options.Hooks != nil {
+				opts.Hooks = &ResourceHookBinding{}
+				opts.Hooks.BeforeCreate = makeStubHooks(rpcReq.Options.Hooks.GetBeforeCreate())
+				opts.Hooks.AfterCreate = makeStubHooks(rpcReq.Options.Hooks.GetAfterCreate())
+				opts.Hooks.BeforeUpdate = makeStubHooks(rpcReq.Options.Hooks.GetBeforeUpdate())
+				opts.Hooks.AfterUpdate = makeStubHooks(rpcReq.Options.Hooks.GetAfterUpdate())
+				opts.Hooks.BeforeDelete = makeStubHooks(rpcReq.Options.Hooks.GetBeforeDelete())
+				opts.Hooks.AfterDelete = makeStubHooks(rpcReq.Options.Hooks.GetAfterDelete())
+			}
 		}
 
 		args := &ResourceTransformArgs{
@@ -535,6 +545,14 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
 			rpcRes.Options.RetainOnDelete = &opts.RetainOnDelete
 			rpcRes.Options.Version = opts.Version
+
+			if opts.Hooks != nil {
+				mHooks, err := marshalResourceHooks(ctx.ctx, opts.Hooks)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling hooks: %w", err)
+				}
+				rpcRes.Options.Hooks = mHooks
+			}
 		}
 
 		return rpcRes, nil
@@ -1661,41 +1679,12 @@ func (ctx *Context) registerResource(
 		// Collect all the hooks, waiting for their registrations.
 		var hooks *pulumirpc.RegisterResourceRequest_ResourceHooksBinding
 		if options.Hooks != nil {
-			hooks = &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
-			hooksValue := reflect.ValueOf(options.Hooks).Elem()
-			protoHooksValue := reflect.ValueOf(hooks).Elem()
-			hookFieldNames := []string{
-				"BeforeCreate",
-				"AfterCreate",
-				"BeforeUpdate",
-				"AfterUpdate",
-				"BeforeDelete",
-				"AfterDelete",
+			mHooks, hooksErr := marshalResourceHooks(ctx.ctx, options.Hooks)
+			if hooksErr != nil {
+				logging.V(9).Infof("marshalResourceHooks(%s, %s): error: %v", t, name, err)
+				return
 			}
-			for _, fieldName := range hookFieldNames {
-				hookSliceField := hooksValue.FieldByName(fieldName)
-				if !hookSliceField.IsValid() || hookSliceField.IsNil() {
-					continue
-				}
-				protoField := protoHooksValue.FieldByName(fieldName)
-				if !protoField.IsValid() || !protoField.CanSet() {
-					continue
-				}
-				for i := range hookSliceField.Len() {
-					hook := hookSliceField.Index(i)
-					if hook.IsNil() {
-						continue
-					}
-					// Wait for the hook registration to complete.
-					hookPtr := hook.Interface().(*ResourceHook)
-					_, err = hookPtr.registered.Result(ctx.ctx)
-					if err != nil {
-						return
-					}
-					hookName := reflect.ValueOf(hookPtr.Name)
-					protoField.Set(reflect.Append(protoField, hookName))
-				}
-			}
+			hooks = mHooks
 		}
 
 		// Prepare the inputs for an impending operation.
