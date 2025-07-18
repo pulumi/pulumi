@@ -2886,6 +2886,19 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }
 
+func TestNodeInvalidComponentName(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("namespaced_component_invalid_name")
+	installNodejsProviderDependencies(t, e.CWD)
+	_, stderr := e.RunCommandExpectError("pulumi", "package", "get-schema", ".")
+	require.Contains(t, stderr,
+		"Error: Invalid provider name '-namespaced-component' in package.json. Provider names must start with a letter")
+}
+
 func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	t.Parallel()
 
