@@ -224,12 +224,18 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 		return nil, stack.FormatDeploymentDeserializationError(err, stackRef.Name().String())
 	}
 
+	stk, err := b.client.GetStack(ctx, stackID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stack tags for %s: %w", stackRef.Name().String(), err)
+	}
+
 	return &deploy.Target{
 		Name:         stackID.Stack,
 		Organization: tokens.Name(stackID.Owner),
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
+		Tags:         stk.Tags,
 	}, nil
 }
 

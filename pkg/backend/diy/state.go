@@ -92,6 +92,7 @@ func (b *diyBackend) getTarget(
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
+		Tags:         nil, // TODO: diy backend does not support tags yet, so we just return nil here.
 	}, nil
 }
 

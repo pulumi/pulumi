@@ -500,6 +500,7 @@ func newUpdateSource(ctx context.Context,
 		Config:           config,
 		ConfigSecretKeys: target.Config.SecureKeys(),
 		DryRun:           opts.DryRun,
+		Tags:             target.Tags,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err

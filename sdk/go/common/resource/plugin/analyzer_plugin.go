@@ -243,6 +243,7 @@ func NewPolicyAnalyzer(
 			Stack:        opts.Stack,
 			Project:      opts.Project,
 			Organization: opts.Organization,
+			Tags:         opts.Tags,
 		}
 		mconfig := make(map[string]string, len(opts.Config))
 		for k, v := range opts.Config {
