@@ -51,14 +51,16 @@ var Languages = map[string]string{
 
 // Quick sanity tests for each downstream language to check that a minimal example can be created and run.
 func TestLanguageNewSmoke(t *testing.T) {
-	// make sure we can download needed plugins
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
-	//nolint:paralleltest // pulumi new is not parallel safe
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
+			t.Parallel()
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
+
+			// make sure we can download needed plugins
+			e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
 			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
@@ -78,11 +80,13 @@ func TestLanguageNewSmoke(t *testing.T) {
 
 // Quick sanity tests that YAML convert works.
 func TestYamlConvertSmoke(t *testing.T) {
-	// make sure we can download the yaml converter plugin
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
+
+	// make sure we can download the yaml converter plugin
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
 	e.ImportDirectory("testdata/random_yaml")
 
@@ -233,10 +237,13 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 }
 
 func TestPackageGetSchema(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
+
+	// make sure we can download needed plugins
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -325,10 +332,13 @@ backend:
 }
 
 func TestPackageGetMappingToFile(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
+
+	// make sure we can download needed plugins
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -352,10 +362,13 @@ func TestPackageGetMappingToFile(t *testing.T) {
 }
 
 func TestPackageGetMapping(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
+
+	// make sure we can download needed plugins
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -375,13 +388,17 @@ func TestPackageGetMapping(t *testing.T) {
 
 // Quick sanity tests for each downstream language to check that import works.
 func TestLanguageImportSmoke(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
-	//nolint:paralleltest // pulumi new is not parallel safe
 	for _, runtime := range Runtimes {
+		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
+			t.Parallel()
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
+
+			// make sure we can download needed plugins
+			e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
 			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
@@ -399,9 +416,9 @@ func TestLanguageImportSmoke(t *testing.T) {
 }
 
 // Test that PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION disables plugin acquisition in convert.
-//
-//nolint:paralleltest // changes env vars and plugin cache
 func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -506,15 +523,15 @@ func TestRelativePluginPath(t *testing.T) {
 
 // Quick sanity tests for https://github.com/pulumi/pulumi/issues/16248. Ensure we can run plugins and auto-fetch them.
 func TestPluginRun(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	removeRandomFromLocalPlugins := func() {
-		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
-	}
-	removeRandomFromLocalPlugins()
+	// make sure we can download needed plugins
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 
 	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
@@ -590,13 +607,12 @@ func TestInstall(t *testing.T) {
 // A smoke test to ensure that secrets providers are correctly initialized and persisted to state upon stack creation.
 // We check also that when stack configuration exists before stack initialization, any compatible secrets provider
 // configuration is respected and not clobbered or overwritten.
+//
+// Tests seem to leak passphrases when run in parallel. CI fails with: smoke_test.go:690:
+// STDERR: error: could not create secrets manager for new stack: incorrect passphrase
+//
+//nolint:paralleltest
 func TestSecretsProvidersInitializationSmoke(t *testing.T) {
-	// Make sure we can download needed plugins
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
-	// Ensure we have a passphrase set for the default secrets provider.
-	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase")
-
 	// This example salt must be generated using the test passphrase configured above.
 	testEncryptionSalt := "v1:3ZcVRCMzEbk=:v1:A4wYnaSVLIkK0AhS:2SrOnSDh9wVGmoyZt97KYJN3WfDDHA=="
 
@@ -627,14 +643,17 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest
 	for _, runtime := range Runtimes {
 		for _, c := range cases {
 			name := fmt.Sprintf("%s %s", runtime, c.name)
-
 			t.Run(name, func(t *testing.T) {
 				e := ptesting.NewEnvironment(t)
 				defer e.DeleteIfNotFailed()
+
+				// Make sure we can download needed plugins
+				e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+				// Ensure we have a passphrase set for the default secrets provider
+				e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=test-passphrase")
 
 				projectDir := filepath.Join(e.RootPath, "project")
 				err := os.Mkdir(projectDir, 0o700)
@@ -698,17 +717,8 @@ backend:
 // used in favour of and to restore stack YAML configuration when it is absent
 // or empty and the PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER environment variable
 // is set.
-//
-//nolint:paralleltest // pulumi new is not parallel safe, and we set environment variables
 func TestSecretsProvidersFallbackSmoke(t *testing.T) {
-	// Make sure we can download needed plugins
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
-	// Ensure we have a passphrase set for the default secrets provider.
-	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase")
-
-	// Enable secrets manager fallback.
-	t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", "true")
+	t.Parallel()
 
 	operations := [][]string{
 		{"up", "--yes"},
@@ -718,10 +728,17 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
-			//nolint:paralleltest
+			t.Parallel()
 
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
+
+			// Make sure we can download needed plugins
+			e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+			// Ensure we have a passphrase set for the default secrets provider
+			e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=test-passphrase")
+			// Enable secrets manager fallback
+			e.Env = append(e.Env, "PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER=true")
 
 			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
@@ -766,9 +783,9 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 
 // Quick sanity tests to check that import for a package picks up the right version. This uses Go as the language choice
 // shouldn't matter for the test.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestImportVersionSmoke(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -802,9 +819,9 @@ func TestImportVersionSmoke(t *testing.T) {
 }
 
 // Test that the warning for upgrading and then running a refresh is shown.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestRefreshUpgradeWarning(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -843,9 +860,9 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 }
 
 // Test that the warning for upgrading and then running a destroy is shown.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarning(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -895,9 +912,9 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 
 // Test that the warning for upgrading and then running a destroy is shown, also taking into account changes to
 // parameterized packages.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarningParameterized(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -1022,18 +1039,16 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 
 // Quick sanity tests to check that import for a parameterized package works. This uses python as the language choice
 // shouldn't matter for the test. Regression test for https://github.com/pulumi/pulumi/issues/17289.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestImportParameterizedSmoke(t *testing.T) {
+	t.Parallel()
 	testImportParameterizedSmoke(t, true)
 }
 
 // Quick sanity tests to check that import for a parameterized package works when there's no existing state. This uses
 // python as the language choice shouldn't matter for the test. Regression test for
 // https://github.com/pulumi/pulumi/issues/18449.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestImportParameterizedSmokeFreshState(t *testing.T) {
+	t.Parallel()
 	testImportParameterizedSmoke(t, false)
 }
 
@@ -1098,9 +1113,9 @@ func TestConsoleCommandMissingStack(t *testing.T) {
 
 // TestPulumiPackageAddForTerraformProvider checks that the CLI can correctly resolve a
 // parameterized provider all the way from the registry to a python environment.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
