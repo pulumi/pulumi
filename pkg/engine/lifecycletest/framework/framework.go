@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/go-test/deep"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,54 +93,72 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 
 	// Manifests and SecretsManagers are known to differ because we don't thread them through for the Journal code.
 
-	// if len(journal.PendingOperations) != len(manager.PendingOperations) {
-	// 	return errors.New("journal and manager pending operations differ")
-	// }
+	if len(journal.PendingOperations) != len(manager.PendingOperations) {
+		return errors.New("journal and manager pending operations differ")
+	}
 
-	// for _, jop := range journal.PendingOperations {
-	// 	found := false
-	// 	for _, mop := range manager.PendingOperations {
-	// 		if reflect.DeepEqual(jop, mop) {
-	// 			found = true
-	// 			break
-	// 		}
-	// 	}
-	// 	if !found {
-	// 		return fmt.Errorf("journal and manager pending operations differ, %v not found in manager", jop)
-	// 	}
-	// }
+	for _, jop := range journal.PendingOperations {
+		found := false
+		for _, mop := range manager.PendingOperations {
+			if reflect.DeepEqual(jop, mop) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("journal and manager pending operations differ, %v not found in manager", jop)
+		}
+	}
 
-	// if len(journal.Resources) != len(manager.Resources) {
-	// 	var journalResources string
-	// 	for _, r := range journal.Resources {
-	// 		journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
-	// 	}
-	// 	var managerResources string
-	// 	for _, r := range manager.Resources {
-	// 		managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
-	// 	}
-	// 	return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
-	// 		len(journal.Resources), journalResources, len(manager.Resources), managerResources)
-	// }
+	if len(journal.Resources) != len(manager.Resources) {
+		var journalResources string
+		for _, r := range journal.Resources {
+			journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		var managerResources string
+		for _, r := range manager.Resources {
+			managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
+			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
+	}
 
-	// for _, jr := range journal.Resources {
-	// 	found := false
-	// 	for _, mr := range manager.Resources {
-	// 		if reflect.DeepEqual(jr, mr) {
-	// 			found = true
-	// 			break
-	// 		}
-	// 	}
-	// 	if !found {
-	// 		for _, jr := range journal.Resources {
-	// 			fmt.Printf("Journal resource: %v\n", jr)
-	// 		}
-	// 		for _, mr := range manager.Resources {
-	// 			fmt.Printf("Manager resource: %v\n", mr)
-	// 		}
-	// 		return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
-	// 	}
-	// }
+	for _, jr := range journal.Resources {
+		found := false
+		for _, mr := range manager.Resources {
+			if len(mr.Dependencies) == 0 {
+				fmt.Println("fixing it up")
+				mr.Dependencies = nil
+			}
+			if len(mr.PropertyDependencies) == 0 {
+				mr.PropertyDependencies = nil
+			}
+			if len(jr.Dependencies) == 0 {
+				jr.Dependencies = nil
+			}
+			if len(jr.PropertyDependencies) == 0 {
+				jr.PropertyDependencies = nil
+			}
+			if diff := deep.Equal(jr, mr); diff != nil {
+				fmt.Println(jr.Dependencies == nil, mr.Dependencies == nil)
+				if jr.URN == mr.URN {
+					fmt.Println("different resources with same URN:", diff)
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			for _, jr := range journal.Resources {
+				fmt.Printf("Journal resource: %v\n", jr)
+			}
+			for _, mr := range manager.Resources {
+				fmt.Printf("Manager resource: %v\n", mr)
+			}
+			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
+		}
+	}
 
 	return nil
 }
