@@ -256,28 +256,9 @@ func runConvert(
 			projectJSON := string(projectBytes)
 
 			var diags hcl.Diagnostics
-			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
-			diags = append(diags, ds...)
-			if err != nil {
-				return diags, fmt.Errorf("error parsing pcl: %w", err)
-			}
-
-			localDependencies := map[string]string{}
-			if language == "nodejs" {
-				// If we're generating a nodejs program, we need to ensure that the
-				// local dependencies are set up correctly
-				for name, pkg := range packageBlockDescriptors {
-					if pkg.Parameterization != nil {
-						pkgName := "@pulumi/" + pkg.Parameterization.Name
-						relOut := filepath.Join("sdks", pkg.Parameterization.Name)
-						localDependencies[name] = fmt.Sprintf("%s@file:%s", pkgName, relOut)
-					}
-				}
-			}
-
-			ds, err = languagePlugin.GenerateProject(
+			ds, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), localDependencies)
+				strict, grpcServer.Addr(), nil)
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
@@ -307,6 +288,12 @@ func runConvert(
 				})
 			if err != nil {
 				return nil, fmt.Errorf("copying files from source directory: %w", err)
+			}
+
+			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
+			diags = append(diags, ds...)
+			if err != nil {
+				return diags, fmt.Errorf("error parsing pcl: %w", err)
 			}
 
 			err = generateAndLinkSdksForPackages(
@@ -547,6 +534,7 @@ func generateAndLinkSdksForPackages(
 	pkgs map[string]*schema.PackageDescriptor,
 	generateOnly bool,
 ) error {
+	generatedPackages := map[string]*schema.Package{}
 	for _, pkg := range pkgs {
 		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
 		if err != nil {
@@ -596,6 +584,19 @@ func generateAndLinkSdksForPackages(
 
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 
+		generatedPackages[pkg.Parameterization.Name] = pkgSchema
+	}
+
+	// prepare linking
+	for _, pkgSchema := range generatedPackages {
+		err := packagecmd.PrepareLocalPackageForLinking(convertOutputDirectory, language, pkgSchema)
+		if err != nil {
+			return fmt.Errorf("failed to prepare package for linking: %w", err)
+		}
+	}
+
+	// link the generated SDKs
+	for pkgName, pkgSchema := range generatedPackages {
 		// If we don't change the working directory, the workspace instance (when
 		// reading project etc) will not be correct when doing the local sdk
 		// linking, causing errors.
@@ -609,7 +610,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
-		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
+		sdkRelPath := filepath.Join("sdks", pkgName)
 		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
 			Workspace: ws,
 			Language:  language,
