@@ -1343,7 +1343,7 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
 	require.NoError(t, err)
 
-	assert.Len(t, destSnapshot.Resources, 0)
+	require.Len(t, destSnapshot.Resources, 0)
 
 	require.Len(t, sourceSnapshot.Resources, 4)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),

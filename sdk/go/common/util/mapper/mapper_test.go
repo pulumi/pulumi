@@ -133,12 +133,12 @@ func TestMapperEncode(t *testing.T) {
 	// Nils
 	m, err = md.Encode(nil)
 	require.NoError(t, err)
-	assert.Len(t, m, 0)
+	require.Len(t, m, 0)
 
 	// Nil (interface)
 	m, err = md.Encode((AnInterface)(nil))
 	require.NoError(t, err)
-	assert.Len(t, m, 0)
+	require.Len(t, m, 0)
 
 	// Structs
 	m, err = md.encode(reflect.ValueOf(bag))

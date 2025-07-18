@@ -110,7 +110,7 @@ func TestUntil_maxDelay(t *testing.T) {
 	assert.True(t, ok)
 	require.NoError(t, err)
 
-	assert.Len(t, afterRec.Sleeps, 100)
+	require.Len(t, afterRec.Sleeps, 100)
 	for _, d := range afterRec.Sleeps {
 		assert.LessOrEqual(t, d, maxDelay)
 	}

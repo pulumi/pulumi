@@ -1437,7 +1437,7 @@ func TestESMTSNestedSrc(t *testing.T) {
 			"test": "hello world",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			test, ok := stack.Outputs["test"]
 			assert.True(t, ok)
 			assert.Equal(t, "hello world", test)
@@ -1452,7 +1452,7 @@ func TestESMTSDefaultExport(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			helloWorld, ok := stack.Outputs["helloWorld"]
 			assert.True(t, ok)
 			assert.Equal(t, helloWorld, 123.0)
@@ -2000,7 +2000,7 @@ func TestRegression12301Node(t *testing.T) {
 			return os.Rename(jsonPath, newPath)
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			assert.Contains(t, stack.Outputs, "bar")
 			assert.Equal(t, 3.0, stack.Outputs["bar"].(float64))
 		},
@@ -2018,7 +2018,7 @@ func TestPulumiConfig(t *testing.T) {
 			"pulumi-nodejs:id": "testing123",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			assert.Contains(t, stack.Outputs, "rid")
 			assert.Equal(t, "testing123", stack.Outputs["rid"].(string))
 		},

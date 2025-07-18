@@ -124,9 +124,7 @@ func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) resource.Prop
 }
 
 func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) resource.PropertyValue {
-	if !assert.Len(t, x.Traversal, 1) {
-		return resource.NewNullProperty()
-	}
+	require.Len(t, x.Traversal, 1)
 
 	switch x.RootName {
 	case "parent":
@@ -149,27 +147,21 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.Proper
 func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.PropertyValue {
 	switch x.Name {
 	case "fileArchive":
-		if !assert.Len(t, x.Args, 1) {
-			return resource.NewNullProperty()
-		}
+		require.Len(t, x.Args, 1)
 		expr := renderExpr(t, x.Args[0])
 		if !assert.True(t, expr.IsString()) {
 			return resource.NewNullProperty()
 		}
 		return resource.NewStringProperty(expr.StringValue())
 	case "fileAsset":
-		if !assert.Len(t, x.Args, 1) {
-			return resource.NewNullProperty()
-		}
+		require.Len(t, x.Args, 1)
 		expr := renderExpr(t, x.Args[0])
 		if !assert.True(t, expr.IsString()) {
 			return resource.NewNullProperty()
 		}
 		return resource.NewStringProperty(expr.StringValue())
 	case "secret":
-		if !assert.Len(t, x.Args, 1) {
-			return resource.NewNullProperty()
-		}
+		require.Len(t, x.Args, 1)
 		return resource.MakeSecret(renderExpr(t, x.Args[0]))
 	default:
 		assert.Failf(t, "", "unexpected call to %v", x.Name)
@@ -191,9 +183,10 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
-			if assert.Len(t, diags, 0) && assert.Equal(t, cty.Bool, v.Type()) {
-				protect = v.True()
-			}
+			require.Len(t, diags, 0)
+			require.Equal(t, cty.Bool, v.Type())
+
+			protect = v.True()
 		}
 		if r.Options.Parent != nil {
 			v := renderExpr(t, r.Options.Parent)
@@ -336,9 +329,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
-			if !assert.Len(t, p.Nodes, 1) {
-				t.Fatal()
-			}
+			require.Len(t, p.Nodes, 1)
 
 			res, isResource := p.Nodes[0].(*pcl.Resource)
 			if !assert.True(t, isResource) {

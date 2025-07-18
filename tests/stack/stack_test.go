@@ -936,7 +936,7 @@ func TestEmptyStackRm(t *testing.T) {
 		var v3deployment apitype.DeploymentV3
 		err = json.Unmarshal(deployment.Deployment, &v3deployment)
 		require.NoError(t, err)
-		assert.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
+		require.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
 
 		// Now try to remove the stack. This should succeed, even though there is the one resource in the stack.
 		e.RunCommand("pulumi", "stack", "rm", "--yes")

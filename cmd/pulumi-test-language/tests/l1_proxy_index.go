@@ -20,7 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -41,7 +41,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 5, "expected 5 outputs")
+					require.Len(l, outputs, 5, "expected 5 outputs")
 					AssertPropertyMapMember(l, outputs, "l", resource.MakeSecret(resource.NewNumberProperty(1)))
 					AssertPropertyMapMember(l, outputs, "m", resource.MakeSecret(resource.NewBoolProperty(true)))
 					AssertPropertyMapMember(l, outputs, "c", resource.MakeSecret(resource.NewStringProperty("config")))

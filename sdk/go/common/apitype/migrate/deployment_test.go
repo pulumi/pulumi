@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeploymentV1ToV2(t *testing.T) {
@@ -39,7 +40,7 @@ func TestDeploymentV1ToV2(t *testing.T) {
 
 	v2 := UpToDeploymentV2(v1)
 	assert.Equal(t, v1.Manifest, v2.Manifest)
-	assert.Len(t, v1.Resources, 2)
+	require.Len(t, v1.Resources, 2)
 	assert.Equal(t, resource.URN("a"), v1.Resources[0].URN)
 	assert.Equal(t, resource.URN("b"), v1.Resources[1].URN)
 }

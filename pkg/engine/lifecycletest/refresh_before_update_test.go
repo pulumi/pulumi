@@ -122,7 +122,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	// First update.
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -141,7 +141,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	}
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -158,7 +158,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	readToken++
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -176,7 +176,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	p.Options.Refresh = true
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -194,7 +194,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	p.Options.Refresh = false
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -215,7 +215,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		ID:   "imported-id",
 	}})}}
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
