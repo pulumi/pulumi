@@ -84,19 +84,16 @@ func TestUvVirtualenvPath(t *testing.T) {
 func TestUvVersion(t *testing.T) {
 	t.Parallel()
 
-	uv, err := newUv(".", "")
-	require.NoError(t, err)
-
 	for _, versionString := range []string{
 		"uv 0.4.26",
 		"uv 0.4.26 (Homebrew 2024-10-23)",
 		"uv 0.4.26 (d2cd09bbd 2024-10-25)",
 	} {
-		v, err := uv.parseUvVersion(versionString)
+		v, err := ParseUvVersion(versionString)
 		require.NoError(t, err)
 		require.Equal(t, semver.MustParse("0.4.26"), v)
 	}
 
-	_, err = uv.parseUvVersion("uv 0.4.25")
+	_, err := ParseUvVersion("uv 0.4.25")
 	require.ErrorContains(t, err, "less than the minimum required version")
 }

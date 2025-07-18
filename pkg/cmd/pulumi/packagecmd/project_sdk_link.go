@@ -31,6 +31,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -360,8 +361,8 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 		return nil
 	}
 	options := proj.Runtime.Options()
-	if toolchain, ok := options["toolchain"]; ok {
-		if tc, ok := toolchain.(string); ok {
+	if toolchainOpt, ok := options["toolchain"]; ok {
+		if tc, ok := toolchainOpt.(string); ok {
 			var depAddCmd *exec.Cmd
 			switch tc {
 			case "pip":
@@ -386,6 +387,26 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 				depAddCmd = exec.Command("poetry", args...)
 			case "uv":
 				args := []string{"add"}
+
+				// Starting with version 0.8.0, uv will automatically add
+				// packages in subdirectories as workspace members. However the
+				// generated SDK might not have a `pyproject.toml`, which is
+				// required for uv workspace members. To add the generated SDK
+				// as a normal dependency, we can run `uv add --no-workspace`,
+				// but this flag is only available on version 0.8.0 and up.
+				cmd := exec.Command("uv", "--version")
+				versionString, err := cmd.Output()
+				if err != nil {
+					return fmt.Errorf("failed to get uv version: %w", err)
+				}
+				version, err := toolchain.ParseUvVersion(string(versionString))
+				if err != nil {
+					return err
+				}
+				if version.GE(semver.MustParse("0.8.0")) {
+					args = append(args, "--no-workspace")
+				}
+
 				if !ctx.Install {
 					args = append(args, "--no-sync")
 				}
@@ -405,7 +426,7 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 				}
 			}
 		} else {
-			return fmt.Errorf("packagemanager option must be a string: %v", toolchain)
+			return fmt.Errorf("packagemanager option must be a string: %v", toolchainOpt)
 		}
 	} else {
 		// Assume pip if no packagemanager is specified
