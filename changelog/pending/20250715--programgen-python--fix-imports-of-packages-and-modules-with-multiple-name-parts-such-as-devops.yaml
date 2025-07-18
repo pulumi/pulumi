@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/python
-  description: Fix imports of packages and modules with multiple name parts, such as "devOps"
