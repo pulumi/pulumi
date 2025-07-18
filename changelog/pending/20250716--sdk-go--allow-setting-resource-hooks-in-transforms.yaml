@@ -1,4 +1,0 @@
-changes:
-  - type: feat
-    scope: sdk/go
-    description: Allow setting resource hooks in transforms
