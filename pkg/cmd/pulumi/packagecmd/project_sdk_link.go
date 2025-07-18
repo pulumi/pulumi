@@ -166,7 +166,7 @@ func PrepareLocalPackageForLinking(root string, language string, pkg *schema.Pac
 		// such that packages which we are about to link are _removed_ from the list
 		// of dependencies because after a project is generated, the package.json file
 		// points to the
-		type packageJson struct {
+		type packageJSON struct {
 			Name            string            `json:"name"`
 			DevDependencies map[string]string `json:"devDependencies"`
 			Dependencies    map[string]string `json:"dependencies"`
@@ -178,19 +178,19 @@ func PrepareLocalPackageForLinking(root string, language string, pkg *schema.Pac
 			return fmt.Errorf("error reading package.json: %w", err)
 		}
 
-		var pkgJson packageJson
-		err = json.Unmarshal(fileBytes, &pkgJson)
+		var pkgJSON packageJSON
+		err = json.Unmarshal(fileBytes, &pkgJSON)
 		if err != nil {
 			return fmt.Errorf("error unmarshalling package.json: %w", err)
 		}
 
 		// remove the package from the dependencies
-		if pkgJson.Dependencies != nil {
-			delete(pkgJson.Dependencies, getNodeJSPkgName(pkg))
+		if pkgJSON.Dependencies != nil {
+			delete(pkgJSON.Dependencies, getNodeJSPkgName(pkg))
 		}
 
 		// write the modified package.json back to disk
-		fileBytes, err = json.MarshalIndent(pkgJson, "", "  ")
+		fileBytes, err = json.MarshalIndent(pkgJSON, "", "  ")
 		if err != nil {
 			return fmt.Errorf("error marshalling package.json: %w", err)
 		}
