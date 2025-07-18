@@ -2951,3 +2951,24 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20068
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsOnBeforeExit(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "before-exit"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Len(t, stack.Deployment.Resources, 3)
+			require.Equal(t, tokens.Type("pulumi:pulumi:Stack"), stack.Deployment.Resources[0].Type)
+			require.Equal(t, tokens.Type("pulumi:providers:testprovider"), stack.Deployment.Resources[1].Type)
+			require.Equal(t, tokens.Type("testprovider:index:Named"), stack.Deployment.Resources[2].Type)
+			require.Equal(t, "beforeExit", stack.Deployment.Resources[2].URN.Name())
+		},
+	})
+}
