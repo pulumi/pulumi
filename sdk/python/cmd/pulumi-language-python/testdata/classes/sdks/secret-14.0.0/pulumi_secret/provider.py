@@ -3,7 +3,6 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import builtins as _builtins
-import copy
 import warnings
 import pulumi
 import pulumi.runtime
