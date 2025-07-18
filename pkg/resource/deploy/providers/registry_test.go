@@ -278,10 +278,10 @@ func TestNewRegistryNoOldState(t *testing.T) {
 	t.Parallel()
 
 	r := NewRegistry(&testPluginHost{}, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	r = NewRegistry(&testPluginHost{}, true, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 }
 
 func TestNewRegistryOldState(t *testing.T) {
@@ -311,7 +311,7 @@ func TestNewRegistryOldState(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
@@ -328,7 +328,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		// Now we should be able to get it
 		p, ok = r.GetProvider(ref)
 		assert.True(t, ok)
-		assert.NotNil(t, p)
+		require.NotNil(t, p)
 
 		assert.True(t, p.(*testProvider).configured)
 
@@ -360,7 +360,7 @@ func TestCRUD(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
@@ -377,7 +377,7 @@ func TestCRUD(t *testing.T) {
 		// Now we should be able to get it
 		p, ok = r.GetProvider(ref)
 		assert.True(t, ok)
-		assert.NotNil(t, p)
+		require.NotNil(t, p)
 
 		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 	}
@@ -546,7 +546,7 @@ func TestCRUDPreview(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, true, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
@@ -563,7 +563,7 @@ func TestCRUDPreview(t *testing.T) {
 		// Now we should be able to get it
 		p, ok = r.GetProvider(ref)
 		assert.True(t, ok)
-		assert.NotNil(t, p)
+		require.NotNil(t, p)
 
 		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 	}
@@ -681,7 +681,7 @@ func TestCRUDNoProviders(t *testing.T) {
 	host := newPluginHost(t, []*providerLoader{})
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
@@ -707,7 +707,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
@@ -733,7 +733,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
@@ -759,7 +759,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
@@ -786,7 +786,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
@@ -864,7 +864,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 	host := newPluginHost(t, loaders)
 
 	r := NewRegistry(host, false, nil)
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 
 	// We're going to create a few thousand providers in parallel, registering a load of aliases for each of
 	// them.

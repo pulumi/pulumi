@@ -871,7 +871,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
 		expected := newStates[r.ID]
-		assert.NotNil(t, expected)
+		require.NotNil(t, expected)
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
 		require.NoError(t, err)

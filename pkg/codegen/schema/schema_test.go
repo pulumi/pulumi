@@ -181,9 +181,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, exampleProperty)
-		assert.NotNil(t, nonPlainProperty)
-		assert.NotNil(t, nestedProperty)
+		require.NotNil(t, exampleProperty)
+		require.NotNil(t, nonPlainProperty)
+		require.NotNil(t, nestedProperty)
 
 		assert.True(t, exampleProperty.Plain)
 		assert.False(t, nonPlainProperty.Plain)
@@ -222,9 +222,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 				}
 			}
 
-			assert.NotNil(t, exampleProperty)
-			assert.NotNil(t, nonPlainProperty)
-			assert.NotNil(t, nestedProperty)
+			require.NotNil(t, exampleProperty)
+			require.NotNil(t, nonPlainProperty)
+			require.NotNil(t, nestedProperty)
 
 			assert.True(t, exampleProperty.Plain)
 			assert.False(t, nonPlainProperty.Plain)
@@ -282,7 +282,7 @@ func TestImportSpec(t *testing.T) {
 	}
 
 	for _, r := range pkg.Resources {
-		assert.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
+		require.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
 	}
 }
 
@@ -347,8 +347,8 @@ outputs:
 	err := yaml.Unmarshal([]byte(fnYaml), &functionSpec)
 	assert.Nil(t, err, "Unmarshalling should work")
 	assert.Equal(t, "Test function", functionSpec.Description)
-	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
-	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	require.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	require.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
 	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
 }
 
@@ -359,8 +359,8 @@ func TestUnmarshalJSONFunctionSpec(t *testing.T) {
 	err := json.Unmarshal([]byte(fnJSON), &functionSpec)
 	assert.Nil(t, err, "Unmarshalling should work")
 	assert.Equal(t, "Test function", functionSpec.Description)
-	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
-	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	require.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	require.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
 	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
 }
 
@@ -651,7 +651,7 @@ func TestImportResourceRef(t *testing.T) {
 				assert.True(t, ok)
 				assert.IsType(t, &ResourceType{}, plainType(name.Type))
 				resource := plainType(name.Type).(*ResourceType)
-				assert.NotNil(t, resource.Resource)
+				require.NotNil(t, resource.Resource)
 
 				for _, r := range pkg.Resources {
 					switch r.Token {
@@ -667,7 +667,7 @@ func TestImportResourceRef(t *testing.T) {
 								assert.IsType(t, &ObjectType{}, plainType(p.Type))
 
 								obj := plainType(p.Type).(*ObjectType)
-								assert.NotNil(t, obj.Properties)
+								require.NotNil(t, obj.Properties)
 							}
 						}
 					}
@@ -884,7 +884,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 				strings.Contains(diag.Summary, "pulumi is a reserved property name"),
 		)
 	}
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
@@ -926,7 +926,7 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
 	assert.Len(t, diags, 0)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
@@ -992,7 +992,7 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Len(t, diags, 0)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
@@ -1088,7 +1088,7 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Len(t, diags, 0)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
@@ -1147,7 +1147,7 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	})
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 	// assert that there is 1 warning in the diagnostics because of using ID as a property
 	assert.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
@@ -1200,7 +1200,7 @@ func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestMethods(t *testing.T) {
@@ -1217,7 +1217,7 @@ func TestMethods(t *testing.T) {
 				assert.Len(t, pkg.Resources, 1)
 				assert.Len(t, pkg.Resources[0].Methods, 1)
 
-				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
+				require.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
 				assert.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
 				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
 				assert.Equal(t, "__self__", inputs[0].Name)
@@ -1231,7 +1231,7 @@ func TestMethods(t *testing.T) {
 					objectReturnType = objectType
 				}
 
-				assert.NotNil(t, objectReturnType)
+				require.NotNil(t, objectReturnType)
 				assert.Len(t, objectReturnType.Properties, 1)
 				outputs := objectReturnType.Properties
 				assert.Equal(t, "someValue", outputs[0].Name)
@@ -1246,7 +1246,7 @@ func TestMethods(t *testing.T) {
 			filename: "good-simplified-methods.json",
 			validator: func(pkg *Package) {
 				assert.Len(t, pkg.Functions, 1)
-				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
@@ -1254,7 +1254,7 @@ func TestMethods(t *testing.T) {
 			filename: "good-simplified-methods.yml",
 			validator: func(pkg *Package) {
 				assert.Len(t, pkg.Functions, 1)
-				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
@@ -1465,7 +1465,7 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 		t.Error(err)
 	}
 
-	assert.NotNil(t, pkg.Functions[0].ReturnType)
+	require.NotNil(t, pkg.Functions[0].ReturnType)
 	objectType, ok := pkg.Functions[0].ReturnType.(*ObjectType)
 	assert.True(t, ok)
 	assert.Equal(t, NumberType, objectType.Properties[0].Type)
@@ -2324,7 +2324,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors())
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestResourceWithKeynameOverlapFunction(t *testing.T) {

@@ -614,10 +614,10 @@ func TestConstructSlowGo(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 			}
@@ -684,7 +684,7 @@ func optsForConstructPlainGo(
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -830,7 +830,7 @@ func TestGetResourceGo(t *testing.T) {
 			"bar": "this super secret is encrypted",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
 
 			out, ok := stack.Outputs["secret"].(map[string]interface{})
@@ -881,7 +881,7 @@ func TestTracePropagationGo(t *testing.T) {
 
 	store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi-update-initial.trace"))
 	require.NoError(t, err)
-	assert.NotNil(t, store)
+	require.NotNil(t, store)
 
 	t.Run("traced `go list -m -json`", func(t *testing.T) {
 		t.Parallel()
@@ -898,7 +898,7 @@ func TestTracePropagationGo(t *testing.T) {
 		}
 		tr, err := FindTrace(store, isGoListTrace)
 		require.NoError(t, err)
-		assert.NotNil(t, tr)
+		require.NotNil(t, tr)
 	})
 
 	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
@@ -954,7 +954,7 @@ func TestProjectMainGo(t *testing.T) {
 		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)

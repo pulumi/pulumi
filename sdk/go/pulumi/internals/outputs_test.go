@@ -50,7 +50,7 @@ func TestBasicOutputs(t *testing.T) {
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Nil(t, deps)
-		assert.NotNil(t, v)
+		require.NotNil(t, v)
 		assert.Equal(t, 42, v.(int))
 	}
 	{

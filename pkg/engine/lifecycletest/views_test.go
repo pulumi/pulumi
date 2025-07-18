@@ -203,7 +203,7 @@ func TestViewsBasic(t *testing.T) {
 					break
 				}
 			}
-			assert.NotNil(t, summaryEvent)
+			require.NotNil(t, summaryEvent)
 			payload := summaryEvent.Payload().(SummaryEventPayload)
 			assert.Equal(t, expected, payload.ResourceChanges)
 			return nil
@@ -408,7 +408,7 @@ func TestViewsUpdateError(t *testing.T) {
 					break
 				}
 			}
-			assert.NotNil(t, summaryEvent)
+			require.NotNil(t, summaryEvent)
 			payload := summaryEvent.Payload().(SummaryEventPayload)
 			assert.Equal(t, expected, payload.ResourceChanges)
 			return nil
@@ -561,7 +561,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 					break
 				}
 			}
-			assert.NotNil(t, summaryEvent)
+			require.NotNil(t, summaryEvent)
 			payload := summaryEvent.Payload().(SummaryEventPayload)
 			assert.Equal(t, expected, payload.ResourceChanges)
 			return nil
@@ -1633,7 +1633,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 					break
 				}
 			}
-			assert.NotNil(t, summaryEvent)
+			require.NotNil(t, summaryEvent)
 			payload := summaryEvent.Payload().(SummaryEventPayload)
 			assert.Equal(t, expected, payload.ResourceChanges)
 			return nil
@@ -1841,7 +1841,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 					break
 				}
 			}
-			assert.NotNil(t, summaryEvent)
+			require.NotNil(t, summaryEvent)
 			payload := summaryEvent.Payload().(SummaryEventPayload)
 			assert.Equal(t, expected, payload.ResourceChanges)
 			return nil

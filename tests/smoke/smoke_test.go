@@ -1081,3 +1081,61 @@ func TestParallelCgroups(t *testing.T) {
 	// Assert that the limited parallel count is 4, i.e. 1 CPU x 4.
 	assert.Equal(t, 4, limitedParallel, "Expected --parallel=4 in limited CPU context")
 }
+
+// Test for https://github.com/pulumi/pulumi/issues/20035 check --stack missing doesn't panic for the console command
+func TestConsoleCommandMissingStack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stdout, _ := e.RunCommand("pulumi", "console", "--stack", "no-org/no-project/this-does-not-exist")
+	assert.Contains(t, stdout,
+		"Stack 'this-does-not-exist' does not exist. Run `pulumi stack init` to create a new stack.")
+}
+
+// TestPulumiPackageAddForTerraformProvider checks that the CLI can correctly resolve a
+// parameterized provider all the way from the registry to a python environment.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+	e.Env = append(e.Env,
+		"PULUMI_EXPERIMENTAL=true",
+		"PULUMI_DISABLE_REGISTRY_RESOLVE=false",
+		"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
+	)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// Create a new python project based of the local random template
+	e.RunCommand("pulumi", "new", "python", "--yes")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "package", "add", "opentofu/airbytehq/airbyte@0.13.0")
+
+	e.WriteTestFile("__main__.py", `import pulumi_airbyte as airbyte
+
+example = airbyte.Provider("provider")`)
+
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// Remove files that wouldn't be checked in:
+	require.NoError(t, os.RemoveAll(filepath.Join(e.CWD, "sdks")))
+	require.NoError(t, os.RemoveAll(filepath.Join(e.CWD, "venv")))
+
+	// Create a new venv
+	e.RunCommand("python3", "-m", "venv", "venv")
+
+	// This should create the "sdks" folder, populate it and install the generated
+	// package into the new venv.
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--yes", "--expect-no-changes")
+}

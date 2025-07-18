@@ -280,7 +280,7 @@ func TestPropertyPath(t *testing.T) {
 			t.Parallel()
 
 			_, err := ParsePropertyPathStrict(c)
-			assert.NotNil(t, err)
+			require.NotNil(t, err)
 		})
 	}
 }

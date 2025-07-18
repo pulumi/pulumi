@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/new
-  description: Reflect templates published with `pulumi template publish` in the results of `pulumi new`

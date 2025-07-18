@@ -21,8 +21,11 @@ import (
 	"slices"
 	"strings"
 
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -57,7 +60,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			pkg, err := SchemaFromSchemaSource(pctx, args[0], args[1:])
+			pkg, _, err := SchemaFromSchemaSource(pctx, args[0], args[1:],
+				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}

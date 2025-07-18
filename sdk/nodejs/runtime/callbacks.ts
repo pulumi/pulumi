@@ -40,7 +40,7 @@ import {
 } from "../resource";
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
-import { mapAliasesForRequest } from "./resource";
+import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { rpcKeepAlive } from "./settings";
@@ -222,6 +222,7 @@ export class CallbackServer implements ICallbackServer {
                     delete: timeouts.getDelete(),
                 };
             }
+            ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
@@ -321,6 +322,9 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.version !== undefined) {
                         opts.setVersion(result.opts.version);
+                    }
+                    if (result.opts.hooks !== undefined) {
+                        opts.setHooks(await prepareHooks(result.opts.hooks, request.getName()));
                     }
 
                     if (request.getCustom()) {

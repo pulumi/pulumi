@@ -1,0 +1,15 @@
+{
+    "name": "ts-with-package-json-in-parent-dir",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "ts-node": "^10.9.0",
+        "typescript": "^5.8.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./other.ts"
+    }
+}

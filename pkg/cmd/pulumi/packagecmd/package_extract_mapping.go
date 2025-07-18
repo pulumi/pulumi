@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"os"
 
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -59,19 +62,20 @@ empty string.`,
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			p, err := ProviderFromSource(pctx, source)
+			registry := cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+			p, _, err := ProviderFromSource(pctx, source, registry)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
-
-			defer func() {
-				contract.IgnoreError(pctx.Host.CloseProvider(p))
-			}()
+			defer p.Provider.Close()
 
 			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
 			if len(args) > 3 {
+				if p.AlreadyParameterized {
+					return fmt.Errorf("cannot specify parameters since %s already refers to a parameterized provider", source)
+				}
 				parameters := args[3:]
-				_, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+				_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 					Parameters: &plugin.ParameterizeArgs{Args: parameters},
 				})
 				if err != nil {
@@ -79,7 +83,7 @@ empty string.`,
 				}
 			}
 
-			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
+			mapping, err := p.Provider.GetMapping(cmd.Context(), plugin.GetMappingRequest{
 				Key:      key,
 				Provider: provider,
 			})

@@ -58,7 +58,7 @@ func TestBasicOutputs(t *testing.T) {
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Nil(t, deps)
-		assert.NotNil(t, v)
+		require.NotNil(t, v)
 		assert.Equal(t, 42, v.(int))
 	}
 	{
@@ -81,7 +81,7 @@ func TestArrayOutputs(t *testing.T) {
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(arr []interface{}) (interface{}, error) {
-			assert.NotNil(t, arr)
+			require.NotNil(t, arr)
 			if assert.Equal(t, 3, len(arr)) {
 				assert.Equal(t, nil, arr[0])
 				assert.Equal(t, 0, arr[1])
@@ -116,7 +116,7 @@ func TestMapOutputs(t *testing.T) {
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(v map[string]interface{}) (interface{}, error) {
-			assert.NotNil(t, v)
+			require.NotNil(t, v)
 			assert.Equal(t, 1, v["x"])
 			assert.Equal(t, false, v["y"])
 			assert.Equal(t, "abc", v["z"])
@@ -1094,7 +1094,7 @@ func TestJSONMarshalBasic(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NotNil(t, v)
+	require.NotNil(t, v)
 	assert.Equal(t, "[0,1]", v.(string))
 }
 
@@ -1138,7 +1138,7 @@ func TestJSONUnmarshalBasic(t *testing.T) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NotNil(t, v)
+	require.NotNil(t, v)
 	assert.Equal(t, []interface{}{0.0, 1.0}, v.([]interface{}))
 }
 

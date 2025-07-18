@@ -1,5 +1,79 @@
 # Changelog
 
+## 3.184.0 (2025-07-18)
+
+
+### Features
+
+- [sdk/go] Allow setting resource hooks in transforms
+  [#20058](https://github.com/pulumi/pulumi/pull/20058)
+
+- [sdk/nodejs] Allow setting resource hooks in transforms
+  [#20057](https://github.com/pulumi/pulumi/pull/20057)
+
+
+### Bug Fixes
+
+- [auto/go] Fix refresh/destroy with inline programs and --run-program flag
+
+- [cli/package] Fix `package add` command when using uv 0.8.0 or later
+  [#20075](https://github.com/pulumi/pulumi/pull/20075)
+
+- [sdk/nodejs] Fix before exit handler
+
+- [programgen/python] Fix imports of packages and modules with multiple name parts, such as "devOps"
+  [#20053](https://github.com/pulumi/pulumi/pull/20053)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Simplify determining the Node.js entrypoint and respect package.exports
+  [#19985](https://github.com/pulumi/pulumi/pull/19985)
+
+## 3.183.0 (2025-07-16)
+
+
+### Features
+
+- [cli] Support reading v4 checkpoints/deployments
+  [#20046](https://github.com/pulumi/pulumi/pull/20046)
+
+- [cli] Allow transforms to set resource hooks
+  [#20051](https://github.com/pulumi/pulumi/pull/20051)
+
+- [protobuf] Add hooks to TransformResourceOptions
+  [#20050](https://github.com/pulumi/pulumi/pull/20050)
+
+- [auto/{go,nodejs,python}] Support --run-program for inline programs in refresh and destroy operations
+  [#19912](https://github.com/pulumi/pulumi/pull/19912)
+
+- [cli/new] Reflect templates published with `pulumi template publish` in the results of `pulumi new`
+  [#19940](https://github.com/pulumi/pulumi/pull/19940)
+
+- [sdk/nodejs] Automatic ESM configuration
+  [#19980](https://github.com/pulumi/pulumi/pull/19980)
+
+- [sdk/python] Allow setting resource hooks in transforms
+  [#20052](https://github.com/pulumi/pulumi/pull/20052)
+
+
+### Bug Fixes
+
+- [cli] Fix a panic in the `console` command when a non-existant stack was passed as a --stack argument
+  [#20043](https://github.com/pulumi/pulumi/pull/20043)
+
+- [sdk/nodejs] Try to normalize component names when auto-inferring them
+  [#20048](https://github.com/pulumi/pulumi/pull/20048)
+
+- [sdk/python/automation] Fix wrong name after stack rename
+  [#20028](https://github.com/pulumi/pulumi/pull/20028)
+
+
+### Miscellaneous
+
+- [pkg] Update pulumi-java to v1.16.0
+  [#20063](https://github.com/pulumi/pulumi/pull/20063)
+
 ## 3.182.0 (2025-07-14)
 
 

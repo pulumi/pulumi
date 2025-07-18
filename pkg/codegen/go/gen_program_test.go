@@ -504,7 +504,7 @@ resource main "auto-deploy:index:AutoDeployer" {
 	require.False(t, diags.HasErrors())
 
 	files, diags, err := GenerateProjectFiles(workspace.Project{}, program, nil)
-	assert.NotNil(t, files, "Files were generated")
+	require.NotNil(t, files, "Files were generated")
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors())
 }

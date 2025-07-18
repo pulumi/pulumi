@@ -31,6 +31,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -405,8 +407,8 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 		return nil
 	}
 	options := proj.Runtime.Options()
-	if toolchain, ok := options["toolchain"]; ok {
-		if tc, ok := toolchain.(string); ok {
+	if toolchainOpt, ok := options["toolchain"]; ok {
+		if tc, ok := toolchainOpt.(string); ok {
 			var depAddCmd *exec.Cmd
 			switch tc {
 			case "pip":
@@ -431,6 +433,26 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 				depAddCmd = exec.Command("poetry", args...)
 			case "uv":
 				args := []string{"add"}
+
+				// Starting with version 0.8.0, uv will automatically add
+				// packages in subdirectories as workspace members. However the
+				// generated SDK might not have a `pyproject.toml`, which is
+				// required for uv workspace members. To add the generated SDK
+				// as a normal dependency, we can run `uv add --no-workspace`,
+				// but this flag is only available on version 0.8.0 and up.
+				cmd := exec.Command("uv", "--version")
+				versionString, err := cmd.Output()
+				if err != nil {
+					return fmt.Errorf("failed to get uv version: %w", err)
+				}
+				version, err := toolchain.ParseUvVersion(string(versionString))
+				if err != nil {
+					return err
+				}
+				if version.GE(semver.MustParse("0.8.0")) {
+					args = append(args, "--no-workspace")
+				}
+
 				if !ctx.Install {
 					args = append(args, "--no-sync")
 				}
@@ -450,7 +472,7 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 				}
 			}
 		} else {
-			return fmt.Errorf("packagemanager option must be a string: %v", toolchain)
+			return fmt.Errorf("packagemanager option must be a string: %v", toolchainOpt)
 		}
 	} else {
 		// Assume pip if no packagemanager is specified
@@ -735,64 +757,72 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 // optional version:
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+func SchemaFromSchemaSource(
+	pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+) (*schema.Package, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
-	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
+	bind := func(
+		spec schema.PackageSpec, specOverride *workspace.PackageSpec,
+	) (*schema.Package, *workspace.PackageSpec, error) {
 		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if diags.HasErrors() {
-			return nil, diags
+			return nil, nil, diags
 		}
-		return pkg, nil
+		return pkg, specOverride, nil
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if len(args) > 0 {
-			return nil, errors.New("parameterization arguments are not supported for yaml files")
+			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
 		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		err = yaml.Unmarshal(f, &spec)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return bind(spec)
+		return bind(spec, nil)
 	} else if ext == ".json" {
 		if len(args) > 0 {
-			return nil, errors.New("parameterization arguments are not supported for json files")
+			return nil, nil, errors.New("parameterization arguments are not supported for json files")
 		}
 
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		err = json.Unmarshal(f, &spec)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return bind(spec)
+		return bind(spec, nil)
 	}
 
-	p, err := ProviderFromSource(pctx, packageSource)
+	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
-		contract.IgnoreError(pctx.Host.CloseProvider(p))
+		contract.IgnoreError(pctx.Host.CloseProvider(p.Provider))
 	}()
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
-		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+		if p.AlreadyParameterized {
+			return nil, nil,
+				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
+		}
+		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeArgs{Args: args},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("parameterize: %w", err)
+			return nil, nil, fmt.Errorf("parameterize: %w", err)
 		}
 
 		request = plugin.GetSchemaRequest{
@@ -801,29 +831,30 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 		}
 	}
 
-	schema, err := p.GetSchema(pctx.Request(), request)
+	schema, err := p.Provider.GetSchema(pctx.Request(), request)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	err = json.Unmarshal(schema.Schema, &spec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return bind(spec)
+	return bind(spec, specOverride)
 }
 
 func SchemaFromSchemaSourceValueArgs(
 	pctx *plugin.Context,
 	packageSource string,
 	parameterization *schema.ParameterizationDescriptor,
+	registry registry.Registry,
 ) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
@@ -839,23 +870,20 @@ func SchemaFromSchemaSourceValueArgs(
 		return pkg, nil
 	}
 
-	p, err := ProviderFromSource(pctx, packageSource)
+	p, _, err := ProviderFromSource(pctx, packageSource, registry)
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		contract.IgnoreError(pctx.Host.CloseProvider(p))
-	}()
+	defer p.Provider.Close()
 
 	var request plugin.GetSchemaRequest
 	if parameterization != nil {
-		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeValue{
-				Name:    parameterization.Name,
-				Version: parameterization.Version,
-				Value:   parameterization.Value,
-			},
+		if p.AlreadyParameterized {
+			return nil,
+				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
+		}
+		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{Value: parameterization.Value},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
@@ -867,7 +895,7 @@ func SchemaFromSchemaSourceValueArgs(
 		}
 	}
 
-	schema, err := p.GetSchema(pctx.Request(), request)
+	schema, err := p.Provider.GetSchema(pctx.Request(), request)
 	if err != nil {
 		return nil, err
 	}
@@ -878,13 +906,21 @@ func SchemaFromSchemaSourceValueArgs(
 	return bind(spec)
 }
 
+type Provider struct {
+	Provider plugin.Provider
+
+	AlreadyParameterized bool
+}
+
 // ProviderFromSource takes a plugin name or path.
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Provider, error) {
+func ProviderFromSource(
+	pctx *plugin.Context, packageSource string, reg registry.Registry,
+) (Provider, *workspace.PackageSpec, error) {
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
-		return nil, err
+		return Provider{}, nil, err
 	}
 	descriptor := workspace.PackageDescriptor{
 		PluginSpec: pluginSpec,
@@ -898,80 +934,150 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		return info.Mode()&0o111 != 0 && !info.IsDir()
 	}
 
+	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
+		p, err := pctx.Host.Provider(descriptor)
+		if err == nil {
+			return Provider{
+				Provider:             p,
+				AlreadyParameterized: descriptor.Parameterization != nil,
+			}, nil
+		}
+		// There is an executable or directory with the same name, so suggest that
+		if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
+			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
+		}
+
+		if descriptor.SubDir() != "" {
+			path, err := descriptor.DirPath()
+			if err != nil {
+				return Provider{}, err
+			}
+			info, statErr := os.Stat(filepath.Join(path, descriptor.SubDir()))
+			if statErr == nil && info.IsDir() {
+				// The plugin is already installed.  But since it is in a subdirectory, it could be that
+				// we previously installed a plugin in a different subdirectory of the same repository.
+				// This is why the provider might have failed to start up.  Install the dependencies
+				// and try again.
+				depErr := descriptor.InstallDependencies(pctx.Base())
+				if depErr != nil {
+					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
+				}
+				p, err := pctx.Host.Provider(descriptor)
+				if err != nil {
+					return Provider{}, err
+				}
+				return Provider{Provider: p}, nil
+			}
+		}
+
+		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
+		var missingError *workspace.MissingError
+		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
+			return Provider{}, err
+		}
+
+		log := func(sev diag.Severity, msg string) {
+			pctx.Host.Log(sev, "", msg, 0)
+		}
+
+		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
+		if err != nil {
+			return Provider{}, err
+		}
+
+		p, err = pctx.Host.Provider(descriptor)
+		if err != nil {
+			return Provider{}, err
+		}
+
+		return Provider{Provider: p}, nil
+	}
+
+	setupProvider := func(
+		descriptor workspace.PackageDescriptor, specOverride *workspace.PackageSpec,
+	) (Provider, *workspace.PackageSpec, error) {
+		p, err := installDescriptor(descriptor)
+		if err != nil {
+			return Provider{}, nil, err
+		}
+		if descriptor.Parameterization != nil {
+			_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+				Parameters: &plugin.ParameterizeValue{
+					Name:    descriptor.Parameterization.Name,
+					Version: descriptor.Parameterization.Version,
+					Value:   descriptor.Parameterization.Value,
+				},
+			})
+			if err != nil {
+				return Provider{}, nil, fmt.Errorf("failed to parameterize %s: %w", p.Provider.Pkg().Name(), err)
+			}
+		}
+		return p, specOverride, nil
+	}
+
 	// For all plugins except for file paths, we try to load it from the provider host.
 	//
 	// Note that if a local folder has a name that could match an downloadable plugin, we
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
 	if !plugin.IsLocalPluginPath(pctx.Base(), packageSource) {
-		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := pctx.Host.Provider(descriptor)
-		if err != nil {
-			// There is an executable or directory with the same name, so suggest that
-			if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
-				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
-			}
-
-			if descriptor.SubDir() != "" {
-				path, err := descriptor.DirPath()
-				if err != nil {
-					return nil, err
+		if !env.DisableRegistryResolve.Value() && env.Experimental.Value() {
+			meta, err := registry.ResolvePackageFromName(pctx.Base(), reg, pluginSpec.Name, pluginSpec.Version)
+			if err == nil {
+				spec := workspace.PluginSpec{
+					Name:              meta.Name,
+					Kind:              apitype.ResourcePlugin,
+					Version:           &meta.Version,
+					PluginDownloadURL: meta.PluginDownloadURL,
 				}
-				info, statErr := os.Stat(filepath.Join(path, descriptor.SubDir()))
-				if statErr == nil && info.IsDir() {
-					// The plugin is already installed.  But since it is in a subdirectory, it could be that
-					// we previously installed a plugin in a different subdirectory of the same repository.
-					// This is why the provider might have failed to start up.  Install the dependencies
-					// and try again.
-					depErr := descriptor.InstallDependencies(pctx.Base())
-					if depErr != nil {
-						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
+				var params *workspace.Parameterization
+				if meta.Parameterization != nil {
+					spec.Name = meta.Parameterization.BaseProvider.Name
+					spec.Version = &meta.Parameterization.BaseProvider.Version
+					params = &workspace.Parameterization{
+						Name:    meta.Name,
+						Version: meta.Version,
+						Value:   meta.Parameterization.Parameter,
 					}
-					return pctx.Host.Provider(descriptor)
 				}
+				return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
+					Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
+					Version: meta.Version.String(),
+				})
+			} else if errors.Is(err, registry.ErrNotFound) &&
+				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
+				// Let's try installing it without the registry.
+				return setupProvider(descriptor, nil)
 			}
-
-			// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-			var missingError *workspace.MissingError
-			if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
-				return nil, err
+			for _, suggested := range registry.GetSuggestedPackages(err) {
+				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name,
+					suggested.Version,
+				)
 			}
-
-			log := func(sev diag.Severity, msg string) {
-				pctx.Host.Log(sev, "", msg, 0)
-			}
-
-			_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
-			if err != nil {
-				return nil, err
-			}
-
-			p, err := pctx.Host.Provider(descriptor)
-			if err != nil {
-				return nil, err
-			}
-
-			return p, nil
+			return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", err)
 		}
-		return provider, nil
+
+		// We assume this was a plugin and not a path, so load the plugin.
+		return setupProvider(descriptor, nil)
 	}
 
 	// We were given a path to a binary or folder, so invoke that.
 	info, err := os.Stat(packageSource)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find file %s", packageSource)
+		return Provider{}, nil, fmt.Errorf("could not find file %s", packageSource)
 	} else if err != nil {
-		return nil, err
+		return Provider{}, nil, err
 	} else if !info.IsDir() && !isExecutable(info) {
 		if p, err := filepath.Abs(packageSource); err == nil {
 			packageSource = p
 		}
-		return nil, fmt.Errorf("plugin at path %q not executable", packageSource)
+		return Provider{}, nil, fmt.Errorf("plugin at path %q not executable", packageSource)
 	}
 
 	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)
 	if err != nil {
-		return nil, err
+		return Provider{}, nil, err
 	}
-	return p, nil
+	return Provider{Provider: p}, nil, nil
 }

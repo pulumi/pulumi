@@ -22,7 +22,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -59,7 +62,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			pkg, err := SchemaFromSchemaSource(pctx, source, args[1:])
+			pkg, _, err := SchemaFromSchemaSource(pctx, source, args[1:],
+				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}

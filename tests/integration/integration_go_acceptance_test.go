@@ -119,10 +119,10 @@ func optsForConstructGo(
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 
@@ -130,7 +130,7 @@ func optsForConstructGo(
 				// plugin.
 				urns := make(map[string]resource.URN)
 				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
+					require.NotNil(t, res)
 
 					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
