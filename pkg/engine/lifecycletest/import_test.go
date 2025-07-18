@@ -156,7 +156,7 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
 	assert.Equal(t, expectedOutputs, snap.Resources[1].Outputs)
 
@@ -179,7 +179,7 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "1")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
@@ -264,7 +264,7 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "6")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	// This will have just called create which returns the inputs as outputs.
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
 	assert.Equal(t, inputs, snap.Resources[1].Outputs)
@@ -338,7 +338,7 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "9")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
@@ -451,7 +451,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 			return err
 		}, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
@@ -650,7 +650,7 @@ func TestImportPlan(t *testing.T) {
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[3].ID)
@@ -719,7 +719,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[1].Outputs["foo"])
 }
 
@@ -810,7 +810,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 		}, "2")
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestImportPlanEmptyState(t *testing.T) {
@@ -864,7 +864,7 @@ func TestImportPlanEmptyState(t *testing.T) {
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestImportPlanSpecificProvider(t *testing.T) {
@@ -927,7 +927,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestImportPlanSpecificProperties(t *testing.T) {
@@ -1010,7 +1010,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// We should still have the baz output but will be missing its input
 	assert.Equal(t, resource.NewNumberProperty(2), snap.Resources[2].Outputs["baz"])
@@ -1076,7 +1076,7 @@ func TestImportIntoParent(t *testing.T) {
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 }
 
 func TestImportComponent(t *testing.T) {
@@ -1134,7 +1134,7 @@ func TestImportComponent(t *testing.T) {
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 
 	// Ensure that the resource 2 is the component.
 	comp := snap.Resources[2]
@@ -1208,7 +1208,7 @@ func TestImportRemoteComponent(t *testing.T) {
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 
 	// Ensure that the resource 3 is the component.
 	comp := snap.Resources[3]
@@ -1294,7 +1294,7 @@ func TestImportInputDiff(t *testing.T) {
 		}, "0")
 	require.NoError(t, err)
 	// 3 because Import magic's up a Stack resource.
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
@@ -1382,7 +1382,7 @@ func TestImportDefaultProvider(t *testing.T) {
 	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// The default provider should have been created with the expected version.
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
@@ -1524,7 +1524,7 @@ func TestImportWithFailedUpdate(t *testing.T) {
 			return err
 		}, "0")
 	assert.ErrorContains(t, err, "step application failed: update failed")
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }

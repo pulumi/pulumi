@@ -281,9 +281,8 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	})
 
 	assert.True(t, fakeT.fatal, "must have a fatal failure")
-	if assert.Len(t, fakeT.messages, 1) {
-		assert.Contains(t, fakeT.messages[0], "timed out waiting")
-	}
+	require.Len(t, fakeT.messages, 1)
+	assert.Contains(t, fakeT.messages[0], "timed out waiting")
 }
 
 // nonfatalT wraps a testing.T to capture fatal errors.

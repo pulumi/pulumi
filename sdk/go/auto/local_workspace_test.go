@@ -2280,7 +2280,7 @@ func TestEnvFunctions(t *testing.T) {
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
-	assert.Len(t, envs, 0)
+	require.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
 	assert.Error(t, err)
@@ -3310,7 +3310,7 @@ func TestListStacks(t *testing.T) {
 	stacks, err := workspace.ListStacks(ctx)
 
 	require.NoError(t, err)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
 	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
@@ -3370,7 +3370,7 @@ func TestListAllStacks(t *testing.T) {
 	stacks, err := workspace.ListStacks(ctx, optlist.All())
 
 	require.NoError(t, err)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
 	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)

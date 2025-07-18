@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +31,7 @@ func TestLoadV0Checkpoint(t *testing.T) {
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
 	require.NoError(t, err)
 	require.NotNil(t, chk.Latest)
-	assert.Len(t, chk.Latest.Resources, 30)
+	require.Len(t, chk.Latest.Resources, 30)
 }
 
 func TestLoadV1Checkpoint(t *testing.T) {
@@ -44,7 +43,7 @@ func TestLoadV1Checkpoint(t *testing.T) {
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
 	require.NoError(t, err)
 	require.NotNil(t, chk.Latest)
-	assert.Len(t, chk.Latest.Resources, 30)
+	require.Len(t, chk.Latest.Resources, 30)
 }
 
 func TestLoadV3Checkpoint(t *testing.T) {
@@ -56,7 +55,7 @@ func TestLoadV3Checkpoint(t *testing.T) {
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
 	require.NoError(t, err)
 	require.NotNil(t, chk.Latest)
-	assert.Len(t, chk.Latest.Resources, 30)
+	require.Len(t, chk.Latest.Resources, 30)
 }
 
 func TestLoadV4Checkpoint(t *testing.T) {
@@ -68,7 +67,7 @@ func TestLoadV4Checkpoint(t *testing.T) {
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
 	require.NoError(t, err)
 	require.NotNil(t, chk.Latest)
-	assert.Len(t, chk.Latest.Resources, 30)
+	require.Len(t, chk.Latest.Resources, 30)
 }
 
 func TestLoadV4CheckpointUnsupportedFeature(t *testing.T) {

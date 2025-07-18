@@ -158,7 +158,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		}
 		snap, err := entries.Snap(target.Snapshot)
 		require.NoError(t, err)
-		assert.Len(t, snap.Resources, 2)
+		require.Len(t, snap.Resources, 2)
 		return err
 	}
 
@@ -192,10 +192,10 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			assert.Len(t, deleted, 2)
+			require.Len(t, deleted, 2)
 			snap, err := entries.Snap(target.Snapshot)
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 0)
+			require.Len(t, snap.Resources, 0)
 			return err
 		},
 	}}
@@ -1599,7 +1599,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 3)
+				require.Len(t, snap.Resources, 3)
 				for _, r := range snap.Resources {
 					c.validate(t, r)
 				}

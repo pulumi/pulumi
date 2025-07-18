@@ -110,9 +110,7 @@ func TestPlannedUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 1) {
-		return
-	}
+	require.Len(t, snap.Resources, 1)
 
 	// Change the provider's planned operation to a same step.
 	// Remove the provider from the plan.
@@ -137,9 +135,7 @@ func TestPlannedUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
@@ -212,9 +208,7 @@ func TestUnplannedCreate(t *testing.T) {
 
 	// Check nothing was was created
 	require.NotNil(t, snap)
-	if !assert.Len(t, snap.Resources, 0) {
-		return
-	}
+	require.Len(t, snap.Resources, 0)
 }
 
 func TestUnplannedDelete(t *testing.T) {
@@ -287,9 +281,7 @@ func TestUnplannedDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check both resources and the provider are still listed in the snapshot
-	if !assert.Len(t, snap.Resources, 3) {
-		return
-	}
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestExpectedDelete(t *testing.T) {
@@ -372,9 +364,7 @@ func TestExpectedDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check both resources and the provider are still listed in the snapshot
-	if !assert.Len(t, snap.Resources, 3) {
-		return
-	}
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestExpectedCreate(t *testing.T) {
@@ -448,9 +438,7 @@ func TestExpectedCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check resA and the provider are still listed in the snapshot
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 }
 
 func TestPropertySetChange(t *testing.T) {
@@ -575,9 +563,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check resA and the provider are still listed in the snapshot
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 }
 
 func TestExpectedUnneededDelete(t *testing.T) {
@@ -647,9 +633,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resources are still gone
-	if !assert.Len(t, snap.Resources, 0) {
-		return
-	}
+	require.Len(t, snap.Resources, 0)
 }
 
 func TestResoucesWithSames(t *testing.T) {
@@ -724,9 +708,7 @@ func TestResoucesWithSames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"X": "Y",
@@ -745,9 +727,7 @@ func TestResoucesWithSames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 3) {
-		return
-	}
+	require.Len(t, snap.Resources, 3)
 
 	expected = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"X": "Y",
@@ -938,9 +918,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state we shouldn't of changed anything because the update failed
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
@@ -1282,9 +1260,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 3) {
-		return
-	}
+	require.Len(t, snap.Resources, 3)
 
 	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
 	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
@@ -1296,9 +1272,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 3) {
-		return
-	}
+	require.Len(t, snap.Resources, 3)
 
 	assert.Equal(t, fullPropertySet, snap.Resources[1].Outputs)
 	assert.Equal(t, fullPropertySet, snap.Resources[2].Outputs)
@@ -1315,9 +1289,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 3) {
-		return
-	}
+	require.Len(t, snap.Resources, 3)
 
 	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
 	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
@@ -1420,9 +1392,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 1) {
-		return
-	}
+	require.Len(t, snap.Resources, 1)
 }
 
 func TestPlannedUpdateWithCheckFailure(t *testing.T) {
@@ -1517,9 +1487,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	require.NotNil(t, snap)
 
 	// Check the resource's state.
-	if !assert.Len(t, snap.Resources, 1) {
-		return
-	}
+	require.Len(t, snap.Resources, 1)
 }
 
 func TestPluginsAreDownloaded(t *testing.T) {
@@ -1640,7 +1608,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
 	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
 
@@ -1652,7 +1620,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
 	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
 }

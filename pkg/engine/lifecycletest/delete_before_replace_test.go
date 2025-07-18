@@ -683,7 +683,7 @@ func TestDBRProtect(t *testing.T) {
 	// First update just create the two resources.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Update A to trigger a replace this should error because of the protect flag on B.
 	inputsA["A"] = resource.NewStringProperty("bar")
@@ -696,7 +696,7 @@ func TestDBRProtect(t *testing.T) {
 	snap.Resources[2].Protect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19056. If a resource has "replaceOnChanges" set and a
@@ -760,7 +760,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	// First update just create the two resources.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Update value to trigger a replace this should also replace resB because of the replaceOnChanges.
 	inputsA["value"] = resource.NewStringProperty("bar")
@@ -795,7 +795,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 // Regression test for a DBR issue with parallel diff. Given two resources A and B where B depends on A, if we
@@ -905,7 +905,7 @@ func TestDBRParallel(t *testing.T) {
 			}
 			snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 3)
+			require.Len(t, snap.Resources, 3)
 
 			// Update A to trigger a replace with deleteBeforeReplace set, register B in parallel with no dependencies on A.
 			program = func(monitor *deploytest.ResourceMonitor) error {
@@ -934,7 +934,7 @@ func TestDBRParallel(t *testing.T) {
 
 			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 3)
+			require.Len(t, snap.Resources, 3)
 		})
 	}
 }

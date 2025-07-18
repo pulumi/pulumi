@@ -141,7 +141,7 @@ func TestDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA and resB
 	assert.Equal(t, int32(2), deleteCalled)
 	// Resources should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a targeted destroy by executing the program for it.
@@ -250,7 +250,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// resA should be deleted from state
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "resB", snap.Resources[1].URN.Name())
 }
 
@@ -381,7 +381,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA and resB
 	assert.Equal(t, int32(2), deleteCalled)
 	// All the resources should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it, and that in that update we change provider version.
@@ -507,7 +507,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA and resB
 	assert.Equal(t, int32(2), deleteCalled)
 	// All the resources should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it when that program creates components.
@@ -607,7 +607,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it when that program creates components which
@@ -722,7 +722,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it when that program now aliases _and_ skips
@@ -841,7 +841,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19363. Check that a read resource (i.e.
@@ -960,5 +960,5 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }

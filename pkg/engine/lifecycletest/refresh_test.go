@@ -90,7 +90,7 @@ func TestParallelRefresh(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -100,7 +100,7 @@ func TestParallelRefresh(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -132,7 +132,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
 	snap := p.RunWithName(t, nil, "0")
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
@@ -144,7 +144,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	snap = p.RunWithName(t, snap, "1")
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
@@ -383,7 +383,7 @@ func TestRefreshWithDelete(t *testing.T) {
 
 			// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
 			provURN := p.NewProviderURN("pkgA", "default", "")
-			assert.Len(t, snap.Resources, 1)
+			require.Len(t, snap.Resources, 1)
 			assert.Equal(t, provURN, snap.Resources[0].URN)
 		})
 	}
@@ -448,7 +448,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -460,7 +460,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].PropertyDependencies)
@@ -508,7 +508,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -520,7 +520,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].DeletedWith)
@@ -1826,7 +1826,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewStringProperty("qux")
@@ -1837,7 +1837,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should only have 2 resources now, the deleted one should be gone.
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19406. Check that if we have a program with

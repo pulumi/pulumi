@@ -293,7 +293,7 @@ type = pulumiResourceType(res)
 name = pulumiResourceName(res)`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	require.NotNil(t, program, "The program doesn't bind")
-	assert.Len(t, diags, 0, "There are no diagnostics")
+	require.Len(t, diags, 0, "There are no diagnostics")
 	assert.Nil(t, err, "There is no bind error")
 	assert.Equal(t, len(program.Nodes), 3, "there are two nodes")
 	localVariable, ok := program.Nodes[1].(*pcl.LocalVariable)

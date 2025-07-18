@@ -320,7 +320,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
 	require.NoError(t, err)
 	assert.Nil(t, outContToken)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	for _, stack := range stacks {
 		require.NotNil(t, stack.ResourceCount())
 		assert.Equal(t, 1, *stack.ResourceCount())
@@ -515,7 +515,7 @@ func TestRenameWorks(t *testing.T) {
 	// Check we can still get the history
 	history, err := b.GetHistory(ctx, cStackRef, 10, 0)
 	require.NoError(t, err)
-	assert.Len(t, history, 1)
+	require.Len(t, history, 1)
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
@@ -672,7 +672,7 @@ func TestRenameProjectWorks(t *testing.T) {
 	// Check we can still get the history
 	history, err := b.GetHistory(ctx, bStackRef, 10, 0)
 	require.NoError(t, err)
-	assert.Len(t, history, 1)
+	require.Len(t, history, 1)
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
@@ -805,7 +805,7 @@ func TestLegacyFolderStructure(t *testing.T) {
 	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, 1)
+	require.Len(t, stacks, 1)
 	assert.Equal(t, "a", stacks[0].Name().String())
 
 	// Create a new non-project stack
@@ -845,7 +845,7 @@ func TestListStacksFilter(t *testing.T) {
 	}, nil /* inContToken */)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, 1)
+	require.Len(t, stacks, 1)
 	assert.Equal(t, "organization/proj1/a", stacks[0].Name().String())
 }
 
@@ -992,7 +992,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, 1)
+	require.Len(t, stacks, 1)
 	assert.Equal(t, "organization/testproj/a", stacks[0].Name().String())
 
 	// Create a new project stack
@@ -1749,7 +1749,7 @@ func TestParallelStackFetch(t *testing.T) {
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, numStacks)
+	require.Len(t, stacks, numStacks)
 
 	// Verify all stacks were fetched
 	stackNames := make(map[string]bool)
@@ -1798,7 +1798,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, numStacks)
+	require.Len(t, stacks, numStacks)
 
 	// Verify all stacks were fetched
 	stackNames := make(map[string]bool)
@@ -1846,7 +1846,7 @@ func TestListStackNames(t *testing.T) {
 	stackRefs, token, err := b.ListStackNames(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stackRefs, numStacks)
+	require.Len(t, stackRefs, numStacks)
 
 	// Verify all expected stack names are present
 	actualNames := make(map[string]bool)

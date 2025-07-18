@@ -1887,7 +1887,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.Len(t, actual, 2)
+		require.Len(t, actual, 2)
 		_, known, secret, _, err := awaitWithContext(ctx.Context(), actual["computed"].(AnyOutput))
 		require.NoError(t, err)
 		assert.False(t, known)
@@ -1911,7 +1911,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.Len(t, actual, 2)
+		require.Len(t, actual, 2)
 		value, known, secret, _, err := awaitWithContext(ctx.Context(), actual["secret"].(StringOutput))
 		require.NoError(t, err)
 		assert.Equal(t, "secret string", value.(string))
@@ -1965,7 +1965,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		assertDeps := func(actual []Resource) {
-			assert.Len(t, actual, 1)
+			require.Len(t, actual, 1)
 
 			value, known, _, _, err := awaitWithContext(ctx.Context(), actual[0].URN())
 			require.NoError(t, err)
@@ -1973,7 +1973,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 			assert.Equal(t, URN("urn:pulumi:test_stack::test_project::pkg:index:type::name"), value.(URN))
 		}
 
-		assert.Len(t, actual, 5)
+		require.Len(t, actual, 5)
 		value, known, secret, deps, err := awaitWithContext(ctx.Context(), actual["standard"].(StringOutput))
 		require.NoError(t, err)
 		assert.Equal(t, "a string", value.(string))
@@ -2021,7 +2021,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.Len(t, actual, 1)
+		require.Len(t, actual, 1)
 		value, known, secret, _, err := awaitWithContext(ctx.Context(), actual["unknown id"].(ResourceOutput))
 		require.NoError(t, err)
 		assert.True(t, known)

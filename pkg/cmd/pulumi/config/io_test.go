@@ -255,7 +255,7 @@ func TestOpenStackEnv(t *testing.T) {
 
 	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
 }
 
@@ -282,7 +282,7 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 
 	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
 }
 
@@ -486,7 +486,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 
 	_, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 }
 
 func TestOpenStackEnvError(t *testing.T) {

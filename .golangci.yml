@@ -76,6 +76,8 @@ linters:
           msg: Use require.NoError instead
         - pattern: ^assert.NotNil$
           msg: Use require.NotNil instead
+        - pattern: ^assert.Len$
+          msg: Use require.Len instead
   exclusions:
     generated: lax
     presets:

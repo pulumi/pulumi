@@ -68,7 +68,7 @@ func init() {
 						},
 					}
 
-					assert.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
+					require.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
 
 					for _, violation := range expectedViolations {
 						assert.Contains(l, policyViolations, violation, "expected policy violation %v", violation)
@@ -111,7 +111,7 @@ func init() {
 						},
 					}
 
-					assert.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
+					require.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
 
 					for _, violation := range expectedViolations {
 						assert.Contains(l, policyViolations, violation, "expected policy violation %v", violation)

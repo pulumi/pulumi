@@ -43,7 +43,7 @@ func Test_functionNameFromLogGroupNameRegExp(t *testing.T) {
 	t.Parallel()
 
 	match := oldFunctionNameFromLogGroupNameRegExp.FindStringSubmatch("/aws/lambda/examples-todoc57917fa023a27bc")
-	assert.Len(t, match, 2)
+	require.Len(t, match, 2)
 	assert.Equal(t, "examples-todoc57917fa", match[1])
 }
 
@@ -51,7 +51,7 @@ func Test_oldFunctionNameFromLogGroupNameRegExp(t *testing.T) {
 	t.Parallel()
 
 	match := functionNameFromLogGroupNameRegExp.FindStringSubmatch("/aws/lambda/examples-todoc57917fa-023a27b")
-	assert.Len(t, match, 2)
+	require.Len(t, match, 2)
 	assert.Equal(t, "examples-todoc57917fa", match[1])
 }
 

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type nameInfo int
@@ -194,10 +195,10 @@ func TestApplyRewriter(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 
 			expr, diags = RewriteApplies(expr, nameInfo(0), !c.skipPromises)
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 
 			assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 		})
@@ -225,10 +226,10 @@ func TestApplyRewriter(t *testing.T) {
 })`
 
 		expr, diags := model.BindExpressionText(input, scope, hcl.Pos{})
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		expr, diags = RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, true /* skiToJson */)
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		output := fmt.Sprintf("%v", expr)
 		assert.Equal(t, expectedOutput, output)

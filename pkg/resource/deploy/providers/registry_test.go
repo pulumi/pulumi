@@ -772,7 +772,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 		News: news,
 	})
 	require.NoError(t, err)
-	assert.Len(t, check.Failures, 1)
+	require.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
 	assert.Nil(t, check.Properties)
 }
@@ -799,7 +799,7 @@ func TestCRUDBadVersion(t *testing.T) {
 		News: news,
 	})
 	require.NoError(t, err)
-	assert.Len(t, check.Failures, 1)
+	require.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
 	assert.Nil(t, check.Properties)
 }
@@ -892,7 +892,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 				News: news,
 			})
 			require.NoError(t, err)
-			assert.Len(t, check.Failures, 1)
+			require.Len(t, check.Failures, 1)
 			assert.Equal(t, "version", string(check.Failures[0].Property))
 			assert.Nil(t, check.Properties)
 		}(i)
