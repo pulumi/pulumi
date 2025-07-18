@@ -22,8 +22,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,19 +38,20 @@ import (
 // It returns the path to the installed package.
 func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
 	schemaSource string, parameters []string,
-) (*schema.Package, error) {
-	pkg, err := SchemaFromSchemaSource(pctx, schemaSource, parameters)
+	registry registry.Registry,
+) (*schema.Package, *workspace.PackageSpec, error) {
+	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
-			return nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
+			return nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
-		return nil, fmt.Errorf("failed to get schema: %w", err)
+		return nil, nil, fmt.Errorf("failed to get schema: %w", err)
 	}
 
 	tempOut, err := os.MkdirTemp("", "pulumi-package-")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
+		return nil, nil, fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tempOut)
 
@@ -61,13 +65,13 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		local, /*local*/
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate SDK: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate SDK: %w", err)
 	}
 
 	out := filepath.Join(root, "sdks")
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create directory for SDK: %w", err)
+		return nil, nil, fmt.Errorf("failed to create directory for SDK: %w", err)
 	}
 
 	outName := pkg.Name
@@ -79,13 +83,13 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	// If directory already exists, remove it completely before copying new files
 	if _, err := os.Stat(out); err == nil {
 		if err := os.RemoveAll(out); err != nil {
-			return nil, fmt.Errorf("failed to clean existing SDK directory: %w", err)
+			return nil, nil, fmt.Errorf("failed to clean existing SDK directory: %w", err)
 		}
 	}
 
 	err = CopyAll(out, filepath.Join(tempOut, language))
 	if err != nil {
-		return nil, fmt.Errorf("failed to move SDK to project: %w", err)
+		return nil, nil, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
 	// Link the package to the project
@@ -97,10 +101,10 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		Out:       out,
 		Install:   true,
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return pkg, nil
+	return pkg, specOverride, nil
 }
 
 // Constructs the `pulumi package add` command.
@@ -176,7 +180,8 @@ from the parameters, as in:
 			plugin := args[0]
 			parameters := args[1:]
 
-			pkg, err := InstallPackage(ws, pctx, language, root, plugin, parameters)
+			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, plugin, parameters,
+				cmdCmd.NewDefaultRegistry(cmd.Context(), ws, proj, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}
@@ -194,11 +199,16 @@ from the parameters, as in:
 				source = pkg.Parameterization.BaseProvider.Name
 				version = pkg.Parameterization.BaseProvider.Version.String()
 			}
-			proj.AddPackage(pkg.Name, workspace.PackageSpec{
-				Source:     source,
-				Version:    version,
-				Parameters: parameters,
-			})
+			if len(parameters) > 0 && packageSpec != nil {
+				packageSpec.Parameters = parameters
+			} else if packageSpec == nil {
+				packageSpec = &workspace.PackageSpec{
+					Source:     source,
+					Version:    version,
+					Parameters: parameters,
+				}
+			}
+			proj.AddPackage(pkg.Name, *packageSpec)
 
 			// Save the updated project
 			if err := workspace.SaveProject(proj); err != nil {
