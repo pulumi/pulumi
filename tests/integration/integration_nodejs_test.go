@@ -2963,5 +2963,12 @@ func TestNodejsOnBeforeExit(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Len(t, stack.Deployment.Resources, 3)
+			require.Equal(t, tokens.Type("pulumi:pulumi:Stack"), stack.Deployment.Resources[0].Type)
+			require.Equal(t, tokens.Type("pulumi:providers:testprovider"), stack.Deployment.Resources[1].Type)
+			require.Equal(t, tokens.Type("testprovider:index:Named"), stack.Deployment.Resources[2].Type)
+			require.Equal(t, "beforeExit", stack.Deployment.Resources[2].URN.Name())
+		},
 	})
 }
