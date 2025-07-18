@@ -1,6 +1,6 @@
 changes:
 - type: feat
-  scope: diy-backends
+  scope: backend/diy
   description: |
     Add stack tags support for DIY backends (S3, Postgres, file-based, etc.).
     
