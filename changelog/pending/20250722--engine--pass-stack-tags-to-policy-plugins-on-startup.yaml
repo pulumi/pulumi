@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Pass stack tags to policy plugins on startup

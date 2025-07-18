@@ -26,6 +26,9 @@ export class AnalyzerStackConfigureRequest extends jspb.Message {
     getConfigMap(): jspb.Map<string, string>;
     clearConfigMap(): void;
 
+    getTagsMap(): jspb.Map<string, string>;
+    clearTagsMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerStackConfigureRequest.AsObject;
     static toObject(includeInstance: boolean, msg: AnalyzerStackConfigureRequest): AnalyzerStackConfigureRequest.AsObject;
@@ -45,6 +48,8 @@ export namespace AnalyzerStackConfigureRequest {
         configSecretKeysList: Array<string>,
 
         configMap: Array<[string, string]>,
+
+        tagsMap: Array<[string, string]>,
     }
 }
 

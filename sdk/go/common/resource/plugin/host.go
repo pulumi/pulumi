@@ -284,6 +284,7 @@ type PolicyAnalyzerOptions struct {
 	Config           map[config.Key]string
 	ConfigSecretKeys []config.Key
 	DryRun           bool
+	Tags             map[string]string // Tags for the current stack.
 }
 
 type pluginLoadRequest struct {
