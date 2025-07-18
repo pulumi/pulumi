@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Fix refresh/destroy with inline programs and --run-program flag

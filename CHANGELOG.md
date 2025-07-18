@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.184.0 (2025-07-18)
+
+
+### Features
+
+- [sdk/go] Allow setting resource hooks in transforms
+  [#20058](https://github.com/pulumi/pulumi/pull/20058)
+
+- [sdk/nodejs] Allow setting resource hooks in transforms
+  [#20057](https://github.com/pulumi/pulumi/pull/20057)
+
+
+### Bug Fixes
+
+- [auto/go] Fix refresh/destroy with inline programs and --run-program flag
+
+- [cli/package] Fix `package add` command when using uv 0.8.0 or later
+  [#20075](https://github.com/pulumi/pulumi/pull/20075)
+
+- [sdk/nodejs] Fix before exit handler
+
+- [programgen/python] Fix imports of packages and modules with multiple name parts, such as "devOps"
+  [#20053](https://github.com/pulumi/pulumi/pull/20053)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Simplify determining the Node.js entrypoint and respect package.exports
+  [#19985](https://github.com/pulumi/pulumi/pull/19985)
+
 ## 3.183.0 (2025-07-16)
 
 
