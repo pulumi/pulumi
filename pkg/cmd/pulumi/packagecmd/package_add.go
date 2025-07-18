@@ -22,9 +22,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -183,18 +181,7 @@ from the parameters, as in:
 			parameters := args[1:]
 
 			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, plugin, parameters,
-				registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-					b, err := cmdBackend.NonInteractiveCurrentBackend(
-						cmd.Context(), ws, cmdBackend.DefaultLoginManager, proj,
-					)
-					if err == nil && b != nil {
-						return b.GetReadOnlyCloudRegistry(), nil
-					}
-					if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-						return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
-					}
-					return nil, fmt.Errorf("could not get registry backend: %w", err)
-				}))
+				cmdCmd.NewDefaultRegistry(cmd.Context(), ws, proj, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}

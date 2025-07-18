@@ -22,9 +22,7 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -125,18 +123,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
 			if err := installPackagesFromProject(pctx, proj, root,
-				registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-					b, err := cmdBackend.NonInteractiveCurrentBackend(
-						cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj,
-					)
-					if err == nil && b != nil {
-						return b.GetReadOnlyCloudRegistry(), nil
-					}
-					if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-						return unauthenticatedregistry.New(cmdutil.Diag(), env.Global()), nil
-					}
-					return nil, fmt.Errorf("could not get registry backend: %w", err)
-				})); err != nil {
+				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
+			); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
 

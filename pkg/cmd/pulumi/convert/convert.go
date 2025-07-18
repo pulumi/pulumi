@@ -26,8 +26,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -35,7 +33,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -308,18 +306,7 @@ func runConvert(
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
-				registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-					b, err := cmdBackend.NonInteractiveCurrentBackend(
-						ctx, ws, cmdBackend.DefaultLoginManager, proj,
-					)
-					if err == nil && b != nil {
-						return b.GetReadOnlyCloudRegistry(), nil
-					}
-					if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-						return unauthenticatedregistry.New(cmdutil.Diag(), e), nil
-					}
-					return nil, fmt.Errorf("could not get registry backend: %w", err)
-				}),
+				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)
