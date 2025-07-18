@@ -428,7 +428,7 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 							violationEvents = append(violationEvents, e)
 						}
 					}
-					assert.Len(t, violationEvents, 1)
+					require.Len(t, violationEvents, 1)
 					assert.Equal(t, apitype.Mandatory,
 						violationEvents[0].Payload().(PolicyViolationEventPayload).EnforcementLevel)
 
@@ -494,7 +494,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 							violationEvents = append(violationEvents, e)
 						}
 					}
-					assert.Len(t, violationEvents, 1)
+					require.Len(t, violationEvents, 1)
 					assert.Equal(t, apitype.Mandatory,
 						violationEvents[0].Payload().(PolicyViolationEventPayload).EnforcementLevel)
 

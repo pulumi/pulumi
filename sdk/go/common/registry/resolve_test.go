@@ -400,7 +400,7 @@ func TestResolvePackageFromName(t *testing.T) {
 
 		// Test suggestions are available
 		suggestions := GetSuggestedPackages(err)
-		assert.Len(t, suggestions, 2)
+		require.Len(t, suggestions, 2)
 		assert.Equal(t, "community", suggestions[0].Source)
 		assert.Equal(t, "github", suggestions[1].Source)
 	})
@@ -467,7 +467,7 @@ func TestResolvePackageFromName(t *testing.T) {
 
 		// Should have suggestions
 		suggestions := GetSuggestedPackages(err)
-		assert.Len(t, suggestions, 1)
+		require.Len(t, suggestions, 1)
 		assert.Equal(t, semver.MustParse("2.0.0"), suggestions[0].Version)
 	})
 
@@ -521,7 +521,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrNotFound))
 
 		suggestions := GetSuggestedPackages(err)
-		assert.Len(t, suggestions, 3)
+		require.Len(t, suggestions, 3)
 		assert.Equal(t, "community", suggestions[0].Source)
 		assert.Equal(t, "github", suggestions[1].Source)
 		assert.Equal(t, "custom", suggestions[2].Source)

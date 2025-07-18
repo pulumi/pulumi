@@ -579,7 +579,7 @@ func TestNestedArchive(t *testing.T) {
 	defer contract.IgnoreClose(zipReader)
 	require.NoError(t, err)
 	files := zipReader.File
-	assert.Len(t, files, 3)
+	require.Len(t, files, 3)
 
 	assert.Equal(t, "foo/a.txt", filepath.ToSlash(files[0].Name))
 	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[1].Name))
@@ -619,7 +619,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	defer contract.IgnoreClose(zipReader)
 	require.NoError(t, err)
 	files := zipReader.File
-	assert.Len(t, files, 1)
+	require.Len(t, files, 1)
 	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[0].Name))
 }
 

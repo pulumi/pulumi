@@ -2517,7 +2517,7 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	validateSnap := func(snap *deploy.Snapshot) {
 		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}
@@ -2580,7 +2580,7 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	validateSnap := func(snap *deploy.Snapshot) {
 		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}
@@ -2641,7 +2641,7 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	validateSnap := func(snap *deploy.Snapshot) {
 		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 2)
+		require.Len(t, snap.Resources, 2)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	}
 
@@ -2710,7 +2710,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	validateSnap := func(snap *deploy.Snapshot) {
 		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}
@@ -2799,7 +2799,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	validateSnap := func(snap *deploy.Snapshot) {
 		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}

@@ -325,5 +325,5 @@ func TestStateDeleteAll(t *testing.T) {
 	deployment := apitype.DeploymentV3{}
 	err = json.Unmarshal(mockDeployment.Deployment, &deployment)
 	require.NoError(t, err)
-	assert.Len(t, deployment.Resources, 0)
+	require.Len(t, deployment.Resources, 0)
 }

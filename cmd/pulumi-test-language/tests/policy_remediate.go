@@ -55,7 +55,7 @@ func init() {
 			},
 		}
 
-		assert.Len(l, policyRemediations, len(expectedRemediations),
+		require.Len(l, policyRemediations, len(expectedRemediations),
 			"expected %d policy remediations", len(expectedRemediations))
 
 		for _, remediations := range expectedRemediations {

@@ -1614,12 +1614,12 @@ func TestResmonCancel(t *testing.T) {
 
 func TestSourceEvalServeOptions(t *testing.T) {
 	t.Parallel()
-	assert.Len(t,
+	require.Len(t,
 		sourceEvalServeOptions(nil, opentracing.SpanFromContext(context.Background()), "" /* logFile */),
 		2,
 	)
 
-	assert.Len(t,
+	require.Len(t,
 		sourceEvalServeOptions(&plugin.Context{
 			DebugTraceMutex: &sync.Mutex{},
 		}, opentracing.SpanFromContext(context.Background()), "logFile.log"),

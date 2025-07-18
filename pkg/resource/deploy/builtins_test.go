@@ -199,7 +199,7 @@ func TestBuiltinProvider(t *testing.T) {
 				assert.Equal(t, "res-name", resp.Properties["name"].V)
 
 				assert.Equal(t, "foo", resp.Properties["outputs"].ObjectValue()["normal"].StringValue())
-				assert.Len(t, resp.Properties["secretOutputNames"].V, 1)
+				require.Len(t, resp.Properties["secretOutputNames"].V, 1)
 			})
 		})
 		t.Run(readStackResourceOutputs, func(t *testing.T) {

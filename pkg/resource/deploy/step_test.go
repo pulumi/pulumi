@@ -213,7 +213,7 @@ func TestCreateStep(t *testing.T) {
 				}
 				status, _, err := s.Apply()
 				assert.ErrorContains(t, err, "intentional error")
-				assert.Len(t, s.new.InitErrors, 1)
+				require.Len(t, s.new.InitErrors, 1)
 				assert.Equal(t, resource.StatusPartialFailure, status)
 			})
 			t.Run("error create no ID", func(t *testing.T) {
@@ -472,7 +472,7 @@ func TestUpdateStep(t *testing.T) {
 			assert.Equal(t, resource.StatusPartialFailure, status)
 
 			// News should be updated.
-			assert.Len(t, s.new.InitErrors, 1)
+			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, resource.PropertyMap{
 				"key": resource.NewStringProperty("expected-value"),
 			}, s.new.Outputs)
@@ -582,7 +582,7 @@ func TestReadStep(t *testing.T) {
 			assert.Equal(t, resource.StatusPartialFailure, status)
 
 			// News should be updated.
-			assert.Len(t, s.new.InitErrors, 1)
+			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, (resource.PropertyMap)(nil), s.new.Inputs)
 			assert.Equal(t, resource.PropertyMap{
 				"outputs-key": resource.NewStringProperty("expected-value"),
@@ -935,7 +935,7 @@ func TestRefreshStep(t *testing.T) {
 			assert.Equal(t, resource.StatusPartialFailure, status)
 
 			// News should be updated.
-			assert.Len(t, s.new.InitErrors, 1)
+			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, resource.PropertyMap{
 				"outputs-key": resource.NewStringProperty("expected-value"),
 			}, s.new.Outputs)
@@ -1043,7 +1043,7 @@ func TestImportStep(t *testing.T) {
 				status, _, err := s.Apply()
 				assert.Error(t, err)
 				assert.Equal(t, resource.StatusOK, status)
-				assert.Len(t, s.new.InitErrors, 1)
+				require.Len(t, s.new.InitErrors, 1)
 			})
 			t.Run("resource does not exist", func(t *testing.T) {
 				t.Parallel()

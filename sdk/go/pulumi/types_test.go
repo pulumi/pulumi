@@ -884,7 +884,7 @@ func TestApplyTOutput(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 42, v)
 		assert.Equal(t, fmt.Sprintf("%v", reflect.TypeOf(v)), "int")
-		assert.Len(t, deps, 4)
+		require.Len(t, deps, 4)
 	}
 }
 

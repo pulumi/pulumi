@@ -248,7 +248,7 @@ func TestCollapseAliases(t *testing.T) {
 			require.NoError(t, err)
 			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
 			require.NoError(t, err)
-			assert.Len(t, urns, testCase.totalAliasUrns)
+			require.Len(t, urns, testCase.totalAliasUrns)
 			var items []interface{}
 			for _, item := range urns {
 				items = append(items, item)

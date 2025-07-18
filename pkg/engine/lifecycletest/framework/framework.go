@@ -701,7 +701,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -720,7 +720,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -739,7 +739,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -758,7 +758,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -781,7 +781,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 0)
+				require.Len(t, snap.Resources, 0)
 				return err
 			},
 		},
@@ -793,10 +793,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			) error {
 				require.NoError(t, err)
 
-				assert.Len(t, entries, 0)
+				require.Len(t, entries, 0)
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 0)
+				require.Len(t, snap.Resources, 0)
 				return err
 			},
 		},
