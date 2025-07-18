@@ -3776,3 +3776,33 @@ func NewMyResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOpti
 
 	return myResource, nil
 }
+
+func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	require.NoError(t, err, "up failed")
+
+	_, err = s.Refresh(ctx, optrefresh.RunProgram(true))
+	require.NoError(t, err, "refresh failed")
+
+	_, err = s.Destroy(ctx, optdestroy.RunProgram(true))
+	require.NoError(t, err, "destroy failed")
+}
