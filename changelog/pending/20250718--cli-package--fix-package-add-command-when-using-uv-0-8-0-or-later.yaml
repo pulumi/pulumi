@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Fix `package add` command when using uv 0.8.0 or later

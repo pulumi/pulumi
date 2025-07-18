@@ -328,10 +328,22 @@ func (u *uv) uvVersion() (semver.Version, error) {
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to get uv version: %w", err)
 	}
-	return u.parseUvVersion(string(versionString))
+	return ParseUvVersion(string(versionString))
 }
 
-func (u *uv) parseUvVersion(versionString string) (semver.Version, error) {
+func (u *uv) pythonExecutable() (string, string) {
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	return name, filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
+}
+
+func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
+	return u.virtualenvPath, nil
+}
+
+func ParseUvVersion(versionString string) (semver.Version, error) {
 	versionString = strings.TrimSpace(versionString)
 	re := regexp.MustCompile(`uv (?P<version>\d+\.\d+(.\d+)?).*`)
 	matches := re.FindStringSubmatch(versionString)
@@ -349,16 +361,4 @@ func (u *uv) parseUvVersion(versionString string) (semver.Version, error) {
 			versionString, minUvVersion)
 	}
 	return sem, nil
-}
-
-func (u *uv) pythonExecutable() (string, string) {
-	name := "python"
-	if runtime.GOOS == windows {
-		name = name + ".exe"
-	}
-	return name, filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
-}
-
-func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
-	return u.virtualenvPath, nil
 }
