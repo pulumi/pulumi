@@ -314,6 +314,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
+	// If we're in destroy mode we need to ensure this state is deleted later.
+	if sg.mode == destroyMode {
+		sg.toDelete = append(sg.toDelete, newState)
+	}
+
 	sg.reads[urn] = true
 	return []Step{
 		NewReadStep(sg.deployment, event, old, newState),
