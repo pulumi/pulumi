@@ -539,10 +539,13 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 		// references using pulumi:pulumi:getResource. If it's a resource managed by Pulumi (i.e. it's the result of a
 		// resource registration with a goal state), we'll record it in news. If it's not managed by Pulumi (i.e. it's the
 		// result of a Read, perhaps caused by a .get in an SDK, for instance), we'll record it in reads.
-		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
-			se.deployment.news.Store(newState.URN, newState)
-		} else if step.Op() == OpRead || step.Op() == OpReadReplacement {
+		if step.Op() == OpRead || step.Op() == OpReadReplacement {
 			se.deployment.reads.Store(newState.URN, newState)
+		} else {
+			// Read tells us a state was for an external, but we can't check deployment.goals to see if a
+			// resource is managed because untargetted but removed from program resources are still considered
+			// managed but don't have a goal state.
+			se.deployment.news.Store(newState.URN, newState)
 		}
 
 		// If we're generating plans update the resource's outputs in the generated plan.

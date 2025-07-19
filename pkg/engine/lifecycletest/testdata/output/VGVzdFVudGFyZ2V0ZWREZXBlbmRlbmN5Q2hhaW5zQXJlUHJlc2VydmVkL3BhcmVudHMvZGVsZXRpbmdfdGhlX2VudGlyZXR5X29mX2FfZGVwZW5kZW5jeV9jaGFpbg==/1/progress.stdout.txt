@@ -5,9 +5,12 @@
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA c <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA target <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA a <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA b <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA c <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    3 unchanged
+    6 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

@@ -8,12 +8,14 @@
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_2_0_0 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_2_0_0 <{%fg 2%}>created<{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resB <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Policies:<{%reset%}>
     ✅ <{%fg 5%}>|local|test@v<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    1 unchanged
+    2 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
