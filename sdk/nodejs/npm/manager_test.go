@@ -84,6 +84,21 @@ func TestPnpmInstall(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // changes working directory
+func TestBunInstall(t *testing.T) {
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "bun", false /*production*/)
+	})
+
+	/*
+		Commenting this out because Bun has a bug where --production
+		enforces "frozen lockfile" when it probably shouldn't: https://github.com/oven-sh/bun/issues/10949
+	*/
+	// t.Run("production", func(t *testing.T) {
+	// 	testInstall(t, "bun", true /*production*/)
+	// })
+}
+
 func TestResolvePackageManager(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -96,11 +111,14 @@ func TestResolvePackageManager(t *testing.T) {
 		{"picks npm", NpmPackageManager, []string{}, "npm"},
 		{"picks yarn", YarnPackageManager, []string{}, "yarn"},
 		{"picks pnpm", PnpmPackageManager, []string{}, "pnpm"},
+		{"picks bun", BunPackageManager, []string{}, "bun"},
 		{"picks npm based on lockfile", AutoPackageManager, []string{"npm"}, "npm"},
 		{"picks yarn based on lockfile", AutoPackageManager, []string{"yarn"}, "yarn"},
 		{"picks pnpm based on lockfile", AutoPackageManager, []string{"pnpm"}, "pnpm"},
+		{"picks bun based on lockfile", AutoPackageManager, []string{"bun"}, "bun"},
 		{"yarn > pnpm > npm", AutoPackageManager, []string{"yarn", "pnpm", "npm"}, "yarn"},
-		{"pnpm > npm", AutoPackageManager, []string{"pnpm", "npm"}, "pnpm"},
+		{"pnpm > bun > npm", AutoPackageManager, []string{"pnpm", "bun", "npm"}, "pnpm"},
+		{"bun > npm", AutoPackageManager, []string{"bun", "npm"}, "bun"},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -124,7 +142,7 @@ func TestPack(t *testing.T) {
 		"version": "1.0"
 	}`)
 
-	for _, pm := range []string{"npm", "yarn", "pnpm"} {
+	for _, pm := range []string{"npm", "yarn", "pnpm", "bun"} {
 		pm := pm
 		t.Run(pm, func(t *testing.T) {
 			t.Parallel()
@@ -168,6 +186,7 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"npm", "Invalid package, must have name and version"},
 		{"yarn", "Package doesn't have a version"},
 		{"pnpm", "Package version is not defined in the package.json"},
+		{"bun", "error: package.json must have `name` and `version` fields"},
 	} {
 		tt := tt
 		t.Run(tt.packageManager, func(t *testing.T) {
@@ -179,13 +198,25 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 			stderr := new(bytes.Buffer)
 
 			_, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
-
 			exitErr := new(exec.ExitError)
 			require.ErrorAs(t, err, &exitErr)
 			assert.NotZero(t, exitErr.ExitCode())
 			require.Contains(t, stderr.String(), tt.expectedErrorMessage)
 		})
 	}
+}
+
+//nolint:paralleltest
+func TestBunPackNonExistentPackageJSON(t *testing.T) {
+	dir := t.TempDir()
+	stderr := new(bytes.Buffer)
+	errorMessage := "error: No package.json was found for directory"
+
+	_, err := Pack(context.Background(), "bun", dir, stderr)
+	exitErr := new(exec.ExitError)
+	require.ErrorAs(t, err, &exitErr)
+	assert.NotZero(t, exitErr.ExitCode())
+	require.Contains(t, stderr.String(), errorMessage)
 }
 
 // writeLockFile writes a mock lockfile for the selected package manager
@@ -198,6 +229,9 @@ func writeLockFile(t *testing.T, dir string, packageManager string) {
 		writeFile(t, filepath.Join(dir, "yarn.lock"), "# yarn lockfile v1")
 	case "pnpm":
 		writeFile(t, filepath.Join(dir, "pnpm-lock.yaml"), "lockfileVersion: '6.0'")
+	case "bun":
+		writeFile(t, filepath.Join(dir, "bun.lock"), "{\"lockfileVersion\": 1, \"workspaces\": "+
+			"{\"\": {\"name\": \"test-package\",},}}")
 	}
 }
 
