@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/go-test/deep"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,18 +111,51 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	}
 
 	if len(journal.Resources) != len(manager.Resources) {
-		return errors.New("journal and manager resources differ")
+		var journalResources string
+		for _, r := range journal.Resources {
+			journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		var managerResources string
+		for _, r := range manager.Resources {
+			managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
+			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
 	}
 
 	for _, jr := range journal.Resources {
 		found := false
 		for _, mr := range manager.Resources {
-			if reflect.DeepEqual(jr, mr) {
+			if len(mr.Dependencies) == 0 {
+				fmt.Println("fixing it up")
+				mr.Dependencies = nil
+			}
+			if len(mr.PropertyDependencies) == 0 {
+				mr.PropertyDependencies = nil
+			}
+			if len(jr.Dependencies) == 0 {
+				jr.Dependencies = nil
+			}
+			if len(jr.PropertyDependencies) == 0 {
+				jr.PropertyDependencies = nil
+			}
+			if diff := deep.Equal(jr, mr); diff != nil {
+				fmt.Println(jr.Dependencies == nil, mr.Dependencies == nil)
+				if jr.URN == mr.URN {
+					fmt.Println("different resources with same URN:", diff)
+				}
+			} else {
 				found = true
 				break
 			}
 		}
 		if !found {
+			for _, jr := range journal.Resources {
+				fmt.Printf("Journal resource: %v\n", jr)
+			}
+			for _, mr := range manager.Resources {
+				fmt.Printf("Manager resource: %v\n", mr)
+			}
 			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
 		}
 	}
@@ -215,7 +249,8 @@ func (op TestOp) runWithContext(
 	journal := engine.NewJournal()
 	persister := &backend.InMemoryPersister{}
 	secretsManager := b64.NewBase64SecretsManager()
-	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+	journaler := backend.NewSnapshotJournaler(persister, secretsManager, target.Snapshot)
+	snapshotManager := backend.NewSnapshotManager(journaler, target.Snapshot)
 
 	combined := &engine.CombinedManager{
 		Managers: []engine.SnapshotManager{journal, snapshotManager},
@@ -651,7 +686,7 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			// Don't run validate on the preview step
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				require.Error(t, err)
 				continue
 			}
 

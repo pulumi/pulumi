@@ -1140,7 +1140,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		})
 		require.NoError(t, err)
 		if !info.DryRun {
-			assert.Equal(t, "bar", resp.Outputs["outputs"].ObjectValue()["foo"].StringValue())
+			require.Equal(t, "bar", resp.Outputs["outputs"].ObjectValue()["foo"].StringValue())
 		}
 		return nil
 	})
@@ -3321,7 +3321,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Dependencies: []resource.URN{resp.URN},
 		})
 		if failCreationOfTypB {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
 			require.NoError(t, err)
 		}

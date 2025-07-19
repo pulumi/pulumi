@@ -53,6 +53,8 @@ func newStackSelectCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			fmt.Println(cmd.Name(), " ", cmd.CommandPath())
+
 			// Try to read the current project
 			project, root, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {

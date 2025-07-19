@@ -247,6 +247,10 @@ func (j *Journal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 
+func (j *Journal) Rebase(base *deploy.Snapshot) error {
+	return nil
+}
+
 func NewJournal() *Journal {
 	j := &Journal{
 		events: make(chan JournalEntry),
