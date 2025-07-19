@@ -883,7 +883,11 @@ func SchemaFromSchemaSourceValueArgs(
 				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
 		}
 		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeValue{Value: parameterization.Value},
+			Parameters: &plugin.ParameterizeValue{
+				Value:   parameterization.Value,
+				Name:    parameterization.Name,
+				Version: parameterization.Version,
+			},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
