@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Avoid "Cannot convert object to primitive value" error when running into type errors
