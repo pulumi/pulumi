@@ -1344,7 +1344,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	// Install terraform-provider and note its version
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.1")
 	terraformProviderVersion := getPluginVersion(e, "terraform-provider")
 	assert.NotEmpty(t, terraformProviderVersion)
 	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "NetApp/netapp-cloudmanager", "25.1.0")
@@ -1398,8 +1398,9 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
+	// terraform converter 1.2.1 uses terraform-provider 0.8.1
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "1.2.1")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.1")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))
@@ -1431,8 +1432,8 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "1.2.1")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.1")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))
