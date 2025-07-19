@@ -446,7 +446,6 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 	relRoot := path.Dir(rel)
 	relImport := relPathToRelImport(relRoot)
 
-	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
 	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "import sys\n")
