@@ -197,6 +197,8 @@ type Backend interface {
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
+	// GenerateStackReadme renders the stack's README using Copilot.
+	GenerateStackReadme(ctx context.Context, stack Stack, opts GenerateStackReadmeOptions) (string, error)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -465,4 +467,9 @@ type TarReaderCloser interface {
 	io.Closer
 	// Tar will always return a non-nil [tar.Reader].
 	Tar() *tar.Reader
+}
+
+type GenerateStackReadmeOptions struct {
+	display.Options
+	Template string // Template is the template string to use for the README.
 }
