@@ -1345,6 +1345,10 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", stackName)
 	stdout, _ := e.RunCommandExpectError("pulumi", "up", "--yes")
 	require.Contains(t, stdout, "index.ts(3,14): error TS2322: Type 'number' is not assignable to type 'string'.")
+	// Type errors are not always easily stringified. If we simply call
+	// toString() on them, either directly or just try to print them, we can get
+	// an `Cannot convert object to primitive value` error.
+	require.NotContains(t, stdout, "Cannot convert object to primitive value")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
 }
 
