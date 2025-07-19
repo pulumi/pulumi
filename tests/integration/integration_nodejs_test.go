@@ -1287,6 +1287,44 @@ func TestESMTS(t *testing.T) {
 	})
 }
 
+func TestESMTSX(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-tsx")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	e.RunCommand("pulumi", "up", "--yes")
+	// Validate the stack outputs
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	err = json.Unmarshal([]byte(stdout), &stackExport)
+	require.NoError(t, err)
+	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	require.True(t, ok)
+	require.Greater(t, len(resources), 0)
+	stack := resources[0].(map[string]any)
+	outputs, ok := stack["outputs"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 42.0, outputs["otherx"])
+	require.Contains(t,
+		outputs["res"],
+		"Use ECMAScript modules for a TS program using TSX to handle loading of TS files.",
+	)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
+}
+
 func TestESMTSAuto(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("nodejs", "esm-ts-auto")
