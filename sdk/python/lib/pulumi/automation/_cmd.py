@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+import threading
 import urllib.request
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
@@ -187,6 +188,7 @@ class PulumiCommand:
         cwd: str,
         additional_env: Mapping[str, str],
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
     ) -> CommandResult:
         """
         Runs a Pulumi command, returning a CommandResult. If the command fails, a CommandError is raised.
@@ -194,7 +196,8 @@ class PulumiCommand:
         :param args: The arguments to pass to the Pulumi CLI, for example `["stack", "ls"]`.
         :param cwd: The working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
-        :param on_output: A callback to invoke when the command outputs data.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data.
         """
 
         # All commands should be run in non-interactive mode.
@@ -212,29 +215,45 @@ class PulumiCommand:
         cmd.extend(args)
 
         stdout_chunks: List[str] = []
+        stderr_chunks: List[str] = []
 
-        with tempfile.TemporaryFile() as stderr_file:
-            with subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=stderr_file, cwd=cwd, env=env
-            ) as process:
-                assert process.stdout is not None
-                while True:
-                    output = process.stdout.readline().decode(encoding="utf-8")
-                    if output == "" and process.poll() is not None:
-                        break
-                    if output:
-                        text = output.rstrip()
-                        if on_output:
-                            on_output(text)
-                        stdout_chunks.append(text)
+        def consumer(stream, callback, chunks):
+            for line in iter(stream.readline, ""):
+                stripped = line.rstrip()
+                if callback:
+                    callback(stripped)
+                chunks.append(stripped)
+            stream.close()
 
-                code = process.returncode
+        with subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            env=env,
+            encoding="utf-8",
+        ) as process:
+            assert process.stdout is not None
+            assert process.stderr is not None
 
-            stderr_file.seek(0)
-            stderr_contents = stderr_file.read().decode("utf-8")
+            stdout = threading.Thread(
+                target=consumer, args=(process.stdout, on_output, stdout_chunks)
+            )
+            stderr = threading.Thread(
+                target=consumer, args=(process.stderr, on_error, stderr_chunks)
+            )
+
+            stdout.start()
+            stderr.start()
+
+            stdout.join()
+            stderr.join()
+
+            process.wait()
+            code = process.returncode
 
         result = CommandResult(
-            stderr=stderr_contents, stdout="\n".join(stdout_chunks), code=code
+            stderr="\n".join(stderr_chunks), stdout="\n".join(stdout_chunks), code=code
         )
         if code != 0:
             raise create_command_error(result)
