@@ -36,8 +36,7 @@ from google.protobuf import struct_pb2
 
 from .. import _types, log
 from .. import urn as urn_util
-from ..output import Input, Output
-from .._output import _safe_str
+from ..output import Input, Output, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
