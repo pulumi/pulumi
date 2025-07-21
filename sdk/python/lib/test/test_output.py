@@ -18,7 +18,7 @@ import os
 import unittest
 from typing import Mapping, Optional, Sequence, cast
 
-from pulumi._output import _OutputToStringError, _safe_str
+from pulumi.output import Output, _OutputToStringError, _safe_str
 from pulumi.runtime import rpc, rpc_manager, settings
 from pulumi.runtime._serialization import (
     _deserialize,
@@ -26,7 +26,6 @@ from pulumi.runtime._serialization import (
 )
 
 import pulumi
-from pulumi import Output
 
 
 def pulumi_test(coro):
@@ -334,24 +333,39 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
             o = Output.from_input(1)
             str(o)
 
-    def test_safe_str(self):
-        """Test that the _safe_str function returns the same output as str when
-        errors are not raised."""
+    # This is not strictly necessary but allows us to test the "explicitly
+    # disabled" case.
+    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "false"})
+    def test_safe_str_spot_output_by_default(self):
+        """Test that the _safe_str function spots outputs and returns a fallback
+        string, even if PULUMI_ERROR_OUTPUT_STRING is not set."""
 
         o = Output.from_input(1)
-        self.assertEqual(
-            _safe_str(o),
-            self.output_str_message
-            + "\nThis function may throw in a future version of Pulumi.",
-        )
+        self.assertEqual(_safe_str(o), "Output[T]")
+
+    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "1"})
+    def test_safe_str_spot_output_before_errors(self):
+        """Test that the _safe_str function spots outputs and returns a fallback
+        string when PULUMI_ERROR_OUTPUT_STRING is set."""
+
+        o = Output.from_input(1)
+        self.assertEqual(_safe_str(o), "Output[T]")
 
     @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
     def test_safe_str_catch_error(self):
         """Test that the _safe_str function catches _OutputToStringErrors and
         returns a fallback string."""
 
+        class Broken:
+            def __init__(self, o):
+                self.o = o
+
+            def __str__(self):
+                return f"Broken: {self.o}"
+
         o = Output.from_input(1)
-        self.assertEqual(_safe_str(o), "Output[T]")
+        x = Broken(o)
+        self.assertEqual(_safe_str(x), "Output[T]")
 
     @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
     def test_safe_str_reraise_error(self):

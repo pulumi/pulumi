@@ -1,4 +1,4 @@
-# Copyright 2016-2022, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ from typing import (
 )
 
 from . import log
-from . import _output
 from . import _types
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
@@ -836,7 +835,7 @@ class Output(Generic[T_co]):
         return s_output.apply(loads)
 
     def __str__(self) -> str:
-        err = _output._OutputToStringError()
+        err = _OutputToStringError()
         if os.getenv("PULUMI_ERROR_OUTPUT_STRING", "").lower() in ["1", "true"]:
             raise err
         msg = str(err)
@@ -1055,3 +1054,42 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
     return out, resolve
+
+
+class _OutputToStringError(Exception):
+    """_OutputToStringError is the class of errors raised when __str__ is called
+    on a Pulumi Output."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            """Calling __str__ on an Output[T] is not supported.
+
+To get the value of an Output[T] as an Output[str] consider:
+1. o.apply(lambda v: f"prefix{v}suffix")
+
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+        )
+
+
+def _safe_str(v: Any) -> str:
+    """_safe_str returns the string representation of v if possible. If v is an
+    Output, _safe_str returns a fallback string, whether it's able to detect an
+    Output ahead of time or not by catching the _OutputToStringError. _safe_str
+    is designed for use in e.g. logging and debugging contexts where it's useful
+    to print all the information that can be reasonably obtained, without
+    falling afoul of things like PULUMI_ERROR_OUTPUT_STRING."""
+
+    # This is not a perfect implementation. If v's __str__ method tries to
+    # stringify an Output, and PULUMI_ERROR_OUTPUT_STRING is not set, we'll
+    # still produce an ugly message somwhere inside the resulting string. If
+    # this becomes an issue, we could spot it using e.g. string comparison or
+    # (far uglier but potentially more performant) monkey patching/subclassing
+    # the strings involved. For now this feels like a sensible compromise.
+
+    if isinstance(v, Output):
+        return "Output[T]"
+
+    try:
+        return str(v)
+    except _OutputToStringError:
+        return "Output[T]"
