@@ -215,6 +215,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// refresh mode.
 	refresh := ex.deployment.opts.RefreshProgram && ex.deployment.opts.Refresh
 	if ex.deployment.opts.RefreshOnly {
+		fmt.Println("mode === refreshMode")
 		mode = refreshMode
 	}
 	// As well as generating steps from events produced by the source, the step generator can also generate
@@ -467,7 +468,14 @@ func (ex *deploymentExecutor) performPostSteps(
 		ex.stepExec.SignalCompletion()
 		signaled = true
 		ex.stepExec.WaitForCompletion()
+		fmt.Println("rebuilding base state", resourceToStep)
 		ex.rebuildBaseState(resourceToStep)
+
+		if ex.deployment.events != nil && len(resourceToStep) > 0 {
+			if err := ex.deployment.events.OnRebase(prev); err != nil {
+				return result.BailErrorf("failed to report refresh event: %v", err)
+			}
+		}
 	} else {
 		// At this point we have generated the set of resources above that we would normally want to
 		// delete.  However, if the user provided -target's we will only actually delete the specific
@@ -727,6 +735,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				oldViews := ex.deployment.GetOldViews(res.URN)
 				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
 				steps = append(steps, step)
+				fmt.Println("adding refresh step for", res.URN, "of type", res.Type, "with parent", res.Parent)
 				resourceToStep[res] = step
 			}
 		}
@@ -756,6 +765,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				oldViews := ex.deployment.GetOldViews(res.URN)
 				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
 				steps = append(steps, step)
+				fmt.Println("adding refresh step for", res.URN, "of type", res.Type, "with parent", res.Parent)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
 				// The provider reference is already ensured.
@@ -769,6 +779,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 						oldViews := ex.deployment.GetOldViews(res.URN)
 						step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
 						steps = append(steps, step)
+						fmt.Println("adding refresh step for dependent", res.URN, "of type", res.Type, "with parent", res.Parent)
 						resourceToStep[res] = step
 
 						targetsActual.addLiteral(res.URN)
@@ -792,6 +803,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 	viewRefreshSteps := ex.deployment.resourceStatus.RefreshSteps()
 	for _, s := range ex.deployment.prev.Resources {
 		if step, has := viewRefreshSteps[s.URN]; has {
+			fmt.Println("view refresh step for", s.URN, "of type", s.Type, "with parent", s.Parent)
 			resourceToStep[s] = step
 		}
 	}

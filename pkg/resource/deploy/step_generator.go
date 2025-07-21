@@ -1893,6 +1893,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 					step := NewRefreshStep(sg.deployment, nil, res, oldViews, nil)
 					sg.refreshes[res.URN] = true
 					steps = append(steps, step)
+					fmt.Println("adding step for refresh", res.URN, step)
 					resourceToStep[res] = step
 
 					err := sg.deployment.EnsureProvider(res.Provider)

@@ -224,8 +224,6 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 
 	operationID := sm.operationIDCounter.Add(1)
 
-	fmt.Println("SnapshotManager: BeginMutation for step", step.Op(), "on resource", step.URN(), "with operation ID", operationID)
-
 	switch step.Op() {
 	case deploy.OpSame:
 		return sm.doSame(step, operationID)
@@ -696,18 +694,13 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		DeleteOld:   -1, // Default to -1, which means no deletion.
 	}
 
-	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
-	viewStep, isViewStep := step.(*deploy.ViewStep)
-	// Only do this for persistent steps?? I think it needs to be gdone for all steps now though.
-	if isRefreshStep || isViewStep {
-		if step.New() != nil {
-			journalEntry.State = step.New()
-			rsm.manager.newResources.Store(step.New(), rsm.operationID)
-		}
-	} else {
-		journalEntry.ElideWrite = true
+	if step.New() != nil {
+		journalEntry.State = step.New()
+		rsm.manager.newResources.Store(step.New(), rsm.operationID)
 	}
 
+	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
+	viewStep, isViewStep := step.(*deploy.ViewStep)
 	if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) {
 		if old := step.Old(); old != nil {
 			journalEntry.RefreshDeleteURN = old.URN
@@ -717,6 +710,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	} else {
 		if old := step.Old(); old != nil {
 			journalEntry.RefreshDeleteURN = old.URN
+			rsm.manager.markEntryForDeletion(&journalEntry, old)
 		}
 	}
 
@@ -980,6 +974,10 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		metadata = sj.snapshot.Metadata
 	}
 
+	for _, res := range resources {
+		fmt.Println("res.URN", res.URN, res.ID)
+	}
+
 	manifest.Magic = manifest.NewMagic()
 	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
 }
@@ -1152,6 +1150,7 @@ type ResultJournalEntry struct {
 
 func (sj *snapshotJournaler) journalMutation(entry JournalEntry) error {
 	result := make(chan error)
+	fmt.Println("SnapshotManager: journalMutation", entry.Kind, entry.OperationID, entry.DeleteOld, entry.DeleteNew, entry.State)
 	select {
 	case sj.journalEvents <- ResultJournalEntry{JournalEntry: entry, result: result}:
 		return <-result
@@ -1176,6 +1175,18 @@ func (sj *snapshotJournaler) Rebase(newBase *deploy.Snapshot) error {
 		PendingOperations: make([]resource.Operation, 0, len(newBase.PendingOperations)),
 		Metadata:          newBase.Metadata,
 	}
+	oldResMap := make(map[resource.URN]int, len(sj.snapshot.Resources))
+	for i, res := range sj.snapshot.Resources {
+		oldResMap[res.URN] = i
+	}
+
+	newDeleteMapping := make(map[int]int, len(newBase.Resources))
+	for i, res := range newBase.Resources {
+		if oldIndex, ok := oldResMap[res.URN]; ok {
+			newDeleteMapping[oldIndex] = i
+		}
+	}
+
 	// Copy the resources from the base snapshot to the new snapshot.
 	for _, res := range newBase.Resources {
 		snapCopy.Resources = append(snapCopy.Resources, res.Copy())
@@ -1185,6 +1196,19 @@ func (sj *snapshotJournaler) Rebase(newBase *deploy.Snapshot) error {
 		snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
 	}
 	sj.snapshot = snapCopy
+	// A rebase renders all previous journal entries invalid, so we clear them.
+	for i := range sj.journalEntries {
+		new, ok := newDeleteMapping[sj.journalEntries[i].DeleteOld]
+		if ok {
+			sj.journalEntries[i].DeleteOld = new
+		} else {
+			sj.journalEntries[i].DeleteOld = -1 // Default to -1, which means no deletion.
+		}
+	}
+	fmt.Println("new journal entries", newDeleteMapping)
+	for _, entry := range sj.journalEntries {
+		fmt.Println(entry.OperationID, entry.DeleteOld, entry.State)
+	}
 	return sj.journalMutation(JournalEntry{Kind: JournalEntryRebase})
 }
 

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -1196,6 +1197,8 @@ func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resou
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
 
+	debug.PrintStack()
+
 	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
 	if new == nil {
 		new = old
@@ -1336,6 +1339,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.RefreshBeforeUpdate = refreshed.RefreshBeforeUpdate
 		s.new.Inputs = inputs
 		s.new.Outputs = outputs
+
+		fmt.Println(s.new.PropertyDependencies, s.old.PropertyDependencies, s.new.URN, s.new.ID, s.old.ID)
 
 		var inputsChange, outputsChange bool
 		if s.old != nil {
