@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.185.0 (2025-07-21)
+
+
+### Features
+
+- [cli/{install,package}] Allow using `pulumi package add` with registry identifiers
+  [#19928](https://github.com/pulumi/pulumi/pull/19928)
+
+
+### Bug Fixes
+
+- [engine] Fix a snapshot integrity issue with `destroy --run-program` and resource reads
+  [#20078](https://github.com/pulumi/pulumi/pull/20078)
+
+- [sdkgen/python] Remove unnecessary `import copy`
+  [#20089](https://github.com/pulumi/pulumi/pull/20089)
+
+- [sdkgen/python] Support properties named "builtins"
+  [#20085](https://github.com/pulumi/pulumi/pull/20085)
+
 ## 3.184.0 (2025-07-18)
 
 
