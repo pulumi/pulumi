@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix a snapshot integrity issue with `destroy --run-program` and resource reads
