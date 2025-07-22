@@ -23,10 +23,10 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"strings"
 
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/esc/syntax/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"gopkg.in/yaml.v3"
 )
 
@@ -153,7 +153,11 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 
 		// Don't attempt to decrypt secrets outside of "values"
 		path := n.Syntax().Path()
-		if !strings.HasPrefix(path, "values.") {
+		propertyPath, err := resource.ParsePropertyPath(path)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing property path %q", path)
+		}
+		if propertyPath[0] != "values" {
 			return n, nil, nil
 		}
 
