@@ -556,6 +556,9 @@ export function waitForRPCs(disconnectFromServers = false): Promise<void> {
         }
         if (disconnectFromServers) {
             await new Promise((resolve, reject) => {
+                if (!getMonitor()) {
+                    return resolve(undefined)
+                }
                 getMonitor()?.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
                     if (err) {
                         // If we are running against an older version of the CLI,
