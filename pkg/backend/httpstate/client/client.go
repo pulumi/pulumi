@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -834,22 +835,23 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	tags map[apitype.StackTagName]string,
-) (int, string, error) {
+) (int, string, bool, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
-		return 0, "", fmt.Errorf("validating stack properties: %w", err)
+		return 0, "", false, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	req := apitype.StartUpdateRequest{
-		Tags: tags,
+		Tags:            tags,
+		SupportsJournal: env.EnableJournaling.Value(),
 	}
 
 	var resp apitype.StartUpdateResponse
 	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
-		return 0, "", err
+		return 0, "", false, err
 	}
 
-	return resp.Version, resp.Token, nil
+	return resp.Version, resp.Token, resp.UseJournal, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
@@ -1232,6 +1234,7 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 }
 
 // AppendUpdateJournalEntry appends a new entry to the journal for the given update.
+// TODO: this should be removed in favor of SaveJournalEntries.
 func (pc *Client) AppendUpdateJournalEntry(ctx context.Context, update UpdateIdentifier,
 	entry apitype.JournalEntry,
 	token UpdateTokenSource,
@@ -1242,6 +1245,22 @@ func (pc *Client) AppendUpdateJournalEntry(ctx context.Context, update UpdateIde
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
+func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
+}
+
+func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifier,
+	entries []apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	req := apitype.JournalEntries{
+		Entries: entries,
+	}
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "journalentries"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
