@@ -215,6 +215,7 @@ type PolicyGroupSummary struct {
 	IsOrgDefault          bool   `json:"isOrgDefault"`
 	NumStacks             int    `json:"numStacks"`
 	NumAccounts           int    `json:"numAccounts,omitempty"`
+	EntityType            string `json:"entityType"`
 	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
 }
 
