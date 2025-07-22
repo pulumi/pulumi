@@ -446,7 +446,7 @@ ${defaultErrorMessage(err)}`,
             );
         }
 
-        span.addEvent(`uncaughtError: ${err}`);
+        span.addEvent(`uncaughtError: ${defaultErrorMessage(err)}`);
         reportLoggedError(err);
     };
 
