@@ -57,6 +57,11 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 
 	local := true
 
+	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
+	// things like module paths for Go and we don't want every user using gen-sdk to be affected by that. But for
+	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
+	pkg.SupportPack = true
+
 	err = GenSDK(
 		language,
 		tempOut,
