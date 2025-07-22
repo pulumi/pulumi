@@ -188,7 +188,7 @@ func (e *Environment) RunCommandReturnExpectedError(cmd string, args ...string) 
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
 // may reuse stack names.
 func (e *Environment) LocalURL() string {
-	return "http://127.0.0.1:8080"
+	return "file://" + filepath.ToSlash(e.RootPath)
 }
 
 // GetCommandResults runs the given command and args in the Environments CWD, returning
@@ -245,7 +245,7 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 		cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE="+passphrase)
 	}
 	if e.Backend != "" {
-		cmd.Env = append(cmd.Env, "PULUMI_BACKEND_URL=http://127.0.0.1:8080")
+		cmd.Env = append(cmd.Env, "PULUMI_BACKEND_URL="+e.Backend)
 	}
 	// According to https://pkg.go.dev/os/exec#Cmd.Env:
 	//     If Env contains duplicate environment keys, only the last

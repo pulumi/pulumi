@@ -1188,18 +1188,6 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
-func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
-	entry apitype.JournalEntry, token UpdateTokenSource,
-) error {
-	req := apitype.CreateJournalEntryRequest{
-		Data:     entry,
-		UpdateID: update.UpdateID,
-		//		StackID:  update.StackIdentifier,
-	}
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "createjournalentry"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
-}
-
 // PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
 // PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
 // large stack states.

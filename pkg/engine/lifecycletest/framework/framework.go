@@ -31,7 +31,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/go-test/deep"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -111,38 +110,18 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	}
 
 	if len(journal.Resources) != len(manager.Resources) {
-		var journalResources string
-		for _, r := range journal.Resources {
-			journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
-		}
-		var managerResources string
-		for _, r := range manager.Resources {
-			managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
-		}
-		return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
-			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
+		return errors.New("journal and manager resources differ")
 	}
 
 	for _, jr := range journal.Resources {
 		found := false
 		for _, mr := range manager.Resources {
-			if diff := deep.Equal(jr, mr); diff != nil {
-				if jr.URN == mr.URN {
-					fmt.Println("different resources with same URN:", jr.URN, diff)
-					fmt.Println(jr, mr)
-				}
-			} else {
+			if reflect.DeepEqual(jr, mr) {
 				found = true
 				break
 			}
 		}
 		if !found {
-			for _, jr := range journal.Resources {
-				fmt.Printf("Journal resource: %v\n", jr)
-			}
-			for _, mr := range manager.Resources {
-				fmt.Printf("Manager resource: %v\n", mr)
-			}
 			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
 		}
 	}
@@ -673,7 +652,7 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			// Don't run validate on the preview step
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				require.Error(t, err)
+				assert.Error(t, err)
 				continue
 			}
 

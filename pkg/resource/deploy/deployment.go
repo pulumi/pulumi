@@ -293,7 +293,7 @@ type Deployment struct {
 	opts *Options
 	// event handlers for this deployment.
 	events Events
-	// TODO: update comment rebase indicates whether or not the deployment should rebase the old snapshot
+	// rebase indicates whether or not the deployment should rebase the old snapshot
 	rebase bool
 	// the deployment target.
 	target *Target
@@ -436,7 +436,6 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, erro
 				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
 				res.Outputs = make(resource.PropertyMap)
 				for k, v := range res.Inputs {
-					// TODO: snapshot has changed here
 					if k == "__internal" {
 						continue
 					}

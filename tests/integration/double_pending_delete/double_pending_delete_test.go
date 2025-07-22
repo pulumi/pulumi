@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,23 +43,23 @@ func TestDoublePendingDelete(t *testing.T) {
 					require.NotNil(t, stackInfo.Deployment)
 
 					// Four resources in this deployment: the root resource, A, B, and A (pending delete)
-					require.Equal(t, 5, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 5, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
-					require.Equal(t, resource.RootStackType, stackRes.URN.Type())
+					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
-					require.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					require.Equal(t, "a", a.URN.Name())
-					require.False(t, a.Delete)
+					assert.Equal(t, "a", a.URN.Name())
+					assert.False(t, a.Delete)
 
 					aCondemned := stackInfo.Deployment.Resources[3]
-					require.Equal(t, "a", aCondemned.URN.Name())
-					require.True(t, aCondemned.Delete)
+					assert.Equal(t, "a", aCondemned.URN.Name())
+					assert.True(t, aCondemned.Delete)
 
 					b := stackInfo.Deployment.Resources[4]
-					require.Equal(t, "b", b.URN.Name())
-					require.False(t, b.Delete)
+					assert.Equal(t, "b", b.URN.Name())
+					assert.False(t, b.Delete)
 				},
 			},
 			{
@@ -69,27 +70,27 @@ func TestDoublePendingDelete(t *testing.T) {
 					// There is still two pending delete resources in this snapshot.
 					require.NotNil(t, stackInfo.Deployment)
 
-					require.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
-					require.Equal(t, resource.RootStackType, stackRes.URN.Type())
+					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
-					require.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					require.Equal(t, "a", a.URN.Name())
-					require.False(t, a.Delete)
+					assert.Equal(t, "a", a.URN.Name())
+					assert.False(t, a.Delete)
 
 					aCondemned := stackInfo.Deployment.Resources[3]
-					require.Equal(t, "a", aCondemned.URN.Name())
-					require.True(t, aCondemned.Delete)
+					assert.Equal(t, "a", aCondemned.URN.Name())
+					assert.True(t, aCondemned.Delete)
 
 					aSecondCondemned := stackInfo.Deployment.Resources[4]
-					require.Equal(t, "a", aSecondCondemned.URN.Name())
-					require.True(t, aSecondCondemned.Delete)
+					assert.Equal(t, "a", aSecondCondemned.URN.Name())
+					assert.True(t, aSecondCondemned.Delete)
 
 					b := stackInfo.Deployment.Resources[5]
-					require.Equal(t, "b", b.URN.Name())
-					require.False(t, b.Delete)
+					assert.Equal(t, "b", b.URN.Name())
+					assert.False(t, b.Delete)
 				},
 			},
 			{
@@ -99,19 +100,19 @@ func TestDoublePendingDelete(t *testing.T) {
 					// We should have cleared out all of the pending deletes now.
 					require.NotNil(t, stackInfo.Deployment)
 
-					require.Equal(t, 4, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 4, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
-					require.Equal(t, resource.RootStackType, stackRes.URN.Type())
+					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
-					require.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					require.Equal(t, "a", a.URN.Name())
-					require.False(t, a.Delete)
+					assert.Equal(t, "a", a.URN.Name())
+					assert.False(t, a.Delete)
 
 					b := stackInfo.Deployment.Resources[3]
-					require.Equal(t, "b", b.URN.Name())
-					require.False(t, b.Delete)
+					assert.Equal(t, "b", b.URN.Name())
+					assert.False(t, b.Delete)
 				},
 			},
 		},

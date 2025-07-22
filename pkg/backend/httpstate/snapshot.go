@@ -23,8 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -100,28 +98,7 @@ func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
 		deployment, token)
 }
 
-func (persister *cloudSnapshotPersister) SaveJournalEntry(
-	entry backend.JournalEntry, sm secrets.Manager,
-) error {
-	ctx := persister.context
-
-	var encrypter config.Encrypter
-	encrypter = config.NewPanicCrypter()
-	if sm != nil {
-		encrypter = sm.Encrypter()
-	}
-
-	serializedEntry, err := entry.Serialize(ctx, encrypter)
-	if err != nil {
-		return fmt.Errorf("serializing journal entry: %w", err)
-	}
-
-	return persister.backend.client.SaveJournalEntry(ctx, persister.update, serializedEntry, persister.tokenSource)
-}
-
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
-
-var _ backend.JournalPersister = (*cloudSnapshotPersister)(nil)
 
 func (b *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
 	tokenSource tokenSourceCapability,

@@ -1337,8 +1337,6 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Inputs = inputs
 		s.new.Outputs = outputs
 
-		fmt.Println(s.new.PropertyDependencies, s.old.PropertyDependencies, s.new.URN, s.new.ID, s.old.ID)
-
 		var inputsChange, outputsChange bool
 		if s.old != nil {
 			// There are two cases in which we'll diff only resource outputs on a

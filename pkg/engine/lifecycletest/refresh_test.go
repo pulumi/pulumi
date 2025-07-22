@@ -404,7 +404,6 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 	validateRefreshDeleteCombination(t, names, []string{}, "pre")
 
 	for i, subset := range subsets {
-		fmt.Println("subset", i, subset)
 		validateRefreshDeleteCombination(t, names, subset, strconv.Itoa(i))
 	}
 }
