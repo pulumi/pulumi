@@ -357,7 +357,9 @@ export async function run(
         const isModule = packageObject["type"] === "module";
         const ts = require(typescriptRequire);
         const tsVersion = semver.parse(ts.version);
-        const hasLoaders = process.execArgv.find((arg) => arg === "--loader");
+        const hasLoaders = process.execArgv.find(
+            (arg) => arg === "--loader" || arg === "--import" || arg === "--require",
+        );
         try {
             tsNodeESMRequire = require.resolve("ts-node/esm");
         } catch (err) {
@@ -371,6 +373,7 @@ export async function run(
             !hasLoaders &&
             tsNodeESMRequire
         ) {
+            log.debug("Using automatic ESM mode");
             // All the conditions for automatic ESM mode are fullfilled.
             options.compilerOptions = {
                 target: "ES2022", // TS >= 4.6 and Node >= 20 support this

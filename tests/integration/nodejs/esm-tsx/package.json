@@ -1,0 +1,17 @@
+{
+    "name": "esm-tsx",
+    "license": "Apache-2.0",
+    "type": "module",
+    "devDependencies": {
+        "@types/node": "^20.0.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "dependencies": {
+        "tsx": "^4.20.0",
+        "typescript": "^5.8.0",
+        "ts-node": "^10.8.0"
+    },
+    "//": "We include ts-node as a dependency here, even though we're using tsx. This is to simulate a case where ts-node is somewhere in the (maybe indirect) dependencies. Because we have the `--import` flag in Pulumi.yaml, we don't want to use automatic ESM mode in this test case, even though we have ts-node/esm available."
+}
