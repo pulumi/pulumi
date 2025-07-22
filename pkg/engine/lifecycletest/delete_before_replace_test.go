@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -811,7 +812,7 @@ func TestDBRParallel(t *testing.T) {
 			t.Parallel()
 
 			// We're going to assert that we always delete B before A
-			diffCalled := false
+			var diffCalled atomic.Bool
 			var waitForDiff sync.WaitGroup
 			waitForDiff.Add(1)
 			var waitForDelete sync.WaitGroup
@@ -833,7 +834,7 @@ func TestDBRParallel(t *testing.T) {
 						},
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							// If we're re-creating B ensure it was deleted first
-							if diffCalled && req.URN.Name() == "resB" {
+							if diffCalled.Load() && req.URN.Name() == "resB" {
 								waitForDelete.Wait()
 							}
 							return plugin.CreateResponse{
@@ -843,7 +844,7 @@ func TestDBRParallel(t *testing.T) {
 							}, nil
 						},
 						DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-							diffCalled = true
+							diffCalled.Store(true)
 							// Make sure we always return diff for the first resource first
 							defer func() {
 								if req.URN.Name() == first {
