@@ -555,6 +555,23 @@ export function waitForRPCs(disconnectFromServers = false): Promise<void> {
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
         if (disconnectFromServers) {
+            await new Promise((resolve, reject) => {
+                getMonitor()?.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
+                    if (err) {
+                        // If we are running against an older version of the CLI,
+                        // SignalAndWaitForShutdown might not be implemented. This is
+                        // mostly fine, but means that delete hooks do not work. Since
+                        // we check if the CLI supports the `resourceHook` feature when
+                        // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+                        // error here.
+                        if (err && (err.code === grpc.status.UNIMPLEMENTED || err.code === grpc.status.UNAVAILABLE)) {
+                            return resolve(undefined);
+                        }
+                        reject(new Error(`Error while signaling shutdown: ${err}`));
+                    }
+                    return resolve(undefined);
+                });
+            });
             disconnectSync();
         }
         return Promise.resolve();
