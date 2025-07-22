@@ -141,6 +141,26 @@ func (el EnforcementLevel) IsValid() bool {
 	return false
 }
 
+// EntityType indicates the type of entity a policy group applies to
+type EntityType string
+
+const (
+	// Stacks indicates the policy group applies to stacks
+	Stacks EntityType = "stacks"
+
+	// Accounts indicates the policy group applies to accounts
+	Accounts EntityType = "accounts"
+)
+
+// IsValid returns true if the EntityType is a valid value.
+func (et EntityType) IsValid() bool {
+	switch et {
+	case Stacks, Accounts:
+		return true
+	}
+	return false
+}
+
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
 // metadata and policies.
 type GetPolicyPackResponse struct {
@@ -211,12 +231,12 @@ type ListPolicyGroupsResponse struct {
 // PolicyGroupSummary details the name, applicable stacks and the applied Policy
 // Packs for an organization's Policy Group.
 type PolicyGroupSummary struct {
-	Name                  string `json:"name"`
-	IsOrgDefault          bool   `json:"isOrgDefault"`
-	NumStacks             int    `json:"numStacks"`
-	NumAccounts           int    `json:"numAccounts,omitempty"`
-	EntityType            string `json:"entityType"`
-	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
+	Name                  string     `json:"name"`
+	IsOrgDefault          bool       `json:"isOrgDefault"`
+	NumStacks             int        `json:"numStacks"`
+	NumAccounts           int        `json:"numAccounts,omitempty"`
+	EntityType            EntityType `json:"entityType"`
+	NumEnabledPolicyPacks int        `json:"numEnabledPolicyPacks"`
 }
 
 // GetPolicyPackConfigSchemaResponse is the response that includes the JSON
