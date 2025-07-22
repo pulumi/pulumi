@@ -10,15 +10,26 @@ from pulumi import (
 from random_ import Random, Component
 
 
-def fun(args: ResourceHookArgs) -> None:
-    log.info(f"fun was called with length = {args.new_inputs.get('length')}")
+def before_create(args: ResourceHookArgs) -> None:
+    log.info(f"before_create was called with length = {args.new_inputs.get('length')}")
     assert args.name == "res", f"Expected name 'res', got {args.name}"
     assert args.type == "testprovider:index:Random", (
         f"Expected type 'testprovider:index:Random', got {args.type}"
     )
 
 
-hook = ResourceHook("hook_fun", fun)
+before_create_hook = ResourceHook("before_create", before_create)
+
+
+def before_delete(args: ResourceHookArgs) -> None:
+    log.info(f"before_delete was called with length = {args.old_inputs.get('length')}")
+    assert args.name == "res", f"Expected name 'res', got {args.name}"
+    assert args.type == "testprovider:index:Random", (
+        f"Expected type 'testprovider:index:Random', got {args.type}"
+    )
+
+
+before_delete_hook = ResourceHook("before_delete", before_create)
 
 
 res = Random(
@@ -26,7 +37,8 @@ res = Random(
     length=10,
     opts=ResourceOptions(
         hooks=ResourceHookBinding(
-            before_create=[hook],
+            before_create=[before_create_hook],
+            before_delete=[before_delete_hook],
         )
     ),
 )

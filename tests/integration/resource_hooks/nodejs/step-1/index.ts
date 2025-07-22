@@ -5,17 +5,26 @@ import { log, ResourceHook, ResourceHookArgs } from "@pulumi/pulumi";
 import { Random, Component } from "./random";
 
 
-function fun(args: ResourceHookArgs) {
-    log.info(`fun was called with length = ${args.newInputs["length"]}`);
+function beforeCreate(args: ResourceHookArgs) {
+    log.info(`beforeCreate was called with length = ${args.newInputs["length"]}`);
     assert.strictEqual(args.name, "res")
     assert.strictEqual(args.type, "testprovider:index:Random")
 }
 
-const hook = new ResourceHook("hook_fun", fun);
+const beforeCreateHook = new ResourceHook("beforeCreate", beforeCreate);
+
+function beforeDelete(args: ResourceHookArgs) {
+    log.info(`beforeDelete was called with length = ${args.newInputs["length"]}`);
+    assert.strictEqual(args.name, "res")
+    assert.strictEqual(args.type, "testprovider:index:Random")
+}
+
+const beforeDeleteHook = new ResourceHook("beforeDelete", beforeDelete);
 
 const res = new Random("res", { length: 10 }, {
     hooks: {
-        beforeCreate: [hook]
+        beforeCreate: [beforeCreateHook],
+        beforeDelete: [beforeDeleteHook],
     }
 });
 

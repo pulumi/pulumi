@@ -1,3 +1,6 @@
+//go:build !all
+// +build !all
+
 package main
 
 import (
@@ -9,9 +12,9 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		hookFun := func(args *pulumi.ResourceHookArgs) error {
+		beforeCreate := func(args *pulumi.ResourceHookArgs) error {
 			length := int(args.NewInputs["length"].NumberValue())
-			ctx.Log.Info(fmt.Sprintf("fun was called with length = %d", length), nil)
+			ctx.Log.Info(fmt.Sprintf("beforeCreate was called with length = %d", length), nil)
 			if args.Name != "res" {
 				return fmt.Errorf("expected name to be 'res', got %q", args.Name)
 			}
@@ -20,24 +23,32 @@ func main() {
 			}
 			return nil
 		}
-		hook, err := ctx.RegisterResourceHook("myhook", hookFun, &pulumi.ResourceHookOptions{
+		_, err := ctx.RegisterResourceHook("beforeCreate", beforeCreate, &pulumi.ResourceHookOptions{
 			OnDryRun: false,
 		})
 		if err != nil {
 			return err
 		}
 
-		res, err := NewRandom(ctx,
-			"res",
-			&RandomArgs{
-				Length: pulumi.Int(10),
-			},
-			pulumi.ResourceHooks(&pulumi.ResourceHookBinding{
-				BeforeCreate: []*pulumi.ResourceHook{hook},
-			}))
+		beforeDelete := func(args *pulumi.ResourceHookArgs) error {
+			length := int(args.OldInputs["length"].NumberValue())
+			ctx.Log.Info(fmt.Sprintf("beforeDelete was called with length = %d", length), nil)
+			if args.Name != "res" {
+				return fmt.Errorf("expected name to be 'res', got %q", args.Name)
+			}
+			if string(args.Type) != "testprovider:index:Random" {
+				return fmt.Errorf("expected type to be 'testprovider:index:Random', got %q", args.Type)
+			}
+			return nil
+		}
+		_, err = ctx.RegisterResourceHook("beforeDelete", beforeDelete, &pulumi.ResourceHookOptions{
+			OnDryRun: false,
+		})
 		if err != nil {
 			return err
 		}
+
+		// removed `res` here, we expect its beforeDelete hook to be called
 
 		hookFunComp := func(args *pulumi.ResourceHookArgs) error {
 			ctx.Log.Info(fmt.Sprintf("funComp was called with args = %+v", args), nil)
@@ -69,7 +80,6 @@ func main() {
 			return err
 		}
 
-		ctx.Export("name", res.ID())
 		return nil
 	})
 }
