@@ -95,8 +95,6 @@ const (
 	JournalEntryRebase         JournalEntryKind = 5
 )
 
-type OperationID int
-
 type JournalEntry struct {
 	Kind               JournalEntryKind
 	OperationID        uint64 // The ID of the operation that this journal entry is associated with.
@@ -108,6 +106,9 @@ type JournalEntry struct {
 	RefreshDeleteURN   resource.URN        // The URN of the resource that was deleted by a refresh operation.
 	// If true, this journal entry can be elided and does not need to be written immediately.
 	ElideWrite bool
+
+	DeleteMapping map[int]int
+	NewSnapshot   *deploy.Snapshot
 }
 
 func (je JournalEntry) Serialize(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
@@ -703,16 +704,19 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	viewStep, isViewStep := step.(*deploy.ViewStep)
 	if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) {
 		if old := step.Old(); old != nil {
-			journalEntry.RefreshDeleteURN = old.URN
+			journalEntry.RefreshDeleteURN = step.Old().URN
 			rsm.manager.markEntryForDeletion(&journalEntry, old)
 		}
 		journalEntry.Kind = JournalEntrySuccess
 	} else {
 		if old := step.Old(); old != nil {
-			journalEntry.RefreshDeleteURN = old.URN
 			rsm.manager.markEntryForDeletion(&journalEntry, old)
 		}
 	}
+
+	// if step.New() == nil && step.Old() != nil {
+	// 	journalEntry.RefreshDeleteURN = step.Old().URN
+	// }
 
 	return rsm.manager.journal.EndOperation(journalEntry)
 }
@@ -798,6 +802,44 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return ism.manager.journal.EndOperation(journalEntry)
 }
 
+func (sj *snapshotJournaler) rebuildDependencies(resources []*resource.State) error {
+	referenceable := make(map[resource.URN]bool)
+	for i := range resources {
+		newDeps := []resource.URN{}
+		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+
+		_, allDeps := resources[i].GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				// We handle parents separately later on (see undangleParentResources),
+				// so we'll skip over them here.
+				continue
+			case resource.ResourceDependency:
+				if referenceable[dep.URN] {
+					newDeps = append(newDeps, dep.URN)
+				}
+			case resource.ResourcePropertyDependency:
+				if referenceable[dep.URN] {
+					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
+				}
+			case resource.ResourceDeletedWith:
+				if !referenceable[dep.URN] {
+					resources[i].DeletedWith = ""
+				}
+			}
+		}
+		if len(resources[i].Dependencies) > 0 {
+			resources[i].Dependencies = newDeps
+		}
+		if len(resources[i].PropertyDependencies) > 0 {
+			resources[i].PropertyDependencies = newPropDeps
+		}
+		referenceable[resources[i].URN] = true
+	}
+	return nil
+}
+
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
 func (sj *snapshotJournaler) snap() *deploy.Snapshot {
@@ -832,6 +874,16 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 
 	// Start with a copy of the resources produced during the evaluation of the current plan.
 	resources := make([]*resource.State, 0)
+
+	snap := sj.snapshot
+	//	deleteMapping := make(map[int]int)
+
+	for _, entry := range sj.journalEntries {
+		if entry.Kind == JournalEntryRebase {
+			snap = entry.NewSnapshot
+			contract.Assertf(entry.OperationID == 0, "rebase journal entry must not have an operation ID")
+		}
+	}
 
 	refreshDeletes := make(map[resource.URN]bool)
 	toDelete := make(map[uint64]struct{})
@@ -898,9 +950,12 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				delete(toDeleteInSnapshot, entry.DeleteOld)
 				toDeleteInSnapshot[entry.DeleteOld] = struct{}{}
 			}
-			// if entry.DeleteOld >= 0 && entry.State != nil {
-			// 	toDeleteInSnapshot[entry.DeleteOld] = struct{}{}
-			// }
+			if entry.DeleteOld >= 0 && entry.State == nil {
+				toDeleteInSnapshot[entry.DeleteOld] = struct{}{}
+			}
+			if entry.RefreshDeleteURN != "" {
+				refreshDeletes[entry.RefreshDeleteURN] = true
+			}
 		case JournalEntryFailure:
 			delete(incompleteOps, entry.OperationID)
 		case JournalEntryOutputs:
@@ -909,8 +964,8 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	}
 
 	// Append any resources from the base plan that were not produced by the current plan.
-	if sj.snapshot != nil {
-		for i, res := range sj.snapshot.Resources {
+	if snap != nil {
+		for i, res := range snap.Resources {
 			if _, ok := toDeleteInSnapshot[i]; !ok {
 				if _, ok := markAsPendingReplacement[i]; ok {
 					res.PendingReplacement = true
@@ -934,7 +989,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		}
 	}
 
-	engine.FilterRefreshDeletes(refreshDeletes, resources)
+	//	engine.FilterRefreshDeletes(refreshDeletes, resources)
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
@@ -947,7 +1002,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	// Track pending create operations from the base snapshot
 	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
 	// because these must require user intervention to be cleared or resolved.
-	if base := sj.snapshot; base != nil {
+	if base := snap; base != nil {
 		for _, pendingOperation := range base.PendingOperations {
 			if pendingOperation.Type == resource.OperationTypeCreating {
 				operations = append(operations, pendingOperation)
@@ -961,21 +1016,23 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 
+	// TODO: maybe only do this if there was a refresh operation.
+	// We need to rebuild the dependencies in that case, because refresh
+	// may delete resources, that were dependencies of other resources.
+	// If we don't fix that up, we get an invalid snapshot.
+	sj.rebuildDependencies(resources)
+
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
 	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
 	// to ensure that secrets are not re-encrypted on each update.
 	secretsManager := sj.secretsManager
-	if sj.snapshot != nil && secrets.AreCompatible(secretsManager, sj.snapshot.SecretsManager) {
-		secretsManager = sj.snapshot.SecretsManager
+	if snap != nil && secrets.AreCompatible(secretsManager, snap.SecretsManager) {
+		secretsManager = snap.SecretsManager
 	}
 
 	var metadata deploy.SnapshotMetadata
-	if sj.snapshot != nil {
-		metadata = sj.snapshot.Metadata
-	}
-
-	for _, res := range resources {
-		fmt.Println("res.URN", res.URN, res.ID)
+	if snap != nil {
+		metadata = snap.Metadata
 	}
 
 	manifest.Magic = manifest.NewMagic()
@@ -1071,6 +1128,9 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 	for {
 		select {
 		case request := <-journalEvents:
+			if request.JournalEntry.Kind == JournalEntryRebase {
+				contract.Assertf(len(sj.journalEntries) == 0, "should not have seen an jornalentry before a rebase")
+			}
 			sj.journalEntries = append(sj.journalEntries, request.JournalEntry)
 			request.result <- nil
 		case <-sj.cancel:
@@ -1093,6 +1153,7 @@ type snapshotJournaler struct {
 	journalEvents  chan ResultJournalEntry
 	journalEntries []JournalEntry
 	cancel         chan bool
+	done           chan error
 	secretsManager secrets.Manager
 }
 
@@ -1130,6 +1191,7 @@ func NewSnapshotJournaler(
 		journalEntries: make([]JournalEntry, 0),
 		secretsManager: secretsManager,
 		cancel:         cancel,
+		done:           done,
 	}
 
 	serviceLoop := journaler.defaultServiceLoop
@@ -1150,7 +1212,6 @@ type ResultJournalEntry struct {
 
 func (sj *snapshotJournaler) journalMutation(entry JournalEntry) error {
 	result := make(chan error)
-	fmt.Println("SnapshotManager: journalMutation", entry.Kind, entry.OperationID, entry.DeleteOld, entry.DeleteNew, entry.State)
 	select {
 	case sj.journalEvents <- ResultJournalEntry{JournalEntry: entry, result: result}:
 		return <-result
@@ -1196,24 +1257,12 @@ func (sj *snapshotJournaler) Rebase(newBase *deploy.Snapshot) error {
 		snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
 	}
 	sj.snapshot = snapCopy
-	// A rebase renders all previous journal entries invalid, so we clear them.
-	for i := range sj.journalEntries {
-		new, ok := newDeleteMapping[sj.journalEntries[i].DeleteOld]
-		if ok {
-			sj.journalEntries[i].DeleteOld = new
-		} else {
-			sj.journalEntries[i].DeleteOld = -1 // Default to -1, which means no deletion.
-		}
-	}
-	fmt.Println("new journal entries", newDeleteMapping)
-	for _, entry := range sj.journalEntries {
-		fmt.Println(entry.OperationID, entry.DeleteOld, entry.State)
-	}
-	return sj.journalMutation(JournalEntry{Kind: JournalEntryRebase})
+	return sj.journalMutation(JournalEntry{Kind: JournalEntryRebase, DeleteMapping: newDeleteMapping, NewSnapshot: snapCopy})
 }
 
 func (sj snapshotJournaler) Close() {
 	sj.cancel <- true
+	<-sj.done
 }
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister, default secrets

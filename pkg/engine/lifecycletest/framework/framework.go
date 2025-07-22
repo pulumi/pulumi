@@ -126,24 +126,10 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	for _, jr := range journal.Resources {
 		found := false
 		for _, mr := range manager.Resources {
-			// if len(mr.Dependencies) == 0 {
-			// 	fmt.Println("fixing it up", mr.URN)
-			// 	mr.Dependencies = nil
-			// }
-			// if len(mr.PropertyDependencies) == 0 {
-			// 	fmt.Println("fixing up mr.PropertyDependencies", mr.URN, mr.PropertyDependencies)
-			// 	mr.PropertyDependencies = nil
-			// }
-			// if len(jr.Dependencies) == 0 {
-			// 	jr.Dependencies = nil
-			// }
-			// if len(jr.PropertyDependencies) == 0 {
-			// 	fmt.Println("fixing up jr.PropertyDependencies", jr.URN, jr.PropertyDependencies)
-			// 	jr.PropertyDependencies = nil
-			// }
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
 					fmt.Println("different resources with same URN:", jr.URN, diff)
+					fmt.Println(jr, mr)
 				}
 			} else {
 				found = true
