@@ -53,35 +53,26 @@ type SnapshotPersister interface {
 	Save(snapshot *deploy.Snapshot) error
 }
 
-type JournalPersister interface {
-	SaveJournalEntry(JournalEntry, secrets.Manager) error
-}
-
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
 // mutations on the global snapshot object serially. This implementation maintains two bits of state: the "base"
-// snapshot, which is completely immutable and represents the state of the world prior to the application
-// of the current plan, and a "new" list of resources, which consists of the resources that were operated upon
-// by the current plan.
-//
-// The resources stored in the `resources` slice are pointers to resource objects allocated by the engine.
-// This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
-// that it creates and expects those mutations to be persisted directly to the snapshot.
+// snapshot, which is immutable and represents the state of the world prior to the application
+// of the current plan, and a journal of operations, which consists of the operations that are being
+// applied on top of the immutable snapshot.
 type SnapshotManager struct {
 	journal      Journal          // The journal used to record operations performed by this plan
 	baseSnapshot *deploy.Snapshot // The base snapshot for this plan
 
 	// newResources is a map of resources that have been added to the snapshot in this plan, keyed by the resource
-	// state.  This is used to track the added resources, in case they are deleted later.
-	newResources gsync.Map[*resource.State, uint64]
-
+	// state.  This is used to track the added resources and their operation IDs, allowing us too delete
+	// them later if necessary.
+	newResources       gsync.Map[*resource.State, uint64]
 	operationIDCounter atomic.Uint64 // A counter used to generate unique operation IDs for journal entries.
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
 
 func (sm *SnapshotManager) Close() error {
-	sm.journal.Close()
-	return nil
+	return sm.journal.Close()
 }
 
 type JournalEntryKind int
@@ -103,7 +94,6 @@ type JournalEntry struct {
 	PendingReplacement int
 	State              *resource.State     // The resource state associated with this journal entry.
 	Operation          *resource.Operation // The operation associated with this journal entry, if any.
-	RefreshDeleteURN   resource.URN        // The URN of the resource that was deleted by a refresh operation.
 	// If true, this journal entry can be elided and does not need to be written immediately.
 	ElideWrite bool
 
@@ -132,13 +122,12 @@ func (je JournalEntry) Serialize(ctx context.Context, enc config.Encrypter) (api
 	}
 
 	serializedEntry := apitype.JournalEntry{
-		Kind:             apitype.JournalEntryKind(je.Kind),
-		OperationID:      je.OperationID,
-		DeleteOld:        je.DeleteOld,
-		DeleteNew:        je.DeleteNew,
-		State:            state,
-		Operation:        operation,
-		RefreshDeleteURN: string(je.RefreshDeleteURN),
+		Kind:        apitype.JournalEntryKind(je.Kind),
+		OperationID: je.OperationID,
+		DeleteOld:   je.DeleteOld,
+		DeleteNew:   je.DeleteNew,
+		State:       state,
+		Operation:   operation,
 	}
 
 	return serializedEntry, nil
@@ -704,7 +693,6 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	viewStep, isViewStep := step.(*deploy.ViewStep)
 	if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) {
 		if old := step.Old(); old != nil {
-			journalEntry.RefreshDeleteURN = step.Old().URN
 			rsm.manager.markEntryForDeletion(&journalEntry, old)
 		}
 		journalEntry.Kind = JournalEntrySuccess
@@ -713,10 +701,6 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 			rsm.manager.markEntryForDeletion(&journalEntry, old)
 		}
 	}
-
-	// if step.New() == nil && step.Old() != nil {
-	// 	journalEntry.RefreshDeleteURN = step.Old().URN
-	// }
 
 	return rsm.manager.journal.EndOperation(journalEntry)
 }
@@ -885,7 +869,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		}
 	}
 
-	refreshDeletes := make(map[resource.URN]bool)
 	toDelete := make(map[uint64]struct{})
 	toDeleteInSnapshot := make(map[int]struct{})
 	toReplace := make(map[uint64]*resource.State)
@@ -935,9 +918,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			if entry.DeleteOld >= 0 {
 				toDeleteInSnapshot[entry.DeleteOld] = struct{}{}
 			}
-			if entry.RefreshDeleteURN != "" {
-				refreshDeletes[entry.RefreshDeleteURN] = true
-			}
 			if entry.PendingReplacement != -1 {
 				markAsPendingReplacement[entry.PendingReplacement] = struct{}{}
 			}
@@ -952,9 +932,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			}
 			if entry.DeleteOld >= 0 && entry.State == nil {
 				toDeleteInSnapshot[entry.DeleteOld] = struct{}{}
-			}
-			if entry.RefreshDeleteURN != "" {
-				refreshDeletes[entry.RefreshDeleteURN] = true
 			}
 		case JournalEntryFailure:
 			delete(incompleteOps, entry.OperationID)
@@ -988,8 +965,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			}
 		}
 	}
-
-	//	engine.FilterRefreshDeletes(refreshDeletes, resources)
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
@@ -1144,7 +1119,7 @@ type Journal interface {
 	BeginOperation(entry JournalEntry) error
 	EndOperation(entry JournalEntry) error
 	Rebase(newBase *deploy.Snapshot) error
-	Close()
+	Close() error
 }
 
 type snapshotJournaler struct {
@@ -1260,9 +1235,9 @@ func (sj *snapshotJournaler) Rebase(newBase *deploy.Snapshot) error {
 	return sj.journalMutation(JournalEntry{Kind: JournalEntryRebase, DeleteMapping: newDeleteMapping, NewSnapshot: snapCopy})
 }
 
-func (sj snapshotJournaler) Close() {
+func (sj snapshotJournaler) Close() error {
 	sj.cancel <- true
-	<-sj.done
+	return <-sj.done
 }
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister, default secrets
