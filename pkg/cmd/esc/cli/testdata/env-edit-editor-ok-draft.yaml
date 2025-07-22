@@ -1,0 +1,21 @@
+run: |
+  esc env edit default/test --draft
+process:
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: |
+      echo -e "values:\n  foo: baz\n" >$1
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env edit default/test --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/00000000-0000-0000-0000-000000000000
+Change request submitted
+
+---
+> esc env edit default/test --draft

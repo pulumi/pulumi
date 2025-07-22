@@ -30,6 +30,7 @@ type envEditCommand struct {
 func newEnvEditCmd(env *envCommand) *cobra.Command {
 	var file string
 	var showSecrets bool
+	var draft bool
 
 	edit := &envEditCommand{env: env}
 
@@ -74,16 +75,16 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return fmt.Errorf("reading environment definition: %w", err)
 				}
 
-				diags, err := edit.env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, yaml, "")
+				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, yaml, "", "Environment updated.")
 				if err != nil {
-					return fmt.Errorf("updating environment definition: %w", err)
-				}
-				if len(diags) == 0 {
-					fmt.Fprintln(edit.env.esc.stdout, "Environment updated.")
-					return nil
+					return err
 				}
 
-				return edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.envName, yaml, diags)
+				if len(diags) != 0 {
+					return edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.envName, yaml, diags)
+				}
+
+				return nil
 			}
 
 			editor, err := edit.getEditor()
@@ -112,12 +113,12 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return nil
 				}
 
-				diags, err = edit.env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, newYAML, tag)
+				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "Environment updated.")
 				if err != nil {
-					return fmt.Errorf("updating environment definition: %w", err)
+					return err
 				}
+
 				if len(diags) == 0 {
-					fmt.Fprintln(edit.env.esc.stdout, "Environment updated.")
 					return nil
 				}
 
@@ -149,6 +150,14 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")
+
+	cmd.Flags().BoolVar(
+		&draft, "draft", false,
+		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")
+	err := cmd.Flags().MarkHidden("draft") // hide while in preview
+	if err != nil {
+		panic(err)
+	}
 
 	return cmd
 }

@@ -22,6 +22,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var secret bool
 	var plaintext bool
 	var rawString bool
+	var draft bool
 
 	cmd := &cobra.Command{
 		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> <value>",
@@ -140,13 +141,15 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, newYAML, tag)
+			diags, err := env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "")
 			if err != nil {
-				return fmt.Errorf("updating environment definition: %w", err)
+				return err
 			}
+
 			if len(diags) != 0 {
 				return env.writePropertyEnvironmentDiagnostics(env.esc.stderr, diags)
 			}
+
 			return nil
 		},
 	}
@@ -160,6 +163,13 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&rawString, "string", false,
 		"true to treat the value as a string rather than attempting to parse it as YAML")
+	cmd.Flags().BoolVar(
+		&draft, "draft", false,
+		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")
+	err := cmd.Flags().MarkHidden("draft") // hide while in preview
+	if err != nil {
+		panic(err)
+	}
 
 	return cmd
 }

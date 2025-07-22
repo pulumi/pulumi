@@ -1,7 +1,7 @@
 run: |
   esc login
   esc login https://api.pulumi.com
-  esc login http://fake.pulumi.api
+  esc login https://api.fake.pulumi.com
   esc logout
   esc login || echo ok
   esc login https://api.pulumi.com
@@ -10,13 +10,13 @@ run: |
 
 ---
 > esc login
-Logged in to http://fake.pulumi.api as test-user ()
+Logged in to https://api.fake.pulumi.com as test-user (https://app.fake.pulumi.com/test-user)
 > esc login https://api.pulumi.com
 Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
-> esc login http://fake.pulumi.api
-Logged in to http://fake.pulumi.api as test-user ()
+> esc login https://api.fake.pulumi.com
+Logged in to https://api.fake.pulumi.com as test-user (https://app.fake.pulumi.com/test-user)
 > esc logout
-Logged out of http://fake.pulumi.api
+Logged out of https://api.fake.pulumi.com
 > esc login
 Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
 > esc login https://api.pulumi.com
@@ -29,7 +29,7 @@ Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
 ---
 > esc login
 > esc login https://api.pulumi.com
-> esc login http://fake.pulumi.api
+> esc login https://api.fake.pulumi.com
 > esc logout
 > esc login
 > esc login https://api.pulumi.com

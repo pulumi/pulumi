@@ -387,6 +387,185 @@ func TestUpdateEnvironment(t *testing.T) {
 	})
 }
 
+func TestCreateEnvironmentDraft(t *testing.T) {
+	t.Run("OK", func(t *testing.T) {
+		yaml := []byte("new definition")
+		tag := "old tag"
+
+		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, tag, r.Header.Get("ETag"))
+
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			assert.Equal(t, yaml, body)
+
+			err = json.NewEncoder(w).Encode(CreateEnvironmentDraftResponse{
+				ChangeRequestID:      "EXAMPLE",
+				LatestRevisionNumber: 32423432,
+			})
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		})
+
+		changeRequestID, diags, err := client.CreateEnvironmentDraft(context.Background(), "test-org", "test-project", "test-env", yaml, tag)
+		require.NoError(t, err)
+		assert.Equal(t, "EXAMPLE", changeRequestID)
+		assert.Len(t, diags, 0)
+	})
+
+	t.Run("Diags", func(t *testing.T) {
+		expected := []EnvironmentDiagnostic{
+			{
+				Range: &esc.Range{
+					Environment: "test-env",
+					Begin:       esc.Pos{Line: 42, Column: 1},
+					End:         esc.Pos{Line: 42, Column: 42},
+				},
+				Summary: "diag 1",
+			},
+			{
+				Range: &esc.Range{
+					Environment: "import-env",
+					Begin:       esc.Pos{Line: 1, Column: 2},
+					End:         esc.Pos{Line: 3, Column: 4},
+				},
+				Summary: "diag 2",
+			},
+		}
+
+		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+
+			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
+				Code:        400,
+				Message:     "bad request",
+				Diagnostics: expected,
+			})
+			require.NoError(t, err)
+		})
+
+		changeRequestID, diags, err := client.CreateEnvironmentDraft(context.Background(), "test-org", "test-project", "test-env", nil, "")
+		require.Equal(t, "", changeRequestID)
+		assert.Equal(t, expected, diags)
+		require.NoError(t, err)
+	})
+
+	t.Run("Diags only", func(t *testing.T) {
+		expected := []EnvironmentDiagnostic{
+			{
+				Range: &esc.Range{
+					Environment: "test-env",
+					Begin:       esc.Pos{Line: 42, Column: 1},
+					End:         esc.Pos{Line: 42, Column: 42},
+				},
+				Summary: "diag 1",
+			},
+			{
+				Range: &esc.Range{
+					Environment: "import-env",
+					Begin:       esc.Pos{Line: 1, Column: 2},
+					End:         esc.Pos{Line: 3, Column: 4},
+				},
+				Summary: "diag 2",
+			},
+		}
+
+		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+
+			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{Diagnostics: expected})
+			require.NoError(t, err)
+		})
+
+		changeRequestID, diags, err := client.CreateEnvironmentDraft(context.Background(), "test-org", "test-project", "test-env", nil, "")
+		require.Equal(t, "", changeRequestID)
+		assert.Equal(t, expected, diags)
+		require.NoError(t, err)
+	})
+
+	t.Run("Conflict", func(t *testing.T) {
+		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusConflict)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    409,
+				Message: "conflict",
+			})
+			require.NoError(t, err)
+		})
+		changeRequestID, _, err := client.CreateEnvironmentDraft(context.Background(), "test-org", "test-project", "test-env", nil, "")
+		require.Equal(t, "", changeRequestID)
+		assert.ErrorContains(t, err, "conflict")
+	})
+}
+
+func TestSubmitChangeRequest(t *testing.T) {
+	t.Run("OK - nil description", func(t *testing.T) {
+		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+			expectedBody := SubmitChangeRequestRequest{}
+			expectedBodyJSON, err := json.Marshal(expectedBody)
+			require.NoError(t, err)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			assert.Equal(t, expectedBodyJSON, body)
+
+			w.WriteHeader(http.StatusOK)
+		})
+
+		err := client.SubmitChangeRequest(context.Background(), "test-org", "EXAMPLE", nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("OK - empty description", func(t *testing.T) {
+		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+			expectedBody := SubmitChangeRequestRequest{}
+			expectedBodyJSON, err := json.Marshal(expectedBody)
+			require.NoError(t, err)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			assert.Equal(t, expectedBodyJSON, body)
+
+			w.WriteHeader(http.StatusOK)
+		})
+
+		err := client.SubmitChangeRequest(context.Background(), "test-org", "EXAMPLE", nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("OK - description provided", func(t *testing.T) {
+		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+			description := "test description"
+			expectedBody := SubmitChangeRequestRequest{Description: &description}
+			expectedBodyJSON, err := json.Marshal(expectedBody)
+			require.NoError(t, err)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			assert.Equal(t, expectedBodyJSON, body)
+
+			w.WriteHeader(http.StatusOK)
+		})
+
+		description := "test description"
+		err := client.SubmitChangeRequest(context.Background(), "test-org", "EXAMPLE", &description)
+		require.NoError(t, err)
+	})
+
+	t.Run("Already submitted", func(t *testing.T) {
+		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    400,
+				Message: "Bad Request: change request must be in draft status to submit (current status: ready): invalid request",
+			})
+			require.NoError(t, err)
+		})
+
+		err := client.SubmitChangeRequest(context.Background(), "test-org", "EXAMPLE", nil)
+		assert.ErrorContains(t, err, "change request must be in draft status to submit ")
+	})
+}
+
 func TestDeleteEnvironment(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		client := newTestClient(t, http.MethodDelete, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {

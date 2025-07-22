@@ -458,7 +458,7 @@ func (c *testPulumiClient) Insecure() bool {
 
 // URL returns the URL of the API endpoint this client interacts with
 func (c *testPulumiClient) URL() string {
-	return "http://fake.pulumi.api"
+	return "https://api.fake.pulumi.com"
 }
 
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
@@ -660,6 +660,39 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 	}
 
 	return diags, env.revisionTags["latest"], err
+}
+
+func (c *testPulumiClient) CreateEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (string, []client.EnvironmentDiagnostic, error) {
+	_, latest, err := c.getEnvironment(orgName, projectName, envName, "")
+	if err != nil {
+		return "", nil, err
+	}
+
+	if etag != "" && etag != latest.etag {
+		return "", nil, errors.New("etag mismatch")
+	}
+
+	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml, nil)
+	if err == nil && len(diags) == 0 {
+		return "00000000-0000-0000-0000-000000000000", []client.EnvironmentDiagnostic{}, nil
+	}
+	return "", diags, err
+}
+
+func (c *testPulumiClient) SubmitChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	description *string,
+) error {
+	return nil
 }
 
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
@@ -1362,13 +1395,13 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 	}
 
 	creds := workspace.Credentials{
-		Current: "http://fake.pulumi.api",
+		Current: "https://api.fake.pulumi.com",
 		Accounts: map[string]workspace.Account{
 			"https://api.pulumi.com": {
 				Username:    "test-user",
 				AccessToken: "access-token",
 			},
-			"http://fake.pulumi.api": {
+			"https://api.fake.pulumi.com": {
 				Username:    "test-user",
 				AccessToken: "access-token",
 			},

@@ -5,13 +5,14 @@ package cli
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
 func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
+	var draft bool
+
 	cmd := &cobra.Command{
 		Use:   "rollback [<org-name>/][<project-name>/]<environment-name>@<version>",
 		Args:  cobra.ExactArgs(1),
@@ -42,18 +43,28 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			diags, err := env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, yaml, "")
+
+			diags, err := env.esc.updateEnvironment(ctx, ref, draft, yaml, "", "Environment updated.")
 			if err != nil {
 				return err
 			}
+
 			if len(diags) != 0 {
 				err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.envName, yaml, diags)
 				contract.IgnoreError(err)
 				return errors.New("could not roll back: too many errors")
 			}
-			fmt.Fprintln(env.esc.stdout, "Environment updated.")
+
 			return nil
 		},
+	}
+
+	cmd.Flags().BoolVar(
+		&draft, "draft", false,
+		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")
+	err := cmd.Flags().MarkHidden("draft") // hide while in preview
+	if err != nil {
+		panic(err)
 	}
 
 	return cmd

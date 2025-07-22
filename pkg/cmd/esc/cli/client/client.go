@@ -152,6 +152,32 @@ type Client interface {
 		etag string,
 	) ([]EnvironmentDiagnostic, error)
 
+	// CreateEnvironmentDraft creates a draft update of the YAML for the environment envName in org orgName.
+	// The resulting ChangeRequestID is returned.
+	//
+	// If the new environment definition contains errors, the creation will fail with diagnostics.
+	//
+	// If etag is not the empty string and the environment's current etag does not match the provided etag
+	// (i.e. because a different entity has called UpdateEnvironment), the creation will fail with a 409
+	// error.
+	CreateEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (string, []EnvironmentDiagnostic, error)
+
+	// SubmitChangeRequest submits the change request with the specified ID in org orgName.
+	// Optionally provide a description for the change request.
+	SubmitChangeRequest(
+		ctx context.Context,
+		orgName string,
+		changeRequestID string,
+		description *string,
+	) error
+
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
 
@@ -625,6 +651,49 @@ func (pc *client) UpdateEnvironmentWithRevision(
 	}
 
 	return nil, revision, nil
+}
+
+func (pc *client) CreateEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	tag string,
+) (string, []EnvironmentDiagnostic, error) {
+	header := http.Header{}
+	if tag != "" {
+		header.Set(etagHeader, tag)
+	}
+
+	var errResp EnvironmentErrorResponse
+	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts", orgName, projectName, envName)
+	var resp CreateEnvironmentDraftResponse
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
+		Header:        header,
+		ErrorResponse: &errResp,
+	})
+	if err != nil {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && len(diags.Diagnostics) != 0 {
+			return "", diags.Diagnostics, nil
+		}
+		return "", nil, err
+	}
+
+	return resp.ChangeRequestID, nil, nil
+}
+
+func (pc *client) SubmitChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	description *string,
+) error {
+	req := SubmitChangeRequestRequest{Description: description}
+	path := fmt.Sprintf("/api/preview/change-requests/%v/%v/submit", orgName, changeRequestID)
+	err := pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
+	return err
 }
 
 func (pc *client) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
