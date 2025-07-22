@@ -8,7 +8,7 @@
 1367258507 6997 proto/generate.sh
 1574098198 4061 proto/google/protobuf/status.proto
 1405145341 1741 proto/pulumi/alias.proto
-263902146 13923 proto/pulumi/analyzer.proto
+1220655565 13993 proto/pulumi/analyzer.proto
 2045336065 1464 proto/pulumi/callback.proto
 2452746699 3822 proto/pulumi/codegen/hcl.proto
 3175736954 2019 proto/pulumi/codegen/loader.proto

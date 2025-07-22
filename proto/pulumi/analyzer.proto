@@ -78,6 +78,9 @@ message AnalyzerStackConfigureRequest {
     repeated string config_secret_keys = 6;
     // The configuration of the stack being analyzed.
     map<string, string> config = 7;
+
+    // Tags for the current stack.
+    map<string, string> tags = 8;
 }
 
 // `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.

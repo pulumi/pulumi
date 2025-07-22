@@ -506,7 +506,8 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.toObject = function(includeInstanc
     organization: jspb.Message.getFieldWithDefault(msg, 3, ""),
     dryRun: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
     configSecretKeysList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
-    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : []
+    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
+    tagsMap: (f = msg.getTagsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -565,6 +566,12 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.deserializeBinaryFromReader = func
       break;
     case 7:
       var value = msg.getConfigMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
+      break;
+    case 8:
+      var value = msg.getTagsMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
@@ -636,6 +643,10 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.serializeBinaryToWriter = function
   f = message.getConfigMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(7, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getTagsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(8, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -768,6 +779,28 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.getConfigMap = function(
  */
 proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.clearConfigMap = function() {
   this.getConfigMap().clear();
+  return this;};
+
+
+/**
+ * map<string, string> tags = 8;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.getTagsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 8, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.AnalyzerStackConfigureRequest} returns this
+ */
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.clearTagsMap = function() {
+  this.getTagsMap().clear();
   return this;};
 
 
