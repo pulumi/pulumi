@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -98,18 +97,9 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 
 	mockBackend := &backend.MockBackend{
 		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
-			if err != nil {
-				return nil, err
-			}
-			data, err := encoding.JSON.Marshal(chk)
-			if err != nil {
-				return nil, err
-			}
-			return &apitype.UntypedDeployment{
-				Version:    3,
-				Deployment: json.RawMessage(data),
-			}, nil
+			return stack.SerializeUntypedDeployment(ctx, snapshot, &stack.SerializeOptions{
+				Pretty: true,
+			})
 		},
 		ImportDeploymentF: func(ctx context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
 			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
@@ -206,18 +196,9 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 
 	mockBackend := &backend.MockBackend{
 		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
-			if err != nil {
-				return nil, err
-			}
-			data, err := encoding.JSON.Marshal(chk)
-			if err != nil {
-				return nil, err
-			}
-			return &apitype.UntypedDeployment{
-				Version:    3,
-				Deployment: json.RawMessage(data),
-			}, nil
+			return stack.SerializeUntypedDeployment(ctx, snapshot, &stack.SerializeOptions{
+				Pretty: true,
+			})
 		},
 		ImportDeploymentF: func(ctx context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
 			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)

@@ -106,19 +106,12 @@ func newStackExportCmd() *cobra.Command {
 					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}
 
-				serializedDeployment, err := stack.SerializeDeployment(ctx, snap, true)
+				deployment, err = stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
+					ShowSecrets: true,
+					Pretty:      true,
+				})
 				if err != nil {
 					return err
-				}
-
-				data, err := json.Marshal(serializedDeployment)
-				if err != nil {
-					return err
-				}
-
-				deployment = &apitype.UntypedDeployment{
-					Version:    3,
-					Deployment: data,
 				}
 
 				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")

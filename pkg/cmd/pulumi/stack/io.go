@@ -526,23 +526,14 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 
 		snapshot.PendingOperations = nil
 	}
-	sdp, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
+
+	dep, err := stack.SerializeUntypedDeployment(ctx, snapshot, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("constructing deployment for upload: %w", err)
 	}
 
-	bytes, err := json.Marshal(sdp)
-	if err != nil {
-		return err
-	}
-
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	}
-
 	// Now perform the deployment.
-	if err = backend.ImportStackDeployment(ctx, s, &dep); err != nil {
+	if err = backend.ImportStackDeployment(ctx, s, dep); err != nil {
 		return fmt.Errorf("could not import deployment: %w", err)
 	}
 	return nil

@@ -44,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -253,20 +252,12 @@ func makeUntypedDeploymentTimestamp(
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := json.Marshal(sdep)
-	if err != nil {
-		return nil, err
-	}
-
-	return &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	}, nil
+	return udep, nil
 }
 
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
@@ -591,16 +582,10 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{})
 	ctx = context.Background()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false)
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	require.NoError(t, err)
 
-	data, err := encoding.JSON.Marshal(sdep)
-	require.NoError(t, err)
-
-	err = b.ImportDeployment(ctx, stk, &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	})
+	err = b.ImportDeployment(ctx, stk, udep)
 	require.NoError(t, err)
 
 	err = snap.VerifyIntegrity()
@@ -717,20 +702,14 @@ func TestHtmlEscaping(t *testing.T) {
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
-	require.NoError(t, err)
-
-	data, err := encoding.JSON.Marshal(sdep)
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
+		Pretty: true,
+	})
 	require.NoError(t, err)
 
 	// Ensure data has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
 	// ImportDeployment below should not modify the data
-	assert.Contains(t, string(data), "<html@tags>")
-
-	udep := &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	}
+	assert.Contains(t, string(udep.Deployment), "<html@tags>")
 
 	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
