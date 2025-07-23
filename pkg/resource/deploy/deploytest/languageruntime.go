@@ -180,3 +180,8 @@ func (p *languageRuntime) Pack(string, string) (string, error) {
 func (p *languageRuntime) Link(plugin.ProgramInfo, map[string]string) error {
 	return errors.New("Link is not supported")
 }
+
+func (p *languageRuntime) Cancel() error {
+	p.closed = true
+	return nil
+}

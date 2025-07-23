@@ -159,6 +159,13 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.LinkResponse,
     ]
     """`Link` links a local dependency into a project."""
+    Cancel: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+    Operations aborted in this way will return an error.
+    """
 
 class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     """The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
@@ -324,5 +331,14 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.language_pb2.LinkResponse:
         """`Link` links a local dependency into a project."""
+    
+    def Cancel(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty:
+        """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+        Operations aborted in this way will return an error.
+        """
 
 def add_LanguageRuntimeServicer_to_server(servicer: LanguageRuntimeServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

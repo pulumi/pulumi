@@ -96,6 +96,9 @@ type LanguageRuntimeClient interface {
 	Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error)
 	// `Link` links a local dependency into a project.
 	Link(ctx context.Context, in *LinkRequest, opts ...grpc.CallOption) (*LinkResponse, error)
+	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+	// Operations aborted in this way will return an error.
+	Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type languageRuntimeClient struct {
@@ -288,6 +291,15 @@ func (c *languageRuntimeClient) Link(ctx context.Context, in *LinkRequest, opts 
 	return out, nil
 }
 
+func (c *languageRuntimeClient) Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/Cancel", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LanguageRuntimeServer is the server API for LanguageRuntime service.
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
@@ -365,6 +377,9 @@ type LanguageRuntimeServer interface {
 	Pack(context.Context, *PackRequest) (*PackResponse, error)
 	// `Link` links a local dependency into a project.
 	Link(context.Context, *LinkRequest) (*LinkResponse, error)
+	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+	// Operations aborted in this way will return an error.
+	Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -416,6 +431,9 @@ func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*
 }
 func (UnimplementedLanguageRuntimeServer) Link(context.Context, *LinkRequest) (*LinkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Link not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
 
@@ -706,6 +724,24 @@ func _LanguageRuntime_Link_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LanguageRuntime_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Cancel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/Cancel",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Cancel(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LanguageRuntime_ServiceDesc is the grpc.ServiceDesc for LanguageRuntime service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -764,6 +800,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Link",
 			Handler:    _LanguageRuntime_Link_Handler,
+		},
+		{
+			MethodName: "Cancel",
+			Handler:    _LanguageRuntime_Cancel_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
