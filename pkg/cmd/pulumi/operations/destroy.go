@@ -469,7 +469,7 @@ func NewDestroyCmd() *cobra.Command {
 	return cmd
 }
 
-// getprotectedResources returns a list of protected resources. This allows us
+// getProtectedExcludes returns a list of protected resources. This allows us
 // to safely destroy all resources in the unprotected list without invalidating
 // any resource in the protected list. Parents of protected resources will be
 // transitively protected.
