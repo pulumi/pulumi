@@ -702,8 +702,19 @@ func TestExcludeProtected(t *testing.T) {
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
-	stdout, _ := e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
+	// We run the command but _also_ exclude a resource.
+	urn := "urn:pulumi:dev::exclude-protected::my:module:Resource$my:module:Resource::my-bucket-child"
+	stdout, _ := e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected", "--exclude", urn)
 	assert.Contains(t, stdout, "All unprotected resources were destroyed. There are still 7 protected resources")
+	stdout, _ = e.RunCommand("pulumi", "stack", "--show-urns")
+	assert.Contains(t, stdout, urn+"\n")
+
+	// We run the command again, but without the exclude.
+	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
+	assert.Contains(t, stdout, "All unprotected resources were destroyed. There are still 7 protected resources")
+	stdout, _ = e.RunCommand("pulumi", "stack", "--show-urns")
+	assert.NotContains(t, stdout, urn+"\n")
+
 	// We run the command again, but this time there are not unprotected resources to destroy.
 	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
 	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")

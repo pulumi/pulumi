@@ -266,6 +266,7 @@ func NewDestroyCmd() *cobra.Command {
 
 			targetUrns := *targets
 			excludeUrns := *excludes
+			protectedCount := 0
 			if excludeProtected {
 				snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 				if err != nil {
@@ -275,14 +276,15 @@ func NewDestroyCmd() *cobra.Command {
 				}
 
 				protected, err := getProtectedExcludes(snapshot.Resources)
+				protectedCount = len(protected)
 				excludeUrns = append(excludeUrns, protected...)
 
 				if err != nil {
 					return err
-				} else if len(protected) == len(snapshot.Resources) {
+				} else if protectedCount == len(snapshot.Resources) {
 					if !jsonDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
-							" protected resources associated with this stack.\n", len(protected))
+							" protected resources associated with this stack.\n", protectedCount)
 					}
 					// We need to return now. Otherwise the update will conclude
 					// we tried to destroy everything and error for trying to
