@@ -601,7 +601,6 @@ ${defaultErrorMessage(err)}`,
 
     // Construct a `Stack` resource to represent the outputs of the program.
     const stackOutputs = await stack.runInPulumiStack(runProgram);
-    await settings.disconnect();
     span.end();
     return stackOutputs;
 }
