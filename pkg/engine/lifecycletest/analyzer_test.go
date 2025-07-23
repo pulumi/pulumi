@@ -524,7 +524,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		cancel()
 		return nil
 	})
@@ -545,6 +545,6 @@ func TestAnalyzerCancellation(t *testing.T) {
 	op := lt.TestOp(Update)
 	_, err := op.RunWithContext(ctx, project, target, p.Options, false, nil, nil)
 
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "BAIL: canceled")
 	assert.True(t, gracefulShutdown)
 }
