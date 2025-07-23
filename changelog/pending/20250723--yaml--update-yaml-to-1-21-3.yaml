@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: yaml
+  description: Update yaml to 1.21.3
