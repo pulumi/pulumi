@@ -119,6 +119,7 @@ type JournalEntry struct {
 	Operation *resource.Operation
 	// If true, this journal entry can be elided and does not need to be written immediately.
 	ElideWrite bool
+	IsRefresh  bool // If true, this journal entry is part of a refresh operation.
 
 	// The new snapshot if this journal entry is part of a rebase operation.
 	NewSnapshot *deploy.Snapshot
@@ -132,38 +133,6 @@ func newJournalEntry(kind JournalEntryKind, operationID uint64) JournalEntry {
 		PendingReplacement: -1, // Default to -1, which means no pending replacement.
 	}
 }
-
-// If you need to understand what's going on in this file, start here!
-//
-// The snapshot code works on journal entries. Each resource step produces new journal entries
-// for beginning and finishing an operation. These journal entries can then be replayed
-// in conjunction with the immutable base snapshot, to rebuild the new snapshot.
-//
-// Currently the backend only supports saving full snapshots, in which case only one journal
-// entry is allowed to be processed at a time. In the future journal entries will be processed
-// asynchronously in the cloud backend, allowing for better throughput for independent operations..
-//
-// Serialization is performed by pushing the mutator function onto a channel, where another
-// goroutine is polling the channel and executing the mutation functions as they come.
-// This function optionally verifies the integrity of the snapshot before and after mutation.
-//
-// Each journal entry may indicate that its corresponding checkpoint write may be safely elided by
-// setting the `ElideWrite` fiield. As of this writing, we only elide writes after same steps with no
-// meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
-// are flushed by the next non-elided write or the next call to Close.
-//
-// You should never observe or mutate the global snapshot without using this function unless
-// you have a very good justification.
-// func (sm *SnapshotManager) journalMutation(journalEntry JournalEntry) error {
-// 	result := make(chan error)
-// 	journalEntry.result = result
-// 	select {
-// 	case sm.journalEvents <- journalEntry:
-// 		return <-result
-// 	case <-sm.cancel:
-// 		return errors.New("snapshot manager closed")
-// 	}
-// }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
 // completed.
@@ -650,6 +619,8 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// the resource needs to be updated in place, to make sure all ordering constraints
 		// are satisfied.
 		journalEntry.Kind = JournalEntrySuccess
+		// We still need to know it is a refresh, so we can update dependencies correctly.
+		journalEntry.IsRefresh = true
 	}
 	if old := step.Old(); old != nil {
 		rsm.manager.markEntryForDeletion(&journalEntry, old)
@@ -845,23 +816,19 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				toReplace[entry.DeleteNew] = entry.State
 			}
 		}
-
-		if entry.Kind == JournalEntryBegin {
-			if entry.DeleteOld >= 0 {
-				markAsDeletion[entry.DeleteOld] = struct{}{}
-			}
-		}
 	}
 
 	incompleteOps := make(map[uint64]JournalEntry)
-
+	hasRefresh := false
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sj.journalEntries {
 		switch entry.Kind {
 		case JournalEntryBegin:
 			incompleteOps[entry.OperationID] = entry
+			if entry.DeleteOld >= 0 {
+				markAsDeletion[entry.DeleteOld] = struct{}{}
+			}
 		case JournalEntrySuccess:
-
 			delete(incompleteOps, entry.OperationID)
 			// If this is a success, we need to add the resource to the list of resources.
 			_, del := toDelete[entry.OperationID]
@@ -877,10 +844,12 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			if entry.PendingReplacement >= 0 {
 				markAsPendingReplacement[entry.PendingReplacement] = struct{}{}
 			}
-
+			if entry.IsRefresh {
+				hasRefresh = true
+			}
 		case JournalEntryRefreshSuccess:
 			delete(incompleteOps, entry.OperationID)
-
+			hasRefresh = true
 			if entry.DeleteOld >= 0 {
 				if entry.State == nil {
 					toDeleteInSnapshot[entry.DeleteOld] = struct{}{}
@@ -889,6 +858,15 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				}
 			}
 		case JournalEntryFailure:
+			op := incompleteOps[entry.OperationID]
+			if op.Kind == JournalEntryBegin {
+				// If we marked this resource for deletion earlier, we need to
+				// undo that if the operation failed.
+				if _, ok := markAsDeletion[op.DeleteOld]; ok {
+					delete(markAsDeletion, op.DeleteOld)
+					sj.snapshot.Resources[op.DeleteOld].Delete = false
+				}
+			}
 			delete(incompleteOps, entry.OperationID)
 		case JournalEntryOutputs:
 			if entry.State != nil && !entry.ElideWrite && entry.DeleteOld >= 0 {
@@ -950,7 +928,9 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 
-	sj.rebuildDependencies(resources)
+	if hasRefresh {
+		sj.rebuildDependencies(resources)
+	}
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
 	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
@@ -1082,6 +1062,23 @@ type snapshotJournaler struct {
 
 // NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
 // snapshot created from the journal entries.
+//
+// The snapshot code works on journal entries. Each resource step produces new journal entries
+// for beginning and finishing an operation. These journal entries can then be replayed
+// in conjunction with the immutable base snapshot, to rebuild the new snapshot.
+//
+// Currently the backend only supports saving full snapshots, in which case only one journal
+// entry is allowed to be processed at a time. In the future journal entries will be processed
+// asynchronously in the cloud backend, allowing for better throughput for independent operations..
+//
+// Serialization is performed by pushing the journal entries onto a channel, where another
+// goroutine is polling the channel and creating new snapshots using the entries as they come.
+// This function optionally verifies the integrity of the snapshot before and after mutation.
+//
+// Each journal entry may indicate that its corresponding checkpoint write may be safely elided by
+// setting the `ElideWrite` fiield. As of this writing, we only elide writes after same steps with no
+// meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
+// are flushed by the next non-elided write or the next call to Close.
 func NewSnapshotJournaler(
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
