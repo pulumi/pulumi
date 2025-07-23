@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -179,7 +179,10 @@ func TestGzip(t *testing.T) {
 	// PATCH /checkpoint
 	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
-	}, nil, tok)
+	}, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, tok)
 	require.NoError(t, err)
 
 	// POST /events/batch
@@ -240,7 +243,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 			StackIdentifier: StackIdentifier{
 				Stack: tokens.MustParseStackName("stack"),
 			},
-		}, sequenceNumber, indented, updateTokenStaticSource("token"))
+		}, sequenceNumber, indented, 3, updateTokenStaticSource("token"))
 	require.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {

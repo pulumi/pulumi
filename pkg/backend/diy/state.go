@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -122,7 +122,7 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 ) (*deploy.Snapshot, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	checkpoint, err := b.getCheckpoint(ctx, ref)
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -147,12 +147,16 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	return snapshot, nil
 }
 
-// GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func (b *diyBackend) getCheckpoint(ctx context.Context, ref *diyBackendReference) (*apitype.CheckpointV3, error) {
+// getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,
+// returning the checkpoint, version, and features.
+func (b *diyBackend) getCheckpoint(
+	ctx context.Context,
+	ref *diyBackendReference,
+) (*apitype.CheckpointV3, int, []string, error) {
 	chkpath := b.stackPath(ctx, ref)
 	bytes, err := b.bucket.ReadAll(ctx, chkpath)
 	if err != nil {
-		return nil, err
+		return nil, 0, nil, err
 	}
 	m := encoding.JSON
 	if encoding.IsCompressed(bytes) {

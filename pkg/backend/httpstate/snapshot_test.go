@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,12 +138,17 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		assert.Equal(t, req.CheckpointHash, fmt.Sprintf("%x", sha256.Sum256(persistedState)))
 	}
 
-	typedPersistedState := func() apitype.DeploymentV3 {
+	untypedPersistedState := func() apitype.UntypedDeployment {
 		var ud apitype.UntypedDeployment
 		err := json.Unmarshal(persistedState, &ud)
 		require.NoError(t, err)
+		return ud
+	}
+
+	typedPersistedState := func() apitype.DeploymentV3 {
+		ud := untypedPersistedState()
 		var d3 apitype.DeploymentV3
-		err = json.Unmarshal(ud.Deployment, &d3)
+		err := json.Unmarshal(ud.Deployment, &d3)
 		require.NoError(t, err)
 		return d3
 	}
@@ -214,6 +219,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assertEqual("req1", req1.UntypedDeployment)
 
 	handleVerbatim(req1)
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{URN: resource.URN("urn-1")},
 	}, typedPersistedState().Resources)
@@ -235,6 +242,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assertEquals("req2.hash", req2.CheckpointHash)
 
 	handleDelta(req2)
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{URN: resource.URN("urn-1")},
 		{URN: resource.URN("urn-2")},
@@ -255,8 +264,37 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assertEquals("req3.hash", req3.CheckpointHash)
 
 	handleDelta(req3)
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{URN: resource.URN("urn-1")},
+	}, typedPersistedState().Resources)
+
+	// Req 4: then use a v4 deployment schema feature.
+
+	err = persister.Save(&deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				URN:                 resource.URN("urn-1"),
+				RefreshBeforeUpdate: true, // This is a v4 feature.
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	req4 := lastRequestAsDelta()
+	assert.Equal(t, 4, req4.SequenceNumber)
+	assertEqual("req4", req4.DeploymentDelta)
+	assertEquals("req4.hash", req4.CheckpointHash)
+
+	handleDelta(req4)
+	assert.Equal(t, 4, untypedPersistedState().Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
 	}, typedPersistedState().Resources)
 }
 
@@ -342,7 +380,7 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
-		expected, err := dds.MarshalDeployment(s)
+		expected, err := dds.MarshalDeployment(s, 3, nil)
 		require.NoError(t, err)
 
 		marshaled, err := json.Marshal(apitype.PatchUpdateVerbatimCheckpointRequest{
@@ -366,7 +404,7 @@ func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
-		json, err := dds.MarshalDeployment(s)
+		json, err := dds.MarshalDeployment(s, 3, nil)
 		require.NoError(t, err)
 		if dds.ShouldDiff(json) {
 			d, err := dds.Diff(ctx, json)
@@ -387,7 +425,7 @@ func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
 		dds := newDeploymentDiffState(0)
 
 		for _, s := range snaps {
-			json, err := dds.MarshalDeployment(s)
+			json, err := dds.MarshalDeployment(s, 3, nil)
 			require.NoError(b, err)
 			verbatimSize += len(json.raw)
 			if dds.ShouldDiff(json) {
