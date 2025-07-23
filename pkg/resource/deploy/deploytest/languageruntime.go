@@ -46,10 +46,21 @@ func NewLanguageRuntime(program ProgramFunc, requiredPackages ...workspace.Packa
 	}
 }
 
+func NewLanguageRuntimeWithShutdown(
+	program ProgramFunc, shutdown func(), requiredPackages ...workspace.PackageDescriptor,
+) plugin.LanguageRuntime {
+	return &languageRuntime{
+		requiredPackages: requiredPackages,
+		program:          program,
+		shutdown:         shutdown,
+	}
+}
+
 type languageRuntime struct {
 	requiredPackages []workspace.PackageDescriptor
 	program          ProgramFunc
 	closed           bool
+	shutdown         func()
 }
 
 func (p *languageRuntime) Close() error {
@@ -179,4 +190,14 @@ func (p *languageRuntime) Pack(string, string) (string, error) {
 
 func (p *languageRuntime) Link(plugin.ProgramInfo, map[string]string) error {
 	return errors.New("Link is not supported")
+}
+
+func (p *languageRuntime) Cancel() error {
+	p.closed = true
+
+	if p.shutdown != nil {
+		p.shutdown()
+	}
+
+	return nil
 }

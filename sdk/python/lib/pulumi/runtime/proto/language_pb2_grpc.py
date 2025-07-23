@@ -94,6 +94,11 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.LinkRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.LinkResponse.FromString,
                 )
+        self.Cancel = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Cancel',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class LanguageRuntimeServicer(object):
@@ -249,6 +254,14 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Cancel(self, request, context):
+        """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+        Operations aborted in this way will return an error.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -326,6 +339,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.Link,
                     request_deserializer=pulumi_dot_language__pb2.LinkRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.LinkResponse.SerializeToString,
+            ),
+            'Cancel': grpc.unary_unary_rpc_method_handler(
+                    servicer.Cancel,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -592,5 +610,22 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Link',
             pulumi_dot_language__pb2.LinkRequest.SerializeToString,
             pulumi_dot_language__pb2.LinkResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Cancel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Cancel',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
