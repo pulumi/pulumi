@@ -152,6 +152,33 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 	return toolchain.PythonOptions{}
 }
 
+// addPackage installs a package using the specified toolchain.
+func addPackage(t *testing.T, opts toolchain.PythonOptions, name string) {
+	t.Helper()
+	switch opts.Toolchain {
+	case toolchain.Pip:
+		tc, err := toolchain.ResolveToolchain(opts)
+		require.NoError(t, err)
+		cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", name)
+		require.NoError(t, err)
+		cmd.Dir = opts.Root
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+	case toolchain.Poetry:
+		cmd := exec.Command("poetry", "add", name)
+		cmd.Dir = opts.Root
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+	case toolchain.Uv:
+		cmd := exec.Command("uv", "add", name)
+		cmd.Dir = opts.Root
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+	default:
+		require.Fail(t, "unknown toolchain %v", opts.Toolchain)
+	}
+}
+
 // createVenv creates a virtual environment in the given directory with the toolchain and installs requirements.
 func createVenv(t *testing.T, cwd, toolchainName string, opts toolchain.PythonOptions, requirements ...string) {
 	t.Helper()
@@ -160,16 +187,34 @@ func createVenv(t *testing.T, cwd, toolchainName string, opts toolchain.PythonOp
 # Create the venv inside the project directory so it gets cleaned up when we remove the temp directory used for the tests.
 in-project = true
 `
-	file, err := os.Create(filepath.Join(cwd, "poetry.toml"))
-	require.NoError(t, err)
-	defer file.Close()
-	_, err = file.WriteString(poetryToml)
-	require.NoError(t, err)
+
+	poetryPyprojectToml := `[tool]
+[tool.poetry]
+package-mode = false
+`
 	switch toolchainName {
 	case "poetry":
+		// Create poetry config file that ensures venvs are created in the local folder
+		file, err := os.Create(filepath.Join(cwd, "poetry.toml"))
+		require.NoError(t, err)
+		defer file.Close()
+		_, err = file.WriteString(poetryToml)
+		require.NoError(t, err)
+		// Create a pyproject.timl file for poetry
 		cmd := exec.Command("poetry", "init", "--no-interaction")
 		cmd.Dir = cwd
 		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+		// Poetry init creates a buildable package, but we need to disable that, since we don't have any source code.
+		file, err = os.OpenFile(filepath.Join(cwd, "pyproject.toml"), os.O_APPEND|os.O_WRONLY, 0o600)
+		require.NoError(t, err)
+		defer file.Close()
+		_, err = file.WriteString(poetryPyprojectToml)
+		require.NoError(t, err)
+		// Create the venv
+		cmd = exec.Command("poetry", "install")
+		cmd.Dir = cwd
+		out, err = cmd.CombinedOutput()
 		require.NoError(t, err, string(out))
 	case "uv":
 		cmd := exec.Command("uv", "init")
@@ -184,25 +229,7 @@ in-project = true
 	}
 
 	for _, req := range requirements {
-		switch toolchainName {
-		case "poetry":
-			cmd := exec.Command("poetry", "add", req)
-			cmd.Dir = cwd
-			out, err := cmd.CombinedOutput()
-			require.NoError(t, err, string(out))
-		case "uv":
-			cmd := exec.Command("uv", "add", req)
-			cmd.Dir = cwd
-			out, err := cmd.CombinedOutput()
-			require.NoError(t, err, string(out))
-		case "pip":
-			tc, err := toolchain.ResolveToolchain(opts)
-			require.NoError(t, err)
-			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", req)
-			require.NoError(t, err)
-			out, err := cmd.CombinedOutput()
-			require.NoError(t, err, string(out))
-		}
+		addPackage(t, opts, req)
 	}
 }
 
@@ -225,18 +252,13 @@ func pulumiWheel(t *testing.T) string {
 func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
-	// This range needs to be compatible with the pip version in `sdk/python/pyproject.toml`
-	pipDependency := "pip>=24"
-
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {
 		toolchainName := toolchainName
 		t.Run(toolchainName+"/empty", func(t *testing.T) {
 			t.Parallel()
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			// We need `pip` installed. This is a dependency of `pulumi`, so it will always be
-			// available Pulumi virtual environments.
-			createVenv(t, cwd, toolchainName, opts, pipDependency)
+			createVenv(t, cwd, toolchainName, opts)
 
 			packages, err := determinePulumiPackages(t.Context(), opts)
 
@@ -266,7 +288,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			createVenv(t, cwd, toolchainName, opts, pipDependency, "pip-install-test==0.5")
+			createVenv(t, cwd, toolchainName, opts, "pip-install-test==0.5")
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
 			// Find sitePackages folder in Python that contains pip_install_test subfolder.
@@ -324,11 +346,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			// Install a local pulumi SDK that has a pulumi-plugin.json file with `{ "resource": false }`.
 			fooSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "foo-1.0.0"))
 			require.NoError(t, err)
-			tc, err := toolchain.ResolveToolchain(opts)
-			require.NoError(t, err)
-			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", fooSdkDir)
-			require.NoError(t, err)
-			require.NoError(t, cmd.Run())
+			addPackage(t, opts, fooSdkDir)
 
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
 			packages, err := determinePulumiPackages(t.Context(), opts)
@@ -353,11 +371,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			// Install a local old provider SDK that does not have a pulumi-plugin.json file.
 			oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
 			require.NoError(t, err)
-			tc, err := toolchain.ResolveToolchain(opts)
-			require.NoError(t, err)
-			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", oldSdkDir)
-			require.NoError(t, err)
-			require.NoError(t, cmd.Run())
+			addPackage(t, opts, oldSdkDir)
 
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
 			packages, err := determinePulumiPackages(t.Context(), opts)
