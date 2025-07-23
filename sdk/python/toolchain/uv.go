@@ -260,24 +260,11 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
-	// Note that we do not use `uv run python` here because this results in a
-	// process tree of `python-language-runtime -> uv -> python`. This is
-	// problematic because on error we kill the plugin and its children, but not
-	// the children of the children. On macOS and Linux, when uv is killed, it
-	// kills its children, so we have no problem here. On Windows however, it
-	// does not, and we end up with an orphaned Python process that's
-	// busy-waiting in the eventloop and never exits.
-	var cmd *exec.Cmd
-	_, cmdPath := u.pythonExecutable()
-	cmd = exec.CommandContext(ctx, cmdPath, args...)
-	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
-	cmd.Dir = u.root
-	return cmd, nil
+	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "python"}, args...)...), nil
 }
 
 func (u *uv) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
-	moduleArgs := append([]string{"-m", module}, args...)
-	return u.Command(ctx, moduleArgs...)
+	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "--module", module}, args...)...), nil
 }
 
 func (u *uv) About(ctx context.Context) (Info, error) {
