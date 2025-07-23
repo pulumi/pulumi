@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/construct_component_provider_propagation
 
-go 1.23.0
+go 1.23.11
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 
