@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: yaml
-  description: Config values can now be parsed with type `object`
+  description: Allow config values to be parsed with type `object`
