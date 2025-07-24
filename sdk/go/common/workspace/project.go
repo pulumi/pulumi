@@ -51,6 +51,7 @@ const (
 	integerTypeName = "integer"
 	stringTypeName  = "string"
 	booleanTypeName = "boolean"
+	objectTypeName  = "object"
 )
 
 //go:embed project.json
@@ -724,6 +725,12 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 		}
 
 		_, ok = value.(bool)
+		return ok
+	}
+
+	if typeName == objectTypeName {
+		// validate that the item is a map
+		_, ok := value.(map[string]interface{})
 		return ok
 	}
 
