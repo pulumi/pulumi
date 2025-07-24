@@ -1206,6 +1206,17 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
+func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	req := apitype.CreateJournalEntryRequest{
+		Data:     entry,
+		UpdateID: update.UpdateID,
+	}
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "createjournalentry"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
