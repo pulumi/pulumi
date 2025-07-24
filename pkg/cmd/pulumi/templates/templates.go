@@ -183,7 +183,7 @@ func newImpl(
 }
 
 func isTemplateName(templateNamePathOrURL string) bool {
-	return !workspace.IsTemplateURL(templateNamePathOrURL) &&
+	return !workspace.IsGitRepoTemplateURL(templateNamePathOrURL) &&
 		!isTemplatePath(templateNamePathOrURL)
 }
 
