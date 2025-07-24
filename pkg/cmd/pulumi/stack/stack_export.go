@@ -106,6 +106,10 @@ func newStackExportCmd() *cobra.Command {
 					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}
 
+				// Serialize with pretty formatting so that HTML characters are not escaped when serializing
+				// the deployment back to JSON. Note that if the HTML characters were already escaped as part
+				// of exporting from the backend, those escaped characters will remain escaped, this just
+				// avoids introducing additional escaping.
 				deployment, err = stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
 					ShowSecrets: true,
 					Pretty:      true,
