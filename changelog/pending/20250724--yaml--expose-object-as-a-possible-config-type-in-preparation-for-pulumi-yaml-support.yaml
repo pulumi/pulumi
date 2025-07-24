@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: yaml
+  description: Expose `object` as a possible config type in preparation for `pulumi-yaml` support
