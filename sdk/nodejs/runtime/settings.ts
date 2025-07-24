@@ -503,6 +503,8 @@ export function getEngine(): engrpc.IEngineClient | undefined {
 }
 
 export function terminateRpcs() {
+    const store = getStore();
+    store.terminated = true;
     disconnectSync();
 }
 

@@ -151,7 +151,10 @@ async function beforeExitHandler(code: number) {
             // we check if the CLI supports the `resourceHook` feature when
             // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
             // error here.
-            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+            // If we get `UNAVAILABLE`, the monitor was already shutdown, likely
+            // due to an error, and we can ignore the GRPC error here, since
+            // Pulumi will have notified the user.
+            if (err && (err.code === grpc.status.UNIMPLEMENTED || err.code === grpc.status.UNAVAILABLE)) {
                 return;
             }
             console.error(`Error while signaling shutdown: ${err}`);

@@ -3014,3 +3014,65 @@ func TestNodejsOnBeforeExit(t *testing.T) {
 		},
 	})
 }
+
+// Test that we show a message about leaked promises and exit with an error
+// status if the program exits otherwise normally.
+//
+// //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsPromiseMessage(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "promise-message"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil {
+					if strings.Contains(event.DiagnosticEvent.Message, "PULUMI_DEBUG_PROMISE_LEAKS") {
+						foundError = true
+					}
+				}
+			}
+			events, err := json.Marshal(stack.Events)
+			require.NoError(t, err)
+			assert.True(t, foundError, "Did not see the expected message error, got %s", events)
+		},
+	})
+}
+
+// Test that we do not show a message about leaked promises when we exit with a
+// non-zero exit code.
+//
+// //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsExitError(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "exit-error"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			foundPromiseMessage := false
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil {
+					if strings.Contains(event.DiagnosticEvent.Message, "Program exited with non-zero exit code: 123") {
+						foundError = true
+					} else if strings.Contains(event.DiagnosticEvent.Message, "PULUMI_DEBUG_PROMISE_LEAKS") {
+						foundPromiseMessage = true
+					}
+				}
+			}
+			events, err := json.Marshal(stack.Events)
+			require.NoError(t, err)
+			assert.True(t, foundError, "Did not see the expected message error, got %s", events)
+			assert.False(t, foundPromiseMessage, "Should not have found the promise message, got %s", events)
+		},
+	})
+}

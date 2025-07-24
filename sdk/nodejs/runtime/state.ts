@@ -130,6 +130,7 @@ export interface Store {
     stackResource?: Stack;
     leakCandidates: Set<Promise<any>>;
     logErrorCount: number;
+    terminated: boolean;
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
@@ -241,6 +242,9 @@ export class LocalStore implements Store {
     leakCandidates = new Set<Promise<any>>();
 
     logErrorCount = 0;
+
+    /* Tracks whether the monitor was terminated while we were waiting for an operation to complete */
+    terminated = false;
 
     supportsSecrets = false;
     supportsResourceReferences = false;
