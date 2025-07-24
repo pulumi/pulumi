@@ -95,7 +95,7 @@ func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
 
 	project.Config = config
 	err := project.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {

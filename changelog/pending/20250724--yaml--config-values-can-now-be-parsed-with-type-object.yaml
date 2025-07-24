@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: yaml
+  description: Config values can now be parsed with type `object`
