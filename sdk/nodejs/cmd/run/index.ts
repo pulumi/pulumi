@@ -152,7 +152,7 @@ async function beforeExitHandler(code: number) {
             // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
             // error here.
             // If we get `UNAVAILABLE`, the monitor was already shutdown, likely
-            // due to an error, nd we can ignore the GRPC error here, since
+            // due to an error, and we can ignore the GRPC error here, since
             // Pulumi will have notified the user.
             if (err && (err.code === grpc.status.UNIMPLEMENTED || err.code === grpc.status.UNAVAILABLE)) {
                 return;
