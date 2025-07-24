@@ -929,19 +929,12 @@ func (eng *languageTestServer) RunLanguageTest(
 				},
 			},
 		}
-		serializedDeployment, err := stack.SerializeDeployment(ctx, snap, false)
-		if err != nil {
-			return nil, fmt.Errorf("serialize deployment: %w", err)
-		}
-		jsonDeployment, err := json.Marshal(serializedDeployment)
+
+		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 		if err != nil {
 			return nil, fmt.Errorf("serialize deployment: %w", err)
 		}
 
-		untypedDeployment := &apitype.UntypedDeployment{
-			Version:    apitype.DeploymentSchemaVersionCurrent,
-			Deployment: jsonDeployment,
-		}
 		err = backend.ImportStackDeployment(ctx, s, untypedDeployment)
 		if err != nil {
 			return nil, fmt.Errorf("import deployment: %w", err)

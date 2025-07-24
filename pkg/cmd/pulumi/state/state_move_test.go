@@ -29,9 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -47,16 +45,8 @@ func createStackWithResources(
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	require.NoError(t, err)
-
-	data, err := encoding.JSON.Marshal(sdep)
-	require.NoError(t, err)
-
-	udep := &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	}
 
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)

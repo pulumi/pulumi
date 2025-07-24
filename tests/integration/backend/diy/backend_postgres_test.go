@@ -19,7 +19,6 @@ package diy
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"runtime"
 	"testing"
@@ -338,17 +337,8 @@ func TestPostgresBackend(t *testing.T) {
 	}, nil, deploy.SnapshotMetadata{})
 
 	// Test deployment serialization - simulate what would happen during a real deployment
-	deployment, err := stackpkg.SerializeDeployment(ctx, snap, false)
+	untypedDeployment, err := stackpkg.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	require.NoError(t, err, "Failed to serialize deployment")
-
-	// Convert to untyped deployment for import testing
-	serializedData, err := json.Marshal(deployment)
-	require.NoError(t, err, "Failed to marshal deployment")
-
-	untypedDeployment := &apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: json.RawMessage(serializedData),
-	}
 
 	// Verify the untyped deployment was created successfully
 	require.NotNil(t, untypedDeployment, "Untyped deployment should not be nil")
