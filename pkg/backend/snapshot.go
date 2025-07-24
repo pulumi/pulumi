@@ -15,6 +15,8 @@
 package backend
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"sync/atomic"
 
@@ -22,8 +24,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -113,6 +118,38 @@ func newJournalEntry(kind JournalEntryKind, operationID uint64) JournalEntry {
 		DeleteOld:          -1, // Default to -1, which means no deletion.
 		PendingReplacement: -1, // Default to -1, which means no pending replacement.
 	}
+}
+
+func (je JournalEntry) Serialize(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
+	var state *apitype.ResourceV3
+
+	if je.State != nil {
+		s, err := stack.SerializeResource(ctx, je.State, enc, false)
+		if err != nil {
+			return apitype.JournalEntry{}, fmt.Errorf("serializing resource state: %w", err)
+		}
+		state = &s
+	}
+
+	var operation *apitype.OperationV2
+	if je.Operation != nil {
+		op, err := stack.SerializeOperation(ctx, *je.Operation, enc, false)
+		if err != nil {
+			return apitype.JournalEntry{}, fmt.Errorf("serializing operation: %w", err)
+		}
+		operation = &op
+	}
+
+	serializedEntry := apitype.JournalEntry{
+		Kind:        apitype.JournalEntryKind(je.Kind),
+		OperationID: je.OperationID,
+		DeleteOld:   je.DeleteOld,
+		DeleteNew:   je.DeleteNew,
+		State:       state,
+		Operation:   operation,
+	}
+
+	return serializedEntry, nil
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
