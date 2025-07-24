@@ -16,6 +16,8 @@ package templates
 
 import (
 	"archive/tar"
+	"bufio"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -128,7 +130,13 @@ func (r registryTemplate) Download(ctx context.Context) (workspace.Template, err
 	}
 	// Having created a template directory, we now add it to the list of directories to close.
 	r.source.addCloser(func() error { return os.RemoveAll(templateDir) })
-	if err := writeTar(ctx, tar.NewReader(templateBytes), templateDir); err != nil {
+	tarReader, err := createTarReader(templateBytes)
+	if err != nil {
+		return workspace.Template{}, fmt.Errorf("failed to create tar reader: %w", err)
+	}
+	defer tarReader.Close()
+
+	if err := writeTar(ctx, tar.NewReader(tarReader), templateDir); err != nil {
 		return workspace.Template{}, err
 	}
 
@@ -290,6 +298,38 @@ func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	logging.Infof("downloaded %q into %q", t.t.Name, templateDir)
 
 	return workspace.LoadTemplate(templateDir)
+}
+
+const maxDecompressedSize = 100 << 20 // 100MB
+
+// isGzipMagic checks if the given bytes start with the gzip magic number.
+// See https://datatracker.ietf.org/doc/html/rfc1952#section-2
+func isGzipMagic(header []byte) bool {
+	return len(header) >= 2 && header[0] == 0x1f && header[1] == 0x8b
+}
+
+func createTarReader(reader io.Reader) (io.ReadCloser, error) {
+	peekReader := bufio.NewReader(reader)
+	header, err := peekReader.Peek(2)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to peek at template stream: %w", err)
+	}
+
+	if isGzipMagic(header) {
+		gzipReader, err := gzip.NewReader(peekReader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		return struct {
+			io.Reader
+			io.Closer
+		}{
+			Reader: io.LimitReader(gzipReader, maxDecompressedSize),
+			Closer: gzipReader,
+		}, nil
+	}
+
+	return io.NopCloser(peekReader), nil
 }
 
 func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
