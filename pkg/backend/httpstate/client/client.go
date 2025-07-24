@@ -1704,8 +1704,13 @@ func (pc *Client) GetTemplate(
 // are targeting the correct URL. If we are targeting another URL, we should use a fresh
 // client without tokens.
 func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	// Presigned URLs need to be handled differently to avoid signature mismatches due to e.g. headers.
+	// See https://docs.aws.amazon.com/prescriptive-guidance/latest/presigned-url-best-practices/identifying-requests.html
+	isPresignedURL := strings.Contains(downloadURL, "X-Amz-Expires=")
 	if after, ok := strings.CutPrefix(downloadURL, pc.apiURL); ok {
 		downloadURL = after
+	} else if isPresignedURL {
+		return pc.downloadWithRawClient(ctx, downloadURL)
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
@@ -1716,10 +1721,31 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	var bytes io.ReadCloser
 	header := make(http.Header, 1)
 	header.Add("Accept", "application/x-tar")
+
 	err := pc.restCallWithOptions(ctx, "GET", downloadURL, nil, nil, &bytes, httpCallOptions{
 		Header: header,
 	})
 	return bytes, err
+}
+
+func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := pc.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	return bodyIntoReader(resp)
 }
 
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {

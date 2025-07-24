@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: "Stop passing Accept: application/x-tar to registry template download URLs to avoid signature mismatch"
