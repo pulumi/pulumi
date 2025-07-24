@@ -714,3 +714,131 @@ func testContext(t *testing.T) context.Context {
 }
 
 func ref[T any](v T) *T { return &v }
+
+//nolint:paralleltest // replaces global backend instance
+func TestRegistryTemplateResolution(t *testing.T) {
+	ctx := testContext(t)
+
+	mockRegistry := &backend.MockCloudRegistry{
+		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			return func(yield func(apitype.TemplateMetadata, error) bool) {
+				yield(apitype.TemplateMetadata{
+					Name:        "csharp-documented",
+					Source:      "private",
+					Publisher:   "pulumi_local",
+					Description: ref("A C# template"),
+				}, nil)
+				yield(apitype.TemplateMetadata{
+					Name:      "csharp-documented",
+					Source:    "github",
+					Publisher: "different-org",
+				}, nil)
+				yield(apitype.TemplateMetadata{
+					Name:      "gh-org/repo/target",
+					Source:    "github",
+					Publisher: "pulumi-org",
+				}, nil)
+				yield(apitype.TemplateMetadata{
+					Name:        "whatever-template",
+					Source:      "private",
+					Publisher:   "test-org",
+					Description: ref("A template with special chars"),
+				}, nil)
+			}
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	testCases := []struct {
+		name         string
+		templateURL  string
+		shouldMatch  bool
+		expectedName string
+		description  string
+	}{
+		{
+			name:         "registry URL full format",
+			templateURL:  "registry://templates/private/pulumi_local/csharp-documented",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "registry URL with version",
+			templateURL:  "registry://templates/private/pulumi_local/csharp-documented@latest",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "partial URL format",
+			templateURL:  "private/pulumi_local/csharp-documented",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "partial URL with version",
+			templateURL:  "private/pulumi_local/csharp-documented@latest",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "VCS template display name matching",
+			templateURL:  "target",
+			shouldMatch:  true,
+			expectedName: "target",
+		},
+		{
+			name:        "wrong resource type does not match",
+			templateURL: "registry://packages/private/pulumi_local/csharp-documented",
+			shouldMatch: false,
+		},
+		{
+			name:         "parsing failure falls back to exact name match",
+			templateURL:  "whatever-template",
+			shouldMatch:  true,
+			expectedName: "whatever-template",
+			description:  "A template with special chars",
+		},
+		{
+			name:        "nonexistent template returns not found",
+			templateURL: "nonexistent/template/name",
+			shouldMatch: false,
+		},
+		{
+			name:        "malformed URL with no match",
+			templateURL: "registry://templates/a/b/c/d/e",
+			shouldMatch: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
+				templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+				env.NewEnv(env.MapStore{
+					"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+					"PULUMI_EXPERIMENTAL":             "true",
+				}))
+
+			templates, err := source.Templates()
+			if tc.shouldMatch {
+				require.NoError(t, err)
+				require.Len(t, templates, 1)
+				assert.Equal(t, tc.expectedName, templates[0].Name())
+				if tc.description != "" {
+					assert.Equal(t, tc.description, templates[0].ProjectDescription())
+				}
+			} else {
+				var templateNotFound workspace.TemplateNotFoundError
+				assert.ErrorAs(t, err, &templateNotFound)
+			}
+		})
+	}
+}

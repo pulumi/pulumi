@@ -29,6 +29,7 @@ import (
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -268,6 +269,11 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 
 // IsTemplateURL returns true if templateNamePathOrURL starts with "https://" (SSL) or "git@" (SSH).
 func IsTemplateURL(templateNamePathOrURL string) bool {
+	// Registry URLs should be handled as template names, not URLs
+	if registry.IsRegistryURL(templateNamePathOrURL) {
+		return false
+	}
+	
 	// Normalize the provided URL so we can check its scheme. This will
 	// correctly return false in the case where the URL doesn't parse cleanly.
 	url, _, _ := gitutil.ParseGitRepoURL(templateNamePathOrURL)

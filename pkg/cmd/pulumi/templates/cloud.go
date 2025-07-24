@@ -79,12 +79,54 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		}
 
 		t := registryTemplate{template, r, s}
-		if templateName != "" && t.Name() != templateName {
-			continue
+		if templateName != "" {
+			// Match against TemplateMetadata fields using template name
+			if !matchesTemplateName(template, t, templateName) {
+				continue
+			}
 		}
 
 		s.addTemplate(t)
 	}
+}
+
+func matchesTemplateName(metadata apitype.TemplateMetadata, template registryTemplate, templateName string) bool {
+	urlInfo, err := registry.ParseRegistryURLOrPartial(templateName, "templates")
+	if err != nil {
+		return matchesBareTemplateName(metadata, template, templateName)
+	}
+
+	if urlInfo.ResourceType() != "templates" {
+		return false
+	}
+
+	if urlInfo.Source() != "" && metadata.Source != urlInfo.Source() {
+		return false
+	}
+
+	if urlInfo.Publisher() != "" && metadata.Publisher != urlInfo.Publisher() {
+		return false
+	}
+
+	if urlInfo.Name() != "" {
+		if metadata.Name != urlInfo.Name() && template.Name() != urlInfo.Name() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func matchesBareTemplateName(metadata apitype.TemplateMetadata, template registryTemplate, templateName string) bool {
+	if metadata.Name == templateName {
+		return true
+	}
+
+	if template.Name() == templateName {
+		return true
+	}
+
+	return false
 }
 
 type registryTemplate struct {
