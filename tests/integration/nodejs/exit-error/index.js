@@ -16,6 +16,6 @@ sleep(2000).then(() => {
     new Named("res");
 })
 
-// Exit with a non-zero code. We have in flight promises, but we don't wanat to
+// Exit with a non-zero code. We have in flight promises, but we don't want to
 // report the promise leak message.
 process.exit(123);
