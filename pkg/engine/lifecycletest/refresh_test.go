@@ -2080,3 +2080,104 @@ func TestRefreshWithAlias(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
+
+// When running a --refresh update with --run-program if a resource has been deleted we should re-create it.
+func TestRefreshRunProgramDeletedResource(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							// Return an empty read result to indicate the resource has been deleted.
+							ReadResult: plugin.ReadResult{},
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	require.Len(t, snap.Resources, 2)
+	firstID := snap.Resources[1].ID
+
+	// Change the program inputs to check we don't changed inputs to the provider
+	programInputs["foo"] = resource.NewStringProperty("qux")
+	p.Options.Refresh = true
+	p.Options.RefreshProgram = true
+	// Run a refresh update
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have a new ID from calling create again
+	require.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, firstID, snap.Resources[1].ID)
+}
