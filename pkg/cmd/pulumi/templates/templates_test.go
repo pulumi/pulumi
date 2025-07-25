@@ -17,6 +17,7 @@ package templates
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"io"
@@ -503,16 +504,47 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	}
 }
 
-//nolint:paralleltest // replaces global backend instance
-func TestTemplateDownload_Registry(t *testing.T) {
-	ctx := testContext(t)
-
-	pulumiYAML := `name: template1
+// Test data for registry template tests
+var (
+	testPulumiYAML = `name: template1
 runtime: dotnet
 description: An ASP.NET application running a simple container in a EKS Cluster
 `
-	anotherFile := `This is another file`
+	testAnotherFile = `This is another file`
+)
 
+// createTestTarData creates tar archive data with test files
+func createTestTarData(t *testing.T) []byte {
+	var buf bytes.Buffer
+	w := tar.NewWriter(&buf)
+
+	// Write Pulumi.yaml
+	require.NoError(t, w.WriteHeader(&tar.Header{
+		Name: "Pulumi.yaml",
+		Size: int64(len(testPulumiYAML)),
+		Mode: 0o600,
+	}))
+	_, err := w.Write([]byte(testPulumiYAML))
+	require.NoError(t, err)
+
+	// Write other.txt
+	require.NoError(t, w.WriteHeader(&tar.Header{
+		Name: "other.txt",
+		Size: int64(len(testAnotherFile)),
+		Mode: 0o600,
+	}))
+	_, err = w.Write([]byte(testAnotherFile))
+	require.NoError(t, err)
+
+	require.NoError(t, w.Close())
+	return buf.Bytes()
+}
+
+func createMockRegistrySource(
+	ctx context.Context,
+	t *testing.T,
+	downloadFunc func(context.Context, string) (io.ReadCloser, error),
+) *Source {
 	mockRegistry := &backend.MockCloudRegistry{
 		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
@@ -522,34 +554,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 				}, nil)
 			}
 		},
-		DownloadTemplateF: func(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
-			assert.Equal(t, "example.com/download/name", downloadURL)
-			var target bytes.Buffer
-			w := tar.NewWriter(&target)
-
-			// Write Pulumi.yaml
-			require.NoError(t, w.WriteHeader(&tar.Header{
-				Name: "Pulumi.yaml",
-				Size: int64(len(pulumiYAML)),
-				Mode: 0o600,
-			}))
-			_, err := w.Write([]byte(pulumiYAML))
-			require.NoError(t, err)
-
-			// Write other.txt
-			require.NoError(t, w.WriteHeader(&tar.Header{
-				Name: "other.txt",
-				Size: int64(len(anotherFile)),
-				Mode: 0o600,
-			}))
-			_, err = w.Write([]byte(anotherFile))
-			require.NoError(t, err)
-
-			// Close the writers
-			require.NoError(t, w.Close())
-
-			return io.NopCloser(&target), nil
-		},
+		DownloadTemplateF: downloadFunc,
 	}
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
@@ -557,36 +562,73 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	testutil.MockBackendInstance(t, mockBackend)
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
 
-	source := newImpl(ctx, "name1",
+	return newImpl(ctx, "name1",
 		ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
 			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
 			"PULUMI_EXPERIMENTAL":             "true",
-		}),
-	)
+		}))
+}
 
-	template, err := source.Templates()
+// testTemplateDownload tests downloading and verifying template content
+func testTemplateDownload(ctx context.Context, t *testing.T, source *Source) {
+	templates, err := source.Templates()
 	require.NoError(t, err)
-	require.Len(t, template, 1)
-	assert.Equal(t, "name1", template[0].Name())
+	require.Len(t, templates, 1)
+	assert.Equal(t, "name1", templates[0].Name())
 	t.Cleanup(func() {
 		require.NoError(t, source.Close())
 	})
 
-	wTemplate, err := template[0].Download(ctx)
+	wTemplate, err := templates[0].Download(ctx)
 	require.NoError(t, err)
 
+	// Verify extracted files
 	{ // Pulumi.yaml
 		file, err := os.ReadFile(filepath.Join(wTemplate.Dir, "Pulumi.yaml"))
 		require.NoError(t, err)
-		assert.Equal(t, pulumiYAML, string(file))
+		assert.Equal(t, testPulumiYAML, string(file))
 	}
 	{ // other.txt
 		file, err := os.ReadFile(filepath.Join(wTemplate.Dir, "other.txt"))
 		require.NoError(t, err)
-		assert.Equal(t, anotherFile, string(file))
+		assert.Equal(t, testAnotherFile, string(file))
 	}
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestTemplateDownload_Registry(t *testing.T) {
+	ctx := testContext(t)
+
+	source := createMockRegistrySource(ctx, t, func(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+		assert.Equal(t, "example.com/download/name", downloadURL)
+		tarData := createTestTarData(t)
+		return io.NopCloser(bytes.NewReader(tarData)), nil
+	})
+
+	testTemplateDownload(ctx, t, source)
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestTemplateDownload_Registry_Gzipped(t *testing.T) {
+	ctx := testContext(t)
+
+	source := createMockRegistrySource(ctx, t, func(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+		assert.Equal(t, "example.com/download/name", downloadURL)
+
+		// Create tar data and gzip it
+		tarData := createTestTarData(t)
+		var gzipBuf bytes.Buffer
+		gw := gzip.NewWriter(&gzipBuf)
+		_, err := gw.Write(tarData)
+		require.NoError(t, err)
+		require.NoError(t, gw.Close())
+
+		return io.NopCloser(&gzipBuf), nil
+	})
+
+	testTemplateDownload(ctx, t, source)
 }
 
 //nolint:paralleltest // replaces global backend instance
