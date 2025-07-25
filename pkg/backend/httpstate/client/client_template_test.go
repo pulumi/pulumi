@@ -617,6 +617,32 @@ func TestDownloadTemplate(t *testing.T) {
 		assert.Contains(t, err.Error(), "HTTP 403")
 		assert.Contains(t, err.Error(), "Access denied")
 	})
+
+	t.Run("NetworkErrorFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := "http://127.0.0.1:1/invalid?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+	})
+
+	t.Run("InvalidPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := "://invalid-url?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+	})
 }
 
 func TestListTemplates(t *testing.T) {
