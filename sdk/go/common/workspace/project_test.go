@@ -83,6 +83,21 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
+	t.Parallel()
+	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
+	config := make(map[string]ProjectConfigType)
+	objectType := "object"
+	config["example"] = ProjectConfigType{
+		Type:    &objectType,
+		Default: map[string]interface{}{"hello": "world"},
+	}
+
+	project.Config = config
+	err := project.Validate()
+	require.NoError(t, err)
+}
+
 func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	t.Parallel()
 	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
