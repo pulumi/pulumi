@@ -1,0 +1,14 @@
+name: python-component-provider-yaml
+description: Using a component provider written as a Python package from YAML
+runtime: yaml
+packages:
+  provider: ../provider
+resources:
+  comp:
+    type: provider:index:MyComponent
+    properties: {}
+outputs:
+  urn: ${comp.urn}
+  parameterization: ${comp.parameterization}
+  transforms: ${comp.transforms}
+  resourceHooks: ${comp.resourceHooks}
