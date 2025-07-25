@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Force new style Go modules to be written out when using `package add`
