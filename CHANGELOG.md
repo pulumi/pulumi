@@ -1,5 +1,54 @@
 # Changelog
 
+## 3.186.0 (2025-07-25)
+
+
+### Features
+
+- [engine] Send `Cancel` message to language runtime plugins on engine shutdown
+  [#20007](https://github.com/pulumi/pulumi/pull/20007)
+
+- [engine] Pass stack tags to policy plugins on startup
+  [#20084](https://github.com/pulumi/pulumi/pull/20084)
+
+- [yaml] Expose `object` as a possible config type in preparation for `pulumi-yaml` support
+  [#20129](https://github.com/pulumi/pulumi/pull/20129)
+
+
+### Bug Fixes
+
+- [cli/engine] --exclude and --exclude-protected flags now work together correctly for `destroy` commands
+  [#20120](https://github.com/pulumi/pulumi/pull/20120)
+
+- [engine] Fix a datarace in the engine event system
+  [#20105](https://github.com/pulumi/pulumi/pull/20105)
+
+- [engine] Fix a panic in the engine when running `up --refresh --run-program` and finding a deleted resource
+
+- [sdk/nodejs] Avoid "Cannot convert object to primitive value" error when running into type errors
+  [#20092](https://github.com/pulumi/pulumi/pull/20092)
+
+- [sdk/nodejs] Don’t use automatic ESM mode when `—import` or `—require` is set
+  [#20091](https://github.com/pulumi/pulumi/pull/20091)
+
+- [sdk/nodejs] Fix callback server hang & delete hooks in Node.js
+  [#20109](https://github.com/pulumi/pulumi/pull/20109)
+
+- [sdk/nodejs] Don’t report leaked promises when we exit abnormally
+  [#20128](https://github.com/pulumi/pulumi/pull/20128)
+
+- [cli/package] Force new style Go modules to be written out when using `package add`
+  [#20011](https://github.com/pulumi/pulumi/pull/20011)
+
+- [sdk/python] Run uv sync on uv command
+  [#20117](https://github.com/pulumi/pulumi/pull/20117)
+
+
+### Miscellaneous
+
+- [yaml] Update yaml to 1.21.3
+  [#20118](https://github.com/pulumi/pulumi/pull/20118)
+
 ## 3.185.0 (2025-07-21)
 
 

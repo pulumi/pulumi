@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Don’t use automatic ESM mode when `—import` or `—require` is set

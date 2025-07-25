@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix a datarace in the engine event system
