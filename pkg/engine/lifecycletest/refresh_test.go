@@ -2164,6 +2164,7 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
+	require.Len(t, snap.Resources, 2)
 	firstID := snap.Resources[1].ID
 
 	// Change the program inputs to check we don't changed inputs to the provider
@@ -2177,5 +2178,6 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should have a new ID from calling create again
+	require.Len(t, snap.Resources, 2)
 	assert.NotEqual(t, firstID, snap.Resources[1].ID)
 }
