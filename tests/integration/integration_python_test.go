@@ -2134,6 +2134,29 @@ func TestPythonComponentProviderPackageRun(t *testing.T) {
 	})
 }
 
+// Tests that features are set in the pulumi runtime used to construct the component.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderFeatures(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "features"),
+		RelativeWorkDir: "yaml",
+		Quick:           true,
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+			require.True(t, stack.Outputs["parameterization"].(bool))
+			require.True(t, stack.Outputs["transforms"].(bool))
+			require.True(t, stack.Outputs["resourceHooks"].(bool))
+		},
+	})
+}
+
 func checkAssetText(t *testing.T, runtime, expected, actual string) {
 	t.Helper()
 	switch runtime {
