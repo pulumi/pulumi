@@ -1,3 +1,9 @@
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: CI
 
 permissions:
@@ -460,6 +466,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       # Check that there are no failed tests.
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Check tests completed successfully.
         run: |
           JSON='${{ toJson(needs) }}'
@@ -469,7 +478,6 @@ jobs:
               echo "Test Failure.. skipping CodeCov upload."
               exit 1
           fi
-      # Checkout repository to upload coverage results.
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
@@ -479,7 +487,6 @@ jobs:
           pattern: coverage-*
           merge-multiple: true
           path: coverage
-      # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
       - name: Set codecov PR base
         if: github.event_name == 'pull_request'
         run: |
@@ -496,7 +503,7 @@ jobs:
           # TODO: stop pinning to v10.0.1 when https://github.com/codecov/codecov-cli/issues/651 is fixed.
           # At that point, we should consider switching to codecov/codecov-action@v5
           version: v10.0.1
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
     name: Rebuild binaries

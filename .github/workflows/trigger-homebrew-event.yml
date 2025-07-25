@@ -1,7 +1,12 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 env:
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
   VERSION: ${{ github.event.client_payload.ref }}
   COMMIT_SHA: ${{ github.event.client_payload.commitSha }}
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN
 
 on:
   repository_dispatch:
@@ -13,12 +18,15 @@ jobs:
     name: Bump Homebrew formula
     runs-on: ubuntu-22.04
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Add Homebrew to the PATH
         run: |
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "${GITHUB_PATH}"
       - uses: dawidd6/action-homebrew-bump-formula@v3
         with:
-          token: ${{secrets.PULUMI_BOT_HOMEBREW_TOKEN}}
+          token: ${{steps.esc-secrets.outputs.PULUMI_BOT_HOMEBREW_TOKEN}}
           formula: pulumi
           tag: v${{env.VERSION}}
           revision: ${{env.COMMIT_SHA}}

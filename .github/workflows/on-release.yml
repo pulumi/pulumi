@@ -4,6 +4,7 @@ permissions:
   # To create the follow-up PR.
   contents: write
   pull-requests: write
+  id-token: write
 
 on:
   release:

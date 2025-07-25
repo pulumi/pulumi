@@ -2,6 +2,7 @@ name: Test
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -74,7 +75,6 @@ env:
   PULUMI_VERSION: ${{ inputs.version }}
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
-  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
@@ -87,6 +87,11 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN
 
 jobs:
   test:
@@ -100,6 +105,9 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
@@ -108,9 +116,6 @@ jobs:
           swap-storage: false
           large-packages: false
           dotnet: false
-
-      # Create a coverage file to register a testing job was started.
-      # This artifact will be overwritten with "OK" at the end of the job.
       - name: Write test started file
         shell: bash
         run: |
@@ -269,9 +274,6 @@ jobs:
         shell: bash
         run: |
           echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)" >> "${GITHUB_OUTPUT}"
-
-      # Ensure tests do not rely on pre-installed packages in CI. Unit tests must run absent a local
-      # Pulumi install, and integration tests must only test the version built by CI.
       - name: Remove Pre-installed Pulumi
         env:
           RUNNER_OS: ${{ runner.os }}
@@ -286,8 +288,6 @@ jobs:
             echo "Deleting Pulumi"
             rm -v "$PULUMI_INSTALL_DIR"/pulumi*
           fi
-
-      # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v4
@@ -360,16 +360,16 @@ jobs:
         id: test
         run: ${{ inputs.test-command }}
         env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+          AZURE_TENANT_ID: ${{ steps.esc-secrets.outputs.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ steps.esc-secrets.outputs.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ steps.esc-secrets.outputs.AZURE_CLIENT_SECRET }}
+          AZURE_STORAGE_SAS_TOKEN: ${{ steps.esc-secrets.outputs.AZURE_STORAGE_SAS_TOKEN }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
-          AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
+          AWS_ACCESS_KEY: ${{ steps.esc-secrets.outputs.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.esc-secrets.outputs.AWS_CI_ACCESS_SECRET }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
@@ -405,7 +405,7 @@ jobs:
           fail_ci_if_error: false
           override_branch: ${{ github.event_name == 'merge_group' && 'master' || github.head_ref }}
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:

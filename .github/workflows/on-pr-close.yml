@@ -1,8 +1,15 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: On PR Close
 
 on:
   pull_request:
-    types: [ closed ]
+    types: [closed]
 
 jobs:
     cleanup:
@@ -10,8 +17,11 @@ jobs:
       runs-on: ubuntu-22.04
       continue-on-error: true
       env:
-        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN
       steps:
+        - name: Fetch secrets from ESC
+          id: esc-secrets
+          uses: pulumi/esc-action@v1
         - name: "Close existing Downstream PRs"
           run: |
             for url in $(gh search prs --json url --owner pulumi --state open --match body "This is a downstream codegen test for pulumi/pulumi#${{ github.event.pull_request.number }}." | jq -r '.[].url'); do

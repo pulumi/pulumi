@@ -7,8 +7,7 @@ permissions:
   id-token: write
 
 on:
-  merge_group:
-
+  merge_group: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

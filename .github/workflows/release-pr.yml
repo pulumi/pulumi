@@ -1,9 +1,16 @@
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Post-Release PR
 
 permissions:
   # To create a PR
   contents: write
   pull-requests: write
+  id-token: write
 
 on:
   workflow_call:
@@ -35,6 +42,9 @@ jobs:
     name: version bump
     runs-on: ubuntu-22.04
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
@@ -46,7 +56,7 @@ jobs:
           PULUMI_VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release-notes }}
           QUEUE_MERGE: ${{ inputs.queue-merge }}
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         run: |
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
