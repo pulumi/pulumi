@@ -12,7 +12,7 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-sleep(2000).then(() => {
+sleep(60000).then(() => {
     new Named("res");
 })
 
