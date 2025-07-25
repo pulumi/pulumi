@@ -1,3 +1,9 @@
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Create dev release
 
 permissions:
@@ -151,6 +157,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
       - name: Checkout
         uses: actions/checkout@v6
       - name: Make artifacts directory
@@ -177,24 +186,26 @@ jobs:
           registry-url: https://registry.npmjs.org
           always-auth: true
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
+          NPM_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
       - name: Publish nodejs release
         run: |
           find artifacts
           make -C sdk/nodejs publish
         env:
           PULUMI_VERSION: ${{ needs.gather-info.outputs.dev-version }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
+          NPM_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
           GIT_REF: ${{ inputs.ref }}
-
 
   python-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
     if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
       - name: Checkout
         uses: actions/checkout@v6
       - name: Set up Python ${{ fromJson(needs.matrix.outputs.version-set).python }}
@@ -230,13 +241,16 @@ jobs:
           make -C sdk/python publish
         env:
           PYPI_USERNAME: __token__
-          PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          PYPI_PASSWORD: ${{ steps.esc-secrets.outputs.PYPI_API_TOKEN }}
 
   s3-blobs:
     name: s3 blobs
     runs-on: ubuntu-latest
     needs: [sign, gather-info]
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
@@ -246,7 +260,7 @@ jobs:
           role-duration-seconds: 3600
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
-          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+          role-to-assume: ${{ steps.esc-secrets.outputs.AWS_UPLOAD_ROLE_ARN }}
       - name: Make artifacts directory
         run: |
           mkdir -p artifacts.tmp
