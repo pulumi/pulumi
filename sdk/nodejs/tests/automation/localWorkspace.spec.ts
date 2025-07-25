@@ -31,7 +31,7 @@ import {
     PulumiCommand,
     Stack,
 } from "../../automation";
-import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
+import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output, ResourceHook } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -1883,6 +1883,50 @@ describe("LocalWorkspace", () => {
         }
 
         await stack.workspace.removeStack(stackName);
+    });
+
+    it("hooks", async function () {
+        let beforeCreateCalled = false;
+        let beforeDeleteCalled = false;
+
+        const program = async () => {
+            const beforeDelete = new ResourceHook("beforeDelete", async (args) => {
+                beforeDeleteCalled = true;
+            });
+            const beforeCreate = new ResourceHook("beforeCreate", async (args) => {
+                beforeCreateCalled = true;
+            });
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res", {
+                hooks: {
+                    beforeCreate: [beforeCreate],
+                    beforeDelete: [beforeDelete],
+                },
+            });
+        };
+
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up();
+        assert.strictEqual(true, beforeCreateCalled);
+        let state = await stack.exportStack();
+        assert.strictEqual(state.deployment.resources.length, 2);
+        const res = state.deployment.resources[1];
+        assert.strictEqual(res.type, "my:module:MyResource");
+
+        await stack.destroy({ runProgram: true });
+        assert.strictEqual(true, beforeDeleteCalled);
+        state = await stack.exportStack();
+        assert.strictEqual(state.deployment.resources, undefined);
     });
 });
 
