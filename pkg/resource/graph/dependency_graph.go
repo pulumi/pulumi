@@ -15,6 +15,8 @@
 package graph
 
 import (
+	"fmt"
+
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -24,9 +26,15 @@ import (
 
 // DependencyGraph represents a dependency graph encoded within a resource snapshot.
 type DependencyGraph struct {
-	index      map[*resource.State]int // A mapping of resource pointers to indexes within the snapshot
-	resources  []*resource.State       // The list of resources, obtained from the snapshot
-	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
+	index      map[string]int         // A mapping of resource pointers to indexes within the snapshot
+	resources  []*resource.State      // The list of resources, obtained from the snapshot
+	childrenOf map[resource.URN][]int // Pre-computed map of transitive children for each resource
+}
+
+// indexKey returns a string key for the given resource. This is used to index into the dependency graph, it is made up
+// of the resource's ID and URN.
+func indexKey(res *resource.State) string {
+	return fmt.Sprintf("%s::%s", res.ID, res.URN)
 }
 
 // DependingOn returns a slice containing all resources that directly or indirectly
@@ -44,7 +52,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	var dependents []*resource.State
 	dependentSet := make(map[resource.URN]bool)
 
-	cursorIndex, ok := dg.index[res]
+	cursorIndex, ok := dg.index[indexKey(res)]
 	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	dependentSet[res.URN] = true
 
@@ -115,7 +123,7 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 	dependentSet := make(map[resource.URN][]resource.ID)
 	nonDependentSet := make(map[resource.URN][]resource.ID)
 
-	cursorIndex, ok := dg.index[res]
+	cursorIndex, ok := dg.index[indexKey(res)]
 	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	dependentSet[res.URN] = []resource.ID{res.ID}
 	isDependent := func(candidate *resource.State) bool {
@@ -208,7 +216,7 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resou
 		dependentUrns[ref.URN()] = true
 	}
 
-	cursorIndex, ok := dg.index[res]
+	cursorIndex, ok := dg.index[indexKey(res)]
 	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	for i := cursorIndex - 1; i >= 0; i-- {
 		candidate := dg.resources[i]
@@ -240,7 +248,7 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resou
 
 // Contains returns whether the given resource is in the dependency graph.
 func (dg *DependencyGraph) Contains(res *resource.State) bool {
-	_, ok := dg.index[res]
+	_, ok := dg.index[indexKey(res)]
 	return ok
 }
 
@@ -380,12 +388,12 @@ func markAsDependency(r *node, lookup func(*resource.State, resource.URN) *node)
 // The resources should be in topological order with respect to their dependencies, including
 // parents appearing before children.
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
-	index := make(map[*resource.State]int)
+	index := make(map[string]int)
 	childrenOf := make(map[resource.URN][]int)
 
 	urnIndex := make(map[resource.URN]int)
 	for idx, res := range resources {
-		index[res] = idx
+		index[indexKey(res)] = idx
 		urnIndex[res.URN] = idx
 		parent := res.Parent
 		for parent != "" {
