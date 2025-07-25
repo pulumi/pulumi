@@ -43,6 +43,83 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type TemplateMatchable interface {
+	GetRegistryName() string
+	GetTemplateName() string
+	GetSource() string
+	GetPublisher() string
+}
+
+func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, error) {
+	if templateName == "" {
+		return func(TemplateMatchable) bool { return true }, nil
+	}
+
+	var urlInfo *registry.URLInfo
+	var err error
+
+	// 1. Try parsing as a strict registry:// URL
+	if registry.IsRegistryURL(templateName) {
+		urlInfo, err = registry.ParseRegistryURL(templateName)
+		if err != nil {
+			var invalidRegistryURL *registry.InvalidRegistryURLError
+			if errors.As(err, &invalidRegistryURL) {
+				// Wrap this particular error reason because formats other than the
+				// full registry:// URL format are supported by `pulumi new`.
+				if strings.Contains(invalidRegistryURL.Reason, "expected format") {
+					return nil, errors.New("Expected: registry://templates/source/publisher/name[@version], " +
+						"source/publisher/name[@version], publisher/name[@version], or name[@version]")
+				}
+			}
+			return nil, err
+		}
+		if urlInfo.ResourceType() != "templates" {
+			return nil, fmt.Errorf("resource type '%s' is not valid for templates", urlInfo.ResourceType())
+		}
+	} else {
+		// 2. Try parsing as a partial registry URL
+		urlInfo, err = registry.ParsePartialRegistryURL(templateName, "templates")
+		if err != nil {
+			var missingVersion *registry.MissingVersionAfterAtSignError
+			if errors.As(err, &missingVersion) {
+				return nil, err
+			}
+
+			// Structural errors: fall back to name matching
+			urlInfo = nil
+		}
+	}
+
+	// Validation: versions other than "latest" are not yet supported because the
+	// list endpoint used by `pulumi new` only returns the latest version.
+	if urlInfo != nil && urlInfo.Version() != nil {
+		return nil, &registry.UnsupportedVersionError{Version: urlInfo.Version().String()}
+	}
+
+	return matcherFromURLInfo(urlInfo, templateName), nil
+}
+
+func matcherFromURLInfo(urlInfo *registry.URLInfo, templateName string) func(TemplateMatchable) bool {
+	if urlInfo == nil {
+		return func(t TemplateMatchable) bool {
+			return t.GetRegistryName() == templateName || t.GetTemplateName() == templateName
+		}
+	}
+
+	return func(t TemplateMatchable) bool {
+		if urlInfo.Source() != "" && t.GetSource() != urlInfo.Source() {
+			return false
+		}
+		if urlInfo.Publisher() != "" && t.GetPublisher() != urlInfo.Publisher() {
+			return false
+		}
+		if urlInfo.Name() != "" {
+			return t.GetRegistryName() == urlInfo.Name() || t.GetTemplateName() == urlInfo.Name()
+		}
+		return true
+	}
+}
+
 func (s *Source) getCloudTemplates(
 	ctx context.Context, templateName string,
 	wg *sync.WaitGroup, e env.Env,
@@ -63,11 +140,13 @@ func (s *Source) getCloudTemplates(
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
 	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
-	// Since the templates names displayed here differ from the template names
-	// returned from ListTemplates for VCS backed templates, we need to fetch
-	// all templates and then filter manually.
-	var nameFilter *string
+	matches, err := NewTemplateMatcher(templateName)
+	if err != nil {
+		s.addError(err)
+		return
+	}
 
+	var nameFilter *string
 	for template, err := range r.ListTemplates(ctx, nameFilter) {
 		if err != nil {
 			s.addError(fmt.Errorf("could not get template: %w", err))
@@ -81,7 +160,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		}
 
 		t := registryTemplate{template, r, s}
-		if templateName != "" && t.Name() != templateName {
+		if !matches(t) {
 			continue
 		}
 
@@ -143,6 +222,11 @@ func (r registryTemplate) Download(ctx context.Context) (workspace.Template, err
 	template, err := workspace.LoadTemplate(templateDir)
 	return template, err
 }
+
+func (r registryTemplate) GetRegistryName() string { return r.t.Name }
+func (r registryTemplate) GetTemplateName() string { return r.Name() }
+func (r registryTemplate) GetSource() string       { return r.t.Source }
+func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
 
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
