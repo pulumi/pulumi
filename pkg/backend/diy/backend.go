@@ -28,7 +28,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/gofrs/uuid"
 
@@ -42,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
@@ -53,7 +51,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -1038,7 +1035,7 @@ func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.ApplyStack(ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1050,7 +1047,14 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, nil, events)
+	return backend.PreviewThenPromptThenExecute(
+		ctx,
+		apitype.UpdateUpdate,
+		stack,
+		op,
+		backend.ApplyStack,
+		nil,
+		events)
 }
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1072,12 +1076,12 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, err := backend.ApplyStack(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, backend.ApplyStack, nil, nil)
 }
 
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1097,12 +1101,12 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, err := backend.ApplyStack(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, backend.ApplyStack, nil, nil)
 }
 
 func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1122,155 +1126,115 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, err := backend.ApplyStack(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, backend.ApplyStack, nil, nil)
 }
 
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
 ) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
+	return backend.Watch(ctx, b, stk, op, backend.ApplyStack, paths)
 }
 
-// apply actually performs the provided type of update on a diy hosted stack.
-func (b *diyBackend) apply(
-	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	resetKeepRunning := nosleep.KeepRunning()
-	defer resetKeepRunning()
-	stackRef := stack.Ref()
-	diyStackRef, err := b.getReference(stackRef)
+func (b *diyBackend) CheckApply(
+	ctx context.Context,
+	stack backend.Stack,
+) error {
+	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
+		return fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
 	}
 
-	actionLabel := backend.ActionLabel(kind, opts.DryRun)
+	return err
+}
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
-		// Print a banner so it's clear this is a diy deployment.
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
-	}
-
-	// Start the update.
-	update, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, op)
+func (b *diyBackend) BeginApply(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	stack backend.Stack,
+	op *backend.UpdateOperation,
+	opts backend.ApplierOptions,
+) (backend.Application, *deploy.Target, chan<- engine.Event, <-chan bool, error) {
+	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	// Spawn a display loop to show events on the CLI.
-	displayEvents := make(chan engine.Event)
-	displayDone := make(chan bool)
-	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
-		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
-
-	// Create a separate event channel for engine events that we'll pipe to both listening streams.
-	engineEvents := make(chan engine.Event)
-
-	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
-	eventsDone := make(chan bool)
-	go func() {
-		// Pull in all events from the engine and send them to the two listeners.
-		for e := range engineEvents {
-			displayEvents <- e
-
-			// If the caller also wants to see the events, stream them there also.
-			if events != nil {
-				events <- e
-			}
-		}
-
-		close(eventsDone)
-	}()
-
-	// Create the management machinery.
-	// We only need a snapshot manager if we're doing an update.
-	var manager *backend.SnapshotManager
-	if kind != apitype.PreviewUpdate && !opts.DryRun {
-		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
-	}
-	engineCtx := &engine.Context{
-		Cancel:          scope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
+	target, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, *op)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
-	// Perform the update
-	start := time.Now().Unix()
-	var plan *deploy.Plan
-	var changes sdkDisplay.ResourceChanges
-	var updateErr error
-	switch kind {
-	case apitype.PreviewUpdate:
-		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
-	case apitype.UpdateUpdate:
-		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
-	case apitype.ResourceImportUpdate:
-		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
-	case apitype.RefreshUpdate:
-		if op.Opts.Engine.RefreshProgram {
-			_, changes, updateErr = engine.RefreshV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
-		} else {
-			_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
-		}
-	case apitype.DestroyUpdate:
-		if op.Opts.Engine.DestroyProgram {
-			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
-		} else {
-			_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
-		}
-	case apitype.StackImportUpdate, apitype.RenameUpdate:
-		contract.Failf("unexpected %s event", kind)
-	default:
-		contract.Failf("Unrecognized update kind: %s", kind)
-	}
-	end := time.Now().Unix()
+	a := &diyApplication{
+		ctx: ctx,
 
-	// Wait for the display to finish showing all the events.
-	<-displayDone
-	scope.Close() // Don't take any cancellations anymore, we're shutting down.
-	close(engineEvents)
-	if manager != nil {
-		err = manager.Close()
-		// If the snapshot manager failed to close, we should return that error.
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
-		}
+		b:    b,
+		kind: kind,
+		op:   op,
+		opts: opts,
+
+		ref:    diyStackRef,
+		config: target.Config,
 	}
 
-	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
-	<-eventsDone
-	close(displayEvents)
+	return a, target, nil, nil, nil
+}
 
+type diyApplication struct {
+	ctx context.Context
+
+	b    *diyBackend
+	kind apitype.UpdateKind
+	op   *backend.UpdateOperation
+	opts backend.ApplierOptions
+
+	ref    *diyBackendReference
+	config config.Map
+}
+
+var _ backend.Application = (*diyApplication)(nil)
+
+func (a *diyApplication) Permalink() string {
+	// For the DIY backend, we don't have a permalink until an operation has completed, so we can return an empty string
+	// here.
+	return ""
+}
+
+func (a *diyApplication) CreateSnapshotPersister() (backend.SnapshotPersister, error) {
+	persister := a.b.newSnapshotPersister(a.ctx, a.ref)
+	return persister, nil
+}
+
+func (a *diyApplication) CreateBackendClient() (deploy.BackendClient, error) {
+	return backend.NewBackendClient(a.b, a.op.SecretsProvider), nil
+}
+
+func (a *diyApplication) End(
+	start int64,
+	end int64,
+	plan *deploy.Plan,
+	changes sdkDisplay.ResourceChanges,
+	updateErr error,
+) error {
 	// Save update results.
 	backendUpdateResult := backend.SucceededResult
 	if updateErr != nil {
 		backendUpdateResult = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
-		Kind:        kind,
+		Kind:        a.kind,
 		StartTime:   start,
-		Message:     op.M.Message,
-		Environment: op.M.Environment,
-		Config:      update.Target.Config,
+		Message:     a.op.M.Message,
+		Environment: a.op.M.Environment,
+		Config:      a.config,
 		Result:      backendUpdateResult,
 		EndTime:     end,
 		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to
@@ -1281,36 +1245,37 @@ func (b *diyBackend) apply(
 
 	var saveErr error
 	var backupErr error
-	if !opts.DryRun {
-		saveErr = b.addToHistory(ctx, diyStackRef, info)
-		backupErr = b.backupStack(ctx, diyStackRef)
+	if !a.opts.DryRun {
+		saveErr = a.b.addToHistory(a.ctx, a.ref, info)
+		backupErr = a.b.backupStack(a.ctx, a.ref)
 	}
 
 	if updateErr != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return plan, changes, updateErr
+		return updateErr
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return plan, changes, fmt.Errorf("saving update info: %w", saveErr)
+		return fmt.Errorf("saving update info: %w", saveErr)
 	}
 
 	if backupErr != nil {
-		return plan, changes, fmt.Errorf("saving backup: %w", backupErr)
+		return fmt.Errorf("saving backup: %w", backupErr)
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !a.op.Opts.Display.SuppressPermalink && a.opts.ShowLink && !a.op.Opts.Display.JSONDisplay {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
-		if strings.HasPrefix(b.url, FilePathPrefix) {
-			u, _ := url.Parse(b.url)
-			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(ctx, diyStackRef)))
+		var err error
+		if strings.HasPrefix(a.b.url, FilePathPrefix) {
+			u, _ := url.Parse(a.b.url)
+			u.Path = filepath.ToSlash(path.Join(u.Path, a.b.stackPath(a.ctx, a.ref)))
 			link = u.String()
 		} else {
-			link, err = b.bucket.SignedURL(ctx, b.stackPath(ctx, diyStackRef), nil)
+			link, err = a.b.bucket.SignedURL(a.ctx, a.b.stackPath(a.ctx, a.ref), nil)
 			if err != nil {
 				// set link to be empty to when there is an error to hide use of Permalinks
 				link = ""
@@ -1327,13 +1292,13 @@ func (b *diyBackend) apply(
 		}
 
 		if link != "" {
-			fmt.Printf(op.Opts.Display.Color.Colorize(
+			fmt.Printf(a.op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
 					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 		}
 	}
 
-	return plan, changes, nil
+	return nil
 }
 
 func (b *diyBackend) GetHistory(
