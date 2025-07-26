@@ -213,19 +213,20 @@ func TestNewNodejsUsesNpmByDefault(t *testing.T) {
 func TestNewNodejsRuntimeOptions(t *testing.T) {
 	t.Parallel()
 
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
+	for _, pm := range []string{"pnpm", "bun"} {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "new", "typescript", "--force", "--non-interactive", "--yes", "--generate-only",
+			"--name", "test_project",
+			"--description", "Testing that the packagemanager option is set correctly",
+			"--stack", "test",
+			"--runtime-options", "packagemanager="+pm,
+		)
 
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "typescript", "--force", "--non-interactive", "--yes", "--generate-only",
-		"--name", "test_project",
-		"--description", "Testing that the packagemanager option is set correctly",
-		"--stack", "test",
-		"--runtime-options", "packagemanager=pnpm",
-	)
-
-	expected := map[string]interface{}{
-		"packagemanager": "pnpm",
+		expected := map[string]interface{}{
+			"packagemanager": pm,
+		}
+		integration.CheckRuntimeOptions(t, e.RootPath, expected)
 	}
-	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }

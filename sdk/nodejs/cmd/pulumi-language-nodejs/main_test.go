@@ -697,6 +697,7 @@ func TestParseOptions(t *testing.T) {
 		{"npm", npm.NpmPackageManager},
 		{"yarn", npm.YarnPackageManager},
 		{"pnpm", npm.PnpmPackageManager},
+		{"bun", npm.BunPackageManager},
 	} {
 		opts, err = parseOptions(map[string]interface{}{
 			"packagemanager": tt.input,

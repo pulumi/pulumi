@@ -239,6 +239,8 @@ jobs:
       - name: Install yarn and pnpm
         run: |
           npm install -g yarn pnpm
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build

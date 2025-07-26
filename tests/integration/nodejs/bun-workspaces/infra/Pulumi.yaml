@@ -1,0 +1,6 @@
+name: bun-workspaces
+description: Use bun workspaces and import a workspace package in the pulumi program.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun

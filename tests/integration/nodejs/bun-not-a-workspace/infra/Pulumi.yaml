@@ -1,0 +1,6 @@
+name: bun-workspaces
+description: This project is not part of the bun workspaces setup in the parent directory's package.json.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
