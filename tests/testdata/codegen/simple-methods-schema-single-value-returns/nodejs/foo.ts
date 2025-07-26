@@ -39,12 +39,11 @@ export class Foo extends pulumi.ComponentResource {
 
     getKubeconfig(args?: Foo.GetKubeconfigArgs): pulumi.Output<string> {
         args = args || {};
-        const result: pulumi.Output<Foo.GetKubeconfigResult> = pulumi.runtime.call("example::Foo/getKubeconfig", {
+        return pulumi.runtime.call("example::Foo/getKubeconfig", {
             "__self__": this,
             "profileName": args.profileName,
             "roleArn": args.roleArn,
         }, this);
-        return result.kubeconfig;
     }
 }
 
