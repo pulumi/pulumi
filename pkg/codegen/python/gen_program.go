@@ -395,7 +395,15 @@ func GenerateProject(
 
 	// If a typechecker is given we need to list that in the requirements.txt as well
 	if typechecker != "" {
-		requirementsTxtLines = append(requirementsTxtLines, typechecker)
+		switch typechecker {
+		case "mypy":
+			requirementsTxtLines = append(requirementsTxtLines, "mypy>=1.0.0")
+		case "pyright":
+			requirementsTxtLines = append(requirementsTxtLines, "pyright>=1.1.0")
+		default:
+			// For unknown typecheckers, add without version constraint
+			requirementsTxtLines = append(requirementsTxtLines, typechecker)
+		}
 	}
 
 	// We want the requirements.txt files we generate to be stable, so we sort the
