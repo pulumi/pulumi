@@ -11,6 +11,7 @@ __all__ = [
     'ContainerBrightness',
     'ContainerColor',
     'ContainerSize',
+    'ProviderEnvironment',
 ]
 
 
@@ -62,3 +63,22 @@ class ContainerSize(_builtins.int, Enum):
     FOUR_INCH = 4
     SIX_INCH = 6
     EIGHT_INCH = 8
+
+
+@pulumi.type_token("plant::ProviderEnvironment")
+class ProviderEnvironment(builtins.str, Enum):
+    """
+    The environment to use for the provider
+    """
+    DEVELOPMENT = "dev"
+    """
+    Development environment
+    """
+    STAGING = "staging"
+    """
+    Staging environment
+    """
+    PRODUCTION = "prod"
+    """
+    Production environment
+    """

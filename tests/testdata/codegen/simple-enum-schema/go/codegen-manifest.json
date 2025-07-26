@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    "plant/config/config.go",
     "plant/doc.go",
     "plant/init.go",
     "plant/internal/pulumiUtilities.go",
@@ -12,6 +13,7 @@
     "plant/tree/v1/nursery.go",
     "plant/tree/v1/pulumiEnums.go",
     "plant/tree/v1/rubberTree.go",
+    "plant/x/config/config.go",
     "plant/x/doc.go",
     "plant/x/init.go",
     "plant/x/provider.go",
