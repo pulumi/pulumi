@@ -1909,7 +1909,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 // GenerateDeletes generates delete steps for the resources that are pending delete from the snapshot, or were not
 // registered in the new snapshot. It also generates delete steps for any resources that were marked for deletion
 // because of `destroy` mode.
-func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, error) {
+func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, []Step, error) {
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
 	var allowedResourcesToDelete map[resource.URN]bool
@@ -1923,7 +1923,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	isTargeted := func(res *resource.State) bool {
@@ -1939,7 +1939,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
-	steps := slice.Prealloc[Step](len(sg.toDelete))
+	deleteSteps := []Step{}
+	sameSteps := []Step{}
 	if prev := sg.deployment.prev; prev != nil {
 		for _, res := range prev.Resources {
 			if res.ViewOf != "" {
@@ -1981,15 +1982,15 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
-					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
 				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
 					if !res.PendingReplacement {
 						oldViews := sg.deployment.GetOldViews(res.URN)
-						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
+						deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
 					} else {
-						steps = append(steps, NewRemovePendingReplaceStep(sg.deployment, res))
+						deleteSteps = append(deleteSteps, NewRemovePendingReplaceStep(sg.deployment, res))
 					}
 				}
 
@@ -1997,12 +1998,18 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				if sg.deletes[res.URN] {
 					err := sg.deployment.EnsureProvider(res.Provider)
 					if err != nil {
-						return nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+						return nil, nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 					}
 				}
 			} else {
-				// Add this resource to the deployment.news so that it shows up in analysis.
-				sg.deployment.news.Store(res.URN, res)
+				// If we get here this is a resource in the state that we're skipping over due to targets. If
+				// we had registered it from the program it would have become a SameStep, so lets replicate
+				// that here.
+				if !sg.isOperatedOn(res.URN) {
+					new := res.Copy()
+					new.ID = ""
+					sameSteps = append(sameSteps, NewSameStep(sg.deployment, nil, res, new))
+				}
 			}
 		}
 	}
@@ -2014,16 +2021,16 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		if isTargeted(res) {
 			sg.deletes[res.URN] = true
 			oldViews := sg.deployment.GetOldViews(res.URN)
-			steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
+			deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
 		}
 	}
 
-	// Check each proposed delete against the relevant resource plan
-	for _, s := range steps {
+	// Check each proposed step against the relevant resource plan
+	for _, s := range slices.Concat(sameSteps, deleteSteps) {
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
-					return nil, fmt.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+					return nil, nil, fmt.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
 
 				constraint := resourcePlan.Ops[0]
@@ -2033,11 +2040,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, fmt.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					return nil, nil, fmt.Errorf(
+						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, fmt.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					return nil, nil, fmt.Errorf(
+						"%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
 		}
@@ -2056,7 +2065,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	deletingUnspecifiedTarget := false
-	for _, step := range steps {
+	for _, step := range deleteSteps {
 		urn := step.URN()
 		if !targetsOpt.Contains(urn) && !sg.deployment.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
@@ -2080,10 +2089,10 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		//
 		// Doing a normal run.  We should not proceed here at all.  We don't want to delete
 		// something the user didn't ask for.
-		return nil, result.BailErrorf("delete untargeted resource")
+		return nil, nil, result.BailErrorf("delete untargeted resource")
 	}
 
-	return steps, nil
+	return sameSteps, deleteSteps, nil
 }
 
 // getTargetDependents returns the (transitive) set of dependents on the target resources.
