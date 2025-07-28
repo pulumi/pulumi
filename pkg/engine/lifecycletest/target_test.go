@@ -670,9 +670,9 @@ func destroySpecificTargets(
 				assert.Contains(t, deleted, target)
 			}
 			for _, res := range old.Resources {
-				// if it wasn't targeted, it should be the same.
-				if !p.Options.Targets.Contains(res.URN) {
-					assert.Contains(t, samed, target)
+				// if it wasn't deleted, it must be the same.
+				if _, has := deleted[res.URN]; !has {
+					assert.Contains(t, samed, res.URN)
 				}
 			}
 
