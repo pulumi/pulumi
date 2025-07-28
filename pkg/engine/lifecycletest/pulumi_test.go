@@ -4524,7 +4524,7 @@ func TestParallelDiff(t *testing.T) {
 func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	t.Parallel()
 
-	done := make(chan bool)
+	done := make(chan struct{}, 1)
 	defer close(done)
 
 	loaders := []*deploytest.ProviderLoader{
@@ -4544,7 +4544,7 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 						Parent: req.Parent,
 					})
 					require.Error(t, err)
-					done <- true // This will block until we read from the channel at the end of the test
+					<-done // Simulate the construct call not returning.
 					return plugin.ConstructResponse{}, err
 				},
 			}, nil
@@ -4570,7 +4570,7 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
-	require.True(t, <-done)
+	done <- struct{}{}
 }
 
 // This test ensures that we do not proceed to deletions if a program throws an error.
@@ -4628,4 +4628,49 @@ func TestProgramError(t *testing.T) {
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	require.Equal(t, snap.Resources[2].URN.Name(), "resB")
+}
+
+func TestResourceError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Always fail the create operation
+					return plugin.CreateResponse{}, errors.New("create failed intentionally")
+				},
+			}, nil
+		}),
+	}
+
+	done := make(chan struct{}, 1)
+	defer close(done)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		// The resource registration fails, and the engine knows this and
+		// cancels the deployment. An program might export such a failed
+		// resource as a stack output. In Node.js, a failed resource
+		// registration causes the properties of the resource to never resolve.
+		// If the SDK code is awaiting on the resource to resolve, as is the
+		// case for the Automation API, we might hang forever.
+		//
+		// Waiting here simulates the SDK waiting for the resource to resolve.
+		// The deployment should fail with an error without waiting for the
+		// program to complete.
+		<-done
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	_, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "create failed intentionally")
+	done <- struct{}{}
 }
