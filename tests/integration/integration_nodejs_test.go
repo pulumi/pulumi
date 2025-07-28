@@ -1659,6 +1659,70 @@ func TestNestedPackageJSON(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestBunNotAWorkspace(t *testing.T) {
+	prepareProject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with bun
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "bun-not-a-workspace"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  prepareProject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "infra", "bun.lock"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestBunWorkspace(t *testing.T) {
+	prepareProject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with bun
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "bun-workspaces"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  prepareProject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "bun.lock"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPnpmWorkspace(t *testing.T) {
 	preparePropject := func(projinfo *engine.Projinfo) error {
 		// The default nodejs prepare uses yarn to link dependencies.

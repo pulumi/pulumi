@@ -117,7 +117,7 @@ func main() {
 	flag.String("tsconfig", "",
 		"[obsolete] Path to tsconfig.json to use")
 	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
-	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn or pnpm)")
+	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -233,7 +233,7 @@ type nodeOptions struct {
 	// Arguments for the Node process
 	nodeargs string
 	// The packagemanger to use to install dependencies.
-	// One of auto, npm, yarn or pnpm, defaults to auto.
+	// One of auto, npm, yarn, pnpm or bun, defaults to auto.
 	packagemanager npm.PackageManagerType
 }
 
@@ -278,8 +278,10 @@ func parseOptions(options map[string]interface{}) (nodeOptions, error) {
 				nodeOptions.packagemanager = npm.YarnPackageManager
 			case "pnpm":
 				nodeOptions.packagemanager = npm.PnpmPackageManager
+			case "bun":
+				nodeOptions.packagemanager = npm.BunPackageManager
 			default:
-				return nodeOptions, fmt.Errorf("packagemanager option must be one of auto, npm, yarn or pnpm, got %q", pm)
+				return nodeOptions, fmt.Errorf("packagemanager option must be one of auto, npm, yarn, pnpm or bun, got %q", pm)
 			}
 		} else {
 			return nodeOptions, errors.New("packagemanager option must be a string")
@@ -1129,7 +1131,7 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 			Key:         "packagemanager",
 			Description: "The package manager to use for installing dependencies",
 			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn"),
+			Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
 			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
 				StringValue: "npm",
