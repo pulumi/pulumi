@@ -260,7 +260,7 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
-	if data.display.done {
+	if data.display.done.Load() {
 		// if the display is done, then we're definitely done.
 		return true
 	}
@@ -380,7 +380,7 @@ func (data *resourceRowData) getInfoColumn() string {
 	}
 
 	diagInfo := data.diagInfo
-	if data.display.done {
+	if data.display.done.Load() {
 		// If we are done, show a summary of how many messages were printed.
 		if c := diagInfo.ErrorCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
