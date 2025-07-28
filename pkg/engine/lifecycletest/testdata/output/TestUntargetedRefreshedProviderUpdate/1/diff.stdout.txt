@@ -2,11 +2,18 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=983fcc2a-f317-4ce2-b085-3ff04258ec73]
+<{%reset%}>    [id=d8514b38-b18a-414c-a4df-b933b4469191]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::d0859082-9e12-4b8e-a7db-d9a9524a31e9<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::6425682c-8849-4106-a2a5-5e3618e83397<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::a8a6bbfb-94a4-4c94-9500-60014039a3d6<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::c6f53a2f-2215-4086-9752-dd3eb19306dc<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=a8a6bbfb-94a4-4c94-9500-60014039a3d6]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=2b65682a-9765-4fe8-8624-f5af2fe07c71]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::a8a6bbfb-94a4-4c94-9500-60014039a3d6]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    1 unchanged
+    2 unchanged
 
 <{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
     <{%underline%}><{%fg 12%}>Name<{%reset%}>         <{%underline%}><{%fg 12%}>Version<{%reset%}>
