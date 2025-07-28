@@ -1,6 +1,6 @@
 module project
 
-go 1.23.0
+go 1.23.11
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 

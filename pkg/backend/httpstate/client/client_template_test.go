@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -483,6 +484,165 @@ func (r *testCloudRegistry) PublishTemplate(ctx context.Context, op templatePubl
 	}
 
 	return nil
+}
+
+func TestDownloadTemplate(t *testing.T) {
+	t.Parallel()
+
+	testTarData := []byte("fake-tar-data")
+
+	t.Run("SuccessfulDownloadFromClientURL", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/api/template/download", r.URL.Path)
+			assert.Equal(t, "application/x-tar", r.Header.Get("Accept"))
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(testTarData)
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		downloadURL := server.URL + "/api/template/download"
+
+		result, err := client.DownloadTemplate(context.Background(), downloadURL)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		defer result.Close()
+
+		data, err := io.ReadAll(result)
+		require.NoError(t, err)
+		assert.Equal(t, testTarData, data)
+	})
+
+	t.Run("SuccessfulDownloadFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		presignedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			// For presigned URLs, we should NOT have any custom headers
+			assert.Empty(t, r.Header.Get("Accept"))
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(testTarData)
+			require.NoError(t, err)
+		}))
+		defer presignedServer.Close()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		result, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		defer result.Close()
+
+		data, err := io.ReadAll(result)
+		require.NoError(t, err)
+		assert.Equal(t, testTarData, data)
+	})
+
+	t.Run("SuccessfulDownloadFromForeignURL", func(t *testing.T) {
+		t.Parallel()
+
+		foreignServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			// For non-presigned foreign URLs, we should still set Accept header
+			assert.Equal(t, "application/x-tar", r.Header.Get("Accept"))
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(testTarData)
+			require.NoError(t, err)
+		}))
+		defer foreignServer.Close()
+
+		clientServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for foreign URLs")
+		}))
+		defer clientServer.Close()
+
+		client := newMockClient(clientServer)
+
+		result, err := client.DownloadTemplate(context.Background(), foreignServer.URL)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		defer result.Close()
+
+		data, err := io.ReadAll(result)
+		require.NoError(t, err)
+		assert.Equal(t, testTarData, data)
+	})
+
+	t.Run("ErrorResponse", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Template not found"))
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		downloadURL := server.URL + "/api/template/download"
+
+		_, err := client.DownloadTemplate(context.Background(), downloadURL)
+		require.Error(t, err)
+	})
+
+	t.Run("ErrorResponseFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		presignedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, err := w.Write([]byte("Access denied"))
+			require.NoError(t, err)
+		}))
+		defer presignedServer.Close()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "HTTP 403")
+		assert.Contains(t, err.Error(), "Access denied")
+	})
+
+	t.Run("NetworkErrorFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := "http://127.0.0.1:1/invalid?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+	})
+
+	t.Run("InvalidPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := "://invalid-url?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+	})
 }
 
 func TestListTemplates(t *testing.T) {

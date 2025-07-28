@@ -19,7 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -36,7 +36,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 1, "expected 1 outputs")
+					require.Len(l, outputs, 1, "expected 1 outputs")
 					// TODO(https://github.com/pulumi/pulumi/issues/19015): Ideally we'd allow for nulls in the output
 					// map and in nested maps, but to do that we need to work out how to handle optional fields in
 					// resource properties as well. Is it ok to start sending nulls for optional fields in the resource

@@ -320,7 +320,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	backend.DisableIntegrityChecking = true
 	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 }
 
 func TestCloudBackend_GetCloudRegistry(t *testing.T) {
@@ -333,7 +333,7 @@ func TestCloudBackend_GetCloudRegistry(t *testing.T) {
 
 	registry, err := b.GetCloudRegistry()
 	require.NoError(t, err)
-	assert.NotNil(t, registry)
+	require.NotNil(t, registry)
 
 	_, ok := registry.(*cloudRegistry)
 	assert.True(t, ok, "expected registry to be a cloudRegistry")

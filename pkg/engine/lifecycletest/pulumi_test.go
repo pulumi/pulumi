@@ -142,12 +142,12 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 func TestMain(m *testing.M) {
 	grpcDefault := flag.Bool("grpc-plugins", false, "enable or disable gRPC providers by default")
-	if (runtime.GOOS == "windows" || runtime.GOOS == "darwin") && os.Getenv("PULUMI_FORCE_RUN_TESTS") == "" {
-		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
+	if (runtime.GOOS == "windows") && os.Getenv("PULUMI_FORCE_RUN_TESTS") == "" {
+		// These tests are skipped as part of enabling running unit tests on windows in
 		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
 		// re-enabling them is left as future work.
-		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows and MacOS once they are fixed.
-		fmt.Println("Skip tests on windows and MacOS until they are fixed")
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows once they are fixed.
+		fmt.Println("Skip tests on windows until they are fixed")
 		os.Exit(0)
 	}
 
@@ -631,6 +631,36 @@ func TestProviderCancellation(t *testing.T) {
 	<-done
 }
 
+func TestLanguageRuntimeCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	gracefulShutdown := false
+	programF := func() plugin.LanguageRuntime {
+		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			time.Sleep(1 * time.Second)
+			cancel()
+
+			return nil
+		}, func() {
+			gracefulShutdown = true
+		})
+	}
+
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF)}
+
+	p := &lt.TestPlan{}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
+
+	op := lt.TestOp(Update)
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
+
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "BAIL: canceled")
+	assert.True(t, gracefulShutdown)
+}
+
 // Tests that a preview works for a stack with pending operations.
 func TestPreviewWithPendingOperations(t *testing.T) {
 	t.Parallel()
@@ -738,12 +768,12 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	withRefresh.Refresh = true
 	new, err := op.RunStep(project, target, withRefresh, false, nil, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, new.PendingOperations, 0)
+	require.Len(t, new.PendingOperations, 0)
 
 	// Similarly, the update should succeed if performed after a separate refresh.
 	new, err = lt.TestOp(Refresh).RunStep(project, target, options, false, nil, nil, "1")
 	require.NoError(t, err)
-	assert.Len(t, new.PendingOperations, 0)
+	require.Len(t, new.PendingOperations, 0)
 
 	_, err = op.RunStep(project, p.GetTarget(t, new), options, false, nil, nil, "2")
 	require.NoError(t, err)
@@ -817,7 +847,7 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	new, err := op.Run(project, target, withRefresh, false, nil, nil)
 	require.NoError(t, err)
 	// Assert that pending CREATE operation was preserved
-	assert.Len(t, new.PendingOperations, 1)
+	require.Len(t, new.PendingOperations, 1)
 	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
 	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
 }
@@ -908,7 +938,7 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	}
 
 	new, _ := op.Run(project, target, options, false, nil, validate)
-	assert.NotNil(t, new)
+	require.NotNil(t, new)
 
 	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
 
@@ -977,8 +1007,8 @@ func TestUpdatePartialFailure(t *testing.T) {
 					case JournalEntrySuccess:
 						inputs := entry.Step.New().Inputs
 						outputs := entry.Step.New().Outputs
-						assert.Len(t, inputs, 1)
-						assert.Len(t, outputs, 1)
+						require.Len(t, inputs, 1)
+						require.Len(t, outputs, 1)
 						assert.Equal(t,
 							resource.NewStringProperty("old inputs"), inputs[resource.PropertyKey("input_prop")])
 						assert.Equal(t,
@@ -1941,10 +1971,10 @@ func TestCustomTimeouts(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
-	assert.NotNil(t, snap.Resources[1].CustomTimeouts)
+	require.NotNil(t, snap.Resources[1].CustomTimeouts)
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Create, float64(60))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Update, float64(240))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Delete, float64(60))
@@ -2600,7 +2630,7 @@ func TestLanguageClient(t *testing.T) {
 
 	snap, err := update.Finish(nil)
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 }
 
 func TestConfigSecrets(t *testing.T) {
@@ -2637,9 +2667,7 @@ func TestConfigSecrets(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 
 	provider := snap.Resources[0]
 	assert.True(t, provider.Inputs["secret"].IsSecret())
@@ -2741,8 +2769,8 @@ func TestProtect(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, 0, deleteCounter)
 
@@ -2781,8 +2809,8 @@ func TestProtect(t *testing.T) {
 	expectError = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, 0, deleteCounter)
 
@@ -2794,8 +2822,8 @@ func TestProtect(t *testing.T) {
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "3")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, true, snap.Resources[1].Protect)
 	assert.Equal(t, 0, deleteCounter)
@@ -2807,8 +2835,8 @@ func TestProtect(t *testing.T) {
 	shouldProtect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
 	assert.Equal(t, false, snap.Resources[1].Protect)
 	assert.Equal(t, 1, deleteCounter)
@@ -2817,8 +2845,8 @@ func TestProtect(t *testing.T) {
 	shouldProtect = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "5")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
 	assert.Equal(t, true, snap.Resources[1].Protect)
 	assert.Equal(t, 1, deleteCounter)
@@ -2830,8 +2858,8 @@ func TestProtect(t *testing.T) {
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "6")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
 	assert.Equal(t, 2, deleteCounter)
 }
@@ -2916,8 +2944,8 @@ func TestDeletedWith(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, "created-id-1", snap.Resources[2].ID.String())
 	assert.Equal(t, "created-id-2", snap.Resources[3].ID.String())
@@ -2929,8 +2957,8 @@ func TestDeletedWith(t *testing.T) {
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
 	assert.Equal(t, "created-id-4", snap.Resources[2].ID.String())
 	assert.Equal(t, "created-id-5", snap.Resources[3].ID.String())
@@ -2939,8 +2967,8 @@ func TestDeletedWith(t *testing.T) {
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 func TestInvalidGetIDReportsUserError(t *testing.T) {
@@ -2970,8 +2998,8 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 1)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 1)
 }
 
 func TestEventSecrets(t *testing.T) {
@@ -3141,7 +3169,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have the provider and resA
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, []resource.PropertyKey{"a", "b"}, resA.AdditionalSecretOutputs)
 	assert.True(t, resA.Outputs["a"].IsSecret())
@@ -3194,8 +3222,8 @@ func TestDefaultParents(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 
 	// Assert that resource 0 is the stack
 	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
@@ -3341,8 +3369,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 
 	// Trigger a replacement of A but fail to create B
 	failCreationOfTypB = true
@@ -3352,8 +3380,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two copies of A now, one new one and one old one pending delete
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typA"))
@@ -3363,8 +3391,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 	failCreationOfTypB = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestPendingDeleteReplacement(t *testing.T) {
@@ -3502,16 +3530,16 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 
 	// Trigger a replacement of B but fail to delete it
 	inB = "inactive"
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two B's one marked to delete
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
@@ -3527,8 +3555,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert this is ok, we should have just one A and B
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
@@ -3593,8 +3621,8 @@ func TestTimestampTracking(t *testing.T) {
 
 	creationTimes := make(map[resource.URN]time.Time, len(snap.Resources))
 	for _, resource := range snap.Resources {
-		assert.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
-		assert.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
+		require.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+		require.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
 		tz, _ := resource.Created.Zone()
 		assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
 		assert.Equal(t, resource.Created, resource.Modified,
@@ -3608,8 +3636,8 @@ func TestTimestampTracking(t *testing.T) {
 	snap = p.Run(t, snap)
 	require.NotEmpty(t, snap.Resources)
 	for _, resource := range snap.Resources {
-		assert.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
-		assert.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
+		require.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+		require.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
 		assert.Equal(t, *resource.Created, creationTimes[resource.URN],
 			"created time changed: %v", resource.URN)
 		assert.Equal(t, resource.Created, resource.Modified,
@@ -3622,8 +3650,8 @@ func TestTimestampTracking(t *testing.T) {
 	snap = p.Run(t, snap)
 	require.NotEmpty(t, snap.Resources)
 	for _, resource := range snap.Resources {
-		assert.NotNil(t, resource.Created, resource.URN, "missing created time: %v", resource.URN)
-		assert.NotNil(t, resource.Modified, resource.URN, "missing modified time: %v", resource.URN)
+		require.NotNil(t, resource.Created, resource.URN, "missing created time: %v", resource.URN)
+		require.NotNil(t, resource.Modified, resource.URN, "missing modified time: %v", resource.URN)
 		assert.Equal(t, creationTimes[resource.URN], *resource.Created,
 			"created time changed: %v", resource.URN)
 
@@ -3639,8 +3667,8 @@ func TestTimestampTracking(t *testing.T) {
 		case "pulumi:providers:pkgA", "pulumi:pulumi:Stack":
 			tz, _ := resource.Modified.Zone()
 			assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
-			assert.NotNil(t, *resource.Created, "missing created time: %v", resource.URN)
-			assert.NotNil(t, *resource.Modified, "missing modified time: %v", resource.URN)
+			require.NotNil(t, *resource.Created, "missing created time: %v", resource.URN)
+			require.NotNil(t, *resource.Modified, "missing modified time: %v", resource.URN)
 		default:
 			require.FailNow(t, "unrecognized resource type", resource.Type)
 		}
@@ -3803,8 +3831,8 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -3824,8 +3852,8 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	firstUpdate = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	resA = snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -3841,8 +3869,8 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	// Now run a destroy to delete the resource and check the stored inputs and outputs are sent
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 func TestResourceNames(t *testing.T) {
@@ -3979,7 +4007,7 @@ func TestSourcePositions(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	reg := snap.Resources[1]
 	assert.Equal(t, regURN, reg.URN)
@@ -4078,7 +4106,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 
 			snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 			require.NoError(t, err)
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 		})
 	}
 }
@@ -4120,8 +4148,8 @@ func TestProviderChecksums(t *testing.T) {
 	// Run an update
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	// Check the checksum was saved in the provider resource
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
 	checksums := snap.Resources[0].Inputs["__internal"].ObjectValue()["pluginChecksums"].ObjectValue()
@@ -4131,8 +4159,8 @@ func TestProviderChecksums(t *testing.T) {
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/14040, ensure the step generators automatic
@@ -4256,7 +4284,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	}
 
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
-		assert.Len(t, snap.Resources, expectedResourceCount)
+		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
 	}
@@ -4362,7 +4390,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	}
 
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
-		assert.Len(t, snap.Resources, expectedResourceCount)
+		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
 	}

@@ -241,7 +241,7 @@ func TestRemoteTransforms(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	// Check Resources[1] is the resA resource
 	res := snap.Resources[1]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), res.URN)
@@ -308,7 +308,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.ErrorContains(t, err, "unmarshaling response: proto:")
 	assert.ErrorContains(t, err, "cannot parse invalid wire-format data")
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that the engine errors if a transformation function returns an error.
@@ -351,7 +351,7 @@ func TestRemoteTransformErrorResponse(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.ErrorContains(t, err, "Unknown desc = bad transform")
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that a remote transform applies to a resource inside a component construct.
@@ -426,7 +426,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	// Check Resources[2] is the resA resource
 	res := snap.Resources[2]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"), res.URN)
@@ -543,7 +543,7 @@ func TestRemoteTransformsOptions(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	// Check Resources[4] is the resD resource
 	res := snap.Resources[4]
 	require.Equal(t, resource.URN(urnD), res.URN)
@@ -644,7 +644,7 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	// Check Resources[3] is the resC resource
 	res := snap.Resources[3]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resC"), res.URN)
@@ -733,7 +733,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	// Check Resources[2] is the resA resource
 	res := snap.Resources[2]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"), res.URN)
@@ -832,7 +832,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 		},
 	}
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 7 resources
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
@@ -968,7 +968,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 		},
 	}
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 1, len(snap.Resources)) // expect no default provider to be created for the invoke
 }
 

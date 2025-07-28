@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Allow for `on_error` callbacks in commands to capture stderr incrementally

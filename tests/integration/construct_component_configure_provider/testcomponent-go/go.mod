@@ -1,12 +1,12 @@
 module github.com/pulumi/pulumi/tests/integration/construct_component_configure_provider/testcomponent-go
 
-go 1.23.0
+go 1.23.11
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.182.0
+	github.com/pulumi/pulumi/sdk/v3 v3.186.0
 )
 
 replace (

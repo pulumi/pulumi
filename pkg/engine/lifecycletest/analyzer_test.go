@@ -272,7 +272,7 @@ func TestResourceRemediation(t *testing.T) {
 
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 
 	// Ensure the rewritten properties have been applied to the inputs:
@@ -330,7 +330,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 
 	// Expect no error, valid snapshot, two resources:
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 }
 
@@ -371,8 +371,8 @@ func TestRemediateFailure(t *testing.T) {
 
 	project := p.GetProject()
 	snap, res := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
-	assert.NotNil(t, snap)
+	require.NotNil(t, res)
+	require.NotNil(t, snap)
 	assert.Equal(t, 0, len(snap.Resources))
 }
 
@@ -428,7 +428,7 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 							violationEvents = append(violationEvents, e)
 						}
 					}
-					assert.Len(t, violationEvents, 1)
+					require.Len(t, violationEvents, 1)
 					assert.Equal(t, apitype.Mandatory,
 						violationEvents[0].Payload().(PolicyViolationEventPayload).EnforcementLevel)
 
@@ -494,7 +494,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 							violationEvents = append(violationEvents, e)
 						}
 					}
-					assert.Len(t, violationEvents, 1)
+					require.Len(t, violationEvents, 1)
 					assert.Equal(t, apitype.Mandatory,
 						violationEvents[0].Payload().(PolicyViolationEventPayload).EnforcementLevel)
 
@@ -524,7 +524,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		cancel()
 		return nil
 	})
@@ -545,6 +545,6 @@ func TestAnalyzerCancellation(t *testing.T) {
 	op := lt.TestOp(Update)
 	_, err := op.RunWithContext(ctx, project, target, p.Options, false, nil, nil)
 
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "BAIL: canceled")
 	assert.True(t, gracefulShutdown)
 }

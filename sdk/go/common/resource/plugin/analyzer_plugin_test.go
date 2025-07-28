@@ -49,6 +49,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 		Stack:        "test-stack",
 		DryRun:       true,
 		Config:       configDecrypted,
+		Tags:         map[string]string{"tag1": "value1", "tag2": "value2"},
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer")
@@ -112,6 +113,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 		Stack:        "test-stack",
 		DryRun:       true,
 		Config:       configDecrypted,
+		Tags:         map[string]string{"tag1": "value1", "tag2": "value2"},
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-language")

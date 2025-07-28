@@ -1,0 +1,5 @@
+name: exit-error
+runtime:
+  name: nodejs
+  options:
+    typescript: false

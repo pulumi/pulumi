@@ -151,7 +151,7 @@ func TestSecretMasked(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	if snap != nil {
 		assert.True(t, snap.Resources[1].Outputs["shouldBeSecret"].IsSecret())
 	}
@@ -179,10 +179,10 @@ func TestReadReplaceStep(t *testing.T) {
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			require.NoError(t, err)
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.False(t, snap.Resources[1].External)
 
@@ -204,9 +204,9 @@ func TestReadReplaceStep(t *testing.T) {
 				Then(func(snap *deploy.Snapshot, err error) {
 					require.NoError(t, err)
 
-					assert.NotNil(t, snap)
+					require.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
-					assert.Len(t, snap.Resources, 2)
+					require.Len(t, snap.Resources, 2)
 					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 					assert.True(t, snap.Resources[1].External)
 				})
@@ -234,9 +234,9 @@ func TestRelinquishStep(t *testing.T) {
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.False(t, snap.Resources[1].External)
 
@@ -257,9 +257,9 @@ func TestRelinquishStep(t *testing.T) {
 				Then(func(snap *deploy.Snapshot, err error) {
 					require.NoError(t, err)
 
-					assert.NotNil(t, snap)
+					require.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
-					assert.Len(t, snap.Resources, 2)
+					require.Len(t, snap.Resources, 2)
 					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 					assert.True(t, snap.Resources[1].External)
 				})
@@ -286,9 +286,9 @@ func TestTakeOwnershipStep(t *testing.T) {
 		Then(func(snap *deploy.Snapshot, err error) {
 			require.NoError(t, err)
 
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.True(t, snap.Resources[1].External)
 
@@ -312,9 +312,9 @@ func TestTakeOwnershipStep(t *testing.T) {
 				Then(func(snap *deploy.Snapshot, err error) {
 					require.NoError(t, err)
 
-					assert.NotNil(t, snap)
+					require.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
-					assert.Len(t, snap.Resources, 2)
+					require.Len(t, snap.Resources, 2)
 					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 					assert.False(t, snap.Resources[1].External)
 				})
@@ -363,9 +363,9 @@ func TestInitErrorsStep(t *testing.T) {
 		Then(func(snap *deploy.Snapshot, err error) {
 			require.NoError(t, err)
 
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.Empty(t, snap.Resources[1].InitErrors)
 		})

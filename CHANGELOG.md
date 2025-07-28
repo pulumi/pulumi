@@ -1,5 +1,148 @@
 # Changelog
 
+## 3.186.0 (2025-07-25)
+
+
+### Features
+
+- [engine] Send `Cancel` message to language runtime plugins on engine shutdown
+  [#20007](https://github.com/pulumi/pulumi/pull/20007)
+
+- [engine] Pass stack tags to policy plugins on startup
+  [#20084](https://github.com/pulumi/pulumi/pull/20084)
+
+- [yaml] Expose `object` as a possible config type in preparation for `pulumi-yaml` support
+  [#20129](https://github.com/pulumi/pulumi/pull/20129)
+
+
+### Bug Fixes
+
+- [cli/engine] --exclude and --exclude-protected flags now work together correctly for `destroy` commands
+  [#20120](https://github.com/pulumi/pulumi/pull/20120)
+
+- [engine] Fix a datarace in the engine event system
+  [#20105](https://github.com/pulumi/pulumi/pull/20105)
+
+- [engine] Fix a panic in the engine when running `up --refresh --run-program` and finding a deleted resource
+
+- [sdk/nodejs] Avoid "Cannot convert object to primitive value" error when running into type errors
+  [#20092](https://github.com/pulumi/pulumi/pull/20092)
+
+- [sdk/nodejs] Don’t use automatic ESM mode when `—import` or `—require` is set
+  [#20091](https://github.com/pulumi/pulumi/pull/20091)
+
+- [sdk/nodejs] Fix callback server hang & delete hooks in Node.js
+  [#20109](https://github.com/pulumi/pulumi/pull/20109)
+
+- [sdk/nodejs] Don’t report leaked promises when we exit abnormally
+  [#20128](https://github.com/pulumi/pulumi/pull/20128)
+
+- [cli/package] Force new style Go modules to be written out when using `package add`
+  [#20011](https://github.com/pulumi/pulumi/pull/20011)
+
+- [sdk/python] Run uv sync on uv command
+  [#20117](https://github.com/pulumi/pulumi/pull/20117)
+
+
+### Miscellaneous
+
+- [yaml] Update yaml to 1.21.3
+  [#20118](https://github.com/pulumi/pulumi/pull/20118)
+
+## 3.185.0 (2025-07-21)
+
+
+### Features
+
+- [cli/{install,package}] Allow using `pulumi package add` with registry identifiers
+  [#19928](https://github.com/pulumi/pulumi/pull/19928)
+
+
+### Bug Fixes
+
+- [engine] Fix a snapshot integrity issue with `destroy --run-program` and resource reads
+  [#20078](https://github.com/pulumi/pulumi/pull/20078)
+
+- [sdkgen/python] Remove unnecessary `import copy`
+  [#20089](https://github.com/pulumi/pulumi/pull/20089)
+
+- [sdkgen/python] Support properties named "builtins"
+  [#20085](https://github.com/pulumi/pulumi/pull/20085)
+
+## 3.184.0 (2025-07-18)
+
+
+### Features
+
+- [sdk/go] Allow setting resource hooks in transforms
+  [#20058](https://github.com/pulumi/pulumi/pull/20058)
+
+- [sdk/nodejs] Allow setting resource hooks in transforms
+  [#20057](https://github.com/pulumi/pulumi/pull/20057)
+
+
+### Bug Fixes
+
+- [auto/go] Fix refresh/destroy with inline programs and --run-program flag
+
+- [cli/package] Fix `package add` command when using uv 0.8.0 or later
+  [#20075](https://github.com/pulumi/pulumi/pull/20075)
+
+- [sdk/nodejs] Fix before exit handler
+
+- [programgen/python] Fix imports of packages and modules with multiple name parts, such as "devOps"
+  [#20053](https://github.com/pulumi/pulumi/pull/20053)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Simplify determining the Node.js entrypoint and respect package.exports
+  [#19985](https://github.com/pulumi/pulumi/pull/19985)
+
+## 3.183.0 (2025-07-16)
+
+
+### Features
+
+- [cli] Support reading v4 checkpoints/deployments
+  [#20046](https://github.com/pulumi/pulumi/pull/20046)
+
+- [cli] Allow transforms to set resource hooks
+  [#20051](https://github.com/pulumi/pulumi/pull/20051)
+
+- [protobuf] Add hooks to TransformResourceOptions
+  [#20050](https://github.com/pulumi/pulumi/pull/20050)
+
+- [auto/{go,nodejs,python}] Support --run-program for inline programs in refresh and destroy operations
+  [#19912](https://github.com/pulumi/pulumi/pull/19912)
+
+- [cli/new] Reflect templates published with `pulumi template publish` in the results of `pulumi new`
+  [#19940](https://github.com/pulumi/pulumi/pull/19940)
+
+- [sdk/nodejs] Automatic ESM configuration
+  [#19980](https://github.com/pulumi/pulumi/pull/19980)
+
+- [sdk/python] Allow setting resource hooks in transforms
+  [#20052](https://github.com/pulumi/pulumi/pull/20052)
+
+
+### Bug Fixes
+
+- [cli] Fix a panic in the `console` command when a non-existant stack was passed as a --stack argument
+  [#20043](https://github.com/pulumi/pulumi/pull/20043)
+
+- [sdk/nodejs] Try to normalize component names when auto-inferring them
+  [#20048](https://github.com/pulumi/pulumi/pull/20048)
+
+- [sdk/python/automation] Fix wrong name after stack rename
+  [#20028](https://github.com/pulumi/pulumi/pull/20028)
+
+
+### Miscellaneous
+
+- [pkg] Update pulumi-java to v1.16.0
+  [#20063](https://github.com/pulumi/pulumi/pull/20063)
+
 ## 3.182.0 (2025-07-14)
 
 

@@ -136,7 +136,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 3)
+	require.Len(t, upSnap.Resources, 3)
 	assert.Equal(t, "default", upSnap.Resources[0].URN.Name())
 	assert.Equal(t, "resA", upSnap.Resources[1].URN.Name())
 	assert.Equal(t, "resB", upSnap.Resources[2].URN.Name())
@@ -159,7 +159,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 3)
+	require.Len(t, replaceSnap.Resources, 3)
 	assert.Equal(t, "default", replaceSnap.Resources[0].URN.Name())
 
 	assert.Equal(t, "resA", replaceSnap.Resources[1].URN.Name())
@@ -196,7 +196,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		RunStep(project, p.GetTarget(t, replaceSnap), retryOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 
-	assert.Len(t, retrySnap.Resources, 3)
+	require.Len(t, retrySnap.Resources, 3)
 	assert.Equal(t, "default", retrySnap.Resources[0].URN.Name())
 
 	assert.True(t, diffsCalled["resA"], "Diff should be called on resA")
@@ -301,7 +301,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 2)
+	require.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 
@@ -325,7 +325,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 2)
+	require.Len(t, replaceSnap.Resources, 2)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
@@ -354,7 +354,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	require.NoError(t, err)
 
 	// Assert.
-	assert.Len(t, removeSnap.Resources, 2)
+	require.Len(t, removeSnap.Resources, 2)
 	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")
 	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (same goals)")
@@ -454,7 +454,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 2)
+	require.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 
@@ -478,7 +478,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 2)
+	require.Len(t, replaceSnap.Resources, 2)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
@@ -514,7 +514,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	require.NoError(t, err)
 
 	// Assert.
-	assert.Len(t, removeSnap.Resources, 0)
+	require.Len(t, removeSnap.Resources, 0)
 	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (deleted goals)")
 	assert.False(t, createCalled, "Create shouldn't be called when resuming a replacement (deleted goals)")
 }
@@ -630,7 +630,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 2)
+	require.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 
@@ -654,7 +654,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 2)
+	require.Len(t, replaceSnap.Resources, 2)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
@@ -686,7 +686,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	require.NoError(t, err)
 
 	// Assert.
-	assert.Len(t, removeSnap.Resources, 2)
+	require.Len(t, removeSnap.Resources, 2)
 	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")
 	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (updated goals)")
@@ -737,7 +737,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 3)
+	require.Len(t, upSnap.Resources, 3)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, upSnap.Resources[2].URN.Name(), "resB")
@@ -770,7 +770,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), upOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 3)
+	require.Len(t, replaceSnap.Resources, 3)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
@@ -782,7 +782,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		RunStep(project, p.GetTarget(t, replaceSnap), upOptions, false, p.BackendClient, nil, "2")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, secondReplaceSnap.Resources, 3)
+	require.Len(t, secondReplaceSnap.Resources, 3)
 	assert.Equal(t, secondReplaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, secondReplaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, secondReplaceSnap.Resources[1].PendingReplacement)
@@ -816,7 +816,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		RunStep(project, p.GetTarget(t, secondReplaceSnap), upOptions, false, p.BackendClient, nil, "3")
 	require.NoError(t, err)
 
-	assert.Len(t, secondUpSnap.Resources, 3)
+	require.Len(t, secondUpSnap.Resources, 3)
 	assert.Equal(t, secondUpSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, secondUpSnap.Resources[1].URN.Name(), "resA")
 	assert.False(t, secondUpSnap.Resources[1].PendingReplacement)

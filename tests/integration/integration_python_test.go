@@ -101,10 +101,10 @@ func TestStackOutputsPython(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Equal(t, 0, len(stackRes.Inputs))
 				assert.Equal(t, 2, len(stackRes.Outputs))
@@ -641,7 +641,7 @@ func TestEnumOutputsPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
 			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
@@ -806,10 +806,10 @@ func TestConstructSlowPython(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 			}
@@ -876,7 +876,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -2130,6 +2130,29 @@ func TestPythonComponentProviderPackageRun(t *testing.T) {
 			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 			require.NoError(t, err)
 			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+		},
+	})
+}
+
+// Tests that features are set in the pulumi runtime used to construct the component.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderFeatures(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "features"),
+		RelativeWorkDir: "yaml",
+		Quick:           true,
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+			require.True(t, stack.Outputs["parameterization"].(bool))
+			require.True(t, stack.Outputs["transforms"].(bool))
+			require.True(t, stack.Outputs["resourceHooks"].(bool))
 		},
 	})
 }

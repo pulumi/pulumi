@@ -1614,12 +1614,12 @@ func TestResmonCancel(t *testing.T) {
 
 func TestSourceEvalServeOptions(t *testing.T) {
 	t.Parallel()
-	assert.Len(t,
+	require.Len(t,
 		sourceEvalServeOptions(nil, opentracing.SpanFromContext(context.Background()), "" /* logFile */),
 		2,
 	)
 
-	assert.Len(t,
+	require.Len(t,
 		sourceEvalServeOptions(&plugin.Context{
 			DebugTraceMutex: &sync.Mutex{},
 		}, opentracing.SpanFromContext(context.Background()), "logFile.log"),
@@ -1795,7 +1795,7 @@ func TestDefaultProviders(t *testing.T) {
 				},
 			}
 			req := d.normalizeProviderRequest(providers.NewProviderRequest(tokens.Package("pkg"), nil, "", nil, nil))
-			assert.NotNil(t, req)
+			require.NotNil(t, req)
 			assert.Equal(t, &v1, req.Version())
 			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
 			assert.Equal(t, map[string][]byte{"key": []byte("expected-checksum-value")}, req.PluginChecksums())

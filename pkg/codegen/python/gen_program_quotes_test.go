@@ -57,14 +57,14 @@ resource rta "aws:ec2:RouteTableAssociation" {
 			break
 		}
 	}
-	assert.NotNil(t, rta)
+	require.NotNil(t, rta)
 
 	// Lower the "subnetId" property of the resource.
 	prop, ok := rta.Definition.Body.Attribute("subnetId")
 	assert.True(t, ok)
 
 	x, temps := g.lowerExpression(prop.Value, prop.Type())
-	assert.Len(t, temps, 0)
+	require.Len(t, temps, 0)
 
 	x.SetLeadingTrivia(nil)
 	x.SetTrailingTrivia(nil)

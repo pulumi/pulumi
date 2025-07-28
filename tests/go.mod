@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests
 
-go 1.23.0
+go 1.23.11
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
@@ -24,7 +24,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.182.0
+	github.com/pulumi/pulumi/sdk/v3 v3.186.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.37.0
@@ -233,7 +233,7 @@ require (
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect

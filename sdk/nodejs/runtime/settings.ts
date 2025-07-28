@@ -503,6 +503,8 @@ export function getEngine(): engrpc.IEngineClient | undefined {
 }
 
 export function terminateRpcs() {
+    const store = getStore();
+    store.terminated = true;
     disconnectSync();
 }
 
@@ -537,15 +539,25 @@ function options(): Options {
  * Permanently disconnects from the server, closing the connections. It waits
  * for the existing RPC queue to drain.  If any RPCs come in afterwards,
  * however, they will crash the process.
+ *
+ * If `signalShutdown` is true, signal to the monitor that we're ready to
+ * shutdown. This will wait until the monitor has completed all steps,
+ * including deletion steps.
  */
-export function disconnect(): Promise<void> {
-    return waitForRPCs(/*disconnectFromServers*/ true);
+export async function disconnect(signalShutdown = false): Promise<void> {
+    await waitForRPCs();
+    if (signalShutdown) {
+        await signalAndWaitForShutdown();
+    }
+    disconnectSync();
 }
 
 /**
+ * Waits for the existing RPC queue to drain.
+ *
  * @internal
  */
-export function waitForRPCs(disconnectFromServers = false): Promise<void> {
+export function waitForRPCs(): Promise<void> {
     const localStore = getStore();
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = async () => {
@@ -554,12 +566,42 @@ export function waitForRPCs(disconnectFromServers = false): Promise<void> {
             done = localStore.settings.rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
-        if (disconnectFromServers) {
-            disconnectSync();
-        }
         return Promise.resolve();
     };
     return closeCallback();
+}
+
+/**
+ * Signals to the monitor that we're ready to shutdown. This will wait until the
+ * monitor has completed all steps, including deletion steps.
+ *
+ * @internal
+ */
+export function signalAndWaitForShutdown(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const monitorRef = getMonitor();
+        if (!monitorRef) {
+            return resolve();
+        }
+        monitorRef.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
+            if (err) {
+                // If we are running against an older version of the CLI,
+                // SignalAndWaitForShutdown might not be implemented. This is
+                // mostly fine, but means that delete hooks do not work. Since
+                // we check if the CLI supports the `resourceHook` feature when
+                // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+                // error here.
+                // If we get `UNAVAILABLE`, the monitor was already shutdown, likely
+                // due to an error, and we can ignore the GRPC error here, since
+                // Pulumi will have notified the user.
+                if (err && (err.code === grpc.status.UNIMPLEMENTED || err.code === grpc.status.UNAVAILABLE)) {
+                    return resolve();
+                }
+                return reject(new Error(`Error while signaling shutdown: ${err}`));
+            }
+            return resolve();
+        });
+    });
 }
 
 /**

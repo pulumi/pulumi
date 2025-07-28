@@ -29,7 +29,34 @@ import (
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonResourceHooks(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: "python",
+		Dir: filepath.Join("python", "step-1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			requirePrinted(t, stack, "info", "before_create was called with length = 10")
+			requirePrinted(t, stack, "info", "fun_comp was called with child")
+		},
+		EditDirs: []integration.EditDir{{
+			Additive: true,
+			Dir:      filepath.Join("python", "step-2"),
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				requirePrinted(t, stack, "info", "before_delete was called with length = 10")
+			},
+		}},
+	})
+}
+
+// Test that a transform can modify resource hooks
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonResourceHooksTransform(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "python_transform",
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
@@ -54,8 +81,8 @@ func TestPythonResourceHooks(t *testing.T) {
 			}
 			b, err := json.Marshal(stackInfo.Events)
 			require.NoError(t, err)
-			require.True(t, found, "expected 'hook_fun' to print a message, got: %s", b)
-			require.True(t, foundComp, "expected 'hook_fun_comp' to print a message, got: %s", b)
+			require.True(t, found, "expected hook to print a message for the resource, got: %s", b)
+			require.True(t, foundComp, "expected hook to print a message for the component, got: %s", b)
 		},
 	})
 }

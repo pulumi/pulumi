@@ -284,6 +284,7 @@ type PolicyAnalyzerOptions struct {
 	Config           map[config.Key]string
 	ConfigSecretKeys []config.Key
 	DryRun           bool
+	Tags             map[string]string // Tags for the current stack.
 }
 
 type pluginLoadRequest struct {
@@ -608,10 +609,18 @@ func (host *defaultHost) SignalCancellation() error {
 					"Error signaling cancellation to resource provider '%s': %w", plug.Info.Name, err))
 			}
 		}
+
 		for _, plug := range host.analyzerPlugins {
 			if err := plug.Plugin.Cancel(host.ctx.Request()); err != nil {
 				result = multierror.Append(result, fmt.Errorf(
 					"Error signaling cancellation to analyzer '%s': %w", plug.Info.Name, err))
+			}
+		}
+
+		for _, plug := range host.languagePlugins {
+			if err := plug.Plugin.Cancel(); err != nil {
+				result = multierror.Append(result, fmt.Errorf(
+					"Error signaling cancellation to language runtime '%s': %w", plug.Info.Name, err))
 			}
 		}
 		return nil, result

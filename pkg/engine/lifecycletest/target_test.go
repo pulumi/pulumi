@@ -1964,10 +1964,10 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	// Check that `resB` (untargeted) is the same between the two snapshots.
 	{
 		initialState := findResourceByURN(origSnap.Resources, "urn:pulumi:test::test::pkgA:m:typA::resB")
-		assert.NotNil(t, initialState, "initial `resB` state not found")
+		require.NotNil(t, initialState, "initial `resB` state not found")
 
 		finalState := findResourceByURN(finalSnap.Resources, "urn:pulumi:test::test::pkgA:m:typA::resB")
-		assert.NotNil(t, finalState, "final `resB` state not found")
+		require.NotNil(t, finalState, "final `resB` state not found")
 
 		assert.Equal(t, initialState, finalState)
 	}
@@ -2062,7 +2062,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			},
 		}, p.BackendClient, nil)
 		require.NoError(t, err)
-		assert.NotNil(t, plan)
+		require.NotNil(t, plan)
 
 		// Ensure resB is in the plan.
 		foundResB := false
@@ -2101,7 +2101,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			},
 		}, p.BackendClient, nil)
 		require.NoError(t, err)
-		assert.NotNil(t, plan)
+		require.NotNil(t, plan)
 
 		foundResA := false
 		foundResB := false
@@ -2149,7 +2149,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			},
 		}, p.BackendClient, nil)
 		require.NoError(t, err)
-		assert.NotNil(t, plan)
+		require.NotNil(t, plan)
 
 		foundResA := false
 		foundResB := false
@@ -2530,9 +2530,9 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	project := p.GetProject()
 
 	validateSnap := func(snap *deploy.Snapshot) {
-		assert.NotNil(t, snap)
+		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}
@@ -2593,9 +2593,9 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	project := p.GetProject()
 
 	validateSnap := func(snap *deploy.Snapshot) {
-		assert.NotNil(t, snap)
+		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}
@@ -2654,9 +2654,9 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	project := p.GetProject()
 
 	validateSnap := func(snap *deploy.Snapshot) {
-		assert.NotNil(t, snap)
+		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 2)
+		require.Len(t, snap.Resources, 2)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	}
 
@@ -2723,9 +2723,9 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	project := p.GetProject()
 
 	validateSnap := func(snap *deploy.Snapshot) {
-		assert.NotNil(t, snap)
+		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}
@@ -2812,9 +2812,9 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	project := p.GetProject()
 
 	validateSnap := func(snap *deploy.Snapshot) {
-		assert.NotNil(t, snap)
+		require.NotNil(t, snap)
 		assert.Nil(t, snap.VerifyIntegrity())
-		assert.Len(t, snap.Resources, 3)
+		require.Len(t, snap.Resources, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
 	}

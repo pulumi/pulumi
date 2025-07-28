@@ -181,9 +181,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, exampleProperty)
-		assert.NotNil(t, nonPlainProperty)
-		assert.NotNil(t, nestedProperty)
+		require.NotNil(t, exampleProperty)
+		require.NotNil(t, nonPlainProperty)
+		require.NotNil(t, nestedProperty)
 
 		assert.True(t, exampleProperty.Plain)
 		assert.False(t, nonPlainProperty.Plain)
@@ -222,9 +222,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 				}
 			}
 
-			assert.NotNil(t, exampleProperty)
-			assert.NotNil(t, nonPlainProperty)
-			assert.NotNil(t, nestedProperty)
+			require.NotNil(t, exampleProperty)
+			require.NotNil(t, nonPlainProperty)
+			require.NotNil(t, nestedProperty)
 
 			assert.True(t, exampleProperty.Plain)
 			assert.False(t, nonPlainProperty.Plain)
@@ -282,7 +282,7 @@ func TestImportSpec(t *testing.T) {
 	}
 
 	for _, r := range pkg.Resources {
-		assert.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
+		require.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
 	}
 }
 
@@ -347,8 +347,8 @@ outputs:
 	err := yaml.Unmarshal([]byte(fnYaml), &functionSpec)
 	assert.Nil(t, err, "Unmarshalling should work")
 	assert.Equal(t, "Test function", functionSpec.Description)
-	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
-	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	require.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	require.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
 	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
 }
 
@@ -359,8 +359,8 @@ func TestUnmarshalJSONFunctionSpec(t *testing.T) {
 	err := json.Unmarshal([]byte(fnJSON), &functionSpec)
 	assert.Nil(t, err, "Unmarshalling should work")
 	assert.Equal(t, "Test function", functionSpec.Description)
-	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
-	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	require.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	require.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
 	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
 }
 
@@ -651,7 +651,7 @@ func TestImportResourceRef(t *testing.T) {
 				assert.True(t, ok)
 				assert.IsType(t, &ResourceType{}, plainType(name.Type))
 				resource := plainType(name.Type).(*ResourceType)
-				assert.NotNil(t, resource.Resource)
+				require.NotNil(t, resource.Resource)
 
 				for _, r := range pkg.Resources {
 					switch r.Token {
@@ -667,7 +667,7 @@ func TestImportResourceRef(t *testing.T) {
 								assert.IsType(t, &ObjectType{}, plainType(p.Type))
 
 								obj := plainType(p.Type).(*ObjectType)
-								assert.NotNil(t, obj.Properties)
+								require.NotNil(t, obj.Properties)
 							}
 						}
 					}
@@ -875,7 +875,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
-	assert.Len(t, diags, 2)
+	require.Len(t, diags, 2)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagWarning)
 		assert.True(
@@ -884,7 +884,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 				strings.Contains(diag.Summary, "pulumi is a reserved property name"),
 		)
 	}
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
@@ -925,8 +925,8 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	})
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
-	assert.NotNil(t, pkg)
+	require.Len(t, diags, 0)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
@@ -954,7 +954,7 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
 		fmt.Println(diag.Summary)
@@ -991,8 +991,8 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
-	assert.NotNil(t, pkg)
+	require.Len(t, diags, 0)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
@@ -1020,7 +1020,7 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
 
@@ -1050,7 +1050,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
 		assert.True(
@@ -1087,8 +1087,8 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
-	assert.NotNil(t, pkg)
+	require.Len(t, diags, 0)
+	require.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
@@ -1117,7 +1117,7 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
 
@@ -1147,9 +1147,9 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	})
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 	// assert that there is 1 warning in the diagnostics because of using ID as a property
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
@@ -1168,7 +1168,7 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagError)
 	assert.Contains(t, diags[0].Summary, "version must be provided when package supports packing")
 }
@@ -1200,7 +1200,7 @@ func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestMethods(t *testing.T) {
@@ -1214,11 +1214,11 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-methods-1.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Resources, 1)
-				assert.Len(t, pkg.Resources[0].Methods, 1)
+				require.Len(t, pkg.Resources, 1)
+				require.Len(t, pkg.Resources[0].Methods, 1)
 
-				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
-				assert.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
+				require.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
+				require.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
 				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
 				assert.Equal(t, "__self__", inputs[0].Name)
 				assert.Equal(t, &ResourceType{
@@ -1231,13 +1231,13 @@ func TestMethods(t *testing.T) {
 					objectReturnType = objectType
 				}
 
-				assert.NotNil(t, objectReturnType)
-				assert.Len(t, objectReturnType.Properties, 1)
+				require.NotNil(t, objectReturnType)
+				require.Len(t, objectReturnType.Properties, 1)
 				outputs := objectReturnType.Properties
 				assert.Equal(t, "someValue", outputs[0].Name)
 				assert.Equal(t, StringType, outputs[0].Type)
 
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 				assert.True(t, pkg.Functions[0].IsMethod)
 				assert.Same(t, pkg.Resources[0].Methods[0].Function, pkg.Functions[0])
 			},
@@ -1245,16 +1245,16 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-simplified-methods.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
-				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				require.Len(t, pkg.Functions, 1)
+				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
 		{
 			filename: "good-simplified-methods.yml",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
-				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				require.Len(t, pkg.Functions, 1)
+				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
@@ -1290,19 +1290,19 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "provider-methods-1.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 			},
 		},
 		{
 			filename: "provider-methods-2.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 2)
+				require.Len(t, pkg.Functions, 2)
 			},
 		},
 		{
 			filename: "provider-methods-3.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 2)
+				require.Len(t, pkg.Functions, 2)
 			},
 		},
 	}
@@ -1465,7 +1465,7 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 		t.Error(err)
 	}
 
-	assert.NotNil(t, pkg.Functions[0].ReturnType)
+	require.NotNil(t, pkg.Functions[0].ReturnType)
 	objectType, ok := pkg.Functions[0].ReturnType.(*ObjectType)
 	assert.True(t, ok)
 	assert.Equal(t, NumberType, objectType.Properties[0].Type)
@@ -2324,7 +2324,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors())
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestResourceWithKeynameOverlapFunction(t *testing.T) {
@@ -2345,7 +2345,7 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.ErrorContains(t, err, "is a reserved name, cannot name function")
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 }
 
 func TestResourceWithKeynameOverlapResource(t *testing.T) {
@@ -2365,7 +2365,7 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 	}
 
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "is a reserved name, cannot name resource")
 }
 
@@ -2398,7 +2398,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot name type")
 }
 

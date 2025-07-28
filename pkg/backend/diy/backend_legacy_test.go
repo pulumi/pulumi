@@ -16,7 +16,6 @@ package diy
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -31,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -55,7 +53,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, aStack)
+	require.NotNil(t, aStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 		_, err := b.RemoveStack(ctx, aStack, true)
@@ -73,7 +71,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NoError(t, err)
 	bStack, err := b.CreateStack(ctx, bStackRef, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, bStack)
+	require.NotNil(t, bStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
 		_, err := b.RemoveStack(ctx, bStack, true)
@@ -94,9 +92,9 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
 	require.NoError(t, err)
 	assert.Nil(t, outContToken)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	for _, stack := range stacks {
-		assert.NotNil(t, stack.ResourceCount())
+		require.NotNil(t, stack.ResourceCount())
 		assert.Equal(t, 1, *stack.ResourceCount())
 	}
 }
@@ -137,14 +135,14 @@ func TestCancel_legacy(t *testing.T) {
 	// Check that trying to cancel a stack that isn't locked doesn't error
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, aStack)
+	require.NotNil(t, aStack)
 	err = b.CancelCurrentUpdate(ctx, aStackRef)
 	require.NoError(t, err)
 
 	// Locking and lock checks are only part of the internal interface
 	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
-	assert.NotNil(t, lb)
+	require.NotNil(t, lb)
 
 	// Lock the stack and check CancelCurrentUpdate deletes the lock file
 	err = lb.Lock(ctx, aStackRef)
@@ -166,7 +164,7 @@ func TestCancel_legacy(t *testing.T) {
 	require.NoError(t, err)
 	otherBackend, ok := ob.(*diyBackend)
 	assert.True(t, ok)
-	assert.NotNil(t, lb)
+	require.NotNil(t, lb)
 
 	// Lock the stack with this new backend, then check that checkForLocks on the first backend now errors
 	err = otherBackend.Lock(ctx, aStackRef)
@@ -192,14 +190,14 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 	// Grab the bucket interface to test with
 	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
-	assert.NotNil(t, lb)
+	require.NotNil(t, lb)
 
 	// Check that creating a new stack doesn't make a backup file
 	aStackRef, err := lb.parseStackReference("a")
 	require.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, aStack)
+	require.NotNil(t, aStack)
 
 	// Check the stack file now exists, but the backup file doesn't
 	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
@@ -235,14 +233,14 @@ func TestRenameWorks_legacy(t *testing.T) {
 	// Grab the bucket interface to test with
 	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
-	assert.NotNil(t, lb)
+	require.NotNil(t, lb)
 
 	// Create a new stack
 	aStackRef, err := lb.parseStackReference("a")
 	require.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, aStack)
+	require.NotNil(t, aStack)
 
 	// Check the stack file now exists
 	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
@@ -289,7 +287,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 	// Check we can still get the history
 	history, err := b.GetHistory(ctx, cStackRef, 10, 0)
 	require.NoError(t, err)
-	assert.Len(t, history, 1)
+	require.Len(t, history, 1)
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
@@ -311,20 +309,14 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
-	require.NoError(t, err)
-
-	data, err := encoding.JSON.Marshal(sdep)
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
+		Pretty: true,
+	})
 	require.NoError(t, err)
 
 	// Ensure data has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
 	// ImportDeployment below should not modify the data
-	assert.Contains(t, string(data), "<html@tags>")
-
-	udep := &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	}
+	assert.Contains(t, string(udep.Deployment), "<html@tags>")
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
@@ -336,7 +328,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	require.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, aStack)
+	require.NotNil(t, aStack)
 	err = b.ImportDeployment(ctx, aStack, udep)
 	require.NoError(t, err)
 
@@ -345,7 +337,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	// Grab the bucket interface to read the file with
 	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
-	assert.NotNil(t, lb)
+	require.NotNil(t, lb)
 
 	chkpath := lb.stackPath(ctx, aStackRef.(*diyBackendReference))
 	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
@@ -426,7 +418,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, numStacks)
+	require.Len(t, stacks, numStacks)
 
 	// Verify all stacks were fetched
 	stackNames := make(map[string]bool)

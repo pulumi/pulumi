@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/go-test/deep"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,19 +111,43 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	}
 
 	if len(journal.Resources) != len(manager.Resources) {
-		return errors.New("journal and manager resources differ")
+		var journalResources string
+		for _, r := range journal.Resources {
+			journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		var managerResources string
+		for _, r := range manager.Resources {
+			managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
+			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
 	}
 
 	for _, jr := range journal.Resources {
 		found := false
+		var diffStr string
 		for _, mr := range manager.Resources {
-			if reflect.DeepEqual(jr, mr) {
+			if diff := deep.Equal(jr, mr); diff != nil {
+				if jr.URN == mr.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
 				found = true
 				break
 			}
 		}
 		if !found {
-			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
+			var journalResources string
+			for _, jr := range journal.Resources {
+				journalResources += fmt.Sprintf("Journal resource: %v\n", jr)
+			}
+			var managerResources string
+			for _, mr := range manager.Resources {
+				managerResources += fmt.Sprintf("Manager resource: %v\n", mr)
+			}
+			return fmt.Errorf("journal and manager resources differ, %v not found in manager.\n"+
+				"Journal: %v\nManager: %v\nDiffs: %v",
+				jr, journalResources, managerResources, diffStr)
 		}
 	}
 
@@ -701,7 +726,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -720,7 +745,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -739,7 +764,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -758,7 +783,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -781,7 +806,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 0)
+				require.Len(t, snap.Resources, 0)
 				return err
 			},
 		},
@@ -793,10 +818,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			) error {
 				require.NoError(t, err)
 
-				assert.Len(t, entries, 0)
+				require.Len(t, entries, 0)
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 0)
+				require.Len(t, snap.Resources, 0)
 				return err
 			},
 		},

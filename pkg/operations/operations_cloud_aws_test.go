@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_extractLambdaLogMessage(t *testing.T) {
@@ -27,11 +28,11 @@ func Test_extractLambdaLogMessage(t *testing.T) {
 	assert.Nil(t, res)
 
 	res = extractLambdaLogMessage("2017-11-17T20:30:27.736Z	25e0d1e0-cbd6-11e7-9808-c7085dfe5723	GET /todo\n", "foo")
-	assert.NotNil(t, res)
+	require.NotNil(t, res)
 	assert.Equal(t, "GET /todo", res.Message)
 
 	res = extractLambdaLogMessage("2017-11-17T20:31:52.126Z	undefined	ERROR	Uncaught Exception 	{}\n", "foo")
-	assert.NotNil(t, res)
+	require.NotNil(t, res)
 	assert.Equal(t, "ERROR	Uncaught Exception 	{}", res.Message)
 
 	res = extractLambdaLogMessage("END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723\n", "foo")
@@ -42,7 +43,7 @@ func Test_functionNameFromLogGroupNameRegExp(t *testing.T) {
 	t.Parallel()
 
 	match := oldFunctionNameFromLogGroupNameRegExp.FindStringSubmatch("/aws/lambda/examples-todoc57917fa023a27bc")
-	assert.Len(t, match, 2)
+	require.Len(t, match, 2)
 	assert.Equal(t, "examples-todoc57917fa", match[1])
 }
 
@@ -50,7 +51,7 @@ func Test_oldFunctionNameFromLogGroupNameRegExp(t *testing.T) {
 	t.Parallel()
 
 	match := functionNameFromLogGroupNameRegExp.FindStringSubmatch("/aws/lambda/examples-todoc57917fa-023a27b")
-	assert.Len(t, match, 2)
+	require.Len(t, match, 2)
 	assert.Equal(t, "examples-todoc57917fa", match[1])
 }
 

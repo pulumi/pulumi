@@ -579,7 +579,7 @@ func TestNestedArchive(t *testing.T) {
 	defer contract.IgnoreClose(zipReader)
 	require.NoError(t, err)
 	files := zipReader.File
-	assert.Len(t, files, 3)
+	require.Len(t, files, 3)
 
 	assert.Equal(t, "foo/a.txt", filepath.ToSlash(files[0].Name))
 	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[1].Name))
@@ -619,7 +619,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	defer contract.IgnoreClose(zipReader)
 	require.NoError(t, err)
 	files := zipReader.File
-	assert.Len(t, files, 1)
+	require.Len(t, files, 1)
 	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[0].Name))
 }
 
@@ -666,7 +666,7 @@ func validateTestDirArchive(t *testing.T, arch *rarchive.Archive, expected int) 
 			break
 		}
 		require.NoError(t, err)
-		assert.NotNil(t, blob)
+		require.NotNil(t, blob)
 
 		// Check for duplicates
 		_, ok := subs[name]
@@ -725,7 +725,7 @@ perferendis doloribus asperiores repellat…
 func assertAssetTextEquals(t *testing.T, asset *rasset.Asset, expect string) {
 	blob, err := asset.Read()
 	require.NoError(t, err)
-	assert.NotNil(t, blob)
+	require.NotNil(t, blob)
 	assertAssetBlobEquals(t, blob, expect)
 }
 

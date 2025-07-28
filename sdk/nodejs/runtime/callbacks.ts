@@ -40,10 +40,11 @@ import {
 } from "../resource";
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
-import { mapAliasesForRequest } from "./resource";
+import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { rpcKeepAlive } from "./settings";
+import { Http2Server, Http2Session } from "http2";
 
 /**
  * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -91,6 +92,43 @@ export class CallbackServer implements ICallbackServer {
                 if (err !== null) {
                     reject(err);
                     return;
+                }
+
+                // The running callbacks server keeps the Node.js eventloop
+                // active, so we will never exit the process. Normally we would
+                // shutdown the server when we're done, however we don't have a
+                // good way to tell when that is the case. Consider a user
+                // provider Pulumi program:
+                //
+                // setTimeout(() => new random.RandomPet(
+                //      "username", {}, { transforms: [...] }), 2000);
+                //
+                // When we import the user program (module really), it will
+                // return immediately, but we have to wait for the timeout to
+                // trigger and then the resource registration to complete.
+                //
+                // Usually the best indication that no more work is outstanding
+                // is `process.on("beforeExit", ...)`, which will be emitted
+                // when there is no more work waiting in the eventloop. However
+                // if we have a server running, we'll never get to that event.
+                //
+                // To break out of this catch-22, we `unref` the server, and the
+                // sessions created by the server.
+                //
+                // https://nodejs.org/api/net.html#serverunref
+                // https://nodejs.org/api/http2.html#http2sessionunref
+                try {
+                    // https://github.com/grpc/grpc-node/blob/01db2bc6206963a6678ee05fa4651fd2ee40068c/packages/grpc-js/src/server.ts#L271
+                    // @ts-ignore 2341 // http2Servers is private
+                    const httpServer: Http2Server = Array.from(self._server.http2Servers.keys())[0];
+                    if (httpServer) {
+                        httpServer.unref();
+                        httpServer.on("session", (session: Http2Session) => {
+                            session.unref();
+                        });
+                    }
+                } catch (error) {
+                    log.debug(`failed to unref the callback server: ${error}`);
                 }
 
                 // The server takes a while to _actually_ startup so we need to keep trying to send an invoke
@@ -222,6 +260,7 @@ export class CallbackServer implements ICallbackServer {
                     delete: timeouts.getDelete(),
                 };
             }
+            ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
@@ -321,6 +360,9 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.version !== undefined) {
                         opts.setVersion(result.opts.version);
+                    }
+                    if (result.opts.hooks !== undefined) {
+                        opts.setHooks(await prepareHooks(result.opts.hooks, request.getName()));
                     }
 
                     if (request.getCustom()) {

@@ -25,9 +25,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -120,18 +118,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.installPluginSpec = installPluginSpec
 	}
 	if cmd.registry == nil {
-		cmd.registry = registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-			b, err := cmdBackend.NonInteractiveCurrentBackend(
-				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
-			)
-			if err == nil && b != nil {
-				return b.GetReadOnlyCloudRegistry(), nil
-			}
-			if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-				return unauthenticatedregistry.New(cmd.diag, cmd.env), nil
-			}
-			return nil, fmt.Errorf("could not get registry backend: %w", err)
-		})
+		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.

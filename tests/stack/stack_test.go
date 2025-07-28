@@ -56,7 +56,7 @@ func TestStackCommands(t *testing.T) {
 
 		stacks, current := integration.GetStacks(e)
 		assert.Equal(t, 1, len(stacks))
-		assert.NotNil(t, current)
+		require.NotNil(t, current)
 		if current == nil {
 			t.Logf("stacks: %v, current: %v", stacks, current)
 			t.Fatalf("No current stack?")
@@ -936,9 +936,38 @@ func TestEmptyStackRm(t *testing.T) {
 		var v3deployment apitype.DeploymentV3
 		err = json.Unmarshal(deployment.Deployment, &v3deployment)
 		require.NoError(t, err)
-		assert.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
+		require.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
 
 		// Now try to remove the stack. This should succeed, even though there is the one resource in the stack.
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	}
+}
+
+// TestStackExportDoesNotEscapeHTML tests that the exported stack JSON does not escape HTML characters
+// for the diy backend.
+//
+//nolint:paralleltest // mutates environment variables
+func TestStackExportDoesNotEscapeHTML(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("testdata/html_escape")
+	e.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+	e.SetBackend(e.LocalURL())
+
+	stack, err := resource.NewUniqueHex("test-stack-", 8, -1)
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "stack", "init", stack)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+
+	// No escaped HTML characters in the exported JSON.
+	out, _ := e.RunCommand("pulumi", "stack", "export")
+	assert.Contains(t, out, "<html>'hello world'</html>")
+
+	// No escaped HTML characters in the exported JSON when showing secrets.
+	out, _ = e.RunCommand("pulumi", "stack", "export", "--show-secrets")
+	assert.Contains(t, out, "<html>'hello world'</html>")
 }

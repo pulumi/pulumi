@@ -911,7 +911,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(StringArray)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v[0])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{}, v[1])
 			},
@@ -962,7 +962,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v["foo"])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{}, v["bar"])
 			},
@@ -983,7 +983,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v["foo"])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{"fakeURN": {}}, v["bar"])
 			},
@@ -1004,7 +1004,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v["foo"])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{
 					"fakeURN1": {},
@@ -1213,7 +1213,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("foo"), v[0])
 				assertOutputEqual(t, "bar", true, true, map[URN]struct{}{}, v[1])
 			},
@@ -1228,7 +1228,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("foo"), v[0])
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, v[1])
 			},
@@ -1264,7 +1264,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("foo"), v[0])
 				assertOutputEqual(t, "bar", true, true, map[URN]struct{}{}, v[1])
 			},
@@ -1280,7 +1280,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assertOutputEqual(t, "foo", true, false, map[URN]struct{}{"fakeURN": {}}, v[0])
 				assertOutputEqual(t, "bar", true, false, map[URN]struct{}{"fakeURN": {}}, v[1])
 			},
@@ -1311,7 +1311,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("bar"), v["foo"])
 				assertOutputEqual(t, "qux", true, true, map[URN]struct{}{}, v["baz"])
 			},
@@ -1326,7 +1326,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("bar"), v["foo"])
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, v["baz"])
 			},
@@ -1362,7 +1362,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("bar"), v["foo"])
 				assertOutputEqual(t, "qux", true, true, map[URN]struct{}{}, v["baz"])
 			},
@@ -1378,7 +1378,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			assert: func(t *testing.T, actual interface{}) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assertOutputEqual(t, "bar", true, false, map[URN]struct{}{"fakeURN": {}}, v["foo"])
 				assertOutputEqual(t, "qux", true, false, map[URN]struct{}{"fakeURN": {}}, v["baz"])
 			},
@@ -1787,7 +1787,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			Aliases: []string{"test"},
 		})
-		assert.Len(t, snap.Aliases, 1, "aliases were not set")
+		require.Len(t, snap.Aliases, 1, "aliases were not set")
 	})
 
 	t.Run("DependsOn", func(t *testing.T) {
@@ -1796,7 +1796,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			Dependencies: []string{"test"},
 		})
-		assert.Len(t, snap.DependsOn, 1, "dependencies were not set")
+		require.Len(t, snap.DependsOn, 1, "dependencies were not set")
 	})
 
 	t.Run("Protect", func(t *testing.T) {
@@ -1818,7 +1818,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 				"baz": string(urn) + "::qux",
 			},
 		})
-		assert.Len(t, snap.Providers, 1, "providers were not set")
+		require.Len(t, snap.Providers, 1, "providers were not set")
 	})
 
 	t.Run("Parent", func(t *testing.T) {
@@ -1828,7 +1828,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			Parent: string(urn),
 		})
-		assert.NotNil(t, snap.Parent, "parent was not set")
+		require.NotNil(t, snap.Parent, "parent was not set")
 	})
 
 	t.Run("AdditionalSecretOutputs", func(t *testing.T) {
@@ -1899,7 +1899,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			DeletedWith: string(urn),
 		})
-		assert.NotNil(t, snap.DeletedWith, "deletedWith was not set")
+		require.NotNil(t, snap.DeletedWith, "deletedWith was not set")
 	})
 
 	t.Run("DeleteBeforeReplace", func(t *testing.T) {

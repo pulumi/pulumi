@@ -206,15 +206,15 @@ func TestRemoveWithForce(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -292,15 +292,15 @@ func TestNewStackLocalSource(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx, optup.UserAgent(agent))
@@ -405,15 +405,15 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -2280,7 +2280,7 @@ func TestEnvFunctions(t *testing.T) {
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
-	assert.Len(t, envs, 0)
+	require.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
 	assert.Error(t, err)
@@ -2391,15 +2391,15 @@ func TestStructuredOutput(t *testing.T) {
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	var upEvents []events.EngineEvent
@@ -3270,8 +3270,8 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
 		t.FailNow()
 	}
-	assert.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
-	assert.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
+	require.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
+	require.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
 
 	// cleanup
 	_, err = s.Destroy(ctx)
@@ -3310,7 +3310,7 @@ func TestListStacks(t *testing.T) {
 	stacks, err := workspace.ListStacks(ctx)
 
 	require.NoError(t, err)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
 	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
@@ -3370,7 +3370,7 @@ func TestListAllStacks(t *testing.T) {
 	stacks, err := workspace.ListStacks(ctx, optlist.All())
 
 	require.NoError(t, err)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
 	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
@@ -3775,4 +3775,34 @@ func NewMyResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOpti
 	}
 
 	return myResource, nil
+}
+
+func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	require.NoError(t, err, "up failed")
+
+	_, err = s.Refresh(ctx, optrefresh.RunProgram(true))
+	require.NoError(t, err, "refresh failed")
+
+	_, err = s.Destroy(ctx, optdestroy.RunProgram(true))
+	require.NoError(t, err, "destroy failed")
 }

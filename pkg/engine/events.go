@@ -62,8 +62,12 @@ func NewCancelEvent() Event {
 }
 
 func NewEvent[T EventPayload](payload T) Event {
+	// We want to use deepcopy.Copy here to ensure the state is not mutated after the event is created. We need to lock
+	// any *resource.State objects that are part of the payload, as other events may be trying to mutate state in
+	// parallel with this event.
+
 	var typ EventType
-	switch any(payload).(type) {
+	switch p := any(payload).(type) {
 	case StdoutEventPayload:
 		typ = StdoutColorEvent
 	case DiagEventPayload:
@@ -74,10 +78,16 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = SummaryEvent
 	case ResourcePreEventPayload:
 		typ = ResourcePreEvent
+		p.Metadata.LockState()
+		defer p.Metadata.UnlockState()
 	case ResourceOutputsEventPayload:
 		typ = ResourceOutputsEvent
+		p.Metadata.LockState()
+		defer p.Metadata.UnlockState()
 	case ResourceOperationFailedPayload:
 		typ = ResourceOperationFailed
+		p.Metadata.LockState()
+		defer p.Metadata.UnlockState()
 	case PolicyViolationEventPayload:
 		typ = PolicyViolationEvent
 	case PolicyRemediationEventPayload:
@@ -91,6 +101,7 @@ func NewEvent[T EventPayload](payload T) Event {
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
+
 	return Event{
 		Type:    typ,
 		payload: deepcopy.Copy(payload),
@@ -272,6 +283,25 @@ type StepEventMetadata struct {
 	DetailedDiff map[string]plugin.PropertyDiff // the rich, structured diff
 	Logical      bool                           // true if this step represents a logical operation in the program.
 	Provider     string                         // the provider that performed this step.
+}
+
+func (m *StepEventMetadata) LockState() {
+	if m.Old != nil && m.Old.State != nil {
+		m.Old.State.Lock.Lock()
+	}
+	// The new state might be the same as the old state, don't try to lock it twice if it is.
+	if m.New != nil && m.New.State != nil && (m.Old == nil || m.New.State != m.Old.State) {
+		m.New.State.Lock.Lock()
+	}
+}
+
+func (m *StepEventMetadata) UnlockState() {
+	if m.New != nil && m.New.State != nil && (m.Old == nil || m.New.State != m.Old.State) {
+		m.New.State.Lock.Unlock()
+	}
+	if m.Old != nil && m.Old.State != nil {
+		m.Old.State.Lock.Unlock()
+	}
 }
 
 // StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.

@@ -33,6 +33,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -42,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -304,6 +306,7 @@ func runConvert(
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
+				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)
@@ -533,6 +536,7 @@ func generateAndLinkSdksForPackages(
 	convertOutputDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
 	generateOnly bool,
+	registry registry.Registry,
 ) error {
 	for _, pkg := range pkgs {
 		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
@@ -549,6 +553,7 @@ func generateAndLinkSdksForPackages(
 			pctx,
 			pkg.Name,
 			pkg.Parameterization.Value,
+			registry,
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)

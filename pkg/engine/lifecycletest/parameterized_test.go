@@ -116,9 +116,9 @@ func TestPackageRef(t *testing.T) {
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, string(snap.Resources[0].URN)+"::"+string(snap.Resources[0].ID), snap.Resources[1].Provider)
 	assert.Equal(t, string(snap.Resources[2].URN)+"::"+string(snap.Resources[2].ID), snap.Resources[3].Provider)
 }
@@ -341,8 +341,8 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 7)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 7)
 
 	// Check that we loaded the provider thrice
 	assert.Equal(t, 3, loadCount)
@@ -363,14 +363,14 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	snap, err = lt.TestOp(Refresh).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 7)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 7)
 
 	snap, err = lt.TestOp(Destroy).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 // TestReplacementParameterizedProviderConfig tests that we can register a parameterized provider that uses config keys
@@ -469,8 +469,8 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 
 	// Check the state of the parameterized provider is what we expect
 	prov := snap.Resources[2]
@@ -488,14 +488,14 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	snap, err = lt.TestOp(Refresh).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 
 	snap, err = lt.TestOp(Destroy).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 // TestReplacementParameterizedProviderImport tests that we can register a parameterized provider that replaces a base
@@ -610,8 +610,8 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 6)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 6)
 
 	// Check that we loaded the provider thrice
 	assert.Equal(t, 3, loadCount)

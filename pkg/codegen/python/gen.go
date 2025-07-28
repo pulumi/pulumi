@@ -446,7 +446,6 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 	relRoot := path.Dir(rel)
 	relImport := relPathToRelImport(relRoot)
 
-	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
 	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "import sys\n")
@@ -471,7 +470,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 	genStandardHeader(w, mod.tool)
 
 	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
-	fmt.Fprintf(w, "import builtins\n")
+	fmt.Fprintf(w, "import builtins as _builtins\n")
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
@@ -488,7 +487,7 @@ func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function,
 	}
 
 	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
-	fmt.Fprintf(w, "import builtins\n")
+	fmt.Fprintf(w, "import builtins as _builtins\n")
 	mod.generateCommonImports(w, imports, typings)
 }
 
@@ -1033,7 +1032,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		}
 
 		typeString := genConfigVarType(p)
-		fmt.Fprintf(w, "%s@property\n", indent)
+		fmt.Fprintf(w, "%s@_builtins.property\n", indent)
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
@@ -1646,13 +1645,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property, setters bool, indent string,
 	propType func(prop *schema.Property) string,
 ) {
-	// Write out Python properties for each property. If there is a property named "property", it will
-	// be emitted last to avoid conflicting with the built-in `@property` decorator function. We do
-	// this instead of importing `builtins` and fully qualifying the decorator as `@builtins.property`
-	// because that wouldn't address the problem if there was a property named "builtins".
-	emitProp := func(pname string, prop *schema.Property) {
+	for _, prop := range properties {
+		pname := PyName(prop.Name)
 		ty := propType(prop)
-		fmt.Fprintf(w, "%s    @property\n", indent)
+		fmt.Fprintf(w, "%s    @_builtins.property\n", indent)
 		if pname == prop.Name {
 			fmt.Fprintf(w, "%s    @pulumi.getter\n", indent)
 		} else {
@@ -1673,19 +1669,6 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			fmt.Fprintf(w, "%s    def %s(self, value: %s):\n", indent, pname, ty)
 			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, pname)
 		}
-	}
-	var propNamedProperty *schema.Property
-	for _, prop := range properties {
-		pname := PyName(prop.Name)
-		// If there is a property named "property", skip it, and emit it last.
-		if pname == "property" {
-			propNamedProperty = prop
-			continue
-		}
-		emitProp(pname, prop)
-	}
-	if propNamedProperty != nil {
-		emitProp("property", propNamedProperty)
 	}
 }
 
@@ -2630,7 +2613,7 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 			if forDocs {
 				return name
 			}
-			return "builtins." + name
+			return "_builtins." + name
 		}
 
 		switch t {

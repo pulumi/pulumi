@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var Dirs = []string{
@@ -56,7 +57,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundRes3 = true
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			optionalPrefix := res.Inputs["prefix"]
-			assert.NotNil(t, optionalPrefix)
+			require.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix.(string))
 		}
 		// "res4" is impacted by two component parent transformations which set
@@ -68,7 +69,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 			optionalPrefix := res.Inputs["prefix"]
-			assert.NotNil(t, optionalPrefix)
+			require.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix.(string))
 		}
 		// "res5" modifies one of its children to depend on another of its children.
@@ -80,9 +81,9 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			// will not be correctly recorded in the state file, and so cannot be
 			// verified here.
 			//
-			// assert.Len(t, res.PropertyDependencies, 1)
+			// require.Len(t, res.PropertyDependencies, 1)
 			input := res.Inputs["length"]
-			assert.NotNil(t, input)
+			require.NotNil(t, input)
 			assert.Equal(t, 5.0, input.(float64))
 		}
 	}

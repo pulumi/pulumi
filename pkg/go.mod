@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/pkg/v3
 
-go 1.23.0
+go 1.23.11
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
@@ -36,7 +36,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.182.0
+	github.com/pulumi/pulumi/sdk/v3 v3.186.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/spf13/cobra v1.8.0
@@ -48,7 +48,7 @@ require (
 	gocloud.dev/secrets/hashivault v0.37.0
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.40.0
-	golang.org/x/oauth2 v0.27.0
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.15.0
 	google.golang.org/api v0.169.0
 	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7
@@ -78,6 +78,7 @@ require (
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/fatih/color v1.16.0
 	github.com/go-git/go-git/v5 v5.13.1
+	github.com/go-test/deep v1.0.3
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-github/v55 v55.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510

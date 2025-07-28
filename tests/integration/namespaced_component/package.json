@@ -1,5 +1,5 @@
 {
-    "name": "@my-namespace/namespaced-component",
+    "name": "@my-namespace/namespaced.component",
     "description": "Namespaced component",
     "version": "0.1.3",
     "dependencies": {

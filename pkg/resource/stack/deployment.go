@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -206,6 +207,42 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
 		Metadata:          metadata,
+	}, nil
+}
+
+// SerializeOptions controls how a deployment is serialized to JSON.
+type SerializeOptions struct {
+	// ShowSecrets indicates that secrets should be shown in the serialized deployment.
+	ShowSecrets bool
+	// Pretty indicates that the serialized deployment should be indented and formatted for display to users.
+	Pretty bool
+}
+
+// SerializeUntypedDeployment serializes a snapshot into an untyped deployment.
+func SerializeUntypedDeployment(
+	ctx context.Context,
+	snap *deploy.Snapshot,
+	opts *SerializeOptions,
+) (*apitype.UntypedDeployment, error) {
+	showSecrets := opts != nil && opts.ShowSecrets
+	serializedDeployment, err := SerializeDeployment(ctx, snap, showSecrets)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonDeployment []byte
+	if opts != nil && opts.Pretty {
+		jsonDeployment, err = encoding.JSON.Marshal(serializedDeployment)
+	} else {
+		jsonDeployment, err = json.Marshal(serializedDeployment)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &apitype.UntypedDeployment{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Deployment: jsonDeployment,
 	}, nil
 }
 

@@ -29,7 +29,34 @@ import (
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGoResourceHooks(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: "go",
+		Dir: filepath.Join("go", "step-1"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			requirePrinted(t, stack, "info", "beforeCreate was called with length = 10")
+			requirePrinted(t, stack, "info", "funComp was called with child")
+		},
+		EditDirs: []integration.EditDir{{
+			Additive: true,
+			Dir:      filepath.Join("go", "step-2"),
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				requirePrinted(t, stack, "info", "beforeDelete was called with length = 10")
+			},
+		}},
+	})
+}
+
+// Test that a transform can modify resource hooks
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestGoResourceHooksTransform(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "go_transform",
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
@@ -40,7 +67,7 @@ func TestGoResourceHooks(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			text := "fun was called with length = 10"
 			found := false
-			textComp := "funComp was called with child"
+			textComp := "fun_comp was called with child"
 			foundComp := false
 			for _, event := range stackInfo.Events {
 				if event.DiagnosticEvent != nil {
@@ -54,8 +81,8 @@ func TestGoResourceHooks(t *testing.T) {
 			}
 			b, err := json.Marshal(stackInfo.Events)
 			require.NoError(t, err)
-			require.True(t, found, "expected 'hook_fun' to print a message, got: %s", b)
-			require.True(t, foundComp, "expected 'hook_fun_comp' to print a message, got: %s", b)
+			require.True(t, found, "expected hook to print a message for the resource, got: %s", b)
+			require.True(t, foundComp, "expected hook to print a message for the component, got: %s", b)
 		},
 	})
 }

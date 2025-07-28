@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -262,18 +261,27 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			if len(*targets) > 0 && excludeProtected {
-				return errors.New("You cannot specify --target and --exclude-protected")
+				return errors.New("you cannot specify --target and --exclude-protected")
 			}
 
-			var protectedCount int
 			targetUrns := *targets
 			excludeUrns := *excludes
+			protectedCount := 0
 			if excludeProtected {
-				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
-				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
+				snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 				if err != nil {
 					return err
-				} else if protectedCount > 0 && len(targetUrns) == 0 {
+				} else if snapshot == nil {
+					return errors.New("failed to find the stack snapshot. Are you in a stack?")
+				}
+
+				protected, err := getProtectedExcludes(snapshot.Resources)
+				protectedCount = len(protected)
+				excludeUrns = append(excludeUrns, protected...)
+
+				if err != nil {
+					return err
+				} else if protectedCount == len(snapshot.Resources) {
 					if !jsonDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
@@ -461,10 +469,10 @@ func NewDestroyCmd() *cobra.Command {
 	return cmd
 }
 
-// separateProtected returns a list or unprotected and protected resources respectively. This allows
-// us to safely destroy all resources in the unprotected list without invalidating any resource in
-// the protected list. Protection is contravarient: A < B where A: Protected => B: Protected, A < B
-// where B: Protected !=> A: Protected.
+// getProtectedExcludes returns a list of protected resources. This allows us
+// to safely destroy all resources in the unprotected list without invalidating
+// any resource in the protected list. Parents of protected resources will be
+// transitively protected.
 //
 // A
 // B: Parent = A
@@ -476,37 +484,25 @@ func NewDestroyCmd() *cobra.Command {
 // Unprotected: B, D
 // Protected: A, C
 //
-// We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
-// This function understands that providers live outside this topological sort.
-func separateProtected(resources []*resource.State) (
-	/*unprotected*/ []*resource.State /*protected*/, []*resource.State,
-) {
+// We rely on the fact that `resources` is topologically sorted with respect to
+// its dependencies.  This function understands that providers live outside
+// this topological sort.
+func getProtectedExcludes(resources []*resource.State) ([]string, error) {
 	dg := graph.NewDependencyGraph(resources)
-	transitiveProtected := mapset.NewSet[*resource.State]()
-	for _, r := range resources {
-		if r.Protect {
-			rProtected := dg.TransitiveDependenciesOf(r)
-			rProtected.Add(r)
-			transitiveProtected = transitiveProtected.Union(rProtected)
+	protected := mapset.NewSet[*resource.State]()
+
+	for _, resource := range resources {
+		if resource.Protect {
+			dependencies := dg.TransitiveDependenciesOf(resource)
+			dependencies.Add(resource)
+			protected = protected.Union(dependencies)
 		}
 	}
-	allResources := mapset.NewSet(resources...)
-	return allResources.Difference(transitiveProtected).ToSlice(), transitiveProtected.ToSlice()
-}
 
-// Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
-func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]string, int, error) {
-	// Get snapshot
-	snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-	if err != nil {
-		return nil, 0, err
-	} else if snapshot == nil {
-		return nil, 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
+	urns := make([]string, 0, protected.Cardinality())
+	for _, resource := range protected.ToSlice() {
+		urns = append(urns, string(resource.URN))
 	}
-	unprotected, protected := separateProtected(snapshot.Resources)
-	targetUrns := make([]string, len(unprotected))
-	for i, r := range unprotected {
-		targetUrns[i] = string(r.URN)
-	}
-	return targetUrns, len(protected), nil
+
+	return urns, nil
 }

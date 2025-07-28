@@ -99,11 +99,11 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
                 try {
                     await stack.runInPulumiStack(this.program);
-                    await settings.disconnect();
+                    await settings.disconnect(true /* signalShutdown */);
                     process.off("uncaughtException", uncaughtHandler);
                     process.off("unhandledRejection", uncaughtHandler);
                 } catch (e) {
-                    await settings.disconnect();
+                    await settings.disconnect(false /* signalShutdown */);
                     process.off("uncaughtException", uncaughtHandler);
                     process.off("unhandledRejection", uncaughtHandler);
 

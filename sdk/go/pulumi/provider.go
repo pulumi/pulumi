@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -114,37 +113,16 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		parent = pulumiCtx.newDependencyResource(URN(req.GetParent()))
 	}
 
-	// We need to reconstruct `ResourceHook` instances here to set on the
-	// `ResourceOption`, but we only have the name available to us. We also know
-	// that these hooks have already been registered when the remote component
-	// called registerResource, so we can construct dummy hooks here, that will
-	// be serialized back into list of hook names.
-
-	// Create a fulfilled promise to mark the stubs as registered.
-	c := promise.CompletionSource[struct{}]{}
-	c.Fulfill(struct{}{})
-	registered := c.Promise()
-	stubHook := func(names []string) []*ResourceHook {
-		hooks := []*ResourceHook{}
-		for _, name := range names {
-			hooks = append(hooks, &ResourceHook{
-				Name:       name,
-				registered: registered, // mark the stub hook as registered
-			})
-		}
-		return hooks
-	}
-
 	var hooks *ResourceHookBinding
 	binding := req.GetResourceHooks()
 	if binding != nil {
 		hooks = &ResourceHookBinding{}
-		hooks.BeforeCreate = stubHook(binding.GetBeforeCreate())
-		hooks.AfterCreate = stubHook(binding.GetAfterCreate())
-		hooks.BeforeUpdate = stubHook(binding.GetBeforeUpdate())
-		hooks.AfterUpdate = stubHook(binding.GetAfterUpdate())
-		hooks.BeforeDelete = stubHook(binding.GetBeforeDelete())
-		hooks.AfterDelete = stubHook(binding.GetAfterDelete())
+		hooks.BeforeCreate = makeStubHooks(binding.GetBeforeCreate())
+		hooks.AfterCreate = makeStubHooks(binding.GetAfterCreate())
+		hooks.BeforeUpdate = makeStubHooks(binding.GetBeforeUpdate())
+		hooks.AfterUpdate = makeStubHooks(binding.GetAfterUpdate())
+		hooks.BeforeDelete = makeStubHooks(binding.GetBeforeDelete())
+		hooks.AfterDelete = makeStubHooks(binding.GetAfterDelete())
 	}
 
 	opts := resourceOption(func(ro *resourceOptions) {

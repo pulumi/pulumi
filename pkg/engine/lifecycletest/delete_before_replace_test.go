@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -683,7 +684,7 @@ func TestDBRProtect(t *testing.T) {
 	// First update just create the two resources.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Update A to trigger a replace this should error because of the protect flag on B.
 	inputsA["A"] = resource.NewStringProperty("bar")
@@ -696,7 +697,7 @@ func TestDBRProtect(t *testing.T) {
 	snap.Resources[2].Protect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19056. If a resource has "replaceOnChanges" set and a
@@ -760,7 +761,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	// First update just create the two resources.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Update value to trigger a replace this should also replace resB because of the replaceOnChanges.
 	inputsA["value"] = resource.NewStringProperty("bar")
@@ -795,7 +796,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 // Regression test for a DBR issue with parallel diff. Given two resources A and B where B depends on A, if we
@@ -811,7 +812,7 @@ func TestDBRParallel(t *testing.T) {
 			t.Parallel()
 
 			// We're going to assert that we always delete B before A
-			diffCalled := false
+			var diffCalled atomic.Bool
 			var waitForDiff sync.WaitGroup
 			waitForDiff.Add(1)
 			var waitForDelete sync.WaitGroup
@@ -833,7 +834,7 @@ func TestDBRParallel(t *testing.T) {
 						},
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							// If we're re-creating B ensure it was deleted first
-							if diffCalled && req.URN.Name() == "resB" {
+							if diffCalled.Load() && req.URN.Name() == "resB" {
 								waitForDelete.Wait()
 							}
 							return plugin.CreateResponse{
@@ -843,7 +844,7 @@ func TestDBRParallel(t *testing.T) {
 							}, nil
 						},
 						DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-							diffCalled = true
+							diffCalled.Store(true)
 							// Make sure we always return diff for the first resource first
 							defer func() {
 								if req.URN.Name() == first {
@@ -905,7 +906,7 @@ func TestDBRParallel(t *testing.T) {
 			}
 			snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 3)
+			require.Len(t, snap.Resources, 3)
 
 			// Update A to trigger a replace with deleteBeforeReplace set, register B in parallel with no dependencies on A.
 			program = func(monitor *deploytest.ResourceMonitor) error {
@@ -934,7 +935,7 @@ func TestDBRParallel(t *testing.T) {
 
 			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 3)
+			require.Len(t, snap.Resources, 3)
 		})
 	}
 }

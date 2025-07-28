@@ -281,9 +281,8 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	})
 
 	assert.True(t, fakeT.fatal, "must have a fatal failure")
-	if assert.Len(t, fakeT.messages, 1) {
-		assert.Contains(t, fakeT.messages[0], "timed out waiting")
-	}
+	require.Len(t, fakeT.messages, 1)
+	assert.Contains(t, fakeT.messages[0], "timed out waiting")
 }
 
 // nonfatalT wraps a testing.T to capture fatal errors.
@@ -333,7 +332,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				LocalProviders: localProviders,
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
 					var hasExpectedResource bool
 					var result string

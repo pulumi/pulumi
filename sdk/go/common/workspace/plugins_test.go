@@ -142,7 +142,7 @@ func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 
 	result := LegacySelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: nil})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -184,7 +184,7 @@ func TestLegacyPluginSelection_PrereleaseRequested(t *testing.T) {
 	v := semver.MustParse("0.2.0")
 	result := LegacySelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &v})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.3.0-alpha", result.Version.String())
 }
@@ -226,7 +226,7 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 	version := semver.MustParse("0.2.0")
 	result := SelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -313,7 +313,7 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 	version := semver.MustParse("0.2.0")
 	result := SelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Nil(t, result.Version)
 }
@@ -365,7 +365,7 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	version := semver.MustParse("0.2.0")
 	result := SelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -1294,7 +1294,7 @@ plugins:
 
 	proj, err := LoadProject(pyaml)
 	require.NoError(t, err)
-	assert.NotNil(t, proj.Plugins)
+	require.NotNil(t, proj.Plugins)
 	assert.Equal(t, 1, len(proj.Plugins.Providers))
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
 	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)

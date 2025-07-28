@@ -16,6 +16,8 @@ package templates
 
 import (
 	"archive/tar"
+	"bufio"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -29,8 +31,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -40,6 +42,83 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type TemplateMatchable interface {
+	GetRegistryName() string
+	GetTemplateName() string
+	GetSource() string
+	GetPublisher() string
+}
+
+func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, error) {
+	if templateName == "" {
+		return func(TemplateMatchable) bool { return true }, nil
+	}
+
+	var urlInfo *registry.URLInfo
+	var err error
+
+	// 1. Try parsing as a strict registry:// URL
+	if registry.IsRegistryURL(templateName) {
+		urlInfo, err = registry.ParseRegistryURL(templateName)
+		if err != nil {
+			var invalidRegistryURL *registry.InvalidRegistryURLError
+			if errors.As(err, &invalidRegistryURL) {
+				// Wrap this particular error reason because formats other than the
+				// full registry:// URL format are supported by `pulumi new`.
+				if strings.Contains(invalidRegistryURL.Reason, "expected format") {
+					return nil, errors.New("Expected: registry://templates/source/publisher/name[@version], " +
+						"source/publisher/name[@version], publisher/name[@version], or name[@version]")
+				}
+			}
+			return nil, err
+		}
+		if urlInfo.ResourceType() != "templates" {
+			return nil, fmt.Errorf("resource type '%s' is not valid for templates", urlInfo.ResourceType())
+		}
+	} else {
+		// 2. Try parsing as a partial registry URL
+		urlInfo, err = registry.ParsePartialRegistryURL(templateName, "templates")
+		if err != nil {
+			var missingVersion *registry.MissingVersionAfterAtSignError
+			if errors.As(err, &missingVersion) {
+				return nil, err
+			}
+
+			// Structural errors: fall back to name matching
+			urlInfo = nil
+		}
+	}
+
+	// Validation: versions other than "latest" are not yet supported because the
+	// list endpoint used by `pulumi new` only returns the latest version.
+	if urlInfo != nil && urlInfo.Version() != nil {
+		return nil, &registry.UnsupportedVersionError{Version: urlInfo.Version().String()}
+	}
+
+	return matcherFromURLInfo(urlInfo, templateName), nil
+}
+
+func matcherFromURLInfo(urlInfo *registry.URLInfo, templateName string) func(TemplateMatchable) bool {
+	if urlInfo == nil {
+		return func(t TemplateMatchable) bool {
+			return t.GetRegistryName() == templateName || t.GetTemplateName() == templateName
+		}
+	}
+
+	return func(t TemplateMatchable) bool {
+		if urlInfo.Source() != "" && t.GetSource() != urlInfo.Source() {
+			return false
+		}
+		if urlInfo.Publisher() != "" && t.GetPublisher() != urlInfo.Publisher() {
+			return false
+		}
+		if urlInfo.Name() != "" {
+			return t.GetRegistryName() == urlInfo.Name() || t.GetTemplateName() == urlInfo.Name()
+		}
+		return true
+	}
+}
 
 func (s *Source) getCloudTemplates(
 	ctx context.Context, templateName string,
@@ -59,24 +138,15 @@ func (s *Source) getCloudTemplates(
 }
 
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
-	r := registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-		b, err := cmdBackend.NonInteractiveCurrentBackend(
-			ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
-		)
-		if err == nil && b != nil {
-			return b.GetReadOnlyCloudRegistry(), nil
-		}
-		if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-			return unauthenticatedregistry.New(cmdutil.Diag(), e), nil
-		}
-		return nil, fmt.Errorf("could not get registry backend: %w", err)
-	})
+	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
-	// Since the templates names displayed here differ from the template names
-	// returned from ListTemplates for VCS backed templates, we need to fetch
-	// all templates and then filter manually.
+	matches, err := NewTemplateMatcher(templateName)
+	if err != nil {
+		s.addError(err)
+		return
+	}
+
 	var nameFilter *string
-
 	for template, err := range r.ListTemplates(ctx, nameFilter) {
 		if err != nil {
 			s.addError(fmt.Errorf("could not get template: %w", err))
@@ -90,7 +160,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		}
 
 		t := registryTemplate{template, r, s}
-		if templateName != "" && t.Name() != templateName {
+		if !matches(t) {
 			continue
 		}
 
@@ -139,13 +209,24 @@ func (r registryTemplate) Download(ctx context.Context) (workspace.Template, err
 	}
 	// Having created a template directory, we now add it to the list of directories to close.
 	r.source.addCloser(func() error { return os.RemoveAll(templateDir) })
-	if err := writeTar(ctx, tar.NewReader(templateBytes), templateDir); err != nil {
+	tarReader, err := createTarReader(templateBytes)
+	if err != nil {
+		return workspace.Template{}, fmt.Errorf("failed to create tar reader: %w", err)
+	}
+	defer tarReader.Close()
+
+	if err := writeTar(ctx, tar.NewReader(tarReader), templateDir); err != nil {
 		return workspace.Template{}, err
 	}
 
 	template, err := workspace.LoadTemplate(templateDir)
 	return template, err
 }
+
+func (r registryTemplate) GetRegistryName() string { return r.t.Name }
+func (r registryTemplate) GetTemplateName() string { return r.Name() }
+func (r registryTemplate) GetSource() string       { return r.t.Source }
+func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
 
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
@@ -301,6 +382,38 @@ func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	logging.Infof("downloaded %q into %q", t.t.Name, templateDir)
 
 	return workspace.LoadTemplate(templateDir)
+}
+
+const maxDecompressedSize = 100 << 20 // 100MB
+
+// isGzipMagic checks if the given bytes start with the gzip magic number.
+// See https://datatracker.ietf.org/doc/html/rfc1952#section-2
+func isGzipMagic(header []byte) bool {
+	return len(header) >= 2 && header[0] == 0x1f && header[1] == 0x8b
+}
+
+func createTarReader(reader io.Reader) (io.ReadCloser, error) {
+	peekReader := bufio.NewReader(reader)
+	header, err := peekReader.Peek(2)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to peek at template stream: %w", err)
+	}
+
+	if isGzipMagic(header) {
+		gzipReader, err := gzip.NewReader(peekReader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		return struct {
+			io.Reader
+			io.Closer
+		}{
+			Reader: io.LimitReader(gzipReader, maxDecompressedSize),
+			Closer: gzipReader,
+		}, nil
+	}
+
+	return io.NopCloser(peekReader), nil
 }
 
 func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {

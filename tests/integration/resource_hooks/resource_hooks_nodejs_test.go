@@ -29,7 +29,32 @@ import (
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNodejsResourceHooks(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "nodejs",
+		Dir:          filepath.Join("nodejs", "step-1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			requirePrinted(t, stack, "info", "beforeCreate was called with length = 10")
+			requirePrinted(t, stack, "info", "funComp was called with child")
+		},
+		EditDirs: []integration.EditDir{{
+			Additive: true,
+			Dir:      filepath.Join("nodejs", "step-2"),
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				requirePrinted(t, stack, "info", "beforeDelete was called with length = 10")
+			},
+		}},
+	})
+}
+
+// Test that a transform can modify resource hooks
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsResourceHooksTransform(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "nodejs_transform",
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
@@ -38,7 +63,7 @@ func TestNodejsResourceHooks(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			text := "fun was called with length = 10"
 			found := false
-			textComp := "funComp was called with child"
+			textComp := "fun_comp was called with child"
 			foundComp := false
 			for _, event := range stackInfo.Events {
 				if event.DiagnosticEvent != nil {
@@ -52,8 +77,8 @@ func TestNodejsResourceHooks(t *testing.T) {
 			}
 			b, err := json.Marshal(stackInfo.Events)
 			require.NoError(t, err)
-			require.True(t, found, "expected 'hook_fun' to print a message, got: %s", b)
-			require.True(t, foundComp, "expected 'hook_fun_comp' to print a message, got: %s", b)
+			require.True(t, found, "expected hook to print a message for the resource, got: %s", b)
+			require.True(t, foundComp, "expected hook to print a message for the component, got: %s", b)
 		},
 	})
 }

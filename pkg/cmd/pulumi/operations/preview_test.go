@@ -173,7 +173,7 @@ func TestBuildImportFile_SingleResource(t *testing.T) {
 			importFile, err := importFilePromise.Result(context.Background())
 			require.NoError(t, err)
 			// There shouldn't be any thing in the name table
-			assert.Len(t, importFile.NameTable, 0)
+			require.Len(t, importFile.NameTable, 0)
 			// And there should be the one expected resource in the resources table
 			require.Len(t, importFile.Resources, 1)
 			assert.Equal(t, tt.expected, importFile.Resources[0])
@@ -271,7 +271,7 @@ func TestBuildImportFile_NewParent(t *testing.T) {
 	require.NoError(t, err)
 
 	// There shouldn't be anything in the name table
-	assert.Len(t, importFile.NameTable, 0)
+	require.Len(t, importFile.NameTable, 0)
 
 	// And there should be the two expected resources in the resources table
 	require.Len(t, importFile.Resources, 2)

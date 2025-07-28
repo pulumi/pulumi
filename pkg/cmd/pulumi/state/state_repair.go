@@ -16,7 +16,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -32,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -213,20 +211,12 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 
 	// We've managed to repair the snapshot -- import it back into the backend.
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
-	if err != nil {
-		return fmt.Errorf("serializing deployment: %w", err)
-	}
-
-	bytes, err := json.Marshal(sdep)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err
 	}
 
-	err = backend.ImportStackDeployment(ctx, s, &apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	})
+	err = backend.ImportStackDeployment(ctx, s, dep)
 	if err != nil {
 		return err
 	}

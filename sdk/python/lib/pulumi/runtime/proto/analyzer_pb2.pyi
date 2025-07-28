@@ -82,12 +82,29 @@ class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class TagsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     STACK_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     DRY_RUN_FIELD_NUMBER: builtins.int
     CONFIG_SECRET_KEYS_FIELD_NUMBER: builtins.int
     CONFIG_FIELD_NUMBER: builtins.int
+    TAGS_FIELD_NUMBER: builtins.int
     stack: builtins.str
     """The stack name being analyzed."""
     project: builtins.str
@@ -102,6 +119,9 @@ class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
     @property
     def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """The configuration of the stack being analyzed."""
+    @property
+    def tags(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """Tags for the current stack."""
     def __init__(
         self,
         *,
@@ -111,8 +131,9 @@ class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
         dry_run: builtins.bool = ...,
         config_secret_keys: collections.abc.Iterable[builtins.str] | None = ...,
         config: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        tags: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "config_secret_keys", b"config_secret_keys", "dry_run", b"dry_run", "organization", b"organization", "project", b"project", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "config_secret_keys", b"config_secret_keys", "dry_run", b"dry_run", "organization", b"organization", "project", b"project", "stack", b"stack", "tags", b"tags"]) -> None: ...
 
 global___AnalyzerStackConfigureRequest = AnalyzerStackConfigureRequest
 

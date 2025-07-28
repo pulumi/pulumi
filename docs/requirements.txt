@@ -44,7 +44,7 @@ sphinxcontrib-mermaid==0.9.2
 sphinxcontrib-programoutput==0.17
 sphinxcontrib-qthelp==1.0.8
 sphinxcontrib-serializinghtml==1.1.10
-starlette==0.40.0
+starlette==0.47.2
 typing_extensions==4.12.2
 urllib3==2.5.0
 uvicorn==0.30.3

@@ -912,3 +912,22 @@ func (h *langhost) Link(
 	logging.V(7).Infof("%s success", label)
 	return nil
 }
+
+func (h *langhost) Cancel() error {
+	label := fmt.Sprintf("langhost[%v].Cancel()", h.runtime)
+	logging.V(7).Infof("%s executing", label)
+
+	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s not implemented by language runtime, skipping", label)
+			return nil
+		}
+
+		return fmt.Errorf("failed to cancel language runtime: %w", err)
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return nil
+}

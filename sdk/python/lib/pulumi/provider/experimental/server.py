@@ -188,6 +188,7 @@ class ProviderServicer(ResourceProviderServicer):
             monitor_address=_empty_as_none(request.monitorEndpoint),
             preview=request.dryRun,
         )
+        await pulumi.runtime.settings._load_monitor_feature_support()
 
         pulumi.runtime.config.set_all_config(
             dict(request.config), list(request.configSecretKeys)

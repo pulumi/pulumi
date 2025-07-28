@@ -90,7 +90,7 @@ func TestParallelRefresh(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -100,7 +100,7 @@ func TestParallelRefresh(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -132,7 +132,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
 	snap := p.RunWithName(t, nil, "0")
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
@@ -144,7 +144,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	snap = p.RunWithName(t, snap, "1")
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
@@ -383,7 +383,7 @@ func TestRefreshWithDelete(t *testing.T) {
 
 			// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
 			provURN := p.NewProviderURN("pkgA", "default", "")
-			assert.Len(t, snap.Resources, 1)
+			require.Len(t, snap.Resources, 1)
 			assert.Equal(t, provURN, snap.Resources[0].URN)
 		})
 	}
@@ -448,7 +448,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -460,7 +460,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].PropertyDependencies)
@@ -508,7 +508,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -520,7 +520,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].DeletedWith)
@@ -871,7 +871,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
 		expected := newStates[r.ID]
-		assert.NotNil(t, expected)
+		require.NotNil(t, expected)
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
 		require.NoError(t, err)
@@ -1826,7 +1826,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewStringProperty("qux")
@@ -1837,7 +1837,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should only have 2 resources now, the deleted one should be gone.
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19406. Check that if we have a program with
@@ -2079,4 +2079,105 @@ func TestRefreshWithAlias(t *testing.T) {
 	// Inputs should match what the provider returned, not what was in the program.
 	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+}
+
+// When running a --refresh update with --run-program if a resource has been deleted we should re-create it.
+func TestRefreshRunProgramDeletedResource(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							// Return an empty read result to indicate the resource has been deleted.
+							ReadResult: plugin.ReadResult{},
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	require.Len(t, snap.Resources, 2)
+	firstID := snap.Resources[1].ID
+
+	// Change the program inputs to check we don't changed inputs to the provider
+	programInputs["foo"] = resource.NewStringProperty("qux")
+	p.Options.Refresh = true
+	p.Options.RefreshProgram = true
+	// Run a refresh update
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have a new ID from calling create again
+	require.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, firstID, snap.Resources[1].ID)
 }

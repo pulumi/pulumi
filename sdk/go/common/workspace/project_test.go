@@ -83,6 +83,21 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
+	t.Parallel()
+	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
+	config := make(map[string]ProjectConfigType)
+	objectType := "object"
+	config["example"] = ProjectConfigType{
+		Type:    &objectType,
+		Default: map[string]interface{}{"hello": "world"},
+	}
+
+	project.Config = config
+	err := project.Validate()
+	require.NoError(t, err)
+}
+
 func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	t.Parallel()
 	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
@@ -529,7 +544,7 @@ config:
 	assert.True(t, ok, "should be able to read simpleArrayOfStrings")
 	assert.Equal(t, "array", simpleArrayOfStrings.TypeName())
 	assert.False(t, simpleArrayOfStrings.Secret)
-	assert.NotNil(t, simpleArrayOfStrings.Items)
+	require.NotNil(t, simpleArrayOfStrings.Items)
 	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
 	arrayValues := simpleArrayOfStrings.Default.([]interface{})
 	assert.Equal(t, "hello", arrayValues[0])
@@ -538,9 +553,9 @@ config:
 	assert.True(t, ok, "should be able to read arrayOfArrays")
 	assert.Equal(t, "array", arrayOfArrays.TypeName())
 	assert.False(t, arrayOfArrays.Secret)
-	assert.NotNil(t, arrayOfArrays.Items)
+	require.NotNil(t, arrayOfArrays.Items)
 	assert.Equal(t, "array", arrayOfArrays.Items.Type)
-	assert.NotNil(t, arrayOfArrays.Items.Items)
+	require.NotNil(t, arrayOfArrays.Items.Items)
 	assert.Equal(t, "string", arrayOfArrays.Items.Items.Type)
 
 	secretString, ok := project.Config["secretString"]
@@ -983,7 +998,7 @@ config:
 
 	project, projectError := loadProjectFromText(t, projectYaml)
 	assert.Nil(t, projectError, "There is no error")
-	assert.NotNil(t, project, "The project can be loaded correctly")
+	require.NotNil(t, project, "The project can be loaded correctly")
 	assert.Equal(t, "./some/other/path", project.StackConfigDir)
 	assert.Equal(t, 1, len(project.Config), "there is one config value")
 }

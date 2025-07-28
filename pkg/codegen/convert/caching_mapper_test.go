@@ -57,7 +57,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	)
 	mapper := NewCachingMapper(baseMapper)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	//
@@ -106,7 +106,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 	)
 	mapper := NewCachingMapper(baseMapper)
 	require.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NotNil(t, mapper)
 
 	// Act.
 	// Run multiple goroutines concurrently that all try to get mappings

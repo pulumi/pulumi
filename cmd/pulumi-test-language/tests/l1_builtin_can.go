@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -41,7 +42,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 10, "expected 10 outputs")
+					require.Len(l, outputs, 10, "expected 10 outputs")
 					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewBoolProperty(true))
 					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewBoolProperty(false))
 

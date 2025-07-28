@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.182.0
+	github.com/pulumi/pulumi/sdk/v3 v3.186.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.1
@@ -186,7 +186,7 @@ require (
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
