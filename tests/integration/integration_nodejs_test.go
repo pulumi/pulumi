@@ -1663,7 +1663,7 @@ func TestBunNotAWorkspace(t *testing.T) {
 	prepareProject := func(projinfo *engine.Projinfo) error {
 		// The default nodejs prepare uses yarn to link dependencies.
 		// For this test we don't want to test the current SDK, instead we
-		// want to test `pulumi install` and ensure that it works with pnpm
+		// want to test `pulumi install` and ensure that it works with bun
 		// workspaces.
 		return nil
 	}
