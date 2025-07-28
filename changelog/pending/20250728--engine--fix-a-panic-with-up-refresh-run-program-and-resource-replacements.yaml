@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a panic with `up --refresh --run-program` and resource replacements
