@@ -430,6 +430,58 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
+// If a resource is excluded but doesn't register, it should still not be deleted.
+func TestExcludedDeletion(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	isFirstTime := true
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		if isFirstTime {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			require.NoError(t, err)
+		}
+
+		isFirstTime = false
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA::resB",
+	})
+
+	// This should be a no-op as, although `resB` won't be registered this time, it's excluded explicitly.
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+}
+
 // We should be able to build an `A > B > C > D` and refresh everything other
 // than the `B` target.
 func TestRefreshExcludeTarget(t *testing.T) {
