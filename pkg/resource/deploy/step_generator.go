@@ -1953,6 +1953,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				continue
 			}
 
+			if forbiddenResourcesToDelete != nil && forbiddenResourcesToDelete[res.URN] {
+				logging.V(7).Infof("Planner ignoring excluded resource '%v'", res.URN)
+				continue
+			}
+
 			if isTargeted(res) {
 				// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 				if res.Delete {
