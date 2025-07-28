@@ -40,6 +40,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const expectedRegistryFormatError = "Expected: registry://templates/source/publisher/name[@version], " +
+	"source/publisher/name[@version], publisher/name[@version], or name[@version]"
+
 //nolint:paralleltest // replaces global backend instance
 func TestFilterOnName(t *testing.T) {
 	template1 := &apitype.PulumiTemplateRemote{
@@ -756,3 +759,178 @@ func testContext(t *testing.T) context.Context {
 }
 
 func ref[T any](v T) *T { return &v }
+
+//nolint:paralleltest // replaces global backend instance
+func TestRegistryTemplateResolution(t *testing.T) {
+	ctx := testContext(t)
+
+	mockRegistry := &backend.MockCloudRegistry{
+		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			return func(yield func(apitype.TemplateMetadata, error) bool) {
+				yield(apitype.TemplateMetadata{
+					Name:        "csharp-documented",
+					Source:      "private",
+					Publisher:   "pulumi_local",
+					Description: ref("A C# template"),
+				}, nil)
+				yield(apitype.TemplateMetadata{
+					Name:      "csharp-documented",
+					Source:    "github",
+					Publisher: "different-org",
+				}, nil)
+				yield(apitype.TemplateMetadata{
+					Name:      "gh-org/repo/target",
+					Source:    "github",
+					Publisher: "pulumi-org",
+				}, nil)
+				yield(apitype.TemplateMetadata{
+					Name:        "whatever-template",
+					Source:      "private",
+					Publisher:   "test-org",
+					Description: ref("A template with special chars"),
+				}, nil)
+			}
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	testCases := []struct {
+		name                string
+		templateURL         string
+		shouldMatch         bool
+		expectedName        string
+		description         string
+		expectSpecificError string
+	}{
+		{
+			name:         "registry URL full format",
+			templateURL:  "registry://templates/private/pulumi_local/csharp-documented",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "registry URL with version",
+			templateURL:  "registry://templates/private/pulumi_local/csharp-documented@latest",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "partial URL format",
+			templateURL:  "private/pulumi_local/csharp-documented",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "partial URL with version",
+			templateURL:  "private/pulumi_local/csharp-documented@latest",
+			shouldMatch:  true,
+			expectedName: "csharp-documented",
+			description:  "A C# template",
+		},
+		{
+			name:         "VCS template display name matching",
+			templateURL:  "target",
+			shouldMatch:  true,
+			expectedName: "target",
+		},
+		{
+			name:                "wrong resource type does not match",
+			templateURL:         "registry://packages/private/pulumi_local/csharp-documented",
+			shouldMatch:         false,
+			expectSpecificError: "resource type 'packages' is not valid for templates",
+		},
+		{
+			name:         "parsing failure falls back to exact name match",
+			templateURL:  "whatever-template",
+			shouldMatch:  true,
+			expectedName: "whatever-template",
+			description:  "A template with special chars",
+		},
+		{
+			name:        "nonexistent template returns not found",
+			templateURL: "nonexistent/template/name",
+			shouldMatch: false,
+		},
+		{
+			name:                "malformed URL with no match",
+			templateURL:         "registry://templates/a/b/c/d/e",
+			shouldMatch:         false,
+			expectSpecificError: expectedRegistryFormatError,
+		},
+		{
+			name:        "git repo URL should not trigger registry errors",
+			templateURL: "https://github.com/user/repo",
+			shouldMatch: false,
+		},
+		{
+			name:        "ssh git URL should not trigger registry errors",
+			templateURL: "git@github.com:user/repo.git",
+			shouldMatch: false,
+		},
+		{
+			name:        "git repo URL with path should not trigger registry errors",
+			templateURL: "https://github.com/user/repo/tree/main/templates/example",
+			shouldMatch: false,
+		},
+		{
+			name:                "wrong resource type - unknown resource type",
+			templateURL:         "registry://unknown/private/publisher/name",
+			shouldMatch:         false,
+			expectSpecificError: "resource type 'unknown' is not valid for templates",
+		},
+		{
+			name:                "malformed registry URL - missing parts",
+			templateURL:         "registry://templates/private",
+			shouldMatch:         false,
+			expectSpecificError: expectedRegistryFormatError,
+		},
+		{
+			name:        "malformed partial URL - too many parts",
+			templateURL: "a/b/c/d/e",
+			shouldMatch: false,
+			// This should fall back to name matching (structural error), not show specific error
+		},
+		{
+			name:                "malformed registry URL - empty version",
+			templateURL:         "registry://templates/private/publisher/name@",
+			shouldMatch:         false,
+			expectSpecificError: "missing version",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
+				templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+				env.NewEnv(env.MapStore{
+					"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+					"PULUMI_EXPERIMENTAL":             "true",
+				}))
+
+			templates, err := source.Templates()
+			if tc.shouldMatch {
+				require.NoError(t, err)
+				require.Len(t, templates, 1)
+				assert.Equal(t, tc.expectedName, templates[0].Name())
+				if tc.description != "" {
+					assert.Equal(t, tc.description, templates[0].ProjectDescription())
+				}
+			} else {
+				require.Error(t, err)
+				if tc.expectSpecificError != "" {
+					assert.Contains(t, err.Error(), tc.expectSpecificError)
+				} else {
+					var templateNotFound workspace.TemplateNotFoundError
+					assert.ErrorAs(t, err, &templateNotFound)
+				}
+			}
+		})
+	}
+}
