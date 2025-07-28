@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/engine
+  description: `--exclude` now also excludes unregistered resources from operations like `up` and `destroy`
