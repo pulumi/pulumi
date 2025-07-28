@@ -34,7 +34,7 @@ type DependencyGraph struct {
 // indexKey returns a string key for the given resource. This is used to index into the dependency graph, it is made up
 // of the resource's ID and URN.
 func indexKey(res *resource.State) string {
-	return fmt.Sprintf("%s::%s", res.ID, res.URN)
+	return fmt.Sprintf("%t::%s::%s", res.Delete, res.ID, res.URN)
 }
 
 // DependingOn returns a slice containing all resources that directly or indirectly
