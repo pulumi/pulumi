@@ -5,9 +5,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ccojocar/zxcvbn-go"
 	"github.com/spf13/cobra"
@@ -23,10 +25,11 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var plaintext bool
 	var rawString bool
 	var draft bool
+	var file string
 
 	cmd := &cobra.Command{
 		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> <value>",
-		Args:  cobra.RangeArgs(2, 3),
+		Args:  cobra.RangeArgs(1, 3),
 		Short: "Set a value within an environment.",
 		Long: "Set a value within an environment\n" +
 			"\n" +
@@ -48,19 +51,48 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			if ref.version != "" {
 				return fmt.Errorf("the set command does not accept versions")
 			}
-			if len(args) < 2 {
+
+			switch {
+			case file == "" && len(args) < 2:
 				return fmt.Errorf("expected a path and a value")
+			case file != "" && len(args) < 1:
+				return fmt.Errorf("expected a path")
 			}
 
 			path, err := resource.ParsePropertyPath(args[0])
 			if err != nil {
+
 				return fmt.Errorf("invalid path: %w", err)
 			}
 			if len(path) == 0 {
 				return fmt.Errorf("path must contain at least one element")
 			}
 
-			input := args[1]
+			var input string
+			if file != "" {
+				var content []byte
+				switch file {
+				case "-":
+					content, err = io.ReadAll(env.esc.stdin)
+					if err != nil {
+						return fmt.Errorf("could not read from stdin: %w", err)
+					}
+				default:
+					content, err = env.esc.fs.ReadFile(file)
+					if err != nil {
+						return fmt.Errorf("could not read file: %w", err)
+					}
+				}
+
+				if !utf8.Valid(content) {
+					return fmt.Errorf("file content must be valid UTF-8")
+				}
+
+				input = string(content)
+			} else {
+				input = args[1]
+			}
+
 			var yamlValue yaml.Node
 			if rawString {
 				yamlValue.SetString(input)
@@ -163,6 +195,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&rawString, "string", false,
 		"true to treat the value as a string rather than attempting to parse it as YAML")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "If set, the value is read from the specified file. Pass `-` to read from standard input.")
 	cmd.Flags().BoolVar(
 		&draft, "draft", false,
 		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")

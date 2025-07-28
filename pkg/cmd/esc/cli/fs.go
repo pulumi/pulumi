@@ -15,6 +15,7 @@ type escFS interface {
 	fs.FS
 
 	CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, error)
+	ReadFile(filename string) ([]byte, error)
 	Remove(name string) error
 }
 
@@ -40,4 +41,8 @@ func (defaultFS) CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, er
 
 func (defaultFS) Remove(name string) error {
 	return os.Remove(name)
+}
+
+func (defaultFS) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
 }

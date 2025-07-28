@@ -132,7 +132,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 		"Set to print just the definition.")
 	cmd.Flags().StringVar(
 		&value, "value", "",
-		"Set to print just the value in the given format. May be 'dotenv', 'json', 'detailed', or 'shell'")
+		"Set to print just the value in the given format. May be 'dotenv', 'json', 'detailed', 'shell' or 'string'")
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")

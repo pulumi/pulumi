@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/pulumi/esc"
@@ -78,7 +79,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 		"the lifetime of the opened environment in the form HhMm (e.g. 2h, 1h30m, 15m)")
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "json",
-		"the output format to use. May be 'dotenv', 'json', 'yaml', 'detailed', or 'shell'")
+		"the output format to use. May be 'dotenv', 'json', 'yaml', 'detailed', 'shell' or 'string'")
 
 	return cmd
 }
@@ -138,7 +139,12 @@ func (env *envCommand) renderValue(
 		}
 		return nil
 	case "string":
-		fmt.Fprintf(out, "%v\n", val.ToString(!showSecrets))
+		s := val.ToString(!showSecrets)
+		if strings.HasSuffix(s, "\n") {
+			fmt.Fprintf(out, "%v", s)
+		} else {
+			fmt.Fprintf(out, "%v\n", s)
+		}
 		return nil
 	default:
 		// NOTE: we shouldn't get here. This was checked at the beginning of the function.
