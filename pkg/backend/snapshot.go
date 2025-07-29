@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -85,6 +86,7 @@ const (
 	JournalEntryRefreshSuccess JournalEntryKind = 3
 	JournalEntryOutputs        JournalEntryKind = 4
 	JournalEntryWrite          JournalEntryKind = 5
+	JournalEntrySecretsManager JournalEntryKind = 6
 )
 
 type JournalEntry struct {
@@ -109,6 +111,8 @@ type JournalEntry struct {
 
 	// The new snapshot if this journal entry is part of a rebase operation.
 	NewSnapshot *deploy.Snapshot
+	// The secrets manager for this journal entry.
+	SecretsManager secrets.Manager
 }
 
 func newJournalEntry(kind JournalEntryKind, operationID uint64) JournalEntry {
@@ -122,7 +126,6 @@ func newJournalEntry(kind JournalEntryKind, operationID uint64) JournalEntry {
 
 func (je JournalEntry) Serialize(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
 	var state *apitype.ResourceV3
-
 	if je.State != nil {
 		s, err := stack.SerializeResource(ctx, je.State, enc, false)
 		if err != nil {
@@ -140,13 +143,33 @@ func (je JournalEntry) Serialize(ctx context.Context, enc config.Encrypter) (api
 		operation = &op
 	}
 
+	var secretsManager *apitype.SecretsProvidersV1
+	if je.SecretsManager != nil {
+		secretsManager = &apitype.SecretsProvidersV1{
+			Type:  je.SecretsManager.Type(),
+			State: je.SecretsManager.State(),
+		}
+	}
+
+	var snapshot *apitype.DeploymentV3
+	if je.NewSnapshot != nil {
+		var err error
+		snapshot, err = stack.SerializeDeployment(ctx, je.NewSnapshot, true)
+		if err != nil {
+			return apitype.JournalEntry{}, fmt.Errorf("serializing new snapshot: %w", err)
+		}
+	}
+
 	serializedEntry := apitype.JournalEntry{
-		Kind:        apitype.JournalEntryKind(je.Kind),
-		OperationID: je.OperationID,
-		DeleteOld:   je.DeleteOld,
-		DeleteNew:   je.DeleteNew,
-		State:       state,
-		Operation:   operation,
+		Kind:               apitype.JournalEntryKind(je.Kind),
+		OperationID:        je.OperationID,
+		DeleteOld:          je.DeleteOld,
+		DeleteNew:          je.DeleteNew,
+		State:              state,
+		Operation:          operation,
+		SecretsProvider:    secretsManager,
+		PendingReplacement: je.PendingReplacement,
+		NewSnapshot:        snapshot,
 	}
 
 	return serializedEntry, nil
