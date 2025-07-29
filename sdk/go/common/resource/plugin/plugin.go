@@ -579,7 +579,6 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			result = multierror.Append(result, err)
 		}
 
-		// IDEA: consider a more graceful termination than just SIGKILL.
 		if err := cmd.Process.Kill(); err != nil {
 			result = multierror.Append(result, err)
 		}
