@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,12 +39,20 @@ const (
 
 	// Indicates whether the service supports the Copilot explainer.
 	CopilotExplainPreview APICapability = "copilot-explain-preview"
+
+	// Indicates the maximum deployment schema version that the service supports.
+	DeploymentSchemaVersion APICapability = "deployment-schema-version"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
 	// CheckpointCutoffSizeBytes defines the size of a checkpoint file, in bytes,
 	// at which the CLI should cutover to using delta checkpoint uploads.
 	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
+}
+
+type DeploymentSchemaVersionConfig struct {
+	// Version is the maximum version of the deployment schema that the service supports.
+	Version int `json:"version"`
 }
 
 // APICapabilityConfig captures a service backend capability and any associated
@@ -75,6 +83,9 @@ type Capabilities struct {
 
 	// Indicates whether the service supports the Copilot explainer.
 	CopilotExplainPreviewV1 bool
+
+	// Indicates the maximum deployment schema version that the service supports.
+	DeploymentSchemaVersion int
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -105,6 +116,14 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case CopilotExplainPreview:
 			if entry.Version == 1 {
 				parsed.CopilotExplainPreviewV1 = true
+			}
+		case DeploymentSchemaVersion:
+			if entry.Version == 1 {
+				var versionConfig DeploymentSchemaVersionConfig
+				if err := json.Unmarshal(entry.Configuration, &versionConfig); err != nil {
+					return Capabilities{}, fmt.Errorf("decoding DeploymentSchemaVersionConfig returned %w", err)
+				}
+				parsed.DeploymentSchemaVersion = versionConfig.Version
 			}
 		default:
 			continue

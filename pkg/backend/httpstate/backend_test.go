@@ -15,11 +15,14 @@ package httpstate
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -664,4 +667,257 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	// (both should either have more pages or both should be done)
 	assert.IsType(t, []backend.StackSummary{}, allSummaries)
 	assert.IsType(t, []backend.StackReference{}, allStackRefs)
+}
+
+func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var lastRequest *http.Request
+
+	var lastUntypedDeployment *apitype.UntypedDeployment
+
+	handleLastRequest := func() {
+		var req apitype.CreateStackRequest
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project", lastRequest.URL.Path)
+		require.NoError(t, err)
+		require.NotNil(t, req.State)
+		lastUntypedDeployment = req.State
+	}
+
+	var v4 bool
+
+	capabilities := func() []apitype.APICapabilityConfig {
+		if v4 {
+			return []apitype.APICapabilityConfig{{
+				Capability:    apitype.DeploymentSchemaVersion,
+				Version:       1,
+				Configuration: json.RawMessage(`{"version":4}`),
+			}}
+		}
+		return nil
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			resp := apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			lastRequest = req
+			rw.WriteHeader(200)
+			message := `{}`
+			rbytes, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			_, err = rw.Write([]byte(message))
+			require.NoError(t, err)
+			req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	defer server.Client()
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	// Test 1: v4 not supported: send v3 expect v3.
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 2: v4 not supported: send v4 expect v3.
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 3: v4 supported: send v3 expect v3.
+
+	v4 = true
+	b, err = New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 4: v4 supported: send v4 expect v4.
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 4, lastUntypedDeployment.Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
+}
+
+func TestImportDeploymentSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var lastRequest *http.Request
+
+	var lastUntypedDeployment *apitype.UntypedDeployment
+
+	handleLastRequest := func() {
+		var req apitype.UntypedDeployment
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project/stack/import", lastRequest.URL.Path)
+		require.NoError(t, err)
+		lastUntypedDeployment = &req
+	}
+
+	var v4 bool
+
+	capabilities := func() []apitype.APICapabilityConfig {
+		if v4 {
+			return []apitype.APICapabilityConfig{{
+				Capability:    apitype.DeploymentSchemaVersion,
+				Version:       1,
+				Configuration: json.RawMessage(`{"version":4}`),
+			}}
+		}
+		return nil
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			resp := apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			rw.WriteHeader(200)
+			_, err := rw.Write([]byte("{}"))
+			require.NoError(t, err)
+		case "/api/stacks/owner/project/stack/import":
+			lastRequest = req
+			rw.WriteHeader(200)
+			message := `{}`
+			reader, err := gzip.NewReader(req.Body)
+			require.NoError(t, err)
+			defer reader.Close()
+			rbytes, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			_, err = rw.Write([]byte(message))
+			require.NoError(t, err)
+			req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
+		case "/api/stacks/owner/project/stack/update":
+			resp := apitype.UpdateResults{
+				Status: apitype.StatusSucceeded,
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	defer server.Client()
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	// Test 1: v4 not supported: send v3 expect v3.
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 2: v4 not supported: send v4 expect v3.
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 3: v4 supported: send v3 expect v3.
+
+	v4 = true
+	b, err = New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 4: v4 supported: send v4 expect v4.
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 4, lastUntypedDeployment.Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
 }

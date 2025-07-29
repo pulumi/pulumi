@@ -45,6 +45,8 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			return fmt.Errorf("serializing deployment: %w", err)
 		}
 
+		persister.backend.downgradeUntypedDeploymentVersionIfNeeded(ctx, untypedDeployment)
+
 		// Continue with how deployments were saved before diff.
 		return persister.backend.client.PatchUpdateCheckpoint(
 			persister.context, persister.update, untypedDeployment, persister.tokenSource)
@@ -54,6 +56,8 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
+
+	version, features = persister.backend.downgradeDeploymentVersionIfNeeded(ctx, version, features)
 
 	differ := persister.deploymentDiffState
 
