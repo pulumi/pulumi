@@ -4650,7 +4650,7 @@ func TestResourceError(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		// The resource registration fails, and the engine knows this and
-		// cancels the deployment. An program might export such a failed
+		// cancels the deployment. A program might export such a failed
 		// resource as a stack output. In Node.js, a failed resource
 		// registration causes the properties of the resource to never resolve.
 		// If the SDK code is awaiting on the resource to resolve, as is the
