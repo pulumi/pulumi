@@ -119,6 +119,6 @@ func RegisterProcessGroup(cmd *exec.Cmd) {
 }
 
 func InterruptChildren(pid int) {
-	_, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_BREAK_EVENT, uintptr(pid))
+	_, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_CLOSE_EVENT, uintptr(pid))
 	contract.IgnoreError(err)
 }
