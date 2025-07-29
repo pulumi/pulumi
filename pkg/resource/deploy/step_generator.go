@@ -697,7 +697,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			state, err := cts.Promise().Result(context.Background())
 			// alias this new "old" state in the dependency graph to it's original state.
-			sg.deployment.depGraph.Alias(state, old)
+			if state != nil {
+				sg.deployment.depGraph.Alias(state, old)
+			}
 			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
 				RegisterResourceEvent: event,
