@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -154,7 +155,7 @@ type ProgressDisplay struct {
 	isTerminal bool
 
 	// If all progress messages are done and we can print out the final display.
-	done bool
+	done atomic.Bool
 
 	// True if one or more resource operations have failed.
 	failed bool
@@ -655,7 +656,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Transition the display to the 'done' state.  This will transitively cause all
 	// rows to become done.
-	display.done = true
+	display.done.Store(true)
 
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
@@ -1624,7 +1625,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display
 	// * During preview -- we'll show a single "replace" plan.
 	// * During update -- we'll show the individual steps.
 	// * When done -- we'll show a single "replaced" step.
-	if display.isPreview || display.done {
+	if display.isPreview || display.done.Load() {
 		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
 			return deploy.OpReplace
 		}
