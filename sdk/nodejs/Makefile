@@ -48,11 +48,16 @@ build_package:: ensure
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-build_plugin::
+build_plugin: ../../bin/pulumi-language-nodejs
+	cp ./dist/pulumi-resource-pulumi-nodejs ../../bin
+	cp ./dist/pulumi-analyzer-policy ../../bin
+
+.PHONY: ../../bin/pulumi-language-nodejs
+../../bin/pulumi-language-nodejs:
 	go build -C cmd/pulumi-language-nodejs \
-    	-o ../../../../bin/pulumi-language-nodejs \
-    	-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
-        ${LANGHOST_PKG}
+	-o ../../$@ \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
