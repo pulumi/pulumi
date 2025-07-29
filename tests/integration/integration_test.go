@@ -1748,3 +1748,33 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 	case <-done:
 	}
 }
+
+// Test that we correctly detect an error in from a resource during an
+// automation API run and don't hang.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/20151
+func TestAutomationAPIErrorInResource(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	sourceDir := filepath.Join("automation", "error")
+	copyErr := fsutil.CopyFile(root, sourceDir, nil)
+	require.NoError(t, copyErr, "failed to copy source project")
+
+	install := exec.Command("yarn", "install")
+	install.Dir = root
+	out, err := install.CombinedOutput()
+	require.NoError(t, err, "failed to install: %s", out)
+
+	// The bug was causing a hang, ensure the test times out
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	// Run the automation API program, we expect an error
+	run := exec.CommandContext(ctx, "node", "index.js")
+	run.Dir = root
+	out, err = run.CombinedOutput()
+	require.ErrorContains(t, err, "exit status 1")
+	require.Contains(t, string(out), "error: Oops")
+}

@@ -59,7 +59,7 @@ func TestPlannedUpdate(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -320,7 +320,7 @@ func TestExpectedDelete(t *testing.T) {
 				Inputs: ins,
 			})
 			if expectError {
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+				require.Fail(t, "RegisterResource should not return")
 			} else {
 				require.NoError(t, err)
 			}
@@ -468,7 +468,7 @@ func TestPropertySetChange(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -767,7 +767,7 @@ func TestPlannedPreviews(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -862,7 +862,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -1031,7 +1031,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 			Inputs: inputs,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -1347,7 +1347,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 				}),
 			})
 			if expectError {
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+				require.Fail(t, "RegisterResource should not return")
 			} else {
 				require.NoError(t, err)
 			}
@@ -1435,7 +1435,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -1740,7 +1740,7 @@ func TestResourcesTargeted(t *testing.T) {
 			},
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}

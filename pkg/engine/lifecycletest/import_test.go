@@ -116,7 +116,7 @@ func TestImportOption(t *testing.T) {
 				assert.Equal(t, expectedID, resp.ID)
 				assert.Equal(t, expectedOutputs, resp.Outputs)
 			} else {
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+				require.Fail(t, "RegisterResource should not return")
 			}
 		}
 		return nil
@@ -1483,11 +1483,11 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"foo": resource.NewStringProperty("baz"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
 			Inputs:   inputs,
 			ImportID: importID,
 		})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)

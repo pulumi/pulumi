@@ -123,7 +123,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return nil
@@ -287,7 +287,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -439,7 +439,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -616,7 +616,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -724,7 +724,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return nil

@@ -1,0 +1,10 @@
+{
+    "name": "pulumi-auto-api-hang",
+    "version": "1.0.0",
+    "main": "index.js",
+    "type": "module",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.186.0",
+        "uuid": "^11.1.0"
+    }
+}

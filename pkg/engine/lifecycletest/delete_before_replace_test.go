@@ -669,7 +669,7 @@ func TestDBRProtect(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return nil

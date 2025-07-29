@@ -385,7 +385,7 @@ func TestViewsUpdateError(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.Error(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
