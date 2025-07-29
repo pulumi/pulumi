@@ -158,6 +158,51 @@ type LinkPackageContext struct {
 	Install bool
 }
 
+// PrepareLocalPackageForLinking prepares a local package for linking
+// for NodeJS packages, this means modifying the package.json file and removing referenced to local packages
+// this is because the current references after project generation are not valid, pointing to non-existent versions
+// of packages whereas they should point to the local package being linked.
+func PrepareLocalPackageForLinking(root string, language string, pkg *schema.Package) error {
+	if language == "nodejs" {
+		// for NodeJS packages, we want to edit the package.json file
+		// such that packages which we are about to link are _removed_ from the list
+		// of dependencies because after a project is generated, the package.json file
+		// points to the
+		type packageJSON struct {
+			Name            string            `json:"name"`
+			DevDependencies map[string]string `json:"devDependencies"`
+			Dependencies    map[string]string `json:"dependencies"`
+		}
+
+		filePath := filepath.Join(root, "package.json")
+		fileBytes, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("error reading package.json: %w", err)
+		}
+
+		var pkgJSON packageJSON
+		err = json.Unmarshal(fileBytes, &pkgJSON)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling package.json: %w", err)
+		}
+
+		// remove the package from the dependencies
+		if pkgJSON.Dependencies != nil {
+			delete(pkgJSON.Dependencies, getNodeJSPkgName(pkg))
+		}
+
+		// write the modified package.json back to disk
+		fileBytes, err = json.MarshalIndent(pkgJSON, "", "  ")
+		if err != nil {
+			return fmt.Errorf("error marshalling package.json: %w", err)
+		}
+
+		return os.WriteFile(filePath, fileBytes, 0o600)
+	}
+
+	return nil
+}
+
 // LinkPackage links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackage(ctx *LinkPackageContext) error {
@@ -808,7 +853,7 @@ func SchemaFromSchemaSource(
 func SchemaFromSchemaSourceValueArgs(
 	pctx *plugin.Context,
 	packageSource string,
-	parameterizationValue []byte,
+	parameterization *schema.ParameterizationDescriptor,
 	registry registry.Registry,
 ) (*schema.Package, error) {
 	var spec schema.PackageSpec
@@ -832,13 +877,17 @@ func SchemaFromSchemaSourceValueArgs(
 	defer p.Provider.Close()
 
 	var request plugin.GetSchemaRequest
-	if parameterizationValue != nil {
+	if parameterization != nil {
 		if p.AlreadyParameterized {
 			return nil,
 				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
 		}
 		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeValue{Value: parameterizationValue},
+			Parameters: &plugin.ParameterizeValue{
+				Value:   parameterization.Value,
+				Name:    parameterization.Name,
+				Version: parameterization.Version,
+			},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
