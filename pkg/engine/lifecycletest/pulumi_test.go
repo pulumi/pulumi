@@ -1382,8 +1382,8 @@ func TestLoadFailureShutdown(t *testing.T) {
 		_, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		_, _ = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
@@ -2750,7 +2750,7 @@ func TestProtect(t *testing.T) {
 				Protect: &shouldProtect,
 			})
 			if expectError {
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+				require.Fail(t, "RegisterResource should not return")
 			} else {
 				require.NoError(t, err)
 			}
@@ -3351,7 +3351,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Dependencies: []resource.URN{resp.URN},
 		})
 		if failCreationOfTypB {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -4364,8 +4364,8 @@ func TestStackOutputsResourceError(t *testing.T) {
 			require.NoError(t, outsErr)
 
 		case 1:
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			require.Fail(t, "RegisterResource should not return")
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4377,7 +4377,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 			require.NoError(t, outsErr)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return err
@@ -4644,22 +4644,11 @@ func TestResourceError(t *testing.T) {
 		}),
 	}
 
-	done := make(chan struct{}, 1)
-	defer close(done)
-
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		// The resource registration fails, and the engine knows this and
-		// cancels the deployment. A program might export such a failed
-		// resource as a stack output. In Node.js, a failed resource
-		// registration causes the properties of the resource to never resolve.
-		// If the SDK code is awaiting on the resource to resolve, as is the
-		// case for the Automation API, we might hang forever.
-		//
-		// Waiting here simulates the SDK waiting for the resource to resolve.
-		// The deployment should fail with an error without waiting for the
-		// program to complete.
-		<-done
+		// cancels the deployment. RegisterResource will not return.
+		t.Fatalf("We should not return from RegisterResource")
 		return nil
 	})
 
@@ -4672,5 +4661,4 @@ func TestResourceError(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
-	done <- struct{}{}
 }

@@ -226,13 +226,13 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				BeforeCreate: []*deploytest.ResourceHook{myHook},
 			},
 		})
-		require.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -759,7 +759,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		})
 
 		if isUpdate {
-			require.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 			return err
 		}
 

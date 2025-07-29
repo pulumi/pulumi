@@ -1042,10 +1042,10 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t 
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
@@ -1111,10 +1111,10 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUnchangedTarget(
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
@@ -1193,12 +1193,12 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetPropertyDe
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"prop": {resA.URN},
 			},
 		})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
@@ -1277,10 +1277,10 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetDeletedWit
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			DeletedWith: resA.URN,
 		})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
@@ -1361,11 +1361,11 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetParent(t *
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Parent:    resA.URN,
 			AliasURNs: []resource.URN{resBOldURN},
 		})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
@@ -2408,7 +2408,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 				Inputs: inputs,
 			})
 			if expectError {
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+				require.Fail(t, "RegisterResource should not return")
 			} else {
 				require.NoError(t, err)
 			}
@@ -2953,7 +2953,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 				Inputs: inputs,
 			})
 			if expectError {
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+				require.Fail(t, "RegisterResource should not return")
 			} else {
 				require.NoError(t, err)
 			}
@@ -3083,7 +3083,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 			Version: providerVersion,
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -4309,7 +4309,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 			Provider: provider.String(),
 		})
 		if expectError {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}

@@ -88,22 +88,10 @@ func TestSignalAndWaitForShutdownError(t *testing.T) {
 		}),
 	}
 
-	callSignalAndWaitForShutdown := true
-
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-		if callSignalAndWaitForShutdown {
-			err = monitor.SignalAndWaitForShutdown(context.Background())
-			// The `RegisterResource` call above resulted in an error, causing
-			// the monitor to shutdown. However the call to `WaitForShutdown`
-			// here can race with the shutdown. If we get the call in before the
-			// monitor starts shutting down, we return successfully, otherwise
-			// we get a connection refused.
-			if err != nil {
-				require.ErrorContains(t, err, "connection refused", "The resource monitor has already shut down")
-			}
-		}
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		require.Fail(t, "RegisterResource should not return")
+		// SignalAndWaitForShutdown will not be called since we never complete the program.
 		return nil
 	})
 
@@ -115,12 +103,6 @@ func TestSignalAndWaitForShutdownError(t *testing.T) {
 	project := p.GetProject()
 
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.True(t, result.IsBail(err))
-	require.ErrorContains(t, err, "oh no")
-
-	// Operation runs to completion with the expected error even if we don't call WaitForShutdown
-	callSignalAndWaitForShutdown = false
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "oh no")
 }

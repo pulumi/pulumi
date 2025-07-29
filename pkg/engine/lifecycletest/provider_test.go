@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"sync"
 	"testing"
 
@@ -1389,14 +1388,10 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		{
 			name: "default-blocked",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				require.Error(t, err)
-				require.Regexp(t,
-					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
-					err.Error())
-
+				_, err := monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				require.NoError(t, err)
+				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["pkgA"]`,
@@ -1424,16 +1419,20 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			expectFail: false,
 		},
 		{
-			name: "wildcard",
+			name: "wildcard-a",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				require.Error(t, err)
-				require.Regexp(t,
-					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
-					err.Error())
-
+				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				require.Fail(t, "RegisterResource should not return")
+				return nil
+			},
+			disabled:   `["*"]`,
+			expectFail: true,
+		},
+		{
+			name: "wildcard-rb",
+			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _ = monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["*"]`,

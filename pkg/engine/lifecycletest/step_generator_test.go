@@ -382,8 +382,8 @@ func TestReadNilOutputs(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
+			require.Fail(t, "RegisterResource should not return")
 
 			return nil
 		}, true).
