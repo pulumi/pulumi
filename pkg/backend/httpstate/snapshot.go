@@ -17,12 +17,14 @@ package httpstate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -126,4 +128,62 @@ func (b *cloudBackend) newSnapshotPersister(ctx context.Context, update client.U
 		p.deploymentDiffState = newDeploymentDiffState(deltaCaps.CheckpointCutoffSizeBytes)
 	}
 	return p
+}
+
+var _ backend.Journal = (*cloudJournaler)(nil)
+
+type cloudJournaler struct {
+	context     context.Context         // The context to use for client requests.
+	tokenSource tokenSourceCapability   // A token source for interacting with the service.
+	backend     *cloudBackend           // A backend for communicating with the service
+	update      client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
+	sm          secrets.Manager         // Secrets manager for encrypting values when serializing the journal entries.
+}
+
+func (j *cloudJournaler) BeginOperation(entry backend.JournalEntry) error {
+	serialized, err := entry.Serialize(j.context, j.sm.Encrypter())
+	if err != nil {
+		return fmt.Errorf("serializing journal entry: %w", err)
+	}
+	return j.backend.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
+}
+
+func (j *cloudJournaler) EndOperation(entry backend.JournalEntry) error {
+	serialized, err := entry.Serialize(j.context, j.sm.Encrypter())
+	if err != nil {
+		return fmt.Errorf("serializing journal entry: %w", err)
+	}
+	return j.backend.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
+}
+
+func (j *cloudJournaler) Rebase(*deploy.Snapshot) error {
+	return errors.New("rebasing not implemented yet")
+}
+
+func (j *cloudJournaler) Close() error {
+	// No resources to close in the cloud journaler.
+	// TODO: do we need to wait for all begin/end operations to complete here?
+	return nil
+}
+
+func (b *cloudBackend) newJournaler(
+	ctx context.Context,
+	update client.UpdateIdentifier,
+	tokenSource tokenSourceCapability,
+	sm secrets.Manager,
+) backend.Journal {
+	journal := &cloudJournaler{
+		context:     ctx,
+		tokenSource: tokenSource,
+		backend:     b,
+		update:      update,
+		sm:          sm,
+	}
+
+	journal.BeginOperation(backend.JournalEntry{
+		Kind:           backend.JournalEntrySecretsManager,
+		SecretsManager: sm,
+	})
+
+	return journal
 }
