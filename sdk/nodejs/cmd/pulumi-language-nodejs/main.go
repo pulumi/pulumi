@@ -691,7 +691,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	nodeBin, err := exec.LookPath("node")
+	// FIXME: bun
+	nodeBin, err := exec.LookPath("bun")
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: "could not find node on the $PATH: " + err.Error()}, nil
 	}
@@ -1164,7 +1165,8 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		return ex, strings.TrimSpace(string(out)), nil
 	}
 
-	node, version, err := getResponse("node", "--version")
+	// FIXME: bun
+	node, version, err := getResponse("bun", "--version")
 	if err != nil {
 		return nil, err
 	}
@@ -1485,7 +1487,8 @@ func (host *nodeLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	nodeBin, err := exec.LookPath("node")
+	// FIXME: bun
+	nodeBin, err := exec.LookPath("bun")
 	if err != nil {
 		return err
 	}

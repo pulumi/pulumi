@@ -13,11 +13,25 @@
 // limitations under the License.
 
 export {
-    serializeFunctionAsync,
-    serializeFunction,
+    // serializeFunctionAsync,
+    // serializeFunction,
     SerializedFunction,
     SerializeFunctionArgs,
 } from "./closure/serializeClosure";
+
+export const serializeFunctionAsync = async (args: any) => {
+    // FIXME: Bun uses the WebKit Inspector Protocol, not the v8 one.
+    // lazy import, since this will end up pulling in the v8 module.
+    const serializeClosure = await import("./closure/serializeClosure");
+    return serializeClosure.serializeFunctionAsync(args);
+}
+
+export const serializeFunction = async (args: any) => {
+    // FIXME: Bun uses the WebKit Inspector Protocol, not the v8 one.
+    // lazy import, since this will end up pulling in the v8 module.
+    const serializeClosure = await import("./closure/serializeClosure");
+    return serializeClosure.serializeFunction(args);
+}
 
 export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
 export { Mocks, setMocks, MockResourceArgs, MockResourceResult, MockCallArgs, MockCallResult } from "./mocks";

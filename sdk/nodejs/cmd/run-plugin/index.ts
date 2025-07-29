@@ -78,7 +78,9 @@ process.on("exit", (code: number) => {
 // fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
 // report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
 // by register to hear about scripts being parsed.
-import * as v8Hooks from "../../runtime/closure/v8Hooks";
+//
+// FIXME: Bun uses the WebKit Inspector Protocol, not the v8 one.
+// import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import minimist from "minimist";
@@ -101,8 +103,10 @@ function main(args: string[]): void {
         return printUsageAndExit();
     }
 
+    // FIXME: Bun uses the WebKit Inspector Protocol, not the v8 one.
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
-    v8Hooks.isInitializedAsync().then(() => {
+    const ready = process.versions.bun ? Promise.resolve() : import("../../runtime/closure/v8Hooks").then((v8Hooks) => v8Hooks.isInitializedAsync());
+    ready.then(() => {
         const promise: Promise<void> = require("./run").run({
             argv,
             programStarted: () => {
