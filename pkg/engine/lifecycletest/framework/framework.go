@@ -350,10 +350,7 @@ func (op TestOp) runWithContext(
 // checking the events properly.
 func compareEvents(t TB, expected, actual []engine.Event) {
 	encountered := make(map[int]struct{})
-	if len(expected) != len(actual) {
-		t.Logf("expected %d events, got %d", len(expected), len(actual))
-		t.Fail()
-	}
+	require.Len(t, actual, len(expected), "expected and actual event counts differ")
 	for _, e := range expected {
 		found := false
 		for i, a := range actual {
@@ -366,16 +363,13 @@ func compareEvents(t TB, expected, actual []engine.Event) {
 				break
 			}
 		}
-		if !found {
-			t.Logf("expected event %v not found", e)
-			t.Fail()
-		}
+		assert.True(t, found, "expected event %v not found in actual events", e)
 	}
 	for i, e := range actual {
 		if _, ok := encountered[i]; ok {
 			continue
 		}
-		t.Logf("did not expect event %v", e)
+		assert.Fail(t, "unexpected event %v found in actual events", e)
 	}
 }
 
