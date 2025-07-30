@@ -1,0 +1,33 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=f9568fe7-5069-4e99-b671-25a52ed4c9f3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typB: (delete-replaced)
+<{%fg 9%}>    [id=created-id-resB]
+<{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
+<{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>    zed: <{%reset%}><{%fg 9%}>"baz"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
+<{%fg 9%}>    [id=created-id-resA]
+<{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>    zed: <{%reset%}><{%fg 9%}>"baz"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
+<{%reset%}>    [id=created-id-resA]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%reset%}>    [id=created-id-resA]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typB: (replace)
+<{%reset%}>    [id=created-id-resB]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>    zed: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typB: (create-replacement)
+<{%reset%}>    [id=created-id-resB]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>    zed: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-2 to replace<{%reset%}>

@@ -1,0 +1,9 @@
+<{%fg 1%}>- pulumi:pulumi:StackReference: (delete)
+<{%fg 1%}>    [id=aaa76093-04a0-43a1-94b8-521d33f37be1]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
+<{%reset%}><{%fg 1%}>    name: <{%reset%}><{%fg 1%}>"other"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pulumi: (delete)
+<{%fg 1%}>    [id=4ddf7b26-3fc8-4f11-8638-220606cdadaf]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 to delete<{%reset%}>

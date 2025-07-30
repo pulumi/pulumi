@@ -1,0 +1,24 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%fg 1%}>**creating failed**<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%fg 1%}>**replacing failed**<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%fg 1%}>**deleting failed**<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>preview failed<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:m:typA::resA"
+    as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`<{%reset%}>
+
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>preview failed<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 to replace<{%reset%}>
+

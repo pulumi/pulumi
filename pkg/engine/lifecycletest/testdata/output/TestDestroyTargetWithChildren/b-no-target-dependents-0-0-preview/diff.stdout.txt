@@ -1,0 +1,49 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=bb8ed464-412c-421b-8774-35dd9d30cb9c]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Component: (same)
+<{%reset%}>    [id=0]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:Component::A]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Resource: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:Resource::C]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:index:Component: (same)
+<{%reset%}>        [id=3]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::D]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:index:Resource: (same)
+<{%reset%}>            [id=6]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::G]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:index:Resource: (same)
+<{%reset%}>            [id=7]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::H]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:index:Resource: (same)
+<{%reset%}>        [id=8]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Resource::I]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Resource: (same)
+<{%reset%}>    [id=13]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:Resource::N]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
+<{%fg 1%}>    [id=10]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K]
+<{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
+<{%fg 1%}>    [id=12]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::M]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
+<{%fg 1%}>    [id=9]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::J]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
+<{%fg 1%}>    [id=11]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::L]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Component: (delete)
+<{%fg 1%}>    [id=4]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::E]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Component: (delete)
+<{%fg 1%}>    [id=5]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::F]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Component: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component::B]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 7 to delete<{%reset%}>
+    7 unchanged

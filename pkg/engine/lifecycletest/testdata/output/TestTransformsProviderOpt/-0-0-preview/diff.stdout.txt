@@ -1,0 +1,25 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::explicit]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::implicit]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::explicitProvider]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::04da6b54-80e4-46f7-96ec-b56ff0331ba9]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::implicitProvider]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::04da6b54-80e4-46f7-96ec-b56ff0331ba9]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::explicitProvidersMap]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::04da6b54-80e4-46f7-96ec-b56ff0331ba9]
+<{%reset%}><{%reset%}><{%fg 2%}>+ xmy:component:resource: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::xmy:component:resource::component]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::xmy:component:resource$pkgA:m:typA::parentedResource]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::04da6b54-80e4-46f7-96ec-b56ff0331ba9]
+<{%reset%}><{%reset%}><{%fg 2%}>+ ymy:component:resource: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::ymy:component:resource::another-component]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::ymy:component:resource$pkgA:m:typA::parentedResource]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::04da6b54-80e4-46f7-96ec-b56ff0331ba9]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 9 to create<{%reset%}>

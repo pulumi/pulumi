@@ -1,0 +1,13 @@
+<{%reset%}>  pulumi:providers:pulumi: (same)
+<{%reset%}>    [id=135463df-9eb6-4832-9496-638e2c271e9f]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
+<{%reset%}><{%reset%}>  pulumi:pulumi:StackReference: (same)
+<{%reset%}>    [id=other]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    name             : <{%reset%}><{%reset%}>"other"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    outputs          : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged

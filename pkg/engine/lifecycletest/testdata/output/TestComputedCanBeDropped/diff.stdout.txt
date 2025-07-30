@@ -1,0 +1,19 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=c7b85ab1-b722-4c45-9261-d341dabbd95e]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=created-id-resA]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=created-id-resB]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%fg 3%}>  ~ baz: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ b: <{%reset%}><{%fg 1%}>"alpha"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%fg 3%}>  ~ qux: <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%fg 3%}>      ~ [0]: <{%reset%}><{%fg 1%}>"beta"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>    ]
+<{%reset%}><{%fg 3%}>  ~ zed: <{%reset%}><{%fg 1%}>"grr"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 3%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>
+    1 unchanged

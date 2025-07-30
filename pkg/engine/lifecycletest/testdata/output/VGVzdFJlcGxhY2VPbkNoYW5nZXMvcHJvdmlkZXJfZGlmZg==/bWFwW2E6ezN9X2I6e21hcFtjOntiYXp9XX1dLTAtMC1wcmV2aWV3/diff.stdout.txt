@@ -1,0 +1,26 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=a9a2c879-95dc-478a-ab8a-b9234ba74886]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%reset%}>    [id=id123]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>  ~ b: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ c: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
+<{%reset%}>    [id=id123]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>  ~ b: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ c: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
+<{%fg 9%}>    [id=id123]
+<{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 9%}>    a: <{%reset%}><{%fg 9%}>2<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>    b: <{%reset%}><{%fg 9%}>{
+<{%reset%}><{%fg 9%}>        c: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>    }<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 to replace<{%reset%}>

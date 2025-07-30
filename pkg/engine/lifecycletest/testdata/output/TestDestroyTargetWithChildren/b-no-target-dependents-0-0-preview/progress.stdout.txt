@@ -1,0 +1,62 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Component E <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::E' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Component F <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::F' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource J <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::J' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource K <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource L <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::L' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource M <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::M' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Component A <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource C <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Component D <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource G <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource H <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource I <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource N <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K' will be destroyed but was not specified in --target list.
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource M <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::M' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource J <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::J' will be destroyed but was not specified in --target list.
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource M <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::M' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource L <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::L' will be destroyed but was not specified in --target list.
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource L <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::L' will be destroyed but was not specified in --target list.
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource J <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::J' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Component E <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::E' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Component F <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::F' will be destroyed but was not specified in --target list.
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Component B <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>preview failed<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:index:Resource (J):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::J' will be destroyed but was not specified in --target list.
+    Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+
+  <{%fg 12%}>pkgA:index:Resource (K):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K' will be destroyed but was not specified in --target list.
+    Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+
+  <{%fg 12%}>pkgA:index:Resource (L):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::L' will be destroyed but was not specified in --target list.
+    Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+
+  <{%fg 12%}>pkgA:index:Resource (M):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::M' will be destroyed but was not specified in --target list.
+    Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+
+  <{%fg 12%}>pkgA:index:Component (E):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::E' will be destroyed but was not specified in --target list.
+    Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+
+  <{%fg 12%}>pkgA:index:Component (F):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::F' will be destroyed but was not specified in --target list.
+    Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>preview failed<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 7 to delete<{%reset%}>
+    7 unchanged
+
