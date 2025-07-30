@@ -680,10 +680,50 @@ func (c *testPulumiClient) CreateEnvironmentDraft(
 	}
 
 	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml, nil)
+	if err != nil || len(diags) != 0 {
+		return "", diags, nil
+	}
+	// store drafts in dummy environments
+	envName = envName + "_DRAFT"
+	err = c.CreateEnvironmentWithProject(ctx, orgName, projectName, envName)
+	if err != nil {
+		return "", nil, err
+	}
+	diags, err = c.UpdateEnvironmentWithProject(ctx, orgName, projectName, envName, yaml, "")
 	if err == nil && len(diags) == 0 {
 		return "00000000-0000-0000-0000-000000000000", []client.EnvironmentDiagnostic{}, nil
 	}
 	return "", diags, err
+}
+
+func (c *testPulumiClient) GetEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) ([]byte, string, error) {
+	envName = envName + "_DRAFT"
+	_, env, err := c.getEnvironment(orgName, projectName, envName, "")
+	if err != nil {
+		return nil, "", err
+	}
+
+	return env.yaml, env.etag, nil
+}
+
+func (c *testPulumiClient) UpdateEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+	yaml []byte,
+	etag string,
+) ([]client.EnvironmentDiagnostic, error) {
+	envName = envName + "_DRAFT"
+	diags, _, err := c.UpdateEnvironmentWithRevision(ctx, orgName, projectName, envName, yaml, etag)
+	return diags, err
 }
 
 func (c *testPulumiClient) SubmitChangeRequest(
@@ -718,6 +758,18 @@ func (c *testPulumiClient) OpenEnvironment(
 	}
 
 	return c.openEnvironment(ctx, orgName, envName, env.yaml)
+}
+
+func (c *testPulumiClient) OpenEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+	duration time.Duration,
+) (string, []client.EnvironmentDiagnostic, error) {
+	envName = envName + "_DRAFT"
+	return c.OpenEnvironment(ctx, orgName, projectName, envName, "", duration)
 }
 
 func (c *testPulumiClient) RotateEnvironment(

@@ -1,5 +1,6 @@
 run: |
   esc env version rollback default/test@stable --draft
+  esc env version rollback default/test@1 --draft=EXAMPLE
   esc env version rollback default/test@2 --draft
 error: exit status 1
 environments:
@@ -39,10 +40,14 @@ environments:
 Change request created: 00000000-0000-0000-0000-000000000000
 Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/00000000-0000-0000-0000-000000000000
 Change request submitted
+> esc env version rollback default/test@1 --draft=EXAMPLE
+Change request updated
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/EXAMPLE
 > esc env version rollback default/test@2 --draft
 
 ---
 > esc env version rollback default/test@stable --draft
+> esc env version rollback default/test@1 --draft=EXAMPLE
 > esc env version rollback default/test@2 --draft
 Error: not found
 

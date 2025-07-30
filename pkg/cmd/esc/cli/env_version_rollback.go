@@ -11,7 +11,7 @@ import (
 )
 
 func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
-	var draft bool
+	var draft string
 
 	cmd := &cobra.Command{
 		Use:   "rollback [<org-name>/][<project-name>/]<environment-name>@<version>",
@@ -39,9 +39,17 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			}
 			_ = args
 
-			yaml, _, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, false)
-			if err != nil {
-				return err
+			var yaml []byte
+			if draft != "" && draft != "new" {
+				yaml, _, err = env.esc.client.GetEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, draft)
+				if err != nil {
+					return err
+				}
+			} else {
+				yaml, _, _, err = env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, false)
+				if err != nil {
+					return err
+				}
 			}
 
 			diags, err := env.esc.updateEnvironment(ctx, ref, draft, yaml, "", "Environment updated.")
@@ -59,9 +67,11 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(
-		&draft, "draft", false,
-		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")
+	cmd.Flags().StringVar(
+		&draft, "draft", "",
+		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.")
+	// Allow no value to be specified with the flag and create a new change request in that case
+	cmd.Flag("draft").NoOptDefVal = "new"
 	err := cmd.Flags().MarkHidden("draft") // hide while in preview
 	if err != nil {
 		panic(err)

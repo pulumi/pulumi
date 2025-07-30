@@ -24,7 +24,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var secret bool
 	var plaintext bool
 	var rawString bool
-	var draft bool
+	var draft string
 	var file string
 
 	cmd := &cobra.Command{
@@ -134,9 +134,18 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				yamlValue = *yamlValue.Content[0]
 			}
 
-			def, tag, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", false)
-			if err != nil {
-				return fmt.Errorf("getting environment definition: %w", err)
+			var def []byte
+			var tag string
+			if draft != "" && draft != "new" {
+				def, tag, err = env.esc.client.GetEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, draft)
+				if err != nil {
+					return fmt.Errorf("getting environment draft definition: %w", err)
+				}
+			} else {
+				def, tag, _, err = env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", false)
+				if err != nil {
+					return fmt.Errorf("getting environment definition: %w", err)
+				}
 			}
 
 			var docNode yaml.Node
@@ -196,9 +205,11 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 		&rawString, "string", false,
 		"true to treat the value as a string rather than attempting to parse it as YAML")
 	cmd.Flags().StringVarP(&file, "file", "f", "", "If set, the value is read from the specified file. Pass `-` to read from standard input.")
-	cmd.Flags().BoolVar(
-		&draft, "draft", false,
-		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")
+	cmd.Flags().StringVar(
+		&draft, "draft", "",
+		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.")
+	// Allow no value to be specified with the flag and create a new change request in that case
+	cmd.Flag("draft").NoOptDefVal = "new"
 	err := cmd.Flags().MarkHidden("draft") // hide while in preview
 	if err != nil {
 		panic(err)

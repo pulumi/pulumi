@@ -30,7 +30,7 @@ type envEditCommand struct {
 func newEnvEditCmd(env *envCommand) *cobra.Command {
 	var file string
 	var showSecrets bool
-	var draft bool
+	var draft string
 
 	edit := &envEditCommand{env: env}
 
@@ -92,9 +92,22 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			yaml, tag, _, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", showSecrets)
-			if err != nil {
-				return fmt.Errorf("getting environment definition: %w", err)
+			var yaml []byte
+			var tag string
+			if draft != "" && draft != "new" {
+				if showSecrets {
+					// This could potentially be implemented in the future, environments have a separate API endpoint for this purpose
+					return fmt.Errorf("--show-secrets is not supported for updating drafts")
+				}
+				yaml, tag, err = env.esc.client.GetEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, draft)
+				if err != nil {
+					return fmt.Errorf("getting environment draft definition: %w", err)
+				}
+			} else {
+				yaml, tag, _, err = env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", showSecrets)
+				if err != nil {
+					return fmt.Errorf("getting environment definition: %w", err)
+				}
 			}
 
 			var env *esc.Environment
@@ -151,9 +164,11 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")
 
-	cmd.Flags().BoolVar(
-		&draft, "draft", false,
-		"true to create a draft rather than saving changes directly, returns a submitted Change Request ID and its URL")
+	cmd.Flags().StringVar(
+		&draft, "draft", "",
+		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.")
+	// Allow no value to be specified with the flag and create a new change request in that case
+	cmd.Flag("draft").NoOptDefVal = "new"
 	err := cmd.Flags().MarkHidden("draft") // hide while in preview
 	if err != nil {
 		panic(err)

@@ -20,6 +20,7 @@ import (
 func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	var duration time.Duration
 	var format string
+	var draft string
 
 	cmd := &cobra.Command{
 		Use:   "open [<org-name>/][<project-name>/]<environment-name>[@<version>] [property path]",
@@ -62,7 +63,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration)
+			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
 			if err != nil {
 				return err
 			}
@@ -80,6 +81,13 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "json",
 		"the output format to use. May be 'dotenv', 'json', 'yaml', 'detailed', 'shell' or 'string'")
+	cmd.Flags().StringVar(
+		&draft, "draft", "",
+		"open an environment draft with --draft=<change-request-id>")
+	err := cmd.Flags().MarkHidden("draft") // hide while in preview
+	if err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
@@ -168,8 +176,16 @@ func (env *envCommand) openEnvironment(
 	ctx context.Context,
 	ref environmentRef,
 	duration time.Duration,
+	changeRequestID string,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
-	envID, diags, err := env.esc.client.OpenEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, duration)
+	var envID string
+	var diags []client.EnvironmentDiagnostic
+	var err error
+	if changeRequestID == "" {
+		envID, diags, err = env.esc.client.OpenEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, duration)
+	} else {
+		envID, diags, err = env.esc.client.OpenEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, changeRequestID, duration)
+	}
 	if err != nil {
 		return nil, nil, err
 	}

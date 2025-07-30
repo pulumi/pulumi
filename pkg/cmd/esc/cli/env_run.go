@@ -93,6 +93,7 @@ func (w *redactor) Close() error {
 func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	var interactive bool
 	var duration time.Duration
+	var draft string
 
 	shell := valueOrDefault(filepath.Base(envcmd.esc.environ.Get("SHELL")), "sh")
 
@@ -145,7 +146,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			}
 			args = args[1:]
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration)
+			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
 			if err != nil {
 				return err
 			}
@@ -213,6 +214,13 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "true to treat the command as interactive and disable output filters")
 	cmd.Flags().DurationVarP(&duration, "lifetime", "l", 2*time.Hour, "the lifetime of the opened environment")
+	cmd.Flags().StringVar(
+		&draft, "draft", "",
+		"open an environment draft with --draft=<change-request-id>")
+	err := cmd.Flags().MarkHidden("draft") // hide while in preview
+	if err != nil {
+		panic(err)
+	}
 
 	return cmd
 }

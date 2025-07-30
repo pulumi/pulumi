@@ -1,6 +1,7 @@
 run: |
   esc env init default/test
   esc env set default/test foo.bar.baz qux --draft
+  esc env set default/test foo.bar.baz quy --draft=EXAMPLE
   esc env set default/test path "[a" --draft
 error: exit status 1
 
@@ -11,10 +12,14 @@ Environment created: test-user/default/test
 Change request created: 00000000-0000-0000-0000-000000000000
 Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/00000000-0000-0000-0000-000000000000
 Change request submitted
+> esc env set default/test foo.bar.baz quy --draft=EXAMPLE
+Change request updated
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/EXAMPLE
 > esc env set default/test path [a --draft
 
 ---
 > esc env init default/test
 > esc env set default/test foo.bar.baz qux --draft
+> esc env set default/test foo.bar.baz quy --draft=EXAMPLE
 > esc env set default/test path [a --draft
 Error: invalid value: yaml: line 1: did not find expected ',' or ']'

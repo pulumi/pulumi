@@ -117,6 +117,18 @@ type Client interface {
 		decrypt bool,
 	) (yaml []byte, etag string, revision int, err error)
 
+	// GetEnvironmentDraft returns the YAML + ETag for the draft env specified.
+	//
+	// The returned etag  must be passed to UpdateEnvironmentDraft in order to avoid RMW issues
+	// when editing drafts.
+	GetEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (yaml []byte, etag string, err error)
+
 	// UpdateEnvironmentWithRevision updates the YAML for the environment envName in org orgName.
 	//
 	// If the new environment definition contains errors, the update will fail with diagnostics.
@@ -169,6 +181,22 @@ type Client interface {
 		etag string,
 	) (string, []EnvironmentDiagnostic, error)
 
+	// UpdateEnvironmentDraft updates a draft for the environment envName in org orgName.
+	//
+	// If the updated environment definition contains errors, the creation will fail with diagnostics.
+	//
+	// If the draft's current etag does not match the provided etag (i.e. because a different entity
+	// has called UpdateEnvironment), the creation will fail with a 409 error.
+	UpdateEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+		yaml []byte,
+		etag string,
+	) ([]EnvironmentDiagnostic, error)
+
 	// SubmitChangeRequest submits the change request with the specified ID in org orgName.
 	// Optionally provide a description for the change request.
 	SubmitChangeRequest(
@@ -192,6 +220,20 @@ type Client interface {
 		projectName string,
 		envName string,
 		version string,
+		duration time.Duration,
+	) (string, []EnvironmentDiagnostic, error)
+
+	// OpenEnvironmentDraft evaluates the environment draft and returns the ID of the opened
+	// environment. The opened environment will be available for the indicated duration, after which it
+	// will expire.
+	//
+	// If the environment draft contains errors, the open will fail with diagnostics.
+	OpenEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
@@ -684,6 +726,58 @@ func (pc *client) CreateEnvironmentDraft(
 	return resp.ChangeRequestID, nil, nil
 }
 
+func (pc *client) GetEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) ([]byte, string, error) {
+	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
+
+	var resp *http.Response
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	yaml, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
+	}
+	tag := resp.Header.Get(etagHeader)
+
+	return yaml, tag, nil
+}
+
+func (pc *client) UpdateEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+	yaml []byte,
+	etag string,
+) ([]EnvironmentDiagnostic, error) {
+	header := http.Header{}
+	header.Set("If-Match", etag)
+
+	var errResp EnvironmentErrorResponse
+	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
+	var resp UpdateEnvironmentDraftResponse
+	err := pc.restCallWithOptions(ctx, http.MethodPatch, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
+		Header:        header,
+		ErrorResponse: &errResp,
+	})
+	if err != nil {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && len(diags.Diagnostics) != 0 {
+			return diags.Diagnostics, nil
+		}
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func (pc *client) SubmitChangeRequest(
 	ctx context.Context,
 	orgName string,
@@ -726,6 +820,39 @@ func (pc *client) OpenEnvironment(
 	}
 	var errResp EnvironmentErrorResponse
 	err = pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
+		ErrorResponse: &errResp,
+	})
+	if err != nil {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+			return "", diags.Diagnostics, nil
+		}
+		return "", nil, err
+	}
+	return resp.ID, nil, nil
+}
+
+func (pc *client) OpenEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+	duration time.Duration,
+) (string, []EnvironmentDiagnostic, error) {
+	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
+
+	queryObj := struct {
+		Duration string `url:"duration"`
+	}{
+		Duration: duration.String(),
+	}
+
+	var resp struct {
+		ID string `json:"id"`
+	}
+	var errResp EnvironmentErrorResponse
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {

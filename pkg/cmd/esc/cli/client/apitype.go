@@ -144,6 +144,11 @@ type CreateEnvironmentDraftResponse struct {
 	LatestRevisionNumber int    `json:"latestRevisionNumber"`
 }
 
+type UpdateEnvironmentDraftResponse struct {
+	ChangeRequestID      string `json:"changeRequestId"`
+	LatestRevisionNumber int    `json:"latestRevisionNumber"`
+}
+
 type SubmitChangeRequestRequest struct {
 	Description *string `json:"description,omitempty"`
 }

@@ -1,0 +1,24 @@
+run: |
+  esc env init default/test
+  esc env set default/test password 1234 --secret --draft
+  esc open default/test 
+  esc open default/test --draft=EXAMPLE
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test password 1234 --secret --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc open default/test
+> esc open default/test --draft=EXAMPLE
+{
+  "password": "1234"
+}
+
+---
+> esc env init default/test
+> esc env set default/test password 1234 --secret --draft
+> esc open default/test
+> esc open default/test --draft=EXAMPLE
