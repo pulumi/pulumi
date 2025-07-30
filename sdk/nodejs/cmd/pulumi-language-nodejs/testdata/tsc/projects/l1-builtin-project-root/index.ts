@@ -1,3 +1,3 @@
 import * as pulumi from "@pulumi/pulumi";
 
-export const rootDirectoryOutput = pulumi.runtime.getRootDirectory();
+export const rootDirectoryOutput = pulumi.getRootDirectory();

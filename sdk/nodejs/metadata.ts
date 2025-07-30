@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,4 +33,10 @@ export function getProject(): string {
  */
 export function getStack(): string {
     return settings.getStack();
+}
+/**
+ * Returns the root directory of the current Pulumi project.
+ */
+export function getRootDirectory(): string {
+    return settings.getRootDirectory();
 }
