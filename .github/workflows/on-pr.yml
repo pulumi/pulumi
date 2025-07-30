@@ -23,7 +23,6 @@ concurrency:
 jobs:
   info:
     name: info
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     uses: ./.github/workflows/ci-info.yml
     permissions:
       contents: read
@@ -36,7 +35,6 @@ jobs:
   # if they're not necessary.
   inspect:
     name: Inspect changed files
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: dorny/paths-filter@v3
@@ -59,7 +57,6 @@ jobs:
 
   ci:
     name: CI
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
     uses: ./.github/workflows/ci.yml
     permissions:
@@ -91,9 +88,15 @@ jobs:
 
   performance-gate:
     name: Performance Gate
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
     uses: ./.github/workflows/ci-performance-gate.yml
+
+  prepare-release:
+    name: prepare
+    if: >- # No newlines or trailing newline.
+      ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+    needs: [info, ci]
+    uses: ./.github/workflows/ci-prepare-release.yml
     permissions:
       contents: read
     with:
