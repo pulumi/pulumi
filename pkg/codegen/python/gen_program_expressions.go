@@ -562,7 +562,7 @@ func (g *generator) genCan(w io.Writer, args []model.Expression) {
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
-	g.Fgen(w, "pulumi.runtime.get_root_directory()")
+	g.Fgen(w, "pulumi.get_root_directory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
