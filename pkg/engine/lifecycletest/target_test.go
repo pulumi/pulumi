@@ -860,6 +860,7 @@ func updateInvalidTarget(t *testing.T) {
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{"foo"})
 	t.Logf("Updating invalid targets: %v", p.Options.Targets)
@@ -1713,12 +1714,13 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 				pickURN(t, urns, names, "K"): true,
 				pickURN(t, urns, names, "N"): true,
 			}, deleted)
-		})
+		}, "a-target-dependents")
 
 	// when deleting 'A' with targetDependents not specified, we expect an error.
 	destroySpecificTargetsWithChildren(
 		t, []string{"A"}, false, /*targetDependents*/
-		func(urns []resource.URN, deleted map[resource.URN]bool) {})
+		func(urns []resource.URN, deleted map[resource.URN]bool) {},
+		"a-no-target-dependents")
 
 	// when deleting 'B' we expect B, E, F, J, K, L, M to be deleted.
 	destroySpecificTargetsWithChildren(
@@ -1734,12 +1736,13 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 				pickURN(t, urns, names, "L"): true,
 				pickURN(t, urns, names, "M"): true,
 			}, deleted)
-		})
+		}, "b-no-target-dependents")
 }
 
 func destroySpecificTargetsWithChildren(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool),
+	name string,
 ) {
 	p := &lt.TestPlan{}
 
@@ -1811,7 +1814,7 @@ func destroySpecificTargetsWithChildren(
 		},
 	}}
 
-	p.RunWithName(t, old, strings.Join(targets, ","))
+	p.RunWithName(t, old, name)
 }
 
 func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,

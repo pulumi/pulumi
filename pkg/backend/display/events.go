@@ -162,6 +162,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
+			IsPreview:       p.IsPreview,
 		}
 
 	case engine.ResourcePreEvent:
@@ -395,6 +396,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
+			IsPreview:       p.IsPreview,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:
