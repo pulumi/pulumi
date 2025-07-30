@@ -50,6 +50,7 @@ type DeltaCheckpointUploadsConfigV2 struct {
 	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
 }
 
+// DeploymentSchemaVersionConfig is the configuration for the deployment-schema-version capability.
 type DeploymentSchemaVersionConfig struct {
 	// Version is the maximum version of the deployment schema that the service supports.
 	Version int `json:"version"`
