@@ -1,19 +1,11 @@
 // Copyright 2025, Pulumi Corporation.  All rights reserved.
 
-import * as pulumi from "@pulumi/pulumi";
-
-class Named extends pulumi.CustomResource {
-    constructor(name, resourceName) {
-        super("testprovider:index:Named", name, { name: resourceName });
-    }
-}
+import * as debuggable from "@pulumi/pulumi/runtime/debuggable.js";
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-sleep(60000).then(() => {
-    new Named("res");
-})
+debuggable.debuggablePromise(sleep(5 * 60 * 1000), "sleep")
 
 process.exit(0);
