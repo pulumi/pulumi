@@ -1,5 +1,5 @@
 <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=2e77ca64-0f17-4743-bb38-137cf9235aac]
+<{%fg 1%}>    [id=453acfdb-4687-4000-9da0-22f1940d50b9]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>

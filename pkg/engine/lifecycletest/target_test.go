@@ -445,10 +445,10 @@ func TestExcludedDeletion(t *testing.T) {
 
 	isFirstTime := true
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		require.NoError(t, err)
-
 		if isFirstTime {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			require.NoError(t, err)
+
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 			require.NoError(t, err)
 		}
@@ -468,9 +468,7 @@ func TestExcludedDeletion(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 
-	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
-		"urn:pulumi:test::test::pkgA:m:typA::resB",
-	})
+	opts.Excludes = deploy.NewUrnTargets([]string{"**pkgA**"})
 
 	// This should be a no-op as, although `resB` won't be registered this time, it's excluded explicitly.
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
