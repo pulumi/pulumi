@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -53,6 +54,11 @@ const (
 	// is not known.) This allows us to persist engine events and resource states that
 	// indicate a value will changed... but is unknown what it will change to.
 	computedValuePlaceholder = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+
+	// Feature names for deployment features.
+	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
+	viewsFeature               = "views"
+	hooksFeature               = "hooks"
 )
 
 var (
@@ -63,14 +69,6 @@ var (
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
 	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
-
-	// supportedFeatures is a map of features that are currently supported.
-	// Any features not in this map will be rejected.
-	supportedFeatures = map[string]bool{
-		"refreshBeforeUpdate": true,
-		"views":               true,
-		"hooks":               true,
-	}
 )
 
 // ErrDeploymentUnsupportedFeatures is returned from `DeserializeDeployment` if the
@@ -109,6 +107,14 @@ func init() {
 	propertyValueSchema = compiler.MustCompile(apitype.PropertyValueSchemaID)
 }
 
+// supportedFeatures is a map of features that are currently supported.
+// Any features not in this map will be rejected.
+var supportedFeatures = map[string]bool{
+	refreshBeforeUpdateFeature: true,
+	viewsFeature:               true,
+	hooksFeature:               true,
+}
+
 // validateSupportedFeatures validates that the features used in a deployment are supported.
 func validateSupportedFeatures(features []string) error {
 	var unsupported []string
@@ -121,6 +127,19 @@ func validateSupportedFeatures(features []string) error {
 		return &ErrDeploymentUnsupportedFeatures{Features: unsupported}
 	}
 	return nil
+}
+
+// applyFeatures applies the features used by a resource to the feature map.
+func applyFeatures(res apitype.ResourceV3, features map[string]bool) {
+	if res.RefreshBeforeUpdate {
+		features[refreshBeforeUpdateFeature] = true
+	}
+	if res.ViewOf != "" {
+		features[viewsFeature] = true
+	}
+	if len(res.ResourceHooks) > 0 {
+		features[hooksFeature] = true
+	}
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
@@ -140,6 +159,17 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets bool) (*apitype.DeploymentV3, error) {
+	serializedDeployment, _, _, err := SerializeDeploymentWithMetadata(ctx, snap, showSecrets)
+	return serializedDeployment, err
+}
+
+// SerializeDeploymentWithMetadata serializes an entire snapshot as a deploy record returning the deployment, version,
+// and features used by the deployment.
+func SerializeDeploymentWithMetadata(
+	ctx context.Context,
+	snap *deploy.Snapshot,
+	showSecrets bool,
+) (*apitype.DeploymentV3, int, []string, error) {
 	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	// Capture the version information into a manifest.
@@ -159,13 +189,16 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 		enc = config.NewPanicCrypter()
 	}
 
+	featureMap := map[string]bool{}
+
 	// Serialize all vertices and only include a vertex section if non-empty.
 	resources := slice.Prealloc[apitype.ResourceV3](len(snap.Resources))
 	for _, res := range snap.Resources {
 		sres, err := SerializeResource(ctx, res, enc, showSecrets)
 		if err != nil {
-			return nil, fmt.Errorf("serializing resources: %w", err)
+			return nil, 0, nil, fmt.Errorf("serializing resources: %w", err)
 		}
+		applyFeatures(sres, featureMap)
 		resources = append(resources, sres)
 	}
 
@@ -173,7 +206,7 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	for _, op := range snap.PendingOperations {
 		sop, err := SerializeOperation(ctx, op, enc, showSecrets)
 		if err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 		operations = append(operations, sop)
 	}
@@ -197,8 +230,18 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 
 	if completeBatch != nil { // If we started a batch operation, complete it.
 		if err := completeBatch(ctx); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
+	}
+
+	features := maputil.SortedKeys(featureMap)
+	if len(features) == 0 {
+		features = nil
+	}
+
+	version := apitype.DeploymentSchemaVersionCurrent
+	if len(features) > 0 {
+		version = DeploymentSchemaVersionLatest
 	}
 
 	return &apitype.DeploymentV3{
@@ -207,7 +250,7 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
 		Metadata:          metadata,
-	}, nil
+	}, version, features, nil
 }
 
 // SerializeOptions controls how a deployment is serialized to JSON.
@@ -225,7 +268,7 @@ func SerializeUntypedDeployment(
 	opts *SerializeOptions,
 ) (*apitype.UntypedDeployment, error) {
 	showSecrets := opts != nil && opts.ShowSecrets
-	serializedDeployment, err := SerializeDeployment(ctx, snap, showSecrets)
+	serializedDeployment, version, features, err := SerializeDeploymentWithMetadata(ctx, snap, showSecrets)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +284,8 @@ func SerializeUntypedDeployment(
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Version:    version,
+		Features:   features,
 		Deployment: jsonDeployment,
 	}, nil
 }

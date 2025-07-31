@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,11 +29,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func UnmarshalVersionedCheckpointToLatestCheckpoint(m encoding.Marshaler, bytes []byte) (*apitype.CheckpointV3, error) {
+// UnmarshalVersionedCheckpointToLatestCheckpoint unmarshals a versioned checkpoint to the latest checkpoint format.
+// It returns the checkpoint, its version, and any features, or an error if the checkpoint is not valid, cannot be
+// migrated to the latest version, or if the features are not supported.
+func UnmarshalVersionedCheckpointToLatestCheckpoint(
+	m encoding.Marshaler,
+	bytes []byte,
+) (*apitype.CheckpointV3, int, []string, error) {
 	var versionedCheckpoint apitype.VersionedCheckpoint
 	// Here we are careful to unmarshal `bytes` with the provided unmarshaller `m`.
 	if err := m.Unmarshal(bytes, &versionedCheckpoint); err != nil {
-		return nil, fmt.Errorf("place 1: %w", err)
+		return nil, 0, nil, fmt.Errorf("place 1: %w", err)
 	}
 
 	switch versionedCheckpoint.Version {
@@ -44,50 +50,50 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(m encoding.Marshaler, bytes 
 		// to have the old checkpoint not even deserialize as an apitype.VersionedCheckpoint.
 		var v1checkpoint apitype.CheckpointV1
 		if err := m.Unmarshal(bytes, &v1checkpoint); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 
 		v2checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
 		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
-		return &v3checkpoint, nil
+		return &v3checkpoint, 3, nil, nil
 	case 1:
 		var v1checkpoint apitype.CheckpointV1
 		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v1checkpoint); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 
 		v2checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
 		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
-		return &v3checkpoint, nil
+		return &v3checkpoint, 3, nil, nil
 	case 2:
 		var v2checkpoint apitype.CheckpointV2
 		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v2checkpoint); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 
 		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
-		return &v3checkpoint, nil
+		return &v3checkpoint, 3, nil, nil
 	case 3:
 		var v3checkpoint apitype.CheckpointV3
 		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v3checkpoint); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 
-		return &v3checkpoint, nil
+		return &v3checkpoint, versionedCheckpoint.Version, nil, nil
 	case 4:
 		// Version 4 is unmarshaled to CheckpointV3.
 		var v3checkpoint apitype.CheckpointV3
 		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v3checkpoint); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 
 		if err := validateSupportedFeatures(versionedCheckpoint.Features); err != nil {
-			return nil, err
+			return nil, 0, nil, err
 		}
 
-		return &v3checkpoint, nil
+		return &v3checkpoint, versionedCheckpoint.Version, versionedCheckpoint.Features, nil
 	default:
-		return nil, fmt.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
+		return nil, 0, nil, fmt.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}
 }
 
@@ -109,6 +115,7 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 
 	return &apitype.VersionedCheckpoint{
 		Version:    deployment.Version,
+		Features:   deployment.Features,
 		Checkpoint: bytes,
 	}, nil
 }
@@ -119,13 +126,15 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 ) (*apitype.VersionedCheckpoint, error) {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *apitype.DeploymentV3
+	version := apitype.DeploymentSchemaVersionCurrent
+	var features []string
 	if snap != nil {
+		var err error
 		ctx := context.TODO()
-		dep, err := SerializeDeployment(ctx, snap, showSecrets)
+		latest, version, features, err = SerializeDeploymentWithMetadata(ctx, snap, showSecrets)
 		if err != nil {
 			return nil, fmt.Errorf("serializing deployment: %w", err)
 		}
-		latest = dep
 	}
 
 	b, err := encoding.JSON.Marshal(apitype.CheckpointV3{
@@ -137,7 +146,8 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	}
 
 	return &apitype.VersionedCheckpoint{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Version:    version,
+		Features:   features,
 		Checkpoint: json.RawMessage(b),
 	}, nil
 }

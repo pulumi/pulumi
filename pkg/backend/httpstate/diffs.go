@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/span"
@@ -185,17 +186,26 @@ func (s *spanner) finish() ([]byte, spans) {
 	return s.Bytes(), s.spans
 }
 
-func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3) (spans, error) {
-	// one span for {"manifest":...,"secrets_providers":...,"metadata":...,"resources":[
+func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3, version int, features []string) (spans, error) {
+	// one span for {"version":...,"features":...,"deployment":
+	//     {"manifest":...,"secrets_providers":...,"metadata":...,"resources":[
 	// len(resources) spans for resources,
 	// one span for ],"pendingOperations":[
 	// len(operations) spans for operations
-	// one span for ]}
+	// one span for ]}}
 	spanner := newSpanner(b, len(d.Resources)+len(d.PendingOperations)+3)
 	encoder := segmentio_json.NewEncoder(spanner)
 	encoder.SetAppendNewline(false)
 
-	spanner.WriteString(`{"version":3,"deployment":{"manifest":`)
+	spanner.WriteString(`{"version":`)
+	spanner.WriteString(strconv.Itoa(version))
+	if len(features) > 0 {
+		spanner.WriteString(`,"features":`)
+		if err := encoder.Encode(features); err != nil {
+			return spans{}, err
+		}
+	}
+	spanner.WriteString(`,"deployment":{"manifest":`)
 	if err := encoder.Encode(d.Manifest); err != nil {
 		return spans{}, err
 	}
@@ -244,14 +254,18 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3) (spans, 
 	return spans, nil
 }
 
-func (dds *deploymentDiffState) MarshalDeployment(d *apitype.DeploymentV3) (deployment, error) {
+func (dds *deploymentDiffState) MarshalDeployment(
+	d *apitype.DeploymentV3,
+	version int,
+	features []string,
+) (deployment, error) {
 	var b *bytes.Buffer
 	if dds.buffer != nil {
 		b, dds.buffer = dds.buffer, nil
 	} else {
 		b = &bytes.Buffer{}
 	}
-	spans, err := marshalSpannedDeployment(b, d)
+	spans, err := marshalSpannedDeployment(b, d, version, features)
 	if err != nil {
 		return deployment{}, err
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -206,6 +206,101 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, float64(999.9), outmap["z"].(float64))
 	require.NotNil(t, dep.Outputs["out-empty-map"])
 	assert.Equal(t, 0, len(dep.Outputs["out-empty-map"].(map[string]interface{})))
+}
+
+// TestSerializeDeploymentWithMetadata tests that the appropriate version and features are used when
+// serializing a deployment.
+func TestSerializeDeploymentWithMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name             string
+		resources        []*resource.State
+		expectedVersion  int
+		expectedFeatures []string
+	}{
+		{
+			name: "v3 deployment with no features",
+			resources: []*resource.State{
+				{
+					URN: "urn1",
+				},
+			},
+			expectedVersion:  3,
+			expectedFeatures: nil,
+		},
+		{
+			name: "v4 deployment with refreshBeforeUpdate",
+			resources: []*resource.State{
+				{
+					URN:                 "urn1",
+					RefreshBeforeUpdate: true,
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"refreshBeforeUpdate"},
+		},
+		{
+			name: "v4 deployment with views",
+			resources: []*resource.State{
+				{
+					URN: "urn1",
+				},
+				{
+					URN:    "urn2",
+					Parent: "urn1",
+					ViewOf: "urn1",
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"views"},
+		},
+		{
+			name: "v4 deployment with hooks",
+			resources: []*resource.State{
+				{
+					URN: "urn1",
+					ResourceHooks: map[resource.HookType][]string{
+						resource.AfterCreate: {"hook1"},
+					},
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"hooks"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := &deploy.Snapshot{
+				Resources: tt.resources,
+			}
+			deployment, version, features, err := SerializeDeploymentWithMetadata(ctx, snap, false)
+			require.NoError(t, err)
+			require.NotNil(t, deployment)
+			assert.Equal(t, tt.expectedVersion, version)
+			assert.Equal(t, tt.expectedFeatures, features)
+
+			deployment2, err := SerializeDeployment(ctx, snap, false)
+			require.NoError(t, err)
+			require.NotNil(t, deployment2)
+			assert.Equal(t, deployment, deployment2)
+
+			untypedDeployment, err := SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
+			require.NoError(t, err)
+			require.NotNil(t, untypedDeployment)
+			assert.Equal(t, tt.expectedVersion, untypedDeployment.Version)
+			assert.Equal(t, tt.expectedFeatures, untypedDeployment.Features)
+
+			deploymentJSON, err := json.Marshal(deployment)
+			require.NoError(t, err)
+			require.NotNil(t, deploymentJSON)
+			assert.Equal(t, json.RawMessage(deploymentJSON), untypedDeployment.Deployment)
+		})
+	}
 }
 
 func TestLoadTooNewDeployment(t *testing.T) {

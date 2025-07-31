@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -991,6 +991,8 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 
+	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
+
 	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
@@ -1909,6 +1911,8 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack
 		return err
 	}
 
+	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, deployment)
+
 	update, err := b.client.ImportStackDeployment(ctx, stackID, deployment)
 	if err != nil {
 		return err
@@ -2400,4 +2404,31 @@ func (b *cloudBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 
 func (b *cloudBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	return newCloudRegistry(b.client)
+}
+
+// downgradeDeploymentVersionIfNeeded downgrades the deployment schema version to 3 if the service does not
+// support a higher version. This is necessary to ensure compatibility with versions of the service, such as
+// the self-hosted service, that do not support the latest deployment schema version.
+func (b *cloudBackend) downgradeDeploymentVersionIfNeeded(
+	ctx context.Context, version int, features []string,
+) (int, []string) {
+	// Downgrade to v3 if the version is greater than 3 and the service does not support it.
+	// Version 3 is supported by the service even if the version from capabilities isn't set.
+	if version > 3 && b.Capabilities(ctx).DeploymentSchemaVersion <= 3 {
+		logging.V(7).Infof("Downgrading deployment schema version %d to 3 for compatibility with backend", version)
+		return 3, nil
+	}
+	return version, features
+}
+
+// downgradeUntypedDeploymentVersionIfNeeded downgrades the deployment schema version to 3 if the service does not
+// support a higher version. This is necessary to ensure compatibility with versions of the service, such as
+// the self-hosted service, that do not support the latest deployment schema version.
+func (b *cloudBackend) downgradeUntypedDeploymentVersionIfNeeded(
+	ctx context.Context, deployment *apitype.UntypedDeployment,
+) {
+	if deployment != nil {
+		deployment.Version, deployment.Features = b.downgradeDeploymentVersionIfNeeded(
+			ctx, deployment.Version, deployment.Features)
+	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1147,17 +1147,16 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
+func (pc *Client) PatchUpdateCheckpoint(
+	ctx context.Context,
+	update UpdateIdentifier,
+	deployment *apitype.UntypedDeployment,
 	token UpdateTokenSource,
 ) error {
-	rawDeployment, err := json.Marshal(deployment)
-	if err != nil {
-		return err
-	}
-
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    3,
-		Deployment: rawDeployment,
+		Version:    deployment.Version,
+		Features:   deployment.Features,
+		Deployment: deployment.Deployment,
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
@@ -1169,10 +1168,10 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token UpdateTokenSource,
+	sequenceNumber int, untypedDeploymentBytes json.RawMessage, deploymentVersion int, token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateVerbatimCheckpointRequest{
-		Version:           3,
+		Version:           deploymentVersion,
 		UntypedDeployment: untypedDeploymentBytes,
 		SequenceNumber:    sequenceNumber,
 	}
@@ -1192,10 +1191,11 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 // PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
 // large stack states.
 func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token UpdateTokenSource,
+	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, deploymentVersion int,
+	token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateCheckpointDeltaRequest{
-		Version:         3,
+		Version:         deploymentVersion,
 		CheckpointHash:  checkpointHash,
 		SequenceNumber:  sequenceNumber,
 		DeploymentDelta: deploymentDelta,

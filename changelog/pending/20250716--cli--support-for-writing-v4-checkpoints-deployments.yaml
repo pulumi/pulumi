@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Support for writing v4 checkpoints/deployments
