@@ -182,6 +182,24 @@ func readImportFile(p string) (importFile, error) {
 	return result, nil
 }
 
+// getImportFile takes a path and returns an *os.File suitable for writing JSON-encoded resources to. If the provided
+// path is empty, it attempts to create a temporary file in the current working directory.
+func getImportFile(path string) (*os.File, error) {
+	if path == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("working directory: %w", err)
+		}
+		f, err := os.CreateTemp(wd, "pulumi-import-*.json")
+		if err != nil {
+			return nil, fmt.Errorf("create temp file: %w", err)
+		}
+		return f, nil
+	}
+
+	return os.Create(path)
+}
+
 func writeImportFile(v importFile, f io.Writer) error {
 	enc := json.NewEncoder(f)
 	enc.SetEscapeHTML(false)
@@ -190,17 +208,17 @@ func writeImportFile(v importFile, f io.Writer) error {
 	return err
 }
 
-func writeImportFileToTemp(v importFile) (string, error) {
-	wd, err := os.Getwd()
+// writeImportFileTo writes the import file to the given path, creating a temporary file in the current working
+// directory if the path is empty. It returns the path to the file written to, or an error if it failed to write the
+// file.
+func writeImportFileTo(v importFile, path string) (string, error) {
+	f, err := getImportFile(path)
 	if err != nil {
-		return "", fmt.Errorf("working directory: %w", err)
+		return "", err
 	}
-	f, err := os.CreateTemp(wd, "pulumi-import-*.json")
-	if err != nil {
-		return "", fmt.Errorf("create temp file: %w", err)
-	}
-	path := f.Name()
+
 	defer contract.IgnoreClose(f)
+	path = f.Name()
 
 	err = writeImportFile(v, f)
 	if err != nil {
@@ -561,6 +579,7 @@ func NewImportCmd() *cobra.Command {
 	var properties []string
 
 	var from string
+	var generateResources string
 
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
@@ -957,25 +976,36 @@ func NewImportCmd() *cobra.Command {
 				}
 			}
 
-			if err != nil {
-				if err == context.Canceled {
-					return errors.New("import cancelled")
+			if err == context.Canceled {
+				return errors.New("import cancelled")
+			}
+
+			// If we did a conversion import (i.e. from!="") then we'll write the file we've built out to the local
+			// directory when:
+			//
+			// * there's an error, so that users can manually edit the file and try again; or
+			// * the user passed the --generate-resources flag, so that we always write the file out.
+			if from != "" && (err != nil || generateResources != "") {
+				path, werr := writeImportFileTo(importFile, generateResources)
+				if werr != nil {
+					return werr
 				}
 
-				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
-				// directory so if there's any issues users can manually edit the file and try again with --file
-				if from != "" {
-					path, err := writeImportFileToTemp(importFile)
-					if err != nil {
-						return err
-					}
+				if err != nil {
 					pCtx.Diag.Infof(diag.Message("",
 						"Generated import file written out, edit and rerun import with --file %s"),
-						path, path)
+						path)
+				} else {
+					pCtx.Diag.Infof(diag.Message("",
+						"Generated import file written out to %s"),
+						path)
 				}
+			}
 
+			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 	}
@@ -1044,6 +1074,10 @@ func NewImportCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&from, "from", "",
 		"Invoke a converter to import the resources")
+	cmd.PersistentFlags().StringVar(
+		&generateResources, "generate-resources", "",
+		//nolint:lll
+		"When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path")
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
