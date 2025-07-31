@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: Bump TypeScript target to ES2020 for plugins and policy packs

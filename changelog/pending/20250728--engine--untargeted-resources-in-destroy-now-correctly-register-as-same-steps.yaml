@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Untargeted resources in `destroy` now correctly register as same steps

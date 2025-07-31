@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix un-taring registry-backed templates which come in .tar.gz format

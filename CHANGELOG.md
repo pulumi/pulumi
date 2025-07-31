@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.187.0 (2025-07-31)
+
+
+### Features
+
+- [cli] Support for writing v4 checkpoints/deployments
+  [#20159](https://github.com/pulumi/pulumi/pull/20159)
+
+- [cli] Add support for qualified registry template names in `pulumi new`
+  [#20138](https://github.com/pulumi/pulumi/pull/20138)
+
+- [cli/import] Enable `pulumi import` to always `--generate-resources` when converting `--from` state files
+  [#20178](https://github.com/pulumi/pulumi/pull/20178)
+
+- [yaml] Allow config values to be parsed with type `object`
+  [#20132](https://github.com/pulumi/pulumi/pull/20132)
+
+- [auto/python] Allow for `on_error` callbacks in commands to capture stderr incrementally
+  [#20019](https://github.com/pulumi/pulumi/pull/20019)
+
+- [sdk/nodejs] Add option of Bun as a package manager
+  [#18412](https://github.com/pulumi/pulumi/pull/18412)
+
+- [sdk/nodejs] Copy `getRootDirectory` to the pulumi module
+  [#20173](https://github.com/pulumi/pulumi/pull/20173)
+
+- [sdk/python] Copy `get_root_directory` to the pulumi module
+  [#20172](https://github.com/pulumi/pulumi/pull/20172)
+
+
+### Bug Fixes
+
+- [cli] Fix un-taring registry-backed templates which come in .tar.gz format
+  [#20135](https://github.com/pulumi/pulumi/pull/20135)
+
+- [cli] Stop passing Accept: application/x-tar to registry template download URLs to avoid signature mismatch
+  [#20133](https://github.com/pulumi/pulumi/pull/20133)
+
+- [engine] Fix a panic with `up --refresh --run-program` and resource replacements
+  [#20147](https://github.com/pulumi/pulumi/pull/20147)
+
+- [engine] Untargeted resources in `destroy` now correctly register as same steps
+  [#20061](https://github.com/pulumi/pulumi/pull/20061)
+
+- [cli/engine] Fix hang when waiting for program that would never complete
+  [#20153](https://github.com/pulumi/pulumi/pull/20153)
+
+- [sdk/nodejs] Fix delete hooks in inline automation API programs
+  [#20143](https://github.com/pulumi/pulumi/pull/20143)
+
+- [sdk/python] Set features inside construct
+  [#20141](https://github.com/pulumi/pulumi/pull/20141)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Bump TypeScript target to ES2020 for plugins and policy packs
+  [#20148](https://github.com/pulumi/pulumi/pull/20148)
+
 ## 3.186.0 (2025-07-25)
 
 

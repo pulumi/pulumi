@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description:  Copy `getRootDirectory` to the pulumi module
