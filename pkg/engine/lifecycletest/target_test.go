@@ -430,8 +430,8 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
-// If a resource is excluded but doesn't register, it should still not be deleted.
-func TestExcludedDeletion(t *testing.T) {
+// You should be able to use a glob to exclude resources.
+func TestGlobExcludes(t *testing.T) {
 	t.Parallel()
 
 	p := &lt.TestPlan{}
