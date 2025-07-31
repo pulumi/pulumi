@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: yaml
-  description: Allow config values to be parsed with type `object`

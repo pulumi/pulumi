@@ -1,5 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add support for qualified registry template names in `pulumi new`
-
