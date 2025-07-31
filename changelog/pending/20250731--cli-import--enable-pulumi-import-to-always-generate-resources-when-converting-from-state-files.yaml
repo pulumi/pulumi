@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/import
+  description: Enable `pulumi import` to always `--generate-resources` when converting `--from` state files
