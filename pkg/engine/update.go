@@ -603,7 +603,7 @@ func newUpdateActions(context *Context, u UpdateInfo, opts *deploymentOptions) *
 	}
 }
 
-func (acts *updateActions) OnRebase(step *deploy.Snapshot) error {
+func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
 	return acts.Context.SnapshotManager.Write(step)
 }
 
@@ -803,7 +803,7 @@ func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 	}
 }
 
-func (acts *previewActions) OnRebase(base *deploy.Snapshot) error {
+func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
 	return acts.Context.SnapshotManager.Write(base)
 }
 

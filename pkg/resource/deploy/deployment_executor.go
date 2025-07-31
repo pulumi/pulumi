@@ -151,7 +151,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// Close the deployment when we're finished.
 	defer contract.IgnoreClose(ex.deployment)
 	if ex.deployment.rebase && ex.deployment.events != nil {
-		err := ex.deployment.events.OnRebase(ex.deployment.prev)
+		err := ex.deployment.events.OnSnapshotWrite(ex.deployment.prev)
 		if err != nil {
 			return nil, result.BailErrorf("failed to rebase deployment: %v", err)
 		}

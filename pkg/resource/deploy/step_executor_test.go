@@ -93,7 +93,7 @@ func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, resou
 	panic("unimplemented")
 }
 
-func (e *mockEvents) OnRebase(base *Snapshot) error {
+func (e *mockEvents) OnSnapshotWrite(base *Snapshot) error {
 	return nil
 }
 
