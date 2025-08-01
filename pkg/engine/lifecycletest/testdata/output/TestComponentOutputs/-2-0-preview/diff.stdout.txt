@@ -1,0 +1,4 @@
+<{%reset%}>  component: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::component::resA]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged

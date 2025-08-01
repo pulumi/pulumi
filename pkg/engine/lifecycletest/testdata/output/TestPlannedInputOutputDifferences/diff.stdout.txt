@@ -1,0 +1,9 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=00ab65d1-bcf8-4313-964d-dc532eb785f5]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=created-id-resA]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ frob: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>b<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>newB<{%reset%}><{%reset%}>az<{%reset%}><{%fg 2%}>zer<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>

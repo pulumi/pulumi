@@ -97,6 +97,8 @@ type SummaryEvent struct {
 	// compatibility. For older clients this will map to the version, while for newer ones
 	// it will be the version tag prepended with "v".
 	PolicyPacks map[string]string `json:"PolicyPacks"`
+	// IsPreview indicates whether this is a preview or an update.
+	IsPreview bool `json:"isPreview"`
 }
 
 // DiffKind describes the kind of a particular property diff.

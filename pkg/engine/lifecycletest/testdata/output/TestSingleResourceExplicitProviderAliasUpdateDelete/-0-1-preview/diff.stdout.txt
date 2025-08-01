@@ -1,0 +1,12 @@
+<{%fg 3%}>~ pulumi:providers:pkgA: (update)
+<{%reset%}>    [id=c168f929-bd92-45d4-aa71-8085507a7517]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
+<{%reset%}><{%fg 3%}>  ~ id: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>second<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=28a4b60b-a701-47b7-b893-8b221fbd888d]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::c168f929-bd92-45d4-aa71-8085507a7517]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>
+    <{%fg 1%}>- 1 to delete<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>

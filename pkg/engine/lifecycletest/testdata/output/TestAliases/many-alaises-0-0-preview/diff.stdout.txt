@@ -1,0 +1,14 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=a62b03c0-467d-4b3a-a6fb-d6b6a61d8875]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:index:t1-v100: (same)
+<{%reset%}>    [id=acbd7eaf-3e89-4c53-829e-e64b59796369]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:t1-v100::n1-new]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:index:t2-v10: (same)
+<{%reset%}>        [id=edf84670-d821-48a8-a8ed-9a87240c7f26]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:index:t1-v100$pkgA:index:t2-v10::n1-new-sub]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:index:t3: (same)
+<{%reset%}>            [id=15a52412-358f-48de-8792-fb54dab5a701]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:index:t1-v100$pkgA:index:t2-v10$pkgA:index:t3::n1-new-sub-sub]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    3 unchanged

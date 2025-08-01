@@ -1,0 +1,10 @@
+<{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=571ec274-51d7-487f-b290-54c2b512f6c0]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provB::17cb119b-b360-417e-b256-45d0210722e6]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=17cb119b-b360-417e-b256-45d0210722e6]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
+<{%reset%}><{%fg 1%}>    id: <{%reset%}><{%fg 1%}>"second"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 to delete<{%reset%}>

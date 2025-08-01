@@ -195,7 +195,7 @@ func TestUnplannedCreate(t *testing.T) {
 	project := p.GetProject()
 
 	// Create a plan to do nothing
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Now set the flag for the language runtime to create a resource, and run update with the plan
@@ -203,7 +203,7 @@ func TestUnplannedCreate(t *testing.T) {
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>create is not allowed by the plan: no steps were expected for this resource<{%reset%}>\n"))
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
 
 	// Check nothing was was created
@@ -267,7 +267,7 @@ func TestUnplannedDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a plan that resA and resB won't change
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 
 	// Now set the flag for the language runtime to not create resB and run an update with
@@ -488,7 +488,7 @@ func TestPropertySetChange(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial plan to create resA
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
 	require.NotNil(t, plan)
 	require.NoError(t, err)
 
@@ -501,7 +501,7 @@ func TestPropertySetChange(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: +-frob[{baz}]<{%reset%}>\n"))
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "1")
 	require.NotNil(t, snap)
 	require.NoError(t, err)
 }
@@ -799,7 +799,7 @@ func TestPlannedPreviews(t *testing.T) {
 		},
 		"zed": computed,
 	})
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Attempt to run a new preview using the plan, given we've changed the property set this should fail
@@ -832,7 +832,7 @@ func TestPlannedPreviews(t *testing.T) {
 		"zed": "grr",
 	})
 	p.Options.Plan = plan.Clone()
-	_, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	_, err = lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
 
@@ -969,7 +969,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial plan to create resA and the outputs
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
 	require.NotNil(t, plan)
 	require.NoError(t, err)
 
@@ -980,7 +980,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource violates plan: properties changed: +-frob[{baz}]<{%reset%}>\n"))
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "1")
 	require.NotNil(t, snap)
 	require.NoError(t, err)
 }
@@ -1460,7 +1460,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	})
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate, "0")
 	assert.Nil(t, plan)
 	require.NoError(t, err)
 
@@ -1469,7 +1469,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "good",
 	})
-	plan, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	plan, err = lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "1")
 	require.NotNil(t, plan)
 	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 	require.NoError(t, err)
@@ -1482,7 +1482,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	p.Options.Plan = plan.Clone()
 	validate = ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "2")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 
@@ -1841,7 +1841,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 	project := p.GetProject()
 
 	// Create the update plan without targeting the root stack.
-	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
 		T:     t,
 		HostF: p.Options.HostF,
 		UpdateOptions: UpdateOptions{
@@ -1851,12 +1851,12 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 				resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
 			}),
 		},
-	}, p.BackendClient, nil)
+	}, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 
 	// Check that update succeeds despite the root stack not being targeted.
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
 		T:     t,
 		HostF: p.Options.HostF,
 		UpdateOptions: UpdateOptions{
@@ -1866,6 +1866,6 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 				resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }

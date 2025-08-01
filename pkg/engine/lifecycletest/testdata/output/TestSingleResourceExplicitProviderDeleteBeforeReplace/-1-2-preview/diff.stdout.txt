@@ -1,0 +1,11 @@
+<{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=1052be1a-f417-4e98-806b-afd6f71427f2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::11ea86aa-55f9-4170-820c-1f5d09b14ab9]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=11ea86aa-55f9-4170-820c-1f5d09b14ab9]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    foo: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged

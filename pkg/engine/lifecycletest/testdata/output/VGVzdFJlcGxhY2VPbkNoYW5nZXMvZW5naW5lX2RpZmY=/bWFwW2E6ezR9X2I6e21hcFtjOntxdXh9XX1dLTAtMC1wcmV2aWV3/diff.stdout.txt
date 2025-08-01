@@ -1,0 +1,12 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=cc1fe366-2955-4552-bee8-6677b1b89eb0]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=id123]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>3<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>4<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>  ~ b: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ c: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>baz<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>qux<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>

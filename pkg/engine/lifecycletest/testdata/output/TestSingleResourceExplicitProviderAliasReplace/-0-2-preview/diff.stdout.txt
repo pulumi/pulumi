@@ -1,0 +1,26 @@
+<{%fg 10%}>++pulumi:providers:pkgA: (create-replacement)
+<{%reset%}>    [id=81c18dc9-588d-4102-b5f1-d3e509438711]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
+<{%reset%}><{%fg 3%}>  ~ id: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>second<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}>+-pulumi:providers:pkgA: (replace)
+<{%reset%}>    [id=81c18dc9-588d-4102-b5f1-d3e509438711]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
+<{%reset%}><{%fg 3%}>  ~ id: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>second<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%reset%}>    [id=88d8d4a7-c873-4ced-a9d3-ebf198be91f2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::81c18dc9-588d-4102-b5f1-d3e509438711<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::[unknown]<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
+<{%reset%}>    [id=88d8d4a7-c873-4ced-a9d3-ebf198be91f2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::81c18dc9-588d-4102-b5f1-d3e509438711<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::[unknown]<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
+<{%fg 9%}>    [id=88d8d4a7-c873-4ced-a9d3-ebf198be91f2]
+<{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provB::81c18dc9-588d-4102-b5f1-d3e509438711]
+<{%reset%}><{%reset%}><{%fg 9%}>--pulumi:providers:pkgA: (delete-replaced)
+<{%fg 9%}>    [id=81c18dc9-588d-4102-b5f1-d3e509438711]
+<{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
+<{%reset%}><{%fg 9%}>    id: <{%reset%}><{%fg 9%}>"first"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-2 to replace<{%reset%}>

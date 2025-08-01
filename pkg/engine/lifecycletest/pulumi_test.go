@@ -205,11 +205,11 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, err error,
 		) error {
@@ -225,7 +225,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			}
 			assert.True(t, found)
 			return err
-		})
+		}, "1")
 	require.NoError(t, err)
 }
 
@@ -1920,12 +1920,12 @@ func TestDetailedDiffReplace(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, err error,
 		) error {
@@ -1940,7 +1940,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 			}
 			assert.True(t, found)
 			return err
-		})
+		}, "1")
 	require.NoError(t, err)
 }
 
@@ -2492,20 +2492,20 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	// Run a preview. The inputs should not be propagated to the outputs by the provider during the create because the
 	// provider has unknown inputs.
 	preview, sawPreview = true, false
-	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
 	// has unknown inputs.
 	preview, sawPreview = true, false
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	assert.False(t, sawPreview)
 }

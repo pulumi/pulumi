@@ -188,6 +188,13 @@ func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts Test
 	return plan, err
 }
 
+func (op TestOp) PlanStep(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
+	backendClient deploy.BackendClient, validate ValidateFunc, name string,
+) (*deploy.Plan, error) {
+	plan, _, err := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate, name)
+	return plan, err
+}
+
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, error) {
@@ -289,11 +296,6 @@ func (op TestOp) runWithContext(
 		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
 	}
 
-	errs := []error{opErr, closeErr}
-	if dryRun {
-		return plan, nil, errors.Join(errs...)
-	}
-
 	if !opts.SkipDisplayTests {
 		// base64 encode the name if it contains special characters
 		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, name); !ok && name != "" {
@@ -314,6 +316,11 @@ func (op TestOp) runWithContext(
 			}
 		}
 		AssertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
+	}
+
+	errs := []error{opErr, closeErr}
+	if dryRun {
+		return plan, nil, errors.Join(errs...)
 	}
 
 	entries := journal.Entries()
@@ -668,7 +675,9 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 		if !step.SkipPreview {
 			previewTarget := p.GetTarget(t, snap)
 			// Don't run validate on the preview step
-			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
+			_, err := step.Op.RunStep(
+				project, previewTarget, p.Options, true, p.BackendClient, nil,
+				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run))
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
