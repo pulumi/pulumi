@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/env
+  description: Bump esc to v0.17.0
