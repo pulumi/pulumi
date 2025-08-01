@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix cancellation when running via some CLI wrapper tools

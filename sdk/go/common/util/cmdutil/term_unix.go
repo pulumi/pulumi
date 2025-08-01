@@ -19,9 +19,14 @@ package cmdutil
 
 import (
 	"errors"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
+
+func Interrupt(pid int) error {
+	return syscall.Kill(pid, syscall.SIGINT)
+}
 
 // shutdownProcessGroup sends a SIGINT to the given process group.
 // It returns immediately, and does not wait for the process to exit.

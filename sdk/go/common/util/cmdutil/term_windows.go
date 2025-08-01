@@ -23,6 +23,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+func Interrupt(pid int) error {
+	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(pid))
+}
+
 // shutdownProcessGroup sends a CTRL_BREAK_EVENT to the given process group.
 // It returns immediately, and does not wait for the process to exit.
 //
