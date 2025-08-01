@@ -648,6 +648,7 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		kind, token = fragment[:slash], fragment[slash+1:]
 	}
 
+	var diagnostics hcl.Diagnostics
 	switch kind {
 	case "provider":
 		if token != "" {
@@ -659,6 +660,17 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		if err != nil {
 			return typeSpecRef{}, hcl.Diagnostics{errorf(refPath, "failed to unescape token '%s': %v", token, err)}
 		}
+		// Its possible that the token is "pulumi:providers:<package>", which happened to work through the rest of
+		// binding but wasn't intended as a valid schema. The ref pointed to doesn't actually exist, there is no entry
+		// for "pulumi:providers:<package>" under the "resources" section. See
+		// https://github.com/pulumi/pulumi/issues/20029 for context.
+		if strings.HasPrefix(token, "pulumi:providers:") {
+			// For now we still consider this a valid reference, but we want to return a warning diagnostic. In the
+			// future, we'll make this an error.
+			diagnostics = hcl.Diagnostics{
+				warningf(refPath, "reference to provider resource '/resources/%s' is deprecated, use '#/provider' instead", token),
+			}
+		}
 	default:
 		return typeSpecRef{}, hcl.Diagnostics{errorf(refPath, "invalid type reference '%v'", ref)}
 	}
@@ -669,7 +681,7 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		Version: pkgVersion,
 		Kind:    kind,
 		Token:   token,
-	}, nil
+	}, diagnostics
 }
 
 func versionEquals(a, b *semver.Version) bool {
@@ -874,9 +886,11 @@ func (t *types) bindTypeSpecRef(
 	case typesRef:
 		// Try to bind this as a reference to a type defined by this package.
 		typ, diags, err := t.bindTypeDef(ref.Token, options)
+		diags = refDiags.Extend(diags)
 		if err != nil {
 			return nil, diags, err
 		}
+
 		switch typ := typ.(type) {
 		case *ObjectType:
 			// If the type is an object type, we might need to return its input shape.
@@ -910,9 +924,11 @@ func (t *types) bindTypeSpecRef(
 		return tokenType, diags, nil
 	case resourcesRef, providerRef:
 		typ, diags, err := t.bindResourceTypeDef(ref.Token, options)
+		diags = refDiags.Extend(diags)
 		if err != nil {
 			return nil, diags, err
 		}
+
 		if typ == nil {
 			typ, diags := invalidType(errorf(path, "resource type %v not found in package %v", ref.Token, ref.Package))
 			return typ, diags, nil
