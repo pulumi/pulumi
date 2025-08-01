@@ -1471,7 +1471,7 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 				Steps:   update,
 				Config:  c,
 			}
-			p.Run(t, nil)
+			p.RunWithName(t, nil, tt.name)
 		})
 	}
 }
