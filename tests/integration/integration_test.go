@@ -1756,25 +1756,15 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 func TestAutomationAPIErrorInResource(t *testing.T) {
 	t.Parallel()
 
-	root := t.TempDir()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
 
-	sourceDir := filepath.Join("automation", "error")
-	copyErr := fsutil.CopyFile(root, sourceDir, nil)
-	require.NoError(t, copyErr, "failed to copy source project")
+	e.ImportDirectory(filepath.Join("automation", "error"))
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	install := exec.Command("yarn", "install")
-	install.Dir = root
-	out, err := install.CombinedOutput()
-	require.NoError(t, err, "failed to install: %s", out)
+	e.RunCommand("yarn", "install")
 
-	// The bug was causing a hang, ensure the test times out
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
-
-	// Run the automation API program, we expect an error
-	run := exec.CommandContext(ctx, "node", "index.js")
-	run.Dir = root
-	out, err = run.CombinedOutput()
+	_, stderr, err := e.RunCommandReturnExpectedError("node", "index.js")
 	require.ErrorContains(t, err, "exit status 1")
-	require.Contains(t, string(out), "error: Oops")
+	require.Contains(t, stderr, "error: Oops")
 }
