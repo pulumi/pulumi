@@ -341,7 +341,7 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 			delete(diff.Updates, k)
 		} else {
 			massageStackPreviewDiff(d, inResource)
-			if !d.Object.AnyChanges() {
+			if !d.Object.AnyChanges() && d.Old.DeepEquals(d.New) || d.New.IsComputed() {
 				delete(diff.Updates, k)
 			}
 		}

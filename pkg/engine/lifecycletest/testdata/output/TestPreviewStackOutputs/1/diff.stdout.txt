@@ -1,0 +1,10 @@
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    first : <{%reset%}><{%reset%}>"abc"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    second: <{%reset%}><{%reset%}>"def"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ first : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>abc<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>step 1<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>    second: <{%reset%}><{%reset%}>"def"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
