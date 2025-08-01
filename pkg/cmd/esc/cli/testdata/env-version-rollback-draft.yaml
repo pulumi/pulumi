@@ -38,11 +38,11 @@ environments:
 ---
 > esc env version rollback default/test@stable --draft
 Change request created: 00000000-0000-0000-0000-000000000000
-Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
 Change request submitted
 > esc env version rollback default/test@1 --draft=EXAMPLE
 Change request updated
-Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests/EXAMPLE
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=EXAMPLE
 > esc env version rollback default/test@2 --draft
 
 ---
