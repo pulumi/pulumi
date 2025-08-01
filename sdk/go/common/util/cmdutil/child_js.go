@@ -42,3 +42,7 @@ func RegisterProcessGroup(cmd *exec.Cmd) {
 func InterruptChildren(pid int) error {
 	panic(errors.New("unsupported"))
 }
+
+func CreateProcessGroup() error {
+	panic(errors.New("unsupported"))
+}

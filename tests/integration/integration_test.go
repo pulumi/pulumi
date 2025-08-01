@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kr/pty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1777,4 +1778,83 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	out, err = run.CombinedOutput()
 	require.ErrorContains(t, err, "exit status 1")
 	require.Contains(t, string(out), "error: Oops")
+}
+
+// TestNonForegroundTerminal tests that we don't hang when running a Pulumi
+// operation in an interactive terminal, but we are not the foreground process
+// group of the current terminal session.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/20154
+func TestNonForegroundTerminal2(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	programPath := filepath.Join(e.RootPath, "program")
+
+	e.ImportDirectory(filepath.Join("shutdown"))
+	e.CWD = programPath
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.CWD = e.RootPath
+
+	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
+	// This simulates the behaviour of the 1password CLI.
+	cmd := e.SetupCommandIn(filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
+		"pulumi", "-C", programPath, "up", "--skip-preview", "-s", "dev")
+
+	// This test requires being run via a "real" terminal
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{
+		Rows: 24,
+		Cols: 80,
+	})
+	require.NoError(t, err)
+	defer ptmx.Close()
+
+	processFinished := make(chan error, 1)
+	var output strings.Builder
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if n > 0 {
+				output.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	go func() {
+		processFinished <- cmd.Wait()
+	}()
+
+	timeout := 3 * time.Minute
+
+	select {
+	case err := <-processFinished:
+		require.NoError(t, err)
+
+	case <-time.After(timeout):
+		// This is the bug - process hung trying to control terminal
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+
+		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
+			" Output so far: %s", timeout.String(), output.String())
+	}
 }

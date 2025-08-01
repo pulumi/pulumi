@@ -45,3 +45,10 @@ func shutdownProcessGroup(pid int) error {
 func isWaitAlreadyExited(err error) bool {
 	return errors.Is(err, windows.ERROR_INVALID_HANDLE)
 }
+
+// IgnoreSigttou ignores SIGTTOU signals.
+//
+// This is a no-op on Windows.
+func IgnoreSigttou() func() {
+	return func() {}
+}

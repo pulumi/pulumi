@@ -18,6 +18,7 @@
 package cmdutil
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
@@ -56,4 +57,13 @@ func RegisterProcessGroup(cmd *exec.Cmd) {
 func InterruptChildren(pid int) {
 	err := syscall.Kill(-pid, syscall.SIGINT)
 	contract.IgnoreError(err)
+}
+
+// CreateProcessGroup makes this process the leader of its own process group.
+func CreateProcessGroup() error {
+	// Set process group ID to the current process ID, making this process the group leader
+	if err := syscall.Setpgid(0, 0); err != nil {
+		return fmt.Errorf("failed to create process group for %d: %w", os.Getpid(), err)
+	}
+	return nil
 }

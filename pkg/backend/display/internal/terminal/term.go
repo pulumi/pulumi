@@ -89,9 +89,25 @@ func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 	var save *term.State
 	var inFile cancelreader.CancelReader
 	if raw {
+		// When attached to an interactive terminal, Pulumi tries to set the
+		// terminal mode to raw, which requires the process to be in the process
+		// group that's in the foreground of the current terminal session.
+		//
+		// If the process is not in the foreground process group, the terminal
+		// mode cannot be set. Instead when ioctl (via MakeRaw) is called on the
+		// terminal we get a SIGTTOU signal, with the default behaviour to stop
+		// the process - we hang. By adding a no-op handler for SIGTTOU, we
+		// won't hang. The ioctl call will return with an error, which we handle
+		// and we can continue the operation, although not in raw mode.
+
+		// TODO: commented out to ensure tests fail in CI.
+		// restoreSigttou := cmdutil.IgnoreSigttou()
+		fmt.Printf("about to call MakeRaw\n")
 		if save, err = term.MakeRaw(outFd); err != nil {
 			return nil, fmt.Errorf("enabling raw mode: %w", err)
 		}
+		fmt.Printf("did call MakeRaw\n")
+		// restoreSigttou()
 		if inFile, err = cancelreader.NewReader(in); err != nil {
 			return nil, ErrNotATerminal
 		}

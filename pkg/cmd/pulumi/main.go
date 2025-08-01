@@ -21,6 +21,7 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"go.uber.org/automaxprocs/maxprocs"
@@ -55,6 +56,12 @@ func main() {
 	// Fix for https://github.com/pulumi/pulumi/issues/18814, set GOMAXPROCs to the number of CPUs available
 	// taking into account quotas and cgroup limits.
 	maxprocs.Set() //nolint:errcheck // we don't care if this fails
+
+	// We always want to run in our own process group, so we can easily signal child processes.
+	if err := cmdutil.CreateProcessGroup(); err != nil {
+		cmd.DisplayErrorMessage(err)
+		os.Exit(-1)
+	}
 
 	finished := new(bool)
 	defer panicHandler(finished)

@@ -26,3 +26,7 @@ func shutdownProcessGroup(pid int) error {
 func isWaitAlreadyExited(err error) bool {
 	panic(errors.New("unimplemented"))
 }
+
+func IgnoreSigttou() func() {
+	panic(errors.New("unimplemented"))
+}

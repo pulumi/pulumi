@@ -19,6 +19,9 @@ package cmdutil
 
 import (
 	"errors"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
@@ -46,4 +49,23 @@ func shutdownProcessGroup(pid int) error {
 func isWaitAlreadyExited(err error) bool {
 	return errors.Is(err, unix.ESRCH) || //  no such process
 		errors.Is(err, unix.ECHILD) //  no child processes
+}
+
+// IgnoreSigttou ignores SIGTTOU signals.
+//
+// On unix, this is done by registering a signal handler that does nothing. We
+// don't use signal.Ignore(syscall.SIGTTOU), because that can't be undone and we
+// want to be the least intrusive possible.
+// https://github.com/golang/go/issues/46321
+func IgnoreSigttou() func() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTTOU)
+	go func() {
+		for range sigChan {
+		}
+	}()
+	return func() {
+		signal.Stop(sigChan)
+		close(sigChan)
+	}
 }

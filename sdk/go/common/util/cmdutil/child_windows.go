@@ -122,3 +122,12 @@ func InterruptChildren(pid int) {
 	_, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_BREAK_EVENT, uintptr(pid))
 	contract.IgnoreError(err)
 }
+
+// CreateProcessGroup makes this process the leader of its own process group.
+//
+// No-op on Windows. We don't rely on process groups in KillChildren, instead we
+// iterate over all the processes, and look for those that are (immediately)
+// parented to the root process, and kill them.
+func CreateProcessGroup() error {
+	return nil
+}
