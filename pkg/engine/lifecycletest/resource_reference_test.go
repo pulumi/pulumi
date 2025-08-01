@@ -63,6 +63,7 @@ func TestResourceReferences(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -146,6 +147,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -224,6 +226,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -302,6 +305,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},

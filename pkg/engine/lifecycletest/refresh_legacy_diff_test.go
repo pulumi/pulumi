@@ -131,6 +131,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
+					new.ID = req.ID
 					return plugin.ReadResponse{
 						ReadResult: new,
 						Status:     resource.StatusOK,

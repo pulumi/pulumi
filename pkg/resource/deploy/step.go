@@ -1312,7 +1312,15 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
-	outputs := refreshed.Outputs
+
+	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: %v, Outputs: %v",
+		refreshed.ID, refreshed.Inputs, refreshed.Outputs)
+
+	// If the ID is blank treat this as a delete, and leave outputs blank.
+	var outputs resource.PropertyMap
+	if refreshed.ID != "" {
+		outputs = refreshed.Outputs
+	}
 
 	// If the provider specified new inputs for this resource, pick them up now. Otherwise, retain the current inputs.
 	inputs := s.old.Inputs
@@ -1321,10 +1329,12 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	if outputs != nil {
+		contract.Assertf(refreshed.ID != "", "refreshed.ID can not be empty")
+
 		// There is a chance that the ID has changed. We want to allow this change to happen
 		// it will have changed already in the outputs, but we need to persist this change
 		// at a state level because the Id
-		if refreshed.ID != "" && refreshed.ID != resourceID {
+		if refreshed.ID != resourceID {
 			logging.V(7).Infof("Refreshing ID; oldId=%s, newId=%s", resourceID, refreshed.ID)
 			resourceID = refreshed.ID
 		}
