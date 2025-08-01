@@ -1764,6 +1764,12 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 
 	e.RunCommand("yarn", "install")
 
+	// The bug was causing a hang, ensure the test times out
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	e.Ctx = &ctx
+
 	_, stderr, err := e.RunCommandReturnExpectedError("node", "index.js")
 	require.ErrorContains(t, err, "exit status 1")
 	require.Contains(t, stderr, "error: Oops")

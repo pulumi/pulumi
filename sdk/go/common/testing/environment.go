@@ -16,6 +16,7 @@ package testing
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -58,6 +59,8 @@ type Environment struct {
 	NoPassphrase bool
 	// Content to pass on stdin, if any
 	Stdin io.Reader
+	// Ctx is the context to use for commands.
+	Ctx *context.Context
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -229,7 +232,12 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 		command = e.resolvePulumiPath()
 	}
 
-	cmd := exec.Command(command, args...)
+	var cmd *exec.Cmd
+	if e.Ctx != nil {
+		cmd = exec.CommandContext(*e.Ctx, command, args...)
+	} else {
+		cmd = exec.Command(command, args...)
+	}
 	cmd.Dir = dir
 	if e.Stdin != nil {
 		cmd.Stdin = e.Stdin
