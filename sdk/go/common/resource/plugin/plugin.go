@@ -556,6 +556,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}()
 
 	kill := sync.OnceValue(func() error {
+		logging.V(9).Infof("killing plugin %s\n", bin)
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 		// for the child processes to close.

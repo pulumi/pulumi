@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"golang.org/x/exp/maps"
 )
 
@@ -480,7 +481,10 @@ func (r *treeRenderer) handleEvents() {
 func (r *treeRenderer) handleKey(key string) {
 	switch key {
 	case terminal.KeyCtrlC:
-		cmdutil.InterruptChildren(os.Getpid())
+		if err := cmdutil.Interrupt(os.Getpid()); err != nil {
+			logging.V(6).Infof("failed to interrupt process %d", os.Getpid())
+		}
+
 	case terminal.KeyCtrlO:
 		if r.permalink != "" {
 			if err := browser.OpenURL(r.permalink); err != nil {
