@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen
+  description: "Warn about refs of the form \"#/resources/pulumi:providers:<pkg>\""

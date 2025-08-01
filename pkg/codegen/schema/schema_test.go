@@ -2590,3 +2590,37 @@ func TestFunctionToken(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderRefWarning(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name: "test",
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {
+				InputProperties: map[string]PropertySpec{
+					"provider": {
+						TypeSpec: TypeSpec{
+							Ref: "#/resources/pulumi:providers:test",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Try to bind the spec
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+
+	require.NoError(t, err)
+	expectedWarning := hcl.Diagnostics{
+		{
+			Severity: hcl.DiagWarning,
+			Summary: "#/resources/test:index:SomeResource/inputProperties/provider/$ref: " +
+				"reference to provider resource '/resources/pulumi:providers:test' is deprecated, use '#/provider' instead",
+		},
+	}
+	assert.Equal(t, expectedWarning, diags)
+}
