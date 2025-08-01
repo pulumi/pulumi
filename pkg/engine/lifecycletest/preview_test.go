@@ -229,6 +229,7 @@ func TestPreviewStackOutputs(t *testing.T) {
 
 	// Run another preview, this time with an unknown output, that should not be shown.
 	step = 2
-	snap, err = lt.TestOp(Update).
+	_, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil, "2")
+	require.NoError(t, err)
 }
