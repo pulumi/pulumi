@@ -17,7 +17,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v2.1.6
+  GOLANGCI_LINT_VERSION: v2.3.0
 
 jobs:
   golangci:
