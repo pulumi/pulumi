@@ -709,7 +709,7 @@ func (pc *client) CreateEnvironmentDraft(
 	}
 
 	var errResp EnvironmentErrorResponse
-	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts", orgName, projectName, envName)
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts", orgName, projectName, envName)
 	var resp CreateEnvironmentDraftResponse
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
 		Header:        header,
@@ -733,7 +733,7 @@ func (pc *client) GetEnvironmentDraft(
 	envName string,
 	changeRequestID string,
 ) ([]byte, string, error) {
-	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
 
 	var resp *http.Response
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
@@ -761,7 +761,7 @@ func (pc *client) UpdateEnvironmentDraft(
 	header.Set("If-Match", etag)
 
 	var errResp EnvironmentErrorResponse
-	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
 	var resp UpdateEnvironmentDraftResponse
 	err := pc.restCallWithOptions(ctx, http.MethodPatch, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
 		Header:        header,
@@ -785,7 +785,7 @@ func (pc *client) SubmitChangeRequest(
 	description *string,
 ) error {
 	req := SubmitChangeRequestRequest{Description: description}
-	path := fmt.Sprintf("/api/preview/change-requests/%v/%v/submit", orgName, changeRequestID)
+	path := fmt.Sprintf("/api/change-requests/%v/%v/submit", orgName, changeRequestID)
 	err := pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
 	return err
 }
@@ -840,7 +840,7 @@ func (pc *client) OpenEnvironmentDraft(
 	changeRequestID string,
 	duration time.Duration,
 ) (string, []EnvironmentDiagnostic, error) {
-	path := fmt.Sprintf("/api/preview/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
 
 	queryObj := struct {
 		Duration string `url:"duration"`

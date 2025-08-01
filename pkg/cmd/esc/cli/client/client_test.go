@@ -392,7 +392,7 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 		yaml := []byte("new definition")
 		tag := "old tag"
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, tag, r.Header.Get("ETag"))
 
 			body, err := io.ReadAll(r.Body)
@@ -433,7 +433,7 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 			},
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
@@ -470,7 +470,7 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 			},
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{Diagnostics: expected})
@@ -484,7 +484,7 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 	})
 
 	t.Run("Conflict", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/drafts", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -501,7 +501,7 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 
 func TestSubmitChangeRequest(t *testing.T) {
 	t.Run("OK - nil description", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
 			expectedBody := SubmitChangeRequestRequest{}
 			expectedBodyJSON, err := json.Marshal(expectedBody)
 			require.NoError(t, err)
@@ -517,7 +517,7 @@ func TestSubmitChangeRequest(t *testing.T) {
 	})
 
 	t.Run("OK - empty description", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
 			expectedBody := SubmitChangeRequestRequest{}
 			expectedBodyJSON, err := json.Marshal(expectedBody)
 			require.NoError(t, err)
@@ -533,7 +533,7 @@ func TestSubmitChangeRequest(t *testing.T) {
 	})
 
 	t.Run("OK - description provided", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
 			description := "test description"
 			expectedBody := SubmitChangeRequestRequest{Description: &description}
 			expectedBodyJSON, err := json.Marshal(expectedBody)
@@ -551,7 +551,7 @@ func TestSubmitChangeRequest(t *testing.T) {
 	})
 
 	t.Run("Already submitted", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/change-requests/test-org/EXAMPLE/submit", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
