@@ -67,7 +67,7 @@ func ErrorIfNotEmptyDirectory(path string) error {
 
 	if nonEmpty {
 		return fmt.Errorf("%s is not empty; "+
-			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
+			"use --force to continue and overwrite existing files, or use --dir to specify an empty directory.", path)
 	}
 
 	return nil
