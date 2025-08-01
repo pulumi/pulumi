@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kr/pty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1772,4 +1773,107 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	out, err := cmd.CombinedOutput()
 	require.ErrorContains(t, err, "exit status 1")
 	require.Contains(t, string(out), "error: Oops")
+}
+
+// TestRunningViaCLIWrapper tests that we can interrupt an operation when
+// running via a CLI wrapper tool like the 1Password CLI. This test also checks
+// that a provider also receives a SIGINT signal when the operation is
+// interrupted.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/20154
+func TestRunningViaCLIWrapper(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	programPath := filepath.Join(e.RootPath, "program")
+	providerPath := filepath.Join(e.RootPath, "provider")
+
+	e.ImportDirectory("interrupt")
+	// Install the provider's dependencies
+	e.RunCommand("pulumi", "install", "-C", providerPath)
+	e.CWD = programPath
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "package", "add", providerPath)
+	e.CWD = e.RootPath
+
+	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
+	// This simulates the behaviour of the 1password CLI.
+	cmd := e.SetupCommandIn(filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
+		"pulumi", "-C", programPath, "up", "--skip-preview", "-s", "dev")
+	t.Logf("Running command %s", cmd.String())
+
+	// This test requires being run via a "real" terminal
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{
+		Rows: 24,
+		Cols: 80,
+	})
+	require.NoError(t, err)
+	defer ptmx.Close()
+
+	timeout := 3 * time.Minute
+
+	go func() {
+		// Wait for the program to be ready before sending interrupt
+		for range int(timeout.Minutes()) {
+			if _, err := os.Stat(filepath.Join(programPath, "ready.txt")); err == nil {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+
+		n, err := ptmx.Write([]byte{3}) // Ctrl+C
+		require.NoError(t, err)
+		require.Equal(t, 1, n)
+	}()
+
+	processFinished := make(chan error, 1)
+	var output strings.Builder
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if n > 0 {
+				output.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	go func() {
+		processFinished <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-processFinished:
+		require.ErrorContains(t, err, "exit status 1")
+		// The provider should have received a SIGINT as well, and written
+		// out the `interrupted.txt` file.
+		_, err = os.Stat(filepath.Join(programPath, "interrupted.txt"))
+		require.NoError(t, err, "interrupted.txt file should exist")
+
+	case <-time.After(timeout):
+		// This is the bug - process hung trying to control terminal
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+
+		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
+			" Output so far: %s", timeout.String(), output.String())
+	}
 }

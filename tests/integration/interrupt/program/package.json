@@ -1,0 +1,9 @@
+{
+    "name": "interrupt",
+    "license": "Apache-2.0",
+    "type": "module",
+    "version": "0.0.1",
+    "peerDependencies": {
+        "pulumi": "*"
+    }
+}
