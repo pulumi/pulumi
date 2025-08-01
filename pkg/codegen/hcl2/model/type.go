@@ -43,10 +43,30 @@ type Type interface {
 	fmt.Stringer
 	Definition
 
+	// Equals returns true if this type is equivalent to the given type.
 	Equals(other Type) bool
+	// AssignableFrom returns true if a value of the source type is assignable to a variable of
+	// this type.
+	//
+	// For example, if we have a map, the type of the elements of the source map have to match
+	// with the destination for it to be assignable.
 	AssignableFrom(src Type) bool
+	// ConversionFrom returns the kind of conversion from the source type to this type.
+	// If no conversion is possible, this returns NoConversion.
+	//
+	// The ConversionKind indicates whether the conversion is safe (will never fail) or
+	// unsafe (may fail at runtime). For example a conversions from a dynamic type to any type
+	// is always unsafe. Meanwhile a conversion from `int` to `number` is safe, as ints can
+	// always be represented as numbers.
+	//
+	// Another more complex example is enums. We can convert to an enum from a const type if
+	// the const type matches the type of the enums elements, and equals the value of one of
+	// the enum's elements.  In that case we have a safe conversion. It's also possible to
+	// have an unsafe conversion, in case the types match, but we can't confirm the value is
+	// valid.
 	ConversionFrom(src Type) ConversionKind
 	pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter
+	// Pretty returns a pretty-printer for the type.
 	Pretty() pretty.Formatter
 
 	equals(other Type, seen map[Type]struct{}) bool
