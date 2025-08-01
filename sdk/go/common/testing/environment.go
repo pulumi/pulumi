@@ -59,8 +59,6 @@ type Environment struct {
 	NoPassphrase bool
 	// Content to pass on stdin, if any
 	Stdin io.Reader
-	// Ctx is the context to use for commands.
-	Ctx *context.Context
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -205,7 +203,7 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.Helper()
 
-	cmd := e.SetupCommandIn(dir, command, args...)
+	cmd := e.SetupCommandIn(context.TODO(), dir, command, args...)
 	e.Logf("Running command %v %v", cmd.Path, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
@@ -220,7 +218,7 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 
 // SetupCommandIn creates a new exec.Cmd that's ready to run in the given
 // directory, with the given command and args.
-func (e *Environment) SetupCommandIn(dir string, command string, args ...string) *exec.Cmd {
+func (e *Environment) SetupCommandIn(ctx context.Context, dir string, command string, args ...string) *exec.Cmd {
 	e.Helper()
 
 	passphrase := "correct horse battery staple"
@@ -232,12 +230,7 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 		command = e.resolvePulumiPath()
 	}
 
-	var cmd *exec.Cmd
-	if e.Ctx != nil {
-		cmd = exec.CommandContext(*e.Ctx, command, args...)
-	} else {
-		cmd = exec.Command(command, args...)
-	}
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = dir
 	if e.Stdin != nil {
 		cmd.Stdin = e.Stdin

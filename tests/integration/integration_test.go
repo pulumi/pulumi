@@ -1768,9 +1768,8 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
-	e.Ctx = &ctx
-
-	_, stderr, err := e.RunCommandReturnExpectedError("node", "index.js")
+	cmd := e.SetupCommandIn(ctx, e.CWD, "node", "index.js")
+	out, err := cmd.CombinedOutput()
 	require.ErrorContains(t, err, "exit status 1")
-	require.Contains(t, stderr, "error: Oops")
+	require.Contains(t, string(out), "error: Oops")
 }
