@@ -84,10 +84,6 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(
 		&draft, "draft", "",
 		"open an environment draft with --draft=<change-request-id>")
-	err := cmd.Flags().MarkHidden("draft") // hide while in preview
-	if err != nil {
-		panic(err)
-	}
 
 	return cmd
 }

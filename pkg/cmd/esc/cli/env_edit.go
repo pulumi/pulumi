@@ -169,10 +169,6 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.")
 	// Allow no value to be specified with the flag and create a new change request in that case
 	cmd.Flag("draft").NoOptDefVal = "new"
-	err := cmd.Flags().MarkHidden("draft") // hide while in preview
-	if err != nil {
-		panic(err)
-	}
 
 	return cmd
 }
