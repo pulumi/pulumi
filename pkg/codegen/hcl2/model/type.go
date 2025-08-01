@@ -55,7 +55,7 @@ type Type interface {
 	// If no conversion is possible, this returns NoConversion.
 	//
 	// The ConversionKind indicates whether the conversion is safe (will never fail) or
-	// unsafe (may fail at runtime). For example a conversin from a dynamic type to any type
+	// unsafe (may fail at runtime). For example a conversions from a dynamic type to any type
 	// is always unsafe. Meanwhile a conversion from `int` to `number` is safe, as ints can
 	// always be represented as numbers.
 	//
