@@ -2135,6 +2135,38 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 	return targets
 }
 
+func (sg *stepGenerator) getExcludeDependencies(excludesOpt UrnTargets) map[resource.URN]bool {
+	var frontier []*resource.State
+	for _, res := range sg.deployment.prev.Resources {
+		if excludesOpt.Contains(res.URN) {
+			frontier = append(frontier, res)
+		}
+	}
+
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)
+
+	excludes := make(map[resource.URN]bool)
+	for len(frontier) > 0 {
+		next := frontier[0]
+		frontier = frontier[1:]
+		if _, has := excludes[next.URN]; has {
+			continue
+		}
+		excludes[next.URN] = true
+
+		deps := dg.DependenciesOf(next)
+		frontier = append(frontier, deps.ToSlice()...)
+
+		if sg.deployment.opts.ExcludeDependents {
+			deps := dg.DependingOn(next, excludes, true)
+			frontier = append(frontier, deps...)
+		}
+	}
+
+	return excludes
+}
+
 // determineAllowedResourcesToDeleteFromTargets computes the full (transitive) closure of resources
 // that need to be deleted to permit the full list of targetsOpt resources to be deleted. This list
 // will include the targetsOpt resources, but may contain more than just that, if there are dependent
@@ -2194,7 +2226,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 }
 
 // determineForbiddenResourcesToDeleteFromExcludes calculates the set of
-// resources that must _not_ be deleted in order to satisfy the `--excludes`
+// resources that must _not_ be deleted in order to satisfy the `--exclude`
 // list.
 func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	excludesOpt UrnTargets,
@@ -2203,36 +2235,20 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 		return nil, nil
 	}
 
+	// Produce a map of excludes and their dependents, including explicit and implicit
+	// DAG dependencies, as well as children (transitively).
+	excludes := sg.getExcludeDependencies(excludesOpt)
+
 	logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
 	resourcesToKeep := make(map[resource.URN]bool)
 
-	if sg.deployment.opts.ExcludeDependents {
-		resourcesToKeep = sg.getTargetDependents(excludesOpt)
-	}
-
-	for _, target := range excludesOpt.literals {
-		next := target
-
-		// We need to calculate the path from this target up to the root and mark
-		// everything en route as being "forbidden". To do this, we iteratively
-		// select the `.Parent` until we find a `nil`.
-		for {
-			current := sg.deployment.olds[next]
-
-			if current == nil {
-				break
-			}
-
-			// We also want to mark the provider of every parent as forbidden from
-			// deletion, as the parents will now also be maintained.
-			provider, err := providers.ParseReference(current.Provider)
-			if err == nil {
-				resourcesToKeep[provider.URN()] = true
-			}
-
-			resourcesToKeep[next] = true
-			next = current.Parent
+	for exclude := range excludes {
+		current := sg.deployment.olds[exclude]
+		if current == nil {
+			continue
 		}
+
+		resourcesToKeep[exclude] = true
 	}
 
 	if logging.V(7) {
