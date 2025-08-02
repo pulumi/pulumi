@@ -260,7 +260,7 @@ func runConvert(
 			var diags hcl.Diagnostics
 			ds, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), nil /*localDependencies*/)
+				strict, grpcServer.Addr(), nil)
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
@@ -538,6 +538,7 @@ func generateAndLinkSdksForPackages(
 	generateOnly bool,
 	registry registry.Registry,
 ) error {
+	generatedPackages := map[string]*schema.Package{}
 	for _, pkg := range pkgs {
 		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
 		if err != nil {
@@ -549,10 +550,19 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
+		packageSource := pkg.Name
+		if pkg.Version != nil {
+			packageSource += "@" + pkg.Version.String()
+		}
+
 		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
 			pctx,
-			pkg.Name,
-			pkg.Parameterization.Value,
+			packageSource,
+			&schema.ParameterizationDescriptor{
+				Name:    pkg.Parameterization.Name,
+				Version: pkg.Parameterization.Version,
+				Value:   pkg.Parameterization.Value,
+			},
 			registry,
 		)
 		if err != nil {
@@ -583,6 +593,19 @@ func generateAndLinkSdksForPackages(
 
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 
+		generatedPackages[pkg.Parameterization.Name] = pkgSchema
+	}
+
+	// prepare linking
+	for _, pkgSchema := range generatedPackages {
+		err := packagecmd.PrepareLocalPackageForLinking(convertOutputDirectory, language, pkgSchema)
+		if err != nil {
+			return fmt.Errorf("failed to prepare package for linking: %w", err)
+		}
+	}
+
+	// link the generated SDKs
+	for pkgName, pkgSchema := range generatedPackages {
 		// If we don't change the working directory, the workspace instance (when
 		// reading project etc) will not be correct when doing the local sdk
 		// linking, causing errors.
@@ -596,7 +619,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
-		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
+		sdkRelPath := filepath.Join("sdks", pkgName)
 		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
 			Workspace: ws,
 			Language:  language,
