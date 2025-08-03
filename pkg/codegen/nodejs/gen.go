@@ -48,9 +48,10 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^18"
+	MinimumValidSDKVersion                 string = "^3.142.0"
+	MinimumValidSDKVersionWithScalarReturn string = "^3.173.0"
+	MinimumTypescriptVersion               string = "^4.3.5"
+	MinimumNodeTypesVersion                string = "^18"
 )
 
 type typeDetails struct {
@@ -934,19 +935,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		methodName := camel(method.Name)
 		fun := method.Function
 
-		var objectReturnType *schema.ObjectType
-		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				objectReturnType = objectType
-			} else if !fun.ReturnTypePlain {
-				// Currently the code only knows how to generate code for methods returning an
-				// ObjectType or methods returning a plain resource All other methods are simply
-				// skipped; bail here.
-				return
-			}
-		}
+		// The return type may be lifted from a single value based on the language schema property
+		// "liftSingleValueMethodReturns", Or it may simply be a plain scalar type.  In each case we
+		// need to handle code generation slightly differently. When it is lifted we call CallSingle
+		// in the SDK, which will unwrap the value from an object/map with a single key.
+		returnType := fun.ReturnType
+		_, isObjectReturnType := returnType.(*schema.ObjectType)
 
-		liftReturn := mod.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		liftReturn := !isObjectReturnType ||
+			(mod.liftSingleValueMethodReturns && len(returnType.(*schema.ObjectType).Properties) == 1)
+		if isObjectReturnType && liftReturn {
+			returnType = returnType.(*schema.ObjectType).Properties[0].Type
+		}
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
@@ -980,16 +980,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
-		} else if fun.ReturnTypePlain {
-			var innerType string
-			if objectReturnType == nil {
-				innerType = mod.typeString(fun.ReturnType, false, nil)
-			} else {
-				innerType = fmt.Sprintf("%s.%sResult", name, title(method.Name))
-			}
+		} else if fun.ReturnTypePlain && liftReturn {
+			innerType := mod.typeString(returnType, false, nil)
 			retty = fmt.Sprintf("Promise<%s>", innerType)
-		} else if liftReturn {
-			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
+		} else if fun.ReturnTypePlain && !liftReturn {
+			retty = fmt.Sprintf("Promise<%s.%sResult>", name, title(method.Name))
+		} else if !fun.ReturnTypePlain && liftReturn {
+			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(returnType, false, nil))
 		} else {
 			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
 		}
@@ -1007,17 +1004,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// Now simply call the runtime function with the arguments, returning the results.
 		var ret string
 		if fun.ReturnType != nil {
-			if liftReturn {
-				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
-			} else {
-				ret = "return "
-			}
+			ret = "return "
 		}
 
-		if fun.ReturnTypePlain {
-			fmt.Fprintf(w, "        %sutilities.callAsync(\"%s\", {\n", ret, fun.Token)
-		} else {
+		if !fun.ReturnTypePlain && !isObjectReturnType {
+			fmt.Fprintf(w, "        %spulumi.runtime.callSingle(\"%s\", {\n", ret, fun.Token)
+		} else if !fun.ReturnTypePlain && isObjectReturnType {
 			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+		} else if fun.ReturnTypePlain && !isObjectReturnType {
+			fmt.Fprintf(w, "        %sutilities.callAsyncSingle(\"%s\", {\n", ret, fun.Token)
+		} else if fun.ReturnTypePlain && isObjectReturnType {
+			fmt.Fprintf(w, "        %sutilities.callAsync(\"%s\", {\n", ret, fun.Token)
 		}
 
 		if fun.Inputs != nil {
@@ -1032,15 +1029,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 		fmt.Fprintf(w, "        }, this")
 
-		if fun.ReturnTypePlain {
-			// Unwrap magic property "res" for methods that return a plain non-object-type.
-			if objectReturnType == nil {
-				fmt.Fprintf(w, `, {property: "res"}`)
-			} else {
-				fmt.Fprintf(w, `, {}`)
-			}
-		}
-
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
@@ -1049,10 +1037,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 
 		fmt.Fprintf(w, ");\n")
-
-		if liftReturn {
-			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
-		}
 		fmt.Fprintf(w, "    }\n")
 	}
 
@@ -1082,7 +1066,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// Emit any method types inside a namespace merged with the class, to represent types nested in the class.
 	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-namespaces-with-classes
-	genMethodTypes := func(w io.Writer, method *schema.Method) error {
+	genMethodTypes := func(exportedTypesWriter io.Writer, method *schema.Method) error {
 		fun := method.Function
 		methodName := title(method.Name)
 		if fun.Inputs != nil {
@@ -1098,10 +1082,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				if comment == "" {
 					comment = fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Args", comment, args, true, false, 1); err != nil {
+				if err := mod.genPlainType(exportedTypesWriter, methodName+"Args", comment, args, true, false, 1); err != nil {
 					return err
 				}
-				fmt.Fprintf(w, "\n")
+				fmt.Fprintf(exportedTypesWriter, "\n")
 			}
 		}
 
@@ -1111,34 +1095,38 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				if comment == "" {
 					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Result", comment, properties, false, true, 1); err != nil {
+				if err := mod.genPlainType(exportedTypesWriter, methodName+"Result", comment, properties, false, true, 1); err != nil {
 					return err
 				}
-				fmt.Fprintf(w, "\n")
+				fmt.Fprintf(exportedTypesWriter, "\n")
 				return nil
 			}
+
 			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 				if err := genReturnType(objectType.Properties); err != nil {
 					return err
 				}
 			}
-			// For non-object types with fun.ReturnTypePlain return type is not needed.
+
+			// For non-object types--with fun.ReturnTypePlain or Output--return type is not needed.
 		}
 		return nil
 	}
-	types := &bytes.Buffer{}
+
+	exportedTypes := &bytes.Buffer{}
 	for _, method := range r.Methods {
-		if err := genMethodTypes(types, method); err != nil {
+		if err := genMethodTypes(exportedTypes, method); err != nil {
 			return resourceFileInfo{}, err
 		}
 	}
-	typesString := types.String()
-	if typesString != "" {
+	exportedTypesString := exportedTypes.String()
+	if exportedTypesString != "" {
 		fmt.Fprintf(w, "\nexport namespace %s {\n", name)
-		fmt.Fprint(w, typesString)
+		fmt.Fprint(w, exportedTypesString)
 		fmt.Fprint(w, "}\n")
 		info.methodsNamespaceName = name
 	}
+
 	return info, nil
 }
 
@@ -2538,8 +2526,10 @@ func genNPMPackageMetadata(
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
-		} else {
+		} else if !hasScalarReturnMethods(pkg) {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
+		} else {
+			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersionWithScalarReturn
 		}
 	}
 
@@ -2547,6 +2537,18 @@ func genNPMPackageMetadata(
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
 	return string(npmjson) + "\n", nil
+}
+
+func hasScalarReturnMethods(pkg *schema.Package) bool {
+	for _, r := range pkg.Resources {
+		for _, m := range r.Methods {
+			if m.Function.ReturnType.(*schema.ObjectType) == nil {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func genPostInstallScript() []byte {

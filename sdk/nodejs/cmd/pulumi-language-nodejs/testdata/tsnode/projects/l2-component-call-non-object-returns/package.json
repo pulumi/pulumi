@@ -1,0 +1,11 @@
+{
+	"name": "l2-component-call-non-object-returns",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/callreturnsprovider": "ROOT/artifacts/pulumi-callreturnsprovider-18.0.0.tgz"
+	}
+}
