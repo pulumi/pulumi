@@ -198,6 +198,23 @@ type Backend interface {
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
+	// CheckApply checks if the given stack can be applied on the given backend, returning an error if it cannot.
+	CheckApply(ctx context.Context, stack Stack) error
+
+	// BeginApply begins applying an operation to the given stack on the backend. It returns:
+	//   - an Application that can be used to drive and complete backend-specific parts of the operation later on
+	//   - a Target that contains information about the stack and the configuration that will be used
+	//   - an optional channel and done channel to which engine events will be forwarded. These can be used for
+	//     backend-specific processing of engine events, such as persisting to a remote source
+	//   - an error if starting the application failed
+	BeginApply(
+		ctx context.Context,
+		kind apitype.UpdateKind,
+		stack Stack,
+		op *UpdateOperation,
+		opts ApplierOptions,
+	) (Application, *deploy.Target, chan<- engine.Event, <-chan bool, error)
+
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
