@@ -29,5 +29,4 @@ def func_with_empty_outputs(name: Optional[_builtins.str] = None,
     __args__ = dict()
     __args__['name'] = name
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('mypkg::funcWithEmptyOutputs', __args__, opts=opts).value
-
+    return pulumi.runtime.invoke_single('mypkg::funcWithEmptyOutputs', __args__, opts=opts)
