@@ -430,6 +430,56 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
+// You should be able to use a glob to exclude resources.
+func TestGlobExcludes(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	isFirstTime := true
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if isFirstTime {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			require.NoError(t, err)
+		}
+
+		isFirstTime = false
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+
+	opts.Excludes = deploy.NewUrnTargets([]string{"**pkgA**"})
+
+	// This should be a no-op as all types are in `pkgA`.
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+}
+
 // We should be able to build an `A > B > C > D` and refresh everything other
 // than the `B` target.
 func TestRefreshExcludeTarget(t *testing.T) {
