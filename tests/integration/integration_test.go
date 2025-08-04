@@ -1788,11 +1788,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	programPath := filepath.Join(e.RootPath, "program")
 	providerPath := filepath.Join(e.RootPath, "provider")
