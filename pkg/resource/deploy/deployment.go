@@ -293,8 +293,9 @@ type Deployment struct {
 	opts *Options
 	// event handlers for this deployment.
 	events Events
-	// rebase indicates whether or not the deployment should rebase the old snapshot
-	rebase bool
+	// writeSnapshot indicates whether or not the deployment should write a new snapshot at the beginning
+	// of the deployment. This is true if the previous snapshot was migrated to add providers
+	writeSnapshot bool
 	// the deployment target.
 	target *Target
 	// the old resource snapshot for comparison.
@@ -514,7 +515,7 @@ func NewDeployment(
 	contract.Requiref(target != nil, "target", "must not be nil")
 	contract.Requiref(source != nil, "source", "must not be nil")
 
-	needsRebase, err := migrateProviders(target, prev, source)
+	needsWrite, err := migrateProviders(target, prev, source)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +552,7 @@ func NewDeployment(
 		ctx:                             ctx,
 		opts:                            opts,
 		events:                          events,
-		rebase:                          needsRebase,
+		writeSnapshot:                   needsWrite,
 		target:                          target,
 		prev:                            prev,
 		plan:                            plan,

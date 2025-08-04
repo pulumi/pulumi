@@ -129,10 +129,9 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	resources := make([]*resource.State, 0)
 
 	snap := sj.snapshot
-	//	deleteMapping := make(map[int]int)
 
 	for _, entry := range sj.journalEntries {
-		if entry.Kind == JournalEntryRebase {
+		if entry.Kind == JournalEntryWrite {
 			snap = entry.NewSnapshot
 			contract.Assertf(entry.OperationID == 0, "rebase journal entry must not have an operation ID")
 		}
@@ -227,7 +226,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			if entry.State != nil && !entry.ElideWrite && entry.DeleteOld >= 0 {
 				toReplaceInSnapshot[entry.DeleteOld] = entry.State
 			}
-		case JournalEntryRebase:
+		case JournalEntryWrite:
 			// Already handled above.
 		}
 	}
@@ -393,7 +392,7 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 	for {
 		select {
 		case request := <-journalEvents:
-			if request.JournalEntry.Kind == JournalEntryRebase {
+			if request.JournalEntry.Kind == JournalEntryWrite {
 				contract.Assertf(len(sj.journalEntries) == 0, "should not have seen an jornalentry before a rebase")
 			}
 			sj.journalEntries = append(sj.journalEntries, request.JournalEntry)
@@ -528,7 +527,7 @@ func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
 	}
 	sj.snapshot = snapCopy
 	return sj.journalMutation(JournalEntry{
-		Kind:        JournalEntryRebase,
+		Kind:        JournalEntryWrite,
 		NewSnapshot: snapCopy,
 	})
 }
