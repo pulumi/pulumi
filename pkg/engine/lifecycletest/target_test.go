@@ -470,7 +470,7 @@ func TestGlobExcludes(t *testing.T) {
 
 	opts.Excludes = deploy.NewUrnTargets([]string{"**pkgA**"})
 
-	// This should be a no-op as, although `resB` won't be registered this time, it's excluded explicitly.
+	// This should be a no-op as all types are in `pkgA`.
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
