@@ -47,14 +47,14 @@ type testContext struct {
 	Context
 	wg      sync.WaitGroup
 	events  chan Event
-	journal *Journal
+	journal *TestJournal
 
 	firedEvents []Event
 }
 
 func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 	events := make(chan Event)
-	journal := NewJournal()
+	journal := NewTestJournal()
 
 	ctx := &testContext{
 		Context: Context{

@@ -244,7 +244,7 @@ func (op TestOp) runWithContext(
 	}()
 
 	events := make(chan engine.Event)
-	journal := engine.NewJournal()
+	journal := engine.NewTestJournal()
 	persister := &backend.InMemoryPersister{}
 	secretsManager := b64.NewBase64SecretsManager()
 	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
