@@ -165,3 +165,71 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 }
+
+// TestPreviewStackOutputs tests that stack outputs are correctly shown during a preview operation.
+func TestPreviewStackOutputs(t *testing.T) {
+	t.Parallel()
+
+	var step int
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(resource.RootStackType, "test", false)
+		require.NoError(t, err)
+
+		var outputs resource.PropertyMap
+
+		switch step {
+		case 0:
+			outputs = resource.PropertyMap{
+				"first":  resource.NewStringProperty("abc"),
+				"second": resource.NewStringProperty("def"),
+			}
+		case 1:
+			// Changes to "first" should be shown in the preview.
+			// Changes to "second" should not be shown in the preview, as it is not changed.
+			outputs = resource.PropertyMap{
+				"first":  resource.NewStringProperty("step 1"),
+				"second": resource.NewStringProperty("def"),
+			}
+		case 2:
+			// We're changing "first" to an unknown, so it should not be shown in the preview.
+			outputs = resource.PropertyMap{
+				"first":  resource.NewComputedProperty(resource.Computed{}),
+				"second": resource.NewStringProperty("def"),
+			}
+		}
+
+		err = monitor.RegisterResourceOutputs(resp.URN, outputs)
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	// Run the initial update which sets some stack outputs.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Run a preview that ensures the stack outputs are shown correctly.
+	step = 1
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// Run another preview, this time with an unknown output, that should not be shown.
+	step = 2
+	_, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+}
