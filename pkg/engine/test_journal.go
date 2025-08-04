@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var _ = SnapshotManager((*Journal)(nil))
+var _ = SnapshotManager((*TestJournal)(nil))
 
 type JournalEntryKind int
 
@@ -188,27 +188,27 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	return normSnap, normSnap.VerifyIntegrity()
 }
 
-type Journal struct {
+type TestJournal struct {
 	entries JournalEntries
 	events  chan JournalEntry
 	cancel  chan bool
 	done    chan bool
 }
 
-func (j *Journal) Entries() JournalEntries {
+func (j *TestJournal) Entries() JournalEntries {
 	<-j.done
 
 	return j.entries
 }
 
-func (j *Journal) Close() error {
+func (j *TestJournal) Close() error {
 	close(j.cancel)
 	<-j.done
 
 	return nil
 }
 
-func (j *Journal) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
+func (j *TestJournal) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	select {
 	case j.events <- JournalEntry{Kind: JournalEntryBegin, Step: step}:
 		return j, nil
@@ -217,7 +217,7 @@ func (j *Journal) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	}
 }
 
-func (j *Journal) End(step deploy.Step, success bool) error {
+func (j *TestJournal) End(step deploy.Step, success bool) error {
 	kind := JournalEntryFailure
 	if success {
 		kind = JournalEntrySuccess
@@ -230,7 +230,7 @@ func (j *Journal) End(step deploy.Step, success bool) error {
 	}
 }
 
-func (j *Journal) RegisterResourceOutputs(step deploy.Step) error {
+func (j *TestJournal) RegisterResourceOutputs(step deploy.Step) error {
 	select {
 	case j.events <- JournalEntry{Kind: JournalEntryOutputs, Step: step}:
 		return nil
@@ -239,16 +239,20 @@ func (j *Journal) RegisterResourceOutputs(step deploy.Step) error {
 	}
 }
 
-func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
+func (j *TestJournal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
-func (j *Journal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
+func (j *TestJournal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 
-func NewJournal() *Journal {
-	j := &Journal{
+// NewTestJournal creates a new TestJournal that is used in tests to record journal entries for
+// deployment steps. These journal entries are used to reconstruct the snapshot at the end of
+// the test. This is used in lifecycletests to check that the snapshot manager and the testjournal
+// produce the same snapshot.
+func NewTestJournal() *TestJournal {
+	j := &TestJournal{
 		events: make(chan JournalEntry),
 		cancel: make(chan bool),
 		done:   make(chan bool),
