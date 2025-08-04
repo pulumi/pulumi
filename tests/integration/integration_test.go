@@ -1806,7 +1806,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
 	// This simulates the behaviour of the 1password CLI.
-	cmd := e.SetupCommandIn(filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
+	cmd := e.SetupCommandIn(context.TODO(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
 		"pulumi", "-C", programPath, "up", "--skip-preview", "-s", "dev")
 	t.Logf("Running command %s", cmd.String())
 
