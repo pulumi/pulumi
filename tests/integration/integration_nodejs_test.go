@@ -1300,7 +1300,7 @@ func TestESMTSX(t *testing.T) {
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("yarn", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1338,7 +1338,7 @@ func TestESMTSAuto(t *testing.T) {
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("yarn", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1376,7 +1376,7 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("yarn", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1805,7 +1805,7 @@ func TestTranspileOnly(t *testing.T) {
 			// the `noCheck` option.
 			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 			require.NoError(t, err)
-			e.RunCommand("yarn", "install")
+			e.RunCommandWithRetry("yarn", "install")
 			e.RunCommand("yarn", "add", coreSDK)
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1888,7 +1888,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
 	e.RunCommand("pulumi", "stack", "select", "negative-timings")
@@ -1914,7 +1914,7 @@ func TestAboutNodeJS(t *testing.T) {
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
@@ -1943,7 +1943,7 @@ func TestTSConfigOption(t *testing.T) {
 	e.ImportDirectory("tsconfig")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
@@ -2616,7 +2616,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("nodejs/sourcemap-in-test")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
 	e.RunCommand("yarn", "add", coreSDK)

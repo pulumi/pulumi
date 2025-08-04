@@ -535,7 +535,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.CWD = os.TempDir()
@@ -698,7 +698,7 @@ func TestExcludeProtected(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
@@ -1144,7 +1144,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	newProjectName := "new_large_resource_js"
@@ -1316,7 +1316,7 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
@@ -1343,7 +1343,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
@@ -1373,7 +1373,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
 		"--policy-pack", "advisory_policy_pack",
@@ -1397,7 +1397,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
@@ -1762,7 +1762,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	e.ImportDirectory(filepath.Join("automation", "error"))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	// The bug was causing a hang, ensure the test times out
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)

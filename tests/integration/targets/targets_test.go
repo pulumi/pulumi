@@ -79,7 +79,7 @@ func TestDeleteManyTargets(t *testing.T) {
 	e.ImportDirectory(projName)
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 
 	// Create a handy mkURN func to create URNs for dynamic resources in this project/stack.

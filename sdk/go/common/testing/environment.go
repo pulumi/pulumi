@@ -168,6 +168,36 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	return stdout, stderr
 }
 
+func (e *Environment) RunCommandWithRetry(cmd string, args ...string) (string, string) {
+	// We don't want to time out on yarn installs.
+	if cmd == "yarn" {
+		YarnInstallMutex.Lock()
+		defer YarnInstallMutex.Unlock()
+	}
+
+	e.Helper()
+	var stdout, stderr string
+	var err error
+	for i := range 3 {
+		stdout, stderr, err = e.GetCommandResults(cmd, args...)
+		if err == nil {
+			return stdout, stderr
+		}
+		e.Logf("Run Error: %v", err)
+		e.Logf("STDOUT: %v", stdout)
+		e.Logf("STDERR: %v", stderr)
+		if i == 2 {
+			e.Logf("Giving up after 3 retries.")
+		} else {
+			e.Logf("Retrying command %v args %v (%d/3)", cmd, args, i+1)
+		}
+	}
+	if err != nil {
+		e.Fatalf("Ran command %v args %v and expected success. Instead got failure after 3 retries.", cmd, args)
+	}
+	return stdout, stderr
+}
+
 // RunCommandExpectError runs the command expecting a non-zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
 	stdout, stderr, _ := e.RunCommandReturnExpectedError(cmd, args...)
