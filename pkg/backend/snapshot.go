@@ -53,8 +53,16 @@ type SnapshotManager struct {
 	// newResources is a map of resources that have been added to the snapshot in this plan, keyed by the resource
 	// state.  This is used to track the added resources and their operation IDs, allowing us too delete
 	// them later if necessary.
-	newResources       gsync.Map[*resource.State, uint64]
-	operationIDCounter atomic.Uint64 // A counter used to generate unique operation IDs for journal entries.
+	newResources gsync.Map[*resource.State, uint64]
+	// A counter used to generate unique operation IDs for journal entries. Note that we use these
+	// sequential IDs to track the order of operations. This matters for reconstructing the Snapshot,
+	// because we need to know which operations were applied first, so dependencies are resolvedd correctly.
+	//
+	// We can still send the operations to the service in parallel, because the engine will onlyy
+	// start an operation after all its dependencies have been resolved. However when reconstructing
+	// the snapshot we have all journal entries available, so we need to ensure that we apply them
+	// in the right order.
+	operationIDCounter atomic.Uint64
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -71,7 +79,7 @@ const (
 	JournalEntryFailure        JournalEntryKind = 2
 	JournalEntryRefreshSuccess JournalEntryKind = 3
 	JournalEntryOutputs        JournalEntryKind = 4
-	JournalEntryRebase         JournalEntryKind = 5
+	JournalEntryWrite          JournalEntryKind = 5
 )
 
 type JournalEntry struct {
