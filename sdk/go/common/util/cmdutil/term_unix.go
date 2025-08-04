@@ -20,8 +20,6 @@ package cmdutil
 import (
 	"errors"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
 
 func Interrupt(pid int) error {
@@ -39,7 +37,7 @@ func shutdownProcessGroup(pid int) error {
 	// -pid means send the signal to the entire process group.
 	//
 	// See: https://linux.die.net/man/2/kill
-	return unix.Kill(-pid, unix.SIGINT)
+	return syscall.Kill(-pid, syscall.SIGINT)
 }
 
 // isWaitAlreadyExited returns true
@@ -49,6 +47,6 @@ func shutdownProcessGroup(pid int) error {
 //
 // A Windows version of this function is defined in term_windows.go.
 func isWaitAlreadyExited(err error) bool {
-	return errors.Is(err, unix.ESRCH) || //  no such process
-		errors.Is(err, unix.ECHILD) //  no child processes
+	return errors.Is(err, syscall.ESRCH) || //  no such process
+		errors.Is(err, syscall.ECHILD) //  no child processes
 }
