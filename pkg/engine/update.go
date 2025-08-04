@@ -664,7 +664,7 @@ func (acts *updateActions) OnResourceStepPost(
 		}
 
 		if step.Op() == deploy.OpRead {
-			record = ShouldRecordReadStep(step)
+			record = shouldRecordReadStep(step)
 		}
 
 		if record && !isInternalStep {
@@ -775,7 +775,7 @@ func isInternalStep(step deploy.Step) bool {
 	return step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step)
 }
 
-func ShouldRecordReadStep(step deploy.Step) bool {
+func shouldRecordReadStep(step deploy.Step) bool {
 	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
 
 	// If reading a resource didn't result in any change to the resource, we then want to
@@ -844,7 +844,7 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		}
 
 		if step.Op() == deploy.OpRead {
-			record = ShouldRecordReadStep(step)
+			record = shouldRecordReadStep(step)
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
