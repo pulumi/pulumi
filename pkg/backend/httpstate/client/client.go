@@ -834,10 +834,10 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	tags map[apitype.StackTagName]string,
-) (int, string, error) {
+) (int, string, bool, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
-		return 0, "", fmt.Errorf("validating stack properties: %w", err)
+		return 0, "", false, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	req := apitype.StartUpdateRequest{
@@ -846,10 +846,10 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 
 	var resp apitype.StartUpdateResponse
 	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
-		return 0, "", err
+		return 0, "", false, err
 	}
 
-	return resp.Version, resp.Token, nil
+	return resp.Version, resp.Token, resp.UseJournal, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
