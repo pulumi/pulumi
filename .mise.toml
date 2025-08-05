@@ -18,6 +18,7 @@ node = "20"
 "npm:typescript" = "latest"
 "npm:typescript-language-server" = "latest"
 "npm:yarn" = "latest"
+bun = "latest"
 python = '3.11'
 uv = "0.6.16"
 "go:github.com/mitranim/gow" = "latest"
