@@ -69,7 +69,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -129,7 +129,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -288,7 +288,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -455,7 +455,7 @@ func TestListStackNames(t *testing.T) {
 	// Cleanup stacks
 	defer func() {
 		for _, s := range stacks {
-			_, err := b.RemoveStack(ctx, s, true)
+			_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 			require.NoError(t, err)
 		}
 	}()
@@ -559,7 +559,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 

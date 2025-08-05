@@ -285,15 +285,53 @@ func (b *diyBackend) saveStack(
 }
 
 // removeStack removes information about a stack from the current workspace.
-func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) error {
+func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference, removeBackups bool) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	// Just make a backup of the file and don't write out anything new.
+	var resultErr error
+
 	file := b.stackPath(ctx, ref)
-	backupTarget(ctx, b.bucket, file, false)
+	if removeBackups {
+		// Remove the stack file and its backup file.
+		if err := removeTargetAndBackup(ctx, b.bucket, file); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing file for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+
+		// Remove the backups.
+		backupDir := ref.BackupDir()
+		if err := removeAllByPrefix(ctx, b.bucket, backupDir); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing backups for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+	} else {
+		// Just make a backup of the file and don't write out anything new.
+		backupTarget(ctx, b.bucket, file, false)
+	}
 
 	historyDir := ref.HistoryDir()
-	return removeAllByPrefix(ctx, b.bucket, historyDir)
+	if err := removeAllByPrefix(ctx, b.bucket, historyDir); err != nil {
+		resultErr = errors.Join(resultErr,
+			fmt.Errorf("removing history for stack %s: %w", ref.FullyQualifiedName(), err))
+	}
+
+	return resultErr
+}
+
+// removeTargetAndBackup deletes the target file and its backup, if they exist.
+func removeTargetAndBackup(ctx context.Context, bucket Bucket, file string) error {
+	contract.Requiref(file != "", "file", "must not be empty")
+	var resultErr error
+	files := []string{file, file + ".bak"}
+	for _, f := range files {
+		if err := bucket.Delete(ctx, f); err != nil {
+			// Ignore NotFound errors, as the file may not exist.
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				resultErr = errors.Join(resultErr, fmt.Errorf("removing file %s: %w", f, err))
+			}
+		}
+	}
+	return resultErr
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.

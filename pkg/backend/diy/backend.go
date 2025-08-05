@@ -899,7 +899,7 @@ func (b *diyBackend) ListStackNames(
 	return filteredStacks, nil, nil
 }
 
-func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force, removeBackups bool) (bool, error) {
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
 		return false, err
@@ -924,7 +924,7 @@ func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force
 		}
 	}
 
-	return false, b.removeStack(ctx, diyStackRef)
+	return false, b.removeStack(ctx, diyStackRef, removeBackups)
 }
 
 func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,

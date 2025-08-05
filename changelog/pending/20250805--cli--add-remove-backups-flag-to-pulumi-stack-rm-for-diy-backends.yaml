@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `--remove-backups` flag to `pulumi stack rm` for DIY backends

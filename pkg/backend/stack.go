@@ -61,8 +61,8 @@ type Stack interface {
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
-func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
-	return s.Backend().RemoveStack(ctx, s, force)
+func RemoveStack(ctx context.Context, s Stack, force, removeBackups bool) (bool, error) {
+	return s.Backend().RemoveStack(ctx, s, force, removeBackups)
 }
 
 // RenameStack renames the stack, or returns an error if it cannot.
