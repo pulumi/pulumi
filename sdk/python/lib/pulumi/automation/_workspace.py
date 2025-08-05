@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -414,11 +414,16 @@ class Workspace(ABC):
         stack_name: str,
         force: Optional[bool] = None,
         preserve_config: Optional[bool] = None,
+        remove_backups: Optional[bool] = None,
     ) -> None:
         """
         Deletes the stack and all associated configuration and history.
 
         :param stack_name: The name of the stack to remove
+        :param force: If True, forces deletion of the stack, leaving behind any resources managed by the stack
+        :param preserve_config: If True, do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for
+            the stack
+        :param remove_backups: If True, remove backups of the stack, if using the DIY backend
         """
 
     @abstractmethod

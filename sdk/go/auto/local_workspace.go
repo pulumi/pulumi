@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -620,6 +620,13 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 
 	if optRemoveOpts.Force {
 		args = append(args, "--force")
+	}
+	if optRemoveOpts.RemoveBackups {
+		// Pulumi 3.188.0 introduced the `--remove-backups` flag.
+		if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 188}) {
+			return errors.New("RemoveBackups requires Pulumi CLI version >= 3.188.0")
+		}
+		args = append(args, "--remove-backups")
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -562,6 +562,16 @@ export class LocalWorkspace implements Workspace {
 
         if (opts?.preserveConfig) {
             args.push("--preserve-config");
+        }
+
+        if (opts?.removeBackups) {
+            const ver = this._pulumiVersion ?? semver.parse("3.0.0")!;
+            if (ver.compare("3.188.0") < 0) {
+                // Pulumi 3.188.0 introduced the `--remove-backups` flag.
+                // https://github.com/pulumi/pulumi/releases/tag/v3.188.0
+                throw new Error(`removeBackups requires Pulumi version >= 3.188.0`);
+            }
+            args.push("--remove-backups");
         }
 
         args.push(stackName);
@@ -1401,4 +1411,9 @@ export interface RemoveOptions {
      * Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack
      */
     preserveConfig?: boolean;
+
+    /**
+     * Remove backups of the stack, if using the DIY backend
+     */
+    removeBackups?: boolean;
 }
