@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix panic in refreshes due to concurrent map writes
