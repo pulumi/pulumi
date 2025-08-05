@@ -28,6 +28,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -53,9 +55,10 @@ type testMonitor struct {
 	// Actually an "Invoke" by provider parlance, but is named so to be consistent with the interface.
 	CallF func(args MockCallArgs) (resource.PropertyMap, error)
 	// Actually an "Call" by provider parlance, but is named so to be consistent with the interface.
-	MethodCallF              func(args MockCallArgs) (resource.PropertyMap, error)
-	NewResourceF             func(args MockResourceArgs) (string, resource.PropertyMap, error)
-	RegisterResourceOutputsF func() (*emptypb.Empty, error)
+	MethodCallF               func(args MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF              func(args MockResourceArgs) (string, resource.PropertyMap, error)
+	RegisterResourceOutputsF  func() (*emptypb.Empty, error)
+	SignalAndWaitForShutdownF func() (*emptypb.Empty, error)
 }
 
 func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
@@ -84,6 +87,13 @@ func (m *testMonitor) RegisterResourceOutputs() (*emptypb.Empty, error) {
 		return &emptypb.Empty{}, nil
 	}
 	return m.RegisterResourceOutputsF()
+}
+
+func (m *testMonitor) SignalAndWaitForShutdown() (*emptypb.Empty, error) {
+	if m.SignalAndWaitForShutdownF == nil {
+		return &emptypb.Empty{}, nil
+	}
+	return m.SignalAndWaitForShutdownF()
 }
 
 type testResource2 struct {
@@ -361,6 +371,52 @@ func TestInvoke(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	require.NoError(t, err)
+}
+
+func TestSignalAndWaitForShutdownNotImplemented(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		// Simulate an old CLI without SignalAndWaitForShutdown
+		SignalAndWaitForShutdownF: func() (*emptypb.Empty, error) {
+			return &emptypb.Empty{}, status.Error(codes.Unimplemented, "SignalAndWaitForShutdown is not implemented")
+		},
+	}
+
+	logError := func(ctx *Context, err error) {
+		require.Fail(t, "The `Unimplemented` error should be handled gracefully and not reported", err)
+	}
+
+	err := runErrInner(func(ctx *Context) error {
+		return nil
+	}, logError, WithMocks("project", "stack", mocks))
+
+	require.NoError(t, err)
+}
+
+func TestSignalAndWaitForShutdownError(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		// Simulate a CLI that returns an error when calling SignalAndWaitForShutdown
+		SignalAndWaitForShutdownF: func() (*emptypb.Empty, error) {
+			return &emptypb.Empty{}, status.Error(codes.Unknown, "SignalAndWaitForShutdown returned some error")
+		},
+	}
+
+	errorReported := false
+
+	logError := func(ctx *Context, err error) {
+		require.ErrorContains(t, err, "SignalAndWaitForShutdown returned some error")
+		errorReported = true
+	}
+
+	err := runErrInner(func(ctx *Context) error {
+		return nil
+	}, logError, WithMocks("project", "stack", mocks))
+
+	require.ErrorContains(t, err, "SignalAndWaitForShutdown returned some error")
+	require.True(t, errorReported, "The error should have been reported")
 }
 
 type testInstanceResource struct {
