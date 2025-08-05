@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Fix running against old CLI versions without SignalAndWaitForShutdown
