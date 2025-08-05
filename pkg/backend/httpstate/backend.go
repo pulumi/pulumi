@@ -1424,6 +1424,7 @@ type updateMetadata struct {
 	version    int
 	leaseToken string
 	messages   []apitype.Message
+	useJournal bool
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -1475,7 +1476,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, useJournal, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1516,6 +1517,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		version:    version,
 		leaseToken: token,
 		messages:   updateDetails.Messages,
+		useJournal: useJournal,
 	}, nil
 }
 
@@ -1598,7 +1600,7 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun, updateMeta.useJournal)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1613,7 +1615,7 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, useJournal bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1651,7 +1653,8 @@ func (b *cloudBackend) runEngineAction(
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
 		var journal backend.Journal
-		if true { // b.SupportsSnapshots() {
+		fmt.Println("use journal stuff", useJournal)
+		if useJournal {
 			journal = b.newJournaler(ctx, update, tokenSource, op.SecretsManager)
 		} else {
 			journal = backend.NewSnapshotJournaler(persister, op.SecretsManager, u.Target.Snapshot)

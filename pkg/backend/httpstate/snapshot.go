@@ -156,7 +156,7 @@ func (j *cloudJournaler) EndOperation(entry backend.JournalEntry) error {
 	return j.backend.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
 }
 
-func (j *cloudJournaler) Rebase(*deploy.Snapshot) error {
+func (j *cloudJournaler) Write(*deploy.Snapshot) error {
 	return errors.New("rebasing not implemented yet")
 }
 
