@@ -294,7 +294,7 @@ func removeStack(t *testing.T, dir, name string) {
 	require.NoError(t, err)
 	stack, err := b.GetStack(context.Background(), ref)
 	require.NoError(t, err)
-	_, err = b.RemoveStack(context.Background(), stack, false)
+	_, err = b.RemoveStack(context.Background(), stack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 }
 

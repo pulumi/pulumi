@@ -56,7 +56,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NotNil(t, aStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
-		_, err := b.RemoveStack(ctx, aStack, true)
+		_, err := b.RemoveStack(ctx, aStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 	deployment, err := makeUntypedDeployment("a", "abc123",
@@ -74,7 +74,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NotNil(t, bStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
-		_, err := b.RemoveStack(ctx, bStack, true)
+		_, err := b.RemoveStack(ctx, bStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 	deployment, err = makeUntypedDeployment("b", "123abc",
@@ -208,7 +208,7 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 	assert.False(t, backupFileExists)
 
 	// Now remove the stack
-	removed, err := b.RemoveStack(ctx, aStack, false)
+	removed, err := b.RemoveStack(ctx, aStack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 	assert.False(t, removed)
 

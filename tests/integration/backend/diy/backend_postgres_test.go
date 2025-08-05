@@ -388,12 +388,12 @@ func TestPostgresBackend(t *testing.T) {
 	t.Log("Testing stack removal and cleanup")
 
 	// Test stack removal (backend level)
-	removed1, err := b.RemoveStack(ctx, stack1, true)
+	removed1, err := b.RemoveStack(ctx, stack1, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err, "Failed to remove stack 1")
 	assert.False(t, removed1, "Stack 1 should be removed without confirmation")
 
 	// Test stack removal (stack level)
-	removed2, err := backend.RemoveStack(ctx, stack2, true)
+	removed2, err := backend.RemoveStack(ctx, stack2, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err, "Failed to remove stack 2")
 	assert.False(t, removed2, "Stack 2 should be removed without confirmation")
 
@@ -472,9 +472,9 @@ func TestPostgresBackendMultipleTables(t *testing.T) {
 	require.Len(t, stacks2, 1)
 
 	// Clean up
-	_, err = backend1.RemoveStack(ctx, stack1, true)
+	_, err = backend1.RemoveStack(ctx, stack1, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
-	_, err = backend2.RemoveStack(ctx, stack2, true)
+	_, err = backend2.RemoveStack(ctx, stack2, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 }
 
@@ -536,7 +536,7 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 
 	// Clean up all stacks
 	for i := 0; i < numConcurrentOperations; i++ {
-		removed, err := backends[i].RemoveStack(ctx, stacks[i], true)
+		removed, err := backends[i].RemoveStack(ctx, stacks[i], true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err, "Failed to remove stack %d", i)
 		assert.False(t, removed, "Stack %d should be removed without confirmation", i)
 	}

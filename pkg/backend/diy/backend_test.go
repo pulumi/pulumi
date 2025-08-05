@@ -33,6 +33,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -275,7 +276,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	require.NotNil(t, aStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
-		_, err := b.RemoveStack(ctx, aStack, true)
+		_, err := b.RemoveStack(ctx, aStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 	deployment, err := makeUntypedDeployment("a", "abc123",
@@ -293,7 +294,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	require.NotNil(t, bStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
-		_, err := b.RemoveStack(ctx, bStack, true)
+		_, err := b.RemoveStack(ctx, bStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 	deployment, err = makeUntypedDeployment("b", "123abc",
@@ -427,7 +428,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 	assert.False(t, backupFileExists)
 
 	// Now remove the stack
-	removed, err := b.RemoveStack(ctx, aStack, false)
+	removed, err := b.RemoveStack(ctx, aStack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 	assert.False(t, removed)
 
@@ -438,6 +439,91 @@ func TestRemoveMakesBackups(t *testing.T) {
 	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef)+".bak")
 	require.NoError(t, err)
 	assert.True(t, backupFileExists)
+}
+
+func TestRemoveBackups(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	requireDirNotEmpty := func(lb *diyBackend, dir string) {
+		iter := lb.bucket.List(&blob.ListOptions{
+			Delimiter: "/",
+			Prefix:    dir + "/",
+		})
+		next, err := iter.Next(ctx)
+		require.NotNil(t, next, "Expected directory %q to not be empty", dir)
+		require.NoError(t, err, "Expected directory %q to not be empty", dir)
+	}
+
+	requireDirEmpty := func(lb *diyBackend, dir string) {
+		iter := lb.bucket.List(&blob.ListOptions{
+			Delimiter: "/",
+			Prefix:    dir + "/",
+		})
+		next, err := iter.Next(ctx)
+		require.Nil(t, next, "Expected directory %q to be empty", dir)
+		require.ErrorIs(t, err, io.EOF, "Expected directory %q to be empty", dir)
+	}
+
+	// Login to a temp dir diy backend
+	tmpDir := t.TempDir()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*diyBackend)
+	assert.True(t, ok)
+	require.NotNil(t, lb)
+
+	// Create a new stack
+	aStackRef, err := lb.parseStackReference("organization/project/a")
+	require.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, aStack)
+
+	// Fake up some history
+	err = lb.addToHistory(ctx, aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	require.NoError(t, err)
+	requireDirNotEmpty(lb, aStackRef.HistoryDir())
+
+	// Export then import the deployment to create a backup file
+	ud, err := lb.ExportDeployment(ctx, aStack)
+	require.NoError(t, err)
+	require.NotNil(t, ud)
+	err = lb.ImportDeployment(ctx, aStack, ud)
+	require.NoError(t, err)
+
+	// Check the stack file and backup file now exist
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
+	require.NoError(t, err)
+	assert.True(t, stackFileExists)
+	backupFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef)+".bak")
+	require.NoError(t, err)
+	assert.True(t, backupFileExists)
+
+	// Backup the stack
+	err = lb.backupStack(ctx, aStackRef)
+	require.NoError(t, err)
+	requireDirNotEmpty(lb, aStackRef.BackupDir())
+
+	// Now remove the stack, removing backups
+	removed, err := b.RemoveStack(ctx, aStack, false /*force*/, true /*removeBackups*/)
+	require.NoError(t, err)
+	assert.False(t, removed)
+
+	// Check the stack file and backup files are both gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
+	require.NoError(t, err)
+	assert.False(t, stackFileExists)
+	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef)+".bak")
+	require.NoError(t, err)
+	assert.False(t, backupFileExists)
+
+	// Check that the history and backup folders are empty
+	requireDirEmpty(lb, aStackRef.BackupDir())
+	requireDirEmpty(lb, aStackRef.HistoryDir())
 }
 
 func TestRenameWorks(t *testing.T) {

@@ -1098,11 +1098,13 @@ func (b *cloudBackend) ListStackNames(
 	return stackRefs, outContToken, nil
 }
 
-func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force, removeBackups bool) (bool, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return false, err
 	}
+
+	// Note: removeBackups is currently unused in the cloud backend.
 
 	return b.client.DeleteStack(ctx, stackID, force)
 }
