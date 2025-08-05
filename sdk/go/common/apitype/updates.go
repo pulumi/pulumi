@@ -129,6 +129,9 @@ type StartUpdateResponse struct {
 
 	// TokenExpiration is a UNIX timestamp by which the token will expire.
 	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
+
+	// UseJournal indicates whether the update should use the journal for its operations.
+	UseJournal bool `json:"useJournal,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
