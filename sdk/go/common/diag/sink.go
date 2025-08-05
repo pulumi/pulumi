@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -173,6 +175,23 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
+	// First check if the message already has a timestamp
+	message := diag.Message
+	if !strings.Contains(message, "[20") { // Simple check for timestamp format like [2025-04-29 12:57:49]
+		// Add timestamp to error messages
+		now := time.Now().Format("2006-01-02 15:04:05")
+		
+		// Create a new Diag with the timestamp
+		timestampedDiag := &Diag{
+			URN:      diag.URN,
+			Message:  fmt.Sprintf("[%s] %s", now, diag.Message),
+			Raw:      diag.Raw,
+			StreamID: diag.StreamID,
+		}
+		diag = timestampedDiag
+	}
+	
+	// Create the message and print it
 	msg := d.createMessage(Error, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
@@ -190,6 +209,27 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 
 func (d *defaultSink) print(sev Severity, msg string) {
 	fmt.Fprint(d.writers[sev], msg)
+}
+
+// formatMessage formats the diagnostic message
+func (d *defaultSink) formatMessage(diag *Diag, args ...interface{}) string {
+	var buffer bytes.Buffer
+	buffer.WriteString(colors.SpecNote)
+
+	if diag.Raw {
+		buffer.WriteString(diag.Message)
+	} else {
+		fmt.Fprintf(&buffer, diag.Message, args...)
+	}
+
+	buffer.WriteString(colors.Reset)
+	buffer.WriteRune('\n')
+
+	// Ensure that any sensitive data we know about is filtered out preemptively.
+	filtered := logging.FilterString(buffer.String())
+
+	// If colorization was requested, compile and execute the directives now.
+	return d.opts.Color.Colorize(filtered)
 }
 
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string) {
@@ -214,24 +254,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 		prefix.WriteString(colors.Reset)
 	}
 
-	// Finally, actually print the message itself.
-	var buffer bytes.Buffer
-	buffer.WriteString(colors.SpecNote)
-
-	if diag.Raw {
-		buffer.WriteString(diag.Message)
-	} else {
-		fmt.Fprintf(&buffer, diag.Message, args...)
-	}
-
-	buffer.WriteString(colors.Reset)
-	buffer.WriteRune('\n')
-
-	// Ensure that any sensitive data we know about is filtered out preemptively.
-	filtered := logging.FilterString(buffer.String())
-
-	// If colorization was requested, compile and execute the directives now.
-	return d.opts.Color.Colorize(prefix.String()), d.opts.Color.Colorize(filtered)
+	return d.opts.Color.Colorize(prefix.String()), d.formatMessage(diag, args...)
 }
 
 // syncWriter wraps an io.Writer and ensures that all writes are synchronized
