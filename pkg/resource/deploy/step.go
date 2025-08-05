@@ -1313,8 +1313,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 
-	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: %v, Outputs: %v",
-		refreshed.ID, refreshed.Inputs, refreshed.Outputs)
+	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: #%d, Outputs: #%d",
+		refreshed.ID, len(refreshed.Inputs), len(refreshed.Outputs))
 
 	// If the ID is blank treat this as a delete, and leave outputs blank.
 	var outputs resource.PropertyMap
