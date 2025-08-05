@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix snapshot integrity issue with `refresh --run-program` when a provider has skipped dependencies

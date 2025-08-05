@@ -747,11 +747,54 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshE
 	return steps, false, err
 }
 
+func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, error) {
+	provider, allDeps := new.GetAllDependencies()
+	allDepURNs := make([]resource.URN, len(allDeps))
+	for i, dep := range allDeps {
+		allDepURNs[i] = dep.URN
+	}
+
+	if provider != "" {
+		prov, err := providers.ParseReference(provider)
+		if err != nil {
+			return false, fmt.Errorf(
+				"could not parse provider reference %s for %s: %w",
+				provider, new.URN, err)
+		}
+		allDepURNs = append(allDepURNs, prov.URN())
+	}
+
+	for _, depURN := range allDepURNs {
+		if sg.skippedCreates[depURN] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()
 	old := event.Old()
 	new := event.New()
+
+	// We need to check if this resource is trying to depend on another resource that has already been
+	// skipped. In that case we have to skip this resource as well.
+	if sg.mode == refreshMode || sg.mode == destroyMode {
+		if skipped, err := sg.hasSkippedDependencies(new); err != nil {
+			return nil, false, err
+		} else if skipped {
+			// This isn't an error (unlike when we hit this case in normal target runs), we just need to
+			// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
+			// an old state, but skipped create actually behaves as a general skip just fine.
+			sg.skippedCreates[urn] = true
+			if old != nil {
+				// If this has an old state maintain the old outputs to return to the program
+				new.Outputs = old.Outputs
+			}
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+		}
+	}
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
 	// custom non-provider resources.
@@ -777,40 +820,8 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	// the destroy, but we do want to "create/update" providers, construct component resources and it's fine
 	// to make the relevant state edits off the back of these.
 	if sg.mode == destroyMode {
-		// We need to check if this resource is trying to depend on another resource that has already been
-		// skipped. In that case we have to skip this resource as well.
-		provider, allDeps := new.GetAllDependencies()
-		allDepURNs := make([]resource.URN, len(allDeps))
-		for i, dep := range allDeps {
-			allDepURNs[i] = dep.URN
-		}
-
-		if provider != "" {
-			prov, err := providers.ParseReference(provider)
-			if err != nil {
-				return nil, false, fmt.Errorf(
-					"could not parse provider reference %s for %s: %w",
-					provider, new.URN, err)
-			}
-			allDepURNs = append(allDepURNs, prov.URN())
-		}
-
-		for _, depURN := range allDepURNs {
-			if sg.skippedCreates[depURN] {
-				// This isn't an error (unlike when we hit this case in normal target runs), we just need to
-				// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
-				// an old state, but skipped create actually behaves as a general skip just fine.
-				sg.skippedCreates[urn] = true
-				if old != nil {
-					// If this has an old state maintain the old outputs to return to the program
-					new.Outputs = old.Outputs
-				}
-				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
-			}
-		}
-
-		// Otherwise we've got our dependencies, if this is a custom non-provider resource we can either same
-		// it or skip create it (we don't want to actually do real resource creates and updates in destroy).
+		// If this is a custom non-provider resource we can either same it or skip create it (we don't want to
+		// actually do real resource creates and updates in destroy).
 		if goal.Custom && !providers.IsProviderType(goal.Type) {
 			// Custom resources that aren't in state just have to be skipped creates.
 			if old == nil {
