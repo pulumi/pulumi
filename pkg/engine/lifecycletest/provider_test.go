@@ -2066,3 +2066,85 @@ func TestMalformedProvider(t *testing.T) {
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 }
+
+// TestMissingIDRefresh tests that if a provider does a refresh and doesn't return a valid ID the engine deletes the
+// resource. See https://github.com/pulumi/pulumi/issues/20186. Historically, this logic was in the grpc layer, but it
+// should be in the engine layer which this test asserts by not using the the grpc wrapper for the provider client.
+func TestMissingIDRefresh(t *testing.T) {
+	t.Parallel()
+
+	expectedID := resource.ID(uuid.Must(uuid.NewV4()).String())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         expectedID,
+						Properties: req.Properties,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					assert.Equal(t, expectedID, req.ID)
+					// Return an empty ID to indicate a delete, still return inputs and state because with a missing ID
+					// they should be ignored.
+					return plugin.ReadResponse{
+						Status: resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, expectedID, resp.ID)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, expectedID, snap.Resources[1].ID)
+	resA := snap.Resources[1].URN
+
+	_, err = lt.TestOp(Refresh).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
+			// assert the resource was deleted
+			require.NoError(t, err)
+			var foundDelete deploy.Step
+			for _, e := range entries {
+				step := e.Step
+				refreshStep, ok := step.(*deploy.RefreshStep)
+				if ok && refreshStep.ResultOp() == deploy.OpDelete {
+					foundDelete = step
+					break
+				}
+			}
+			require.NotNil(t, foundDelete, "expected a refresh delete step in the journal entries")
+			assert.Equal(t, resA, foundDelete.Old().URN)
+			return nil
+		})
+	require.NoError(t, err)
+}

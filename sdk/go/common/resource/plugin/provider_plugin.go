@@ -1480,11 +1480,6 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
-	// If the resource was missing, simply return a nil property map.
-	if string(readID) == "" {
-		return ReadResponse{Status: resourceStatus}, nil
-	}
-
 	// Finally, unmarshal the resulting state properties and return them.
 	newState, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label:          label + ".outputs",

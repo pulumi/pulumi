@@ -58,6 +58,7 @@ func TestRefreshTargetChildren(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Outputs: resource.PropertyMap{
 								"count": resource.NewNumberProperty(float64(count)),
 							},
@@ -498,6 +499,7 @@ func TestRefreshExcludeTarget(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Outputs: resource.PropertyMap{
 								"count": resource.NewNumberProperty(float64(count)),
 							},
@@ -577,6 +579,7 @@ func TestRefreshExcludeChildren(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Outputs: resource.PropertyMap{
 								"count": resource.NewNumberProperty(callCount),
 							},

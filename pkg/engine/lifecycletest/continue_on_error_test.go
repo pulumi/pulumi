@@ -392,6 +392,16 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
 				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
 			}, nil
 		}, deploytest.WithoutGrpc),
 	}

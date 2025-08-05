@@ -420,7 +420,10 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 					}
 
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{},
+						},
 					}, nil
 				},
 			}, nil
@@ -481,8 +484,11 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 					}
 
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
-						Status:     resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -599,6 +605,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 					default:
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  req.Inputs,
 								Outputs: req.State,
 							},
@@ -785,6 +792,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
+					new.ID = req.ID
 					return plugin.ReadResponse{
 						ReadResult: new,
 						Status:     resource.StatusOK,
@@ -964,6 +972,7 @@ func TestCanceledRefresh(t *testing.T) {
 					<-cancelled
 
 					new, hasNewState := newStates[req.ID]
+					new.ID = req.ID
 					assert.True(t, hasNewState)
 					return plugin.ReadResponse{
 						ReadResult: new,
