@@ -35,10 +35,11 @@ func newPolicyLsCmd() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   "ls [org-name]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "List all Policy Packs for a Pulumi organization",
-		Long:  "List all Policy Packs for a Pulumi organization",
+		Use:     "ls [org-name]",
+		Aliases: []string{"list"},
+		Args:    cmdutil.MaximumNArgs(1),
+		Short:   "List all Policy Packs for a Pulumi organization",
+		Long:    "List all Policy Packs for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 
