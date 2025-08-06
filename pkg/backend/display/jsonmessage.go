@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/exp/maps"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -324,10 +323,16 @@ func (r *messageRenderer) render(done bool) {
 		}
 	}
 
-	if len(r.display.progressEventPayloads) > 0 {
+	keys := []string{}
+	if r.display.progressEventPayloads != nil {
+		r.display.progressEventPayloads.Range(func(key string, value engine.ProgressEventPayload) bool {
+			keys = append(keys, key)
+			return true
+		})
+	}
+	if len(keys) > 0 {
 		// Render progress events into the JSON message stream using ASCII
 		// progress bars to be safe.
-		keys := maps.Keys(r.display.progressEventPayloads)
 		slices.Sort(keys)
 
 		for i, key := range keys {
@@ -337,7 +342,7 @@ func (r *messageRenderer) render(done bool) {
 					colors.Yellow+"Downloads"+colors.Reset))
 			}
 
-			payload := r.display.progressEventPayloads[key]
+			payload, _ := r.display.progressEventPayloads.Load(key)
 			rendered := renderProgress(renderASCIIProgressBar, r.terminalWidth, payload)
 			r.colorizeAndWriteProgress(makeActionProgress(payload.ID, rendered))
 		}
