@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: cli
-  description: Update pulumi-dotnet to 3.86.0
+  description: Update pulumi-dotnet to 3.87.0
