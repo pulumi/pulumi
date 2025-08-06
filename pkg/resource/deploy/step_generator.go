@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -78,6 +79,8 @@ type stepGenerator struct {
 	imports   map[resource.URN]bool // set of URNs imported in this deployment
 	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
+
+	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
@@ -698,7 +701,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			state, err := cts.Promise().Result(context.Background())
 			// alias this new "old" state in the dependency graph to it's original state.
 			if state != nil {
+				// This mutates depGraph but this in a goroutine so might race other Alias calls so we need to lock around this.
+				sg.refreshAliasLock.Lock()
 				sg.deployment.depGraph.Alias(state, old)
+				sg.refreshAliasLock.Unlock()
 			}
 			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
