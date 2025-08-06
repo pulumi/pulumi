@@ -271,6 +271,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		opStopwatch:           newOpStopwatch(),
 		permalink:             permalink,
 	}
+	defer contract.IgnoreClose(display.renderer)
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -278,7 +279,6 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		ticker.Stop()
 	}
 	display.processEvents(ticker, events)
-	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
 
 	// let our caller know we're done.
