@@ -16,12 +16,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.11
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/creack/pty v1.1.18
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-dap v0.12.0
 	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/kr/pty v1.1.8
 	github.com/lib/pq v1.10.9
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
@@ -92,7 +92,6 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
-	github.com/creack/pty v1.1.18 // indirect
 	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set/v2 v2.5.0 // indirect

@@ -22,7 +22,7 @@ func main() {
 		Foreground: false, // False is the default, highlighted here because it's the trigger for the hang.
 	}
 
-	log.Printf("Starting %s in %s", cmd.String(), cmd.Dir)
+	log.Printf("Starting %q in %q", cmd.String(), cmd.Dir)
 	err := cmd.Start()
 	if err != nil {
 		log.Fatalf("start: %s", err)
