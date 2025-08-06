@@ -1823,7 +1823,8 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	go func() {
 		// Wait for the program to be ready before sending the interrupt signal.
-		for range timeout.Milliseconds() / wait.Milliseconds() {
+		end := time.Now() + timeout
+		for time.Now() < end {
 			if _, err := os.Stat(filepath.Join(programPath, "ready.txt")); err == nil {
 				t.Logf("Found `ready.txt`")
 				break
