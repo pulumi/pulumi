@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kr/pty"
+	"github.com/creack/pty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1800,6 +1800,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
+	e.RunCommand("pulumi", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
@@ -1816,17 +1817,18 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		Cols: 80,
 	})
 	require.NoError(t, err)
-	defer ptmx.Close()
 
 	timeout := 3 * time.Minute
+	wait := 100 * time.Millisecond
 
 	go func() {
-		// Wait for the program to be ready before sending interrupt
-		for range int(timeout.Minutes()) {
+		// Wait for the program to be ready before sending the interrupt signal.
+		for range timeout.Milliseconds() / wait.Milliseconds() {
 			if _, err := os.Stat(filepath.Join(programPath, "ready.txt")); err == nil {
+				t.Logf("Found `ready.txt`")
 				break
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(wait)
 		}
 
 		n, err := ptmx.Write([]byte{3}) // Ctrl+C
@@ -1856,6 +1858,8 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	select {
 	case err := <-processFinished:
+		ptmx.Close()
+		t.Logf("Process finished with error: %s, output: %s", err, output.String())
 		require.ErrorContains(t, err, "exit status 1")
 		// The provider should have received a SIGINT as well, and written
 		// out the `interrupted.txt` file.
@@ -1868,6 +1872,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		}
+		ptmx.Close()
 
 		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
 			" Output so far: %s", timeout.String(), output.String())
