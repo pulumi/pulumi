@@ -81,7 +81,7 @@ type stepGenerator struct {
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
-	// can't create any new resources.
+	// can't create any new resources or a refresh run where at least one dependency was skipped.
 	skippedCreates map[resource.URN]bool
 
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
@@ -690,6 +690,18 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		sg.refresh &&
 		goal.Custom &&
 		!providers.IsProviderType(goal.Type) {
+
+		if skipped, err := sg.hasSkippedDependencies(new); err != nil {
+			return nil, false, err
+		} else if skipped {
+			// We can't refresh this resource as it depends on something that has been skipped. We
+			// need to skip this resource as well.
+			sg.skippedCreates[urn] = true
+			// If this has an old state maintain the old outputs to return to the program
+			new.Outputs = old.Outputs
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+		}
+
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go func() {
