@@ -408,9 +408,10 @@ func TestUv(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
-		template     string
-		cwd          string
-		expectedVenv string
+		template       string
+		cwd            string
+		expectedVenv   string
+		prepareProject func(*ptesting.Environment) error
 	}{
 		{
 			template:     "uv",
@@ -434,6 +435,18 @@ func TestUv(t *testing.T) {
 			cwd:          "subfolder",
 			expectedVenv: ".venv", // The virtualenv is relative to pyproject.toml
 		},
+		{
+			template:     "uv-workspace",
+			cwd:          "infra/projects/some-project",
+			expectedVenv: "infra/.venv", // The virtualenv is relative to workspace root'spyproject.toml
+			prepareProject: func(e *ptesting.Environment) error {
+				oldCWD := e.CWD
+				e.CWD = filepath.Join(e.RootPath, "infra")
+				e.RunCommand("uv", "sync", "--all-packages")
+				e.CWD = oldCWD
+				return nil
+			},
+		},
 	} {
 		test := test
 		// On windows, when running in parallel, we can run into issues when Uv tries
@@ -453,7 +466,13 @@ func TestUv(t *testing.T) {
 				e.CWD = filepath.Join(e.RootPath, test.cwd)
 			}
 
-			e.RunCommand("pulumi", "install")
+			if test.prepareProject != nil {
+				err := test.prepareProject(e)
+				require.NoError(t, err, "failed to prepare the project")
+			} else {
+				e.RunCommand("pulumi", "install")
+			}
+
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
 			e.RunCommand("pulumi", "preview")
