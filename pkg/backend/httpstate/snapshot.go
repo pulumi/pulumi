@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -138,9 +139,12 @@ type cloudJournaler struct {
 	backend     *cloudBackend           // A backend for communicating with the service
 	update      client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
 	sm          secrets.Manager         // Secrets manager for encrypting values when serializing the journal entries.
+	wg          sync.WaitGroup          // Wait group to ensure all operations are completed before closing.
 }
 
 func (j *cloudJournaler) BeginOperation(entry backend.JournalEntry) error {
+	j.wg.Add(1)
+	defer j.wg.Done()
 	serialized, err := entry.Serialize(j.context, j.sm.Encrypter())
 	if err != nil {
 		return fmt.Errorf("serializing journal entry: %w", err)
@@ -149,6 +153,8 @@ func (j *cloudJournaler) BeginOperation(entry backend.JournalEntry) error {
 }
 
 func (j *cloudJournaler) EndOperation(entry backend.JournalEntry) error {
+	j.wg.Add(1)
+	defer j.wg.Done()
 	serialized, err := entry.Serialize(j.context, j.sm.Encrypter())
 	if err != nil {
 		return fmt.Errorf("serializing journal entry: %w", err)
@@ -162,6 +168,7 @@ func (j *cloudJournaler) Write(*deploy.Snapshot) error {
 
 func (j *cloudJournaler) Close() error {
 	// No resources to close in the cloud journaler.
+	j.wg.Wait() // Wait for all operations to complete before closing.
 	// TODO: do we need to wait for all begin/end operations to complete here?
 	return nil
 }
