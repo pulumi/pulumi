@@ -271,7 +271,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		opStopwatch:           newOpStopwatch(),
 		permalink:             permalink,
 	}
-	defer contract.IgnoreClose(display.renderer)
+	defer func() {
+		contract.IgnoreClose(display.renderer)
+		// let our caller know we're done.
+		close(done)
+	}()
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -280,9 +284,6 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 	}
 	display.processEvents(ticker, events)
 	ticker.Stop()
-
-	// let our caller know we're done.
-	close(done)
 }
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
