@@ -1,4 +1,4 @@
-# Copyright 2016-2023, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -460,12 +460,27 @@ class LocalWorkspace(Workspace):
         stack_name: str,
         force: Optional[bool] = None,
         preserve_config: Optional[bool] = None,
+        remove_backups: Optional[bool] = None,
     ) -> None:
         args = ["stack", "rm", "--yes"]
         if force:
             args.append("--force")
         if preserve_config:
             args.append("--preserve-config")
+        if remove_backups:
+            ver = VersionInfo(3)
+            if self.pulumi_command.version is not None:
+                ver = self.pulumi_command.version
+            if ver >= VersionInfo(3, 188):
+                # Pulumi 3.188.0 introduced the `--remove-backups` flag.
+                # https://github.com/pulumi/pulumi/releases/tag/v3.188.0
+                args.append("--remove-backups")
+            else:
+                raise InvalidVersionError(
+                    "The installed version of the CLI does not support remove_backups. Please "
+                    "upgrade to at least version 3.188.0."
+                )
+            args.append("--remove-backups")
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 

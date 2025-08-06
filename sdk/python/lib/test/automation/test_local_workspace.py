@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -968,6 +968,22 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.workspace.remove_stack(stack_name)
 
         stack.workspace.remove_stack(stack_name, force=True)
+
+        # we shouldn't be able to select the stack after it's been removed
+        # we expect this error
+        with self.assertRaises(StackNotFoundError):
+            stack.workspace.select_stack(stack_name)
+
+    def test_stack_remove_with_remove_backups(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        stack.up()
+
+        stack.workspace.remove_stack(stack_name, remove_backups=True)
 
         # we shouldn't be able to select the stack after it's been removed
         # we expect this error

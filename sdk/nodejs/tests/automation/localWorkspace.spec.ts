@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -894,6 +894,25 @@ describe("LocalWorkspace", () => {
         assert.rejects(stack.workspace.removeStack(stackName));
 
         await stack.workspace.removeStack(stackName, { force: true });
+
+        // we shouldn't be able to select the stack after it's been removed
+        // we expect this error
+        assert.rejects(stack.workspace.selectStack(stackName));
+    });
+    it(`runs through the stack lifecycle with an inline program, testing removing with removeBackups`, async () => {
+        const program = async () => {
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up({ userAgent });
+
+        await stack.workspace.removeStack(stackName, { removeBackups: true });
 
         // we shouldn't be able to select the stack after it's been removed
         // we expect this error
