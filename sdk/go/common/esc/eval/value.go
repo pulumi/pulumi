@@ -41,6 +41,7 @@ type value struct {
 
 	mergedKeys []string   // the value's merged keys. computed lazily--use keys().
 	exported   *esc.Value // non-nil if this value has already been exported
+	exporting  bool       // true if this value is in the process of being exported. See (*value).export for details.
 
 	// true if the value is unknown (e.g. because it did not evaluate successfully or is the result of an unevaluated
 	// fn::open)
@@ -321,6 +322,13 @@ func (v *value) export(environment string) esc.Value {
 	if v.exported != nil {
 		return *v.exported
 	}
+	if v.exporting {
+		// NOTE: it is always a bug to encounter a value in the process of being exported. The only case in which we
+		// should hit this is if the value chain contains cycles, which should not be possible.
+		return esc.Value{Unknown: true}
+	}
+	v.exporting = true
+	defer func() { v.exporting = false }()
 
 	var pv any
 	switch repr := v.repr.(type) {
