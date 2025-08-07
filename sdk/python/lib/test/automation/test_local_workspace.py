@@ -959,11 +959,11 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = create_or_select_stack(
             stack_name, program=pulumi_program_with_resource, project_name=project_name
         )
-        
+
         try:
             # pulumi up
             stack.up()
-            
+
             # pulumi preview
             preview_res = stack.preview(json=True)
 
