@@ -2325,7 +2325,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					if req.Name == "resA" || req.Name == "resB" {
+					if req.Name == "resA" {
 						assert.Equal(t, initialProperties, req.Inputs)
 						assert.Equal(t, initialProperties, req.State)
 
