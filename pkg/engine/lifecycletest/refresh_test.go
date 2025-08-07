@@ -2303,3 +2303,119 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 	assert.NotEqual(t, firstID, snap.Resources[1].ID)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20215. If a resource is skipped during a --run-program refresh
+// it can't be used as the dependency of a provider or other resource.
+func TestRefreshRunProgramRefreshSkipped(t *testing.T) {
+	t.Parallel()
+
+	state := map[resource.ID]resource.PropertyMap{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  state[req.ID],
+							Outputs: state[req.ID],
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					id := resource.ID(uuid.String())
+					state[id] = req.Properties
+
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	firstRefresh := true
+	secondRefresh := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")},
+		})
+		require.NoError(t, err)
+
+		// On the first run we try and make a provider, this also need to be skipped because it's dependency is skipped.
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"value": resp.Outputs["foo"]},
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"value": {resp.URN},
+			},
+		})
+		require.NoError(t, err)
+		if firstRefresh {
+			// On the first run we should skip the provider because it has a dependency on a skipped resource.
+			assert.Equal(t, resource.ID(""), prov.ID)
+		} else {
+			// On the up and second refresh run we should have a provider with an ID.
+			assert.NotEqual(t, resource.ID(""), prov.ID)
+		}
+
+		// On the second run try and use a skipped resource as a dependency of another existing resource.
+		var dep map[resource.PropertyKey][]resource.URN
+		if secondRefresh {
+			resp, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
+			})
+			require.NoError(t, err)
+			dep = map[resource.PropertyKey][]resource.URN{
+				"foo": {resp.URN},
+			}
+		}
+
+		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB" which is skipped.
+		_, err = monitor.RegisterResource("pkgA:m:typC", "resC", true, deploytest.ResourceOptions{
+			Inputs:       resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
+			PropertyDeps: dep,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run the first refresh with an empty state, it shouldn't error the provider should just be skipped.
+	snap, err := lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	// The default pkgA provider should exist.
+	require.Len(t, snap.Resources, 1)
+
+	// Run an update to create the actual resources
+	firstRefresh = false
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// Run the second refresh which can refresh the provider but shouldn't fail on the resource now depending
+	// on a skipped resource.
+	secondRefresh = true
+	snap, err = lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "20")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+}
