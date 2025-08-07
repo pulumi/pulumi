@@ -2427,8 +2427,8 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	assert.NotEqual(t, firstID, snap.Resources[1].ID)
 }
 
-// Regression test for https://github.com/pulumi/pulumi/issues/20215. If a resource is skipped during a --run-program refresh
-// it can't be used as the dependency of a provider or other resource.
+// Regression test for https://github.com/pulumi/pulumi/issues/20215. If a resource is skipped during a
+// --run-program refresh it can't be used as the dependency of a provider or other resource.
 func TestRefreshRunProgramRefreshSkipped(t *testing.T) {
 	t.Parallel()
 
@@ -2474,7 +2474,8 @@ func TestRefreshRunProgramRefreshSkipped(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// On the first run we try and make a provider, this also need to be skipped because it's dependency is skipped.
+		// On the first run we try and make a provider, this also need to be skipped because it's dependency
+		// is skipped.
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{"value": resp.Outputs["foo"]},
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
@@ -2502,7 +2503,8 @@ func TestRefreshRunProgramRefreshSkipped(t *testing.T) {
 			}
 		}
 
-		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB" which is skipped.
+		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB"
+		// which is skipped.
 		_, err = monitor.RegisterResource("pkgA:m:typC", "resC", true, deploytest.ResourceOptions{
 			Inputs:       resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
 			PropertyDeps: dep,

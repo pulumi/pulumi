@@ -697,14 +697,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		sg.refresh &&
 		goal.Custom &&
 		!providers.IsProviderType(goal.Type) {
-
-		if skipped, err := sg.hasSkippedDependencies(new); err != nil {
+		skipped, err := sg.hasSkippedDependencies(new)
+		if err != nil {
 			return nil, false, err
-		} else if skipped {
+		}
+		if skipped {
 			// We can't refresh this resource as it depends on something that has been skipped. We
 			// need to skip this resource as well.
 			sg.skippedCreates[urn] = true
-			// If this has an old state maintain the old outputs to return to the program
+			// Maintain the old outputs to return to the program
 			new.Outputs = old.Outputs
 			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 		}
