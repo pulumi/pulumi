@@ -19,8 +19,10 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -78,6 +80,11 @@ type stepGenerator struct {
 	imports   map[resource.URN]bool // set of URNs imported in this deployment
 	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
+
+	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
+
+	// A map of original state which will be what's seen by the snapshot system to their new refreshed state.
+	refreshStates map[*resource.State]*resource.State
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
@@ -710,7 +717,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			state, err := cts.Promise().Result(context.Background())
 			// alias this new "old" state in the dependency graph to it's original state.
 			if state != nil {
+				// This mutates depGraph but this in a goroutine so might race other Alias calls so we need to lock around this.
+				sg.refreshAliasLock.Lock()
 				sg.deployment.depGraph.Alias(state, old)
+				sg.refreshAliasLock.Unlock()
+				sg.refreshStates[old] = state
 			}
 			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
@@ -1978,6 +1989,15 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 			if isTargeted(res) {
 				// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
+
+				// We need to check if this resource has been refreshed because in that case it will be the
+				// new refreshed state that has "Delete" set to true and that needs the DeleteStep called on
+				// it, not the old state from the original snapshot. That original snapshot state will already
+				// have been removed from the snapshot by the refresh step.
+				if state, has := sg.refreshStates[res]; has {
+					res = state
+				}
+
 				if res.Delete {
 					// The below assert is commented-out because it's believed to be wrong.
 					//
@@ -2135,7 +2155,7 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 
 	// Produce a dependency graph of resources, we need to graph over the new "toDelete" resources and the old
 	// resources.
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	allResources := sg.collectAllResourcesForScheduling()
 	dg := graph.NewDependencyGraph(allResources)
 
 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
@@ -2166,7 +2186,7 @@ func (sg *stepGenerator) getExcludeDependencies(excludesOpt UrnTargets) map[reso
 		}
 	}
 
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	allResources := sg.collectAllResourcesForScheduling()
 	dg := graph.NewDependencyGraph(allResources)
 
 	excludes := make(map[resource.URN]bool)
@@ -2286,6 +2306,16 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	return resourcesToKeep, nil
 }
 
+// collectAllResourcesForScheduling collects all resources that are relevant for scheduling steps. This
+// includes the new resource states to be deleted (if running in destroy mode), the new resource states that
+// have been refreshed (if running in refresh mode), and then all the old resources from the previous
+// snapshot.
+func (sg *stepGenerator) collectAllResourcesForScheduling() []*resource.State {
+	allResources := append(sg.toDelete, slices.Collect(maps.Values(sg.refreshStates))...)
+	allResources = append(allResources, sg.deployment.prev.Resources...)
+	return allResources
+}
+
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
 // steps, where each list can be executed in parallel but a previous list must be executed to completion before
 // advancing to the next list.
@@ -2313,7 +2343,8 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	var antichains []antichain // the list of parallelizable steps we intend to return.
 
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	allResources := sg.collectAllResourcesForScheduling()
+
 	dg := graph.NewDependencyGraph(allResources)  // the current deployment's dependency graph.
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
 	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
@@ -3037,6 +3068,8 @@ func newStepGenerator(
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
+
+		refreshStates: make(map[*resource.State]*resource.State),
 
 		// We clone the targets passed as options because we will modify these sets as
 		// we compute the full sets (e.g. by expanding globs, or traversing

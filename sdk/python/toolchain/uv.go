@@ -278,7 +278,9 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 		}
 	}
 	if pyprojectTomlDir != "" {
-		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync")
+		// uv run does an "inexact" sync, that is it leaves extraneous
+		// dependencies alone and does not remove them.
+		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
 		if err := venvCmd.Run(); err != nil {
 			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
 		}

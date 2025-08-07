@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Update pulumi-dotnet to 3.87.0

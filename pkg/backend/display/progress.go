@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -133,7 +134,7 @@ type ProgressDisplay struct {
 	systemEventPayloads []engine.StdoutEventPayload
 
 	// Any active download progress events that we've received.
-	progressEventPayloads map[string]engine.ProgressEventPayload
+	progressEventPayloads *gsync.Map[string, engine.ProgressEventPayload]
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -271,6 +272,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		opStopwatch:           newOpStopwatch(),
 		permalink:             permalink,
 	}
+	defer func() {
+		contract.IgnoreClose(display.renderer)
+		// let our caller know we're done.
+		close(done)
+	}()
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -278,11 +284,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		ticker.Stop()
 	}
 	display.processEvents(ticker, events)
-	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
-
-	// let our caller know we're done.
-	close(done)
 }
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
@@ -1307,16 +1309,16 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 	display.ensureHeaderAndStackRows()
 
 	if display.progressEventPayloads == nil {
-		display.progressEventPayloads = make(map[string]engine.ProgressEventPayload)
+		display.progressEventPayloads = &gsync.Map[string, engine.ProgressEventPayload]{}
 	}
 
-	_, seen := display.progressEventPayloads[payload.ID]
+	_, seen := display.progressEventPayloads.Load(payload.ID)
 	first := !seen
 
 	if payload.Done {
-		delete(display.progressEventPayloads, payload.ID)
+		display.progressEventPayloads.Delete(payload.ID)
 	} else {
-		display.progressEventPayloads[payload.ID] = payload
+		display.progressEventPayloads.Store(payload.ID, payload)
 	}
 
 	// We have to release the lock before we call renderer.progress, because that may call back into a method that wants

@@ -225,6 +225,7 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
 			Inputs:  req.Inputs,
 			Outputs: outputs,
 		},
