@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/engine
-  description: Make `--exclude` correctly handle wildcards in all cases

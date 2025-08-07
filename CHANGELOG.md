@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.188.0 (2025-08-07)
+
+
+### Features
+
+- [cli] Add `--remove-backups` flag to `pulumi stack rm` for DIY backends
+  [#20203](https://github.com/pulumi/pulumi/pull/20203)
+
+
+### Bug Fixes
+
+- [cli] Fix cancellation when running via some CLI wrapper tools
+  [#20195](https://github.com/pulumi/pulumi/pull/20195)
+
+- [cli] Fix concurrent read/write during plugin downloads
+  [#20223](https://github.com/pulumi/pulumi/pull/20223)
+
+- [cli] Restore terminal mode on panic
+  [#20224](https://github.com/pulumi/pulumi/pull/20224)
+
+- [engine] Fix panic in refreshes due to concurrent map writes
+  [#20206](https://github.com/pulumi/pulumi/pull/20206)
+
+- [sdkgen] Warn about refs of the form "#/resources/pulumi:providers:<pkg>"
+  [#20192](https://github.com/pulumi/pulumi/pull/20192)
+
+- [cli/display] Show changed outputs in preview
+  [#20161](https://github.com/pulumi/pulumi/pull/20161)
+
+- [cli/engine] Make `--exclude` correctly handle wildcards in all cases
+  [#20158](https://github.com/pulumi/pulumi/pull/20158)
+
+- [sdk/go] Fix running against old CLI versions without SignalAndWaitForShutdown
+  [#20212](https://github.com/pulumi/pulumi/pull/20212)
+
+- [sdk/python] Fix dependency installation in uv workspaces
+  [#20218](https://github.com/pulumi/pulumi/pull/20218)
+
+
+### Miscellaneous
+
+- [cli] Update pulumi-dotnet to 3.87.0
+  [#20222](https://github.com/pulumi/pulumi/pull/20222)
+
+- [cli/env] Bump esc to v0.17.0
+  [#20197](https://github.com/pulumi/pulumi/pull/20197)
+
 ## 3.187.0 (2025-07-31)
 
 
