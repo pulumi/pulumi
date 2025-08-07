@@ -435,7 +435,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 
 		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
 		// any duplicate URNs.
-		urns := make(map[resource.URN]*resource.State)
+		urns := make(map[resource.URN][]*resource.State)
 		provs := make(map[providers.Reference]struct{})
 		for i, state := range snap.Resources {
 			urn := state.URN
@@ -544,12 +544,26 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
-			if _, has := urns[urn]; has && !state.Delete {
-				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
-				return SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
+			urns[urn] = append(urns[urn], state)
+		}
+
+		for urn, states := range urns {
+			if len(states) == 1 {
+				continue
 			}
 
-			urns[urn] = state
+			deletes := 0
+			// The only time we should have duplicate URNs is when all or all but one of them are marked for
+			// deletion.
+			for _, state := range states {
+				if state.Delete {
+					deletes++
+				}
+			}
+
+			if deletes != len(states)-1 && deletes != len(states) {
+				return SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
+			}
 		}
 	}
 
