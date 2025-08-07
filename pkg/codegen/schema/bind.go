@@ -1157,15 +1157,11 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 
 	dv := &DefaultValue{Value: value}
 	if spec != nil {
-		language := make(map[string]interface{})
-		for name, raw := range spec.Language {
-			language[name] = json.RawMessage(raw)
-		}
 		if len(spec.Environment) == 0 {
 			diags = diags.Append(errorf(path, "Default must specify an environment"))
 		}
 
-		dv.Environment, dv.Language = spec.Environment, language
+		dv.Environment, dv.Language = spec.Environment, makeLanguageMap(spec.Language)
 	}
 	return dv, diags
 }
@@ -1212,11 +1208,6 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		dv, dvDiags := bindDefaultValue(propertyPath+"/default", spec.Default, spec.DefaultInfo, typ)
 		diags = diags.Extend(dvDiags)
 
-		language := make(map[string]interface{})
-		for name, raw := range spec.Language {
-			language[name] = json.RawMessage(raw)
-		}
-
 		p := &Property{
 			Name:                 name,
 			Comment:              spec.Description,
@@ -1224,7 +1215,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			ConstValue:           cv,
 			DefaultValue:         dv,
 			DeprecationMessage:   spec.DeprecationMessage,
-			Language:             language,
+			Language:             makeLanguageMap(spec.Language),
 			Secret:               spec.Secret,
 			ReplaceOnChanges:     spec.ReplaceOnChanges,
 			WillReplaceOnChanges: spec.WillReplaceOnChanges,
@@ -1278,10 +1269,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 		return diags, err
 	}
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
+	language := makeLanguageMap(spec.Language)
 
 	obj.PackageReference = t.externalPackage()
 	obj.Token = token
@@ -1654,11 +1642,6 @@ func (t *types) bindResourceDetails(
 		aliases = append(aliases, &Alias{compatibility: a.compatibility, Type: a.Type})
 	}
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
-
 	*decl = Resource{
 		PackageReference:          t.externalPackage(),
 		Token:                     token,
@@ -1668,7 +1651,7 @@ func (t *types) bindResourceDetails(
 		StateInputs:               stateInputs,
 		Aliases:                   aliases,
 		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  language,
+		Language:                  makeLanguageMap(spec.Language),
 		IsComponent:               spec.IsComponent,
 		Methods:                   methods,
 		IsOverlay:                 spec.IsOverlay,
@@ -1840,11 +1823,6 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 
 	var outputs *ObjectType
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
-
 	var inlineObjectAsReturnType bool
 	var returnType Type
 	var returnTypePlain bool
@@ -1915,7 +1893,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		ReturnType:                returnType,
 		ReturnTypePlain:           returnTypePlain,
 		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  language,
+		Language:                  makeLanguageMap(spec.Language),
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
 	}
@@ -1941,4 +1919,19 @@ func (t *types) finishFunctions(tokens []string, options ValidationOptions) ([]*
 	})
 
 	return functions, diags, nil
+}
+
+// makeLanguageMap converts a map[string]RawMessage as found on serializable
+// spec object into map[string]interface{} (using json.RawMessage for the
+// values) for use in schema types. If the passed in map is empty (or nil), we
+// return a nil map instead of an empty map to save memory.
+func makeLanguageMap(raw map[string]RawMessage) map[string]interface{} {
+	var language map[string]interface{}
+	if len(raw) > 0 {
+		language = make(map[string]interface{})
+		for name, raw := range raw {
+			language[name] = json.RawMessage(raw)
+		}
+	}
+	return language
 }
