@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Surface `json` option to `pulumi preview` calls in Python when using the `pulumi.automation` package.
