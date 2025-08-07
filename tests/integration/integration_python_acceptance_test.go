@@ -438,7 +438,7 @@ func TestUv(t *testing.T) {
 		{
 			template:     "uv-workspace",
 			cwd:          "infra/projects/some-project",
-			expectedVenv: "infra/.venv", // The virtualenv is relative to workspace root'spyproject.toml
+			expectedVenv: "infra/.venv", // The virtualenv is relative to workspace root's pyproject.toml
 			prepareProject: func(e *ptesting.Environment) error {
 				oldCWD := e.CWD
 				e.CWD = filepath.Join(e.RootPath, "infra")
