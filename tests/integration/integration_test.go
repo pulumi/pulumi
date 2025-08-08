@@ -1879,3 +1879,22 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 			" Output so far: %s", timeout.String(), output.String())
 	}
 }
+
+func TestPluginLs(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls", "--json")
+	plugins := []map[string]any{}
+	err := json.Unmarshal([]byte(stdout), &plugins)
+
+	require.NoError(t, err)
+	require.Len(t, plugins, 1)
+	random := plugins[0]
+	require.Equal(t, "random", random["name"].(string))
+	require.Equal(t, "resource", random["kind"].(string))
+	require.Greater(t, random["size"].(float64), 0.0)
+}

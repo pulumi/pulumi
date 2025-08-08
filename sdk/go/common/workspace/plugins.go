@@ -1246,11 +1246,26 @@ type PluginInfo struct {
 	Path         string             // the path that a plugin was loaded from (this will always be a directory)
 	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version      *semver.Version    // the plugin's semantic version, if present.
-	Size         uint64             // the size of the plugin, in bytes.
 	InstallTime  time.Time          // the time the plugin was installed.
 	LastUsedTime time.Time          // the last time the plugin was used.
 	SchemaPath   string             // if set, used as the path for loading and caching the schema
 	SchemaTime   time.Time          // if set and newer than the file at SchemaPath, used to invalidate a cached schema
+
+	size uint64 // cached plugin size in bytes
+}
+
+// Size calculates the size of the plugin, in bytes.
+func (info *PluginInfo) Size() uint64 {
+	if info.size > 0 {
+		return info.size
+	}
+	size, err := getPluginSize(info.Path)
+	if err != nil {
+		logging.V(6).Infof("unable to get plugin dir size for %s: %v", info.Path, err)
+		return 0
+	}
+	info.size = size
+	return size
 }
 
 // Spec returns the PluginSpec for this PluginInfo
@@ -1280,20 +1295,12 @@ func (info *PluginInfo) Delete() error {
 	return nil
 }
 
-// SetFileMetadata adds extra metadata from the given file, representing this plugin's directory.
-func (info *PluginInfo) SetFileMetadata(path string) error {
+// setFileMetadata adds extra metadata from the given file, representing this plugin's directory.
+func (info *PluginInfo) setFileMetadata(path string) error {
 	// Get the file info.
 	file, err := os.Stat(path)
 	if err != nil {
 		return err
-	}
-
-	// Next, get the size from the directory (or, if there is none, just the file).
-	size, err := getPluginSize(path)
-	if err == nil {
-		info.Size = size
-	} else {
-		logging.V(6).Infof("unable to get plugin dir size for %s: %v", path, err)
 	}
 
 	// Next get the access times from the plugin folder.
@@ -2154,7 +2161,7 @@ func GetPlugins() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir, true /* skipMetadata */)
+	return getPlugins(dir)
 }
 
 // GetPluginsWithMetadata returns a list of installed plugins with metadata about size,
@@ -2167,10 +2174,10 @@ func GetPluginsWithMetadata() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir, false /* skipMetadata */)
+	return getPlugins(dir)
 }
 
-func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
+func getPlugins(dir string) ([]PluginInfo, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -2197,11 +2204,8 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 			} else if !os.IsNotExist(err) {
 				return nil, err
 			}
-			// computing plugin sizes can be very expensive (nested node_modules)
-			if !skipMetadata {
-				if err = plugin.SetFileMetadata(path); err != nil {
-					return nil, err
-				}
+			if err = plugin.setFileMetadata(path); err != nil {
+				return nil, err
 			}
 			plugins = append(plugins, plugin)
 		}
@@ -2323,7 +2327,7 @@ func getPluginInfoAndPath(
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
-			if err := info.SetFileMetadata(info.Path); err != nil {
+			if err := info.setFileMetadata(info.Path); err != nil {
 				return nil, "", err
 			}
 		}
@@ -2403,7 +2407,7 @@ func getPluginInfoAndPath(
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
-			if err := info.SetFileMetadata(info.Path); err != nil {
+			if err := info.setFileMetadata(info.Path); err != nil {
 				return nil, "", err
 			}
 		}

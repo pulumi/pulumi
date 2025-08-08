@@ -116,8 +116,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	require.NoError(t, err)
 	assert.True(t, has)
 
-	skipMetadata := true
-	plugins, err := getPlugins(dir, skipMetadata)
+	plugins, err := getPlugins(dir)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(plugins))
 	assert.Equal(t, plugin.Name, plugins[0].Name)
@@ -313,8 +312,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, has)
 
-	skipMetadata := true
-	plugins, err := getPlugins(dir, skipMetadata)
+	plugins, err := getPlugins(dir)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(plugins))
 }
