@@ -425,7 +425,7 @@ func ExampleLocalWorkspace_ListPlugins() {
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	ps, _ := w.ListPlugins(ctx)
-	fmt.Println(ps[0].Size)
+	fmt.Println(ps[0].Size())
 }
 
 func ExampleLocalWorkspace_ListStacks() {
