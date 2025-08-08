@@ -526,9 +526,13 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmd.Env = env
 	}
 	in, _ := cmd.StdinPipe()
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+	cmd.Stdout = outw
+	cmd.Stderr = errw
 	if err := cmd.Start(); err != nil {
+		contract.IgnoreClose(outw)
+		contract.IgnoreClose(errw)
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
 		// it upstream
@@ -548,6 +552,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	wait := &promise.CompletionSource[struct{}]{}
 	go func() {
 		err := cmd.Wait()
+		contract.IgnoreClose(outw)
+		contract.IgnoreClose(errw)
 		if err != nil {
 			wait.Reject(err)
 		} else {
@@ -593,8 +599,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Env:    env,
 		Kill:   kill,
 		Stdin:  in,
-		Stdout: stdout,
-		Stderr: stderr,
+		Stdout: outr,
+		Stderr: errr,
 		Wait: func(ctx context.Context) (int, error) {
 			_, err := wait.Promise().Result(ctx)
 			if err != nil {
