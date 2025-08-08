@@ -110,7 +110,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 	highestVersion := semver.Version{Major: 0, Minor: 0, Patch: 0}
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
-			version, _ := getProviderVersion(provider)
+			version, _ := getProviderVersion(provider())
 			if version.GT(highestVersion) {
 				highestVersion = version
 			}
@@ -124,6 +124,8 @@ func TestUniqueProviderVersions(t *testing.T) {
 
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
+			provider := provider()
+
 			pkg := string(provider.Pkg())
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
@@ -153,6 +155,7 @@ func TestProviderVersions(t *testing.T) {
 
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
+			provider := provider()
 			pkg := string(provider.Pkg())
 			if pkg == "parameterized" {
 				// for parameterized provider, the version is set in the parameterization
@@ -190,6 +193,8 @@ func TestProviderSchemas(t *testing.T) {
 		loader := &inMemoryProviderLoader{providers: test.Providers}
 
 		for _, provider := range test.Providers {
+			provider := provider()
+
 			if provider.Pkg() == "parameterized" {
 				// We don't currently support testing the schemas of parameterized providers.
 				continue
@@ -237,7 +242,7 @@ func TestBindPrograms(t *testing.T) {
 
 // inMemoryProviderLoader is a schema.ReferenceLoader that loads schema from memory.
 type inMemoryProviderLoader struct {
-	providers []plugin.Provider
+	providers []func() plugin.Provider
 }
 
 func (l *inMemoryProviderLoader) LoadPackageReference(
@@ -260,6 +265,7 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 	// Find the provider with the given package name.
 	var provider plugin.Provider
 	for _, p := range l.providers {
+		p := p()
 		if string(p.Pkg()) == descriptor.Name {
 			info, err := p.GetPluginInfo(context.TODO())
 			if err != nil {

@@ -27,7 +27,9 @@ import (
 func init() {
 	LanguageTests["l2-provider-grpc-config-schema-secret"] = LanguageTest{
 		// This test checks how SDKs propagate properties marked as secret to the provider Configure on the gRPC level.
-		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ConfigGrpcProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-scalar"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleInvokeWithScalarReturnProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeWithScalarReturnProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

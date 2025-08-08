@@ -27,9 +27,11 @@ import (
 
 func init() {
 	LanguageTests["l2-map-keys"] = LanguageTest{
-		Providers: []plugin.Provider{
-			&providers.PrimitiveProvider{}, &providers.PrimitiveRefProvider{},
-			&providers.RefRefProvider{}, &providers.PlainProvider{},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.PrimitiveProvider{} },
+			func() plugin.Provider { return &providers.PrimitiveRefProvider{} },
+			func() plugin.Provider { return &providers.RefRefProvider{} },
+			func() plugin.Provider { return &providers.PlainProvider{} },
 		},
 		Runs: []TestRun{
 			{

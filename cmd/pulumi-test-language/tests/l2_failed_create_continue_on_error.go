@@ -28,7 +28,10 @@ import (
 
 func init() {
 	LanguageTests["l2-failed-create-continue-on-error"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+			func() plugin.Provider { return &providers.FailOnCreateProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				UpdateOptions: engine.UpdateOptions{

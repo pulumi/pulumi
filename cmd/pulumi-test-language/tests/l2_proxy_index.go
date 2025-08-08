@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-proxy-index"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.RefRefProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.RefRefProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

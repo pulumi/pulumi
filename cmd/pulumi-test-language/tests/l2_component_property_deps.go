@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-component-property-deps"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentPropertyDepsProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentPropertyDepsProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

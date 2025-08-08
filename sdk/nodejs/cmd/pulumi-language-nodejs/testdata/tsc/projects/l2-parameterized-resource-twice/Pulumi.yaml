@@ -1,0 +1,5 @@
+name: l2-parameterized-resource-twice
+runtime:
+  name: nodejs
+  options:
+    typescript: false

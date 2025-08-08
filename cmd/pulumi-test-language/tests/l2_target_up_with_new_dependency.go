@@ -25,7 +25,9 @@ import (
 
 func init() {
 	LanguageTests["l2-target-up-with-new-dependency"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

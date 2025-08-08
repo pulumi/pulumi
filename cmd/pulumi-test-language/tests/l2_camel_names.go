@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-camel-names"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.CamelNamesProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.CamelNamesProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

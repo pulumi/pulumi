@@ -28,7 +28,9 @@ func init() {
 	// Tests the ability to hydrate component resource references in other components and use their outputs as inputs to
 	// child resources.
 	LanguageTests["l2-component-component-resource-ref"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

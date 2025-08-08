@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-primitives"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.PrimitiveProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.PrimitiveProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

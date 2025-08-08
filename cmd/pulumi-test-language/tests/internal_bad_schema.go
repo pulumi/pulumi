@@ -21,7 +21,9 @@ import (
 
 func init() {
 	LanguageTests["internal-bad-schema"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.BadProvider{}},
-		Runs:      []TestRun{{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.BadProvider{} },
+		},
+		Runs: []TestRun{{}},
 	}
 }

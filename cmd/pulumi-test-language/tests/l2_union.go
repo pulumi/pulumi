@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-union"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.UnionProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.UnionProvider{} },
+		},
 		Runs: []TestRun{{
 			Assert: func(
 				l *L,

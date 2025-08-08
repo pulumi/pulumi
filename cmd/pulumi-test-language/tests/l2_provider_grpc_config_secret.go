@@ -27,7 +27,9 @@ import (
 func init() {
 	LanguageTests["l2-provider-grpc-config-secret"] = LanguageTest{
 		// Check what schemaprov received in CheckRequest.
-		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ConfigGrpcProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

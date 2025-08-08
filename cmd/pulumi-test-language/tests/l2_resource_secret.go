@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-secret"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SecretProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SecretProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

@@ -29,7 +29,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-asset-archive"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.AssetArchiveProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Main: "subdir",

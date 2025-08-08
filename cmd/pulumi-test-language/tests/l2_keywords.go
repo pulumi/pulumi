@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-keywords"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.KeywordsProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.KeywordsProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

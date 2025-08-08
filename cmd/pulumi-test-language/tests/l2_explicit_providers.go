@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-explicit-providers"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

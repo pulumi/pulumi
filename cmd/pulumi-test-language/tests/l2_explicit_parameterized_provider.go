@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-explicit-parameterized-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ParameterizedProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

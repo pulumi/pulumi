@@ -47,7 +47,9 @@ func init() {
 	// pack should return a config schema that defines a required bool field "value", and a string list field "names" that
 	// must contain at least one item.
 	LanguageTests["policy-config-schema"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		// All these runs share the same source, we're just changing the policy config.
 		RunsShareSource: true,
 		Runs: []TestRun{
