@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l3-component-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

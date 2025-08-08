@@ -26,9 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-secrets"] = LanguageTest{
-		Providers: []plugin.Provider{
-			&providers.SimpleInvokeProvider{},
-			&providers.SimpleProvider{},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeProvider{} },
+			func() plugin.Provider { return &providers.SimpleProvider{} },
 		},
 		Runs: []TestRun{
 			{

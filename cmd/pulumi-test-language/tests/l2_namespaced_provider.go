@@ -26,7 +26,10 @@ import (
 
 func init() {
 	LanguageTests["l2-namespaced-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}, &providers.NamespacedProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+			func() plugin.Provider { return &providers.NamespacedProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

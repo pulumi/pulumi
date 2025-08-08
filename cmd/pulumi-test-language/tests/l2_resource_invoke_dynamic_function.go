@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-invoke-dynamic-function"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.AnyTypeFunctionProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.AnyTypeFunctionProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

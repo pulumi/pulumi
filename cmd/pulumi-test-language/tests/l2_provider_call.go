@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-provider-call"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.CallProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.CallProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Config: config.Map{

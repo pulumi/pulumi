@@ -219,8 +219,7 @@ var (
 )
 
 type LanguageTest struct {
-	// TODO: This should be a function so we don't have to load all providers in memory all the time.
-	Providers []plugin.Provider
+	Providers []func() plugin.Provider
 
 	// stackReferences specifies other stack data that this test depends on.
 	StackReferences map[string]resource.PropertyMap

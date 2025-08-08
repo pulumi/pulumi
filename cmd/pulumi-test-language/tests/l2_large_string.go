@@ -28,7 +28,9 @@ import (
 
 func init() {
 	LanguageTests["l2-large-string"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.LargeProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.LargeProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
