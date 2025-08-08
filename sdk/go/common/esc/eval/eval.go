@@ -155,14 +155,20 @@ func evalEnvironment(
 		}
 	}
 
+	contextProperties, exportDiags := ec.myContext.export(name)
+	diags.Extend(exportDiags...)
+
 	executionContext := &esc.EvaluatedExecutionContext{
-		Properties: ec.myContext.export(name).Value.(map[string]esc.Value),
+		Properties: contextProperties.Value.(map[string]esc.Value),
 		Schema:     ec.myContext.schema,
 	}
 
+	envProperties, exportDiags := v.export(name)
+	diags.Extend(exportDiags...)
+
 	return &esc.Environment{
 		Exprs:            ec.root.export(name).Object,
-		Properties:       v.export(name).Value.(map[string]esc.Value),
+		Properties:       envProperties.Value.(map[string]esc.Value),
 		Schema:           s,
 		ExecutionContext: executionContext,
 	}, &ec.rotationResult, diags
@@ -1062,7 +1068,10 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 		return v
 	}
 
-	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value), e.execContext)
+	inputsV, exportDiags := inputs.export("")
+	e.diags.Extend(exportDiags...)
+
+	output, err := provider.Open(e.ctx, inputsV.Value.(map[string]esc.Value), e.execContext)
 	if err != nil {
 		e.errorf(repr.syntax(), "%s", err.Error())
 		v.unknown = true
@@ -1125,12 +1134,18 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		return v
 	}
 
+	inputsV, exportDiags := inputs.export("")
+	e.diags.Extend(exportDiags...)
+
 	// if rotating, invoke prior to open
 	if e.shouldRotate(docPath) {
+		stateV, exportDiags := state.export("")
+		e.diags.Extend(exportDiags...)
+
 		newState, err := rotator.Rotate(
 			e.ctx,
-			inputs.export("").Value.(map[string]esc.Value),
-			asObjectOrNil(state.export("").Value),
+			inputsV.Value.(map[string]esc.Value),
+			asObjectOrNil(stateV.Value),
 			e.execContext,
 		)
 		if err != nil {
@@ -1165,10 +1180,13 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		state = unexport(newState, x)
 	}
 
+	stateV, exportDiags := state.export("")
+	e.diags.Extend(exportDiags...)
+
 	output, err := rotator.Open(
 		e.ctx,
-		inputs.export("").Value.(map[string]esc.Value),
-		asObjectOrNil(state.export("").Value),
+		inputsV.Value.(map[string]esc.Value),
+		asObjectOrNil(stateV.Value),
 		e.execContext,
 	)
 	if err != nil {
@@ -1307,7 +1325,10 @@ func (e *evalContext) evaluateBuiltinToJSON(x *expr, repr *toJSONExpr) *value {
 
 	v.combine(value)
 	if !v.unknown {
-		b, err := json.Marshal(value.export("").ToJSON(false))
+		valueV, exportDiags := value.export("")
+		e.diags.Extend(exportDiags...)
+
+		b, err := json.Marshal(valueV.ToJSON(false))
 		if err != nil {
 			e.errorf(repr.syntax(), "failed to encode JSON: %v", err)
 			v.unknown = true

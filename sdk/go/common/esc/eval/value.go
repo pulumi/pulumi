@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/schema"
+	"github.com/pulumi/esc/syntax"
 	"golang.org/x/exp/maps"
 )
 
@@ -318,32 +319,39 @@ func (v *value) toString() (str string, unknown bool, secret bool) {
 }
 
 // export converts the value into its serializable representation.
-func (v *value) export(environment string) esc.Value {
+func (v *value) export(environment string) (esc.Value, syntax.Diagnostics) {
 	if v.exported != nil {
-		return *v.exported
+		return *v.exported, nil
 	}
 	if v.exporting {
 		// NOTE: it is always a bug to encounter a value in the process of being exported. The only case in which we
 		// should hit this is if the value chain contains cycles, which should not be possible.
-		return esc.Value{Unknown: true}
+		return esc.Value{Unknown: true}, syntax.Diagnostics{
+			syntax.NodeError(v.def.repr.syntax().Syntax(), "internal error: cyclic export"),
+		}
 	}
 	v.exporting = true
 	defer func() { v.exporting = false }()
 
+	var diags syntax.Diagnostics
 	var pv any
 	switch repr := v.repr.(type) {
 	case []*value:
+		var elemDiags syntax.Diagnostics
 		a := make([]esc.Value, len(repr))
 		for i, v := range repr {
-			a[i] = v.export(environment)
+			a[i], elemDiags = v.export(environment)
+			diags.Extend(elemDiags...)
 		}
 		pv = a
 	case map[string]*value:
+		var elemDiags syntax.Diagnostics
 		keys := v.keys()
 		pm := make(map[string]esc.Value, len(keys))
 		for _, k := range keys {
 			pv := v.property(v.def.repr.syntax(), k)
-			pm[k] = pv.export(environment)
+			pm[k], elemDiags = pv.export(environment)
+			diags.Extend(elemDiags...)
 		}
 		pv = pm
 	default:
@@ -352,7 +360,8 @@ func (v *value) export(environment string) esc.Value {
 
 	var base *esc.Value
 	if v.base != nil {
-		b := v.base.export("<import>")
+		b, baseDiags := v.base.export("<import>")
+		diags.Extend(baseDiags...)
 		base = &b
 	}
 
@@ -365,7 +374,7 @@ func (v *value) export(environment string) esc.Value {
 			Base: base,
 		},
 	}
-	return *v.exported
+	return *v.exported, diags
 }
 
 // unexport creates a value from a Value. This is used when interacting with providers, as the Provider API works on
