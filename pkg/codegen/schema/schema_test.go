@@ -2092,7 +2092,6 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				Token:            "token",
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
-				Language:         map[string]interface{}{},
 			},
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{

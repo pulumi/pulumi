@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen
+  description: Don’t create empty maps for language specific overrides
