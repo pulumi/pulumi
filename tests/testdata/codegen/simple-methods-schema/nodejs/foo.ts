@@ -63,7 +63,7 @@ export class Foo extends pulumi.ComponentResource {
     }
 
     baz(): void {
-        pulumi.runtime.call("example::Foo/baz", {
+        pulumi.runtime.callSingle("example::Foo/baz", {
             "__self__": this,
         }, this);
     }
