@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Fix swapped stderr/stdout callback comments in PreviewOptions interface
