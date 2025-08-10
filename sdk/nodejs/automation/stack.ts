@@ -1749,12 +1749,12 @@ export interface PreviewOptions extends GlobalOpts {
     program?: PulumiFn;
 
     /**
-     * A callback to be executed when the operation produces stderr output.
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
     /**
-     * A callback to be executed when the operation produces stdout output.
+     * A callback to be executed when the operation produces stderr output.
      */
     onError?: (err: string) => void;
 
