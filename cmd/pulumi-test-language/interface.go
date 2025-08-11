@@ -664,13 +664,15 @@ func (eng *languageTestServer) RunLanguageTest(
 		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
-	providers := make(map[string]plugin.Provider)
+	providers := make(map[string]func() plugin.Provider)
 	for _, provider := range test.Providers {
-		version, err := getProviderVersion(provider)
+		p := provider()
+
+		version, err := getProviderVersion(p)
 		if err != nil {
 			return nil, err
 		}
-		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
+		providers[fmt.Sprintf("%s@%s", p.Pkg(), version)] = provider
 	}
 
 	host := &testHost{

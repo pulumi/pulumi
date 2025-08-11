@@ -28,7 +28,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-config"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ConfigProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ConfigProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Config: config.Map{

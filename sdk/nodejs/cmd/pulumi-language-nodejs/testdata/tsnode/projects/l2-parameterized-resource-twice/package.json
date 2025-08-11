@@ -1,0 +1,12 @@
+{
+	"name": "l2-parameterized-resource-twice",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/byepackage": "ROOT/artifacts/pulumi-byepackage-2.0.0.tgz",
+		"@pulumi/hipackage": "ROOT/artifacts/pulumi-hipackage-2.0.0.tgz"
+	}
+}

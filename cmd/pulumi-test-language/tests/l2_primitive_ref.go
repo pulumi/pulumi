@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-primitive-ref"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.PrimitiveRefProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

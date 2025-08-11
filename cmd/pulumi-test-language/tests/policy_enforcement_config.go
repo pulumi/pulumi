@@ -65,7 +65,9 @@ func init() {
 	// This is to test that we can configure policy enforcement via policy config with the special key
 	// "enforcementLevel".
 	LanguageTests["policy-enforcement-config"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		// All these runs share the same source, we're just changing the policy config.
 		RunsShareSource: true,
 		Runs: []TestRun{

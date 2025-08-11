@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-provider-grpc-config"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ConfigGrpcProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
