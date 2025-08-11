@@ -37,9 +37,8 @@ const (
 
 // ChooseTemplate will prompt the user to choose amongst the available templates.
 func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
-	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !opts.IsInteractive {
-		return nil, errors.New(chooseTemplateErr)
+		return nil, errors.New("template or url is required when running in non-interactive mode")
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -57,7 +56,7 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 		Options:  options,
 		PageSize: pageSize,
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
-		return nil, errors.New(chooseTemplateErr)
+		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
 	}
 
 	return optionToTemplateMap[option], nil

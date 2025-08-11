@@ -453,7 +453,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.ErrorContains(t, err, "no template selected")
+		assert.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
