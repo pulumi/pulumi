@@ -2504,12 +2504,13 @@ func TestRefreshRunProgramRefreshSkipped(t *testing.T) {
 		}
 
 		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB"
-		// which is skipped.
-		_, err = monitor.RegisterResource("pkgA:m:typC", "resC", true, deploytest.ResourceOptions{
+		// which is skipped but this should still refresh and return the latest data.
+		resp, err = monitor.RegisterResource("pkgA:m:typC", "resC", true, deploytest.ResourceOptions{
 			Inputs:       resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
 			PropertyDeps: dep,
 		})
 		require.NoError(t, err)
+		assert.Equal(t, state[resp.ID], resp.Outputs)
 
 		return nil
 	})
@@ -2539,6 +2540,10 @@ func TestRefreshRunProgramRefreshSkipped(t *testing.T) {
 	// Run the second refresh which can refresh the provider but shouldn't fail on the resource now depending
 	// on a skipped resource.
 	secondRefresh = true
+	// Update the state of resC so we can see it still returns in the program the latest data
+	assert.Equal(t, "resC", snap.Resources[3].URN.Name())
+	state[snap.Resources[3].ID] = resource.PropertyMap{"foo": resource.NewStringProperty("qux")}
+
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "20")
 	require.NoError(t, err)
