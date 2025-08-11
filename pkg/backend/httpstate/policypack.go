@@ -137,7 +137,7 @@ func (pr *cloudBackendPolicyPackReference) Name() tokens.QName {
 }
 
 func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
-	return fmt.Sprintf("%s/%s/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
+	return fmt.Sprintf("%s/%s/insights/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
 }
 
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
