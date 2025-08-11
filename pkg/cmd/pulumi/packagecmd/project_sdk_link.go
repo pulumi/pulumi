@@ -214,16 +214,20 @@ func linkNodeJsPackage(ctx *LinkPackageContext) error {
 	if ctx.Install {
 		// Installing -- use the `add` commands.
 
-		packageSpecifier := fmt.Sprintf("%s@file:%s", getNodeJSPkgName(ctx.Pkg), relOut)
+		packageName := getNodeJSPkgName(ctx.Pkg)
+		packageSpecifier := fmt.Sprintf("%s@file:%s", packageName, relOut)
 		if packagemanager, ok := options["packagemanager"]; ok {
 			if pm, ok := packagemanager.(string); ok {
 				switch pm {
 				case "npm":
 					fallthrough
 				case "yarn":
-					fallthrough
-				case "pnpm":
 					addCmd = exec.Command(pm, "add", packageSpecifier)
+				case "pnpm":
+					// pnpm does not run postinstall scripts by default. We need
+					// to run the generated postinstall script for the SDK to
+					// compile it, See `genPostInstallScript`.
+					addCmd = exec.Command(pm, "add", packageSpecifier, "--allow-build="+packageName)
 				default:
 					return fmt.Errorf("unsupported package manager: %s", pm)
 				}

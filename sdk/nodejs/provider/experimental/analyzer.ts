@@ -699,8 +699,12 @@ Please ensure these components are properly imported to your package's entry poi
         // Extract the package name and pulumi type from the __pulumiType property.
         const packageName = pulumiType.split(":")[0];
 
-        // Extract package name from the path.
-        const packageMatch = implPath.match(/node_modules\/((@[^/]+\/)?[^/]+)/);
+        // Extract package name from the path. There might be multiple levels of
+        // `node_modules`, we want the right most one.
+        // The optional non-capturing group `(?:.*\/node_modules\/)?` will
+        // greedily match anything until `node_modules`, leaving anything after
+        // that for us to grab.
+        const packageMatch = implPath.match(/node_modules\/(?:.*\/node_modules\/)?((@[^/]+\/)?[^/]+)/);
         if (!packageMatch || packageMatch.length < 2) {
             throw new Error(
                 `Cannot determine resource type: package name not found for '${symbol.name}' for ${this.formatErrorContext(context)}`,

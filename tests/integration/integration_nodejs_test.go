@@ -2944,7 +2944,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 
 // Tests that we can run a Node.js component provider using component_provider_host
 func TestNodejsComponentProviderRun(t *testing.T) {
-	for _, runtime := range []string{"yaml", "python"} {
+	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
 			// This uses the random plugin so needs to be able to download it
 			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -2954,6 +2954,14 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
+
+					if runtime != "yaml" {
+						cmd := exec.Command("pulumi", "install")
+						cmd.Dir = info.Root
+						out, err := cmd.CombinedOutput()
+						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					}
+
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					out, err := cmd.CombinedOutput()
