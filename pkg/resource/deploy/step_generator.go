@@ -697,19 +697,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		sg.refresh &&
 		goal.Custom &&
 		!providers.IsProviderType(goal.Type) {
-		skipped, err := sg.hasSkippedDependencies(new)
-		if err != nil {
-			return nil, false, err
-		}
-		if skipped {
-			// We can't refresh this resource as it depends on something that has been skipped. We
-			// need to skip this resource as well.
-			sg.skippedCreates[urn] = true
-			// Maintain the old outputs to return to the program
-			new.Outputs = old.Outputs
-			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
-		}
-
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go func() {
@@ -723,7 +710,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				sg.deployment.depGraph.Alias(state, old)
 				sg.refreshAliasLock.Unlock()
 				sg.refreshStates[old] = state
+
 			}
+
 			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
 				RegisterResourceEvent: event,
@@ -771,31 +760,6 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshE
 	return steps, false, err
 }
 
-func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, error) {
-	provider, allDeps := new.GetAllDependencies()
-	allDepURNs := make([]resource.URN, len(allDeps))
-	for i, dep := range allDeps {
-		allDepURNs[i] = dep.URN
-	}
-
-	if provider != "" {
-		prov, err := providers.ParseReference(provider)
-		if err != nil {
-			return false, fmt.Errorf(
-				"could not parse provider reference %s for %s: %w",
-				provider, new.URN, err)
-		}
-		allDepURNs = append(allDepURNs, prov.URN())
-	}
-
-	for _, depURN := range allDepURNs {
-		if sg.skippedCreates[depURN] {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()
@@ -805,19 +769,36 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	// We need to check if this resource is trying to depend on another resource that has already been
 	// skipped. In that case we have to skip this resource as well.
 	if sg.mode == refreshMode || sg.mode == destroyMode {
-		if skipped, err := sg.hasSkippedDependencies(new); err != nil {
-			return nil, false, err
-		} else if skipped {
-			// This isn't an error (unlike when we hit this case in normal target runs), we just need to
-			// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
-			// an old state, but skipped create actually behaves as a general skip just fine.
-			sg.skippedCreates[urn] = true
-			if old != nil {
-				// If this has an old state maintain the old outputs to return to the program
-				new.Outputs = old.Outputs
-			}
-			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+		provider, allDeps := new.GetAllDependencies()
+		allDepURNs := make([]resource.URN, len(allDeps))
+		for i, dep := range allDeps {
+			allDepURNs[i] = dep.URN
 		}
+
+		if provider != "" {
+			prov, err := providers.ParseReference(provider)
+			if err != nil {
+				return nil, false, fmt.Errorf(
+					"could not parse provider reference %s for %s: %w",
+					provider, new.URN, err)
+			}
+			allDepURNs = append(allDepURNs, prov.URN())
+		}
+
+		for _, depURN := range allDepURNs {
+			if sg.skippedCreates[depURN] {
+				// This isn't an error (unlike when we hit this case in normal target runs), we just need to
+				// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
+				// an old state, but skipped create actually behaves as a general skip just fine.
+				sg.skippedCreates[urn] = true
+				if old != nil {
+					// If this has an old state maintain the old outputs to return to the program
+					new.Outputs = old.Outputs
+				}
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+			}
+		}
+		return nil, false, nil
 	}
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
