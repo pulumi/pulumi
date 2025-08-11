@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Fix incorrect console URLs being displayed after publishing a policy
