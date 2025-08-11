@@ -252,3 +252,19 @@ func EnsureKeywordSafe(name string) string {
 	}
 	return name
 }
+
+// TypecheckerDependency returns the requirement line for a given typechecker, or empty string if unknown.
+// This function provides a centralized way to map typechecker names to their requirement specifications.
+func TypecheckerDependency(typechecker string) string {
+	switch typechecker {
+	case "mypy":
+		return "mypy>=1.0.0"
+	case "pyright":
+		return "pyright>=1.1.0"
+	case "":
+		return ""
+	default:
+		// For unknown typecheckers, add without version constraint
+		return typechecker
+	}
+}

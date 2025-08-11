@@ -15,6 +15,7 @@
 package python
 
 import (
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -67,4 +68,80 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			return GenerateProject(directory, project, program, localDependencies, "", "")
 		},
 	)
+}
+
+func TestGenerateProjectWithTypechecker(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name                string
+		typechecker         string
+		expectedRequirement string
+	}{
+		{
+			name:                "mypy typechecker",
+			typechecker:         "mypy",
+			expectedRequirement: "mypy>=1.0.0",
+		},
+		{
+			name:                "pyright typechecker",
+			typechecker:         "pyright",
+			expectedRequirement: "pyright>=1.1.0",
+		},
+		{
+			name:                "no typechecker",
+			typechecker:         "",
+			expectedRequirement: "",
+		},
+		{
+			name:                "unknown typechecker",
+			typechecker:         "custom-checker",
+			expectedRequirement: "custom-checker",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a minimal program
+			program, diags := parseAndBindProgram(t, ``, "test.pp")
+			assert.False(t, diags.HasErrors())
+
+			// Create a temporary directory
+			tempDir := t.TempDir()
+
+			// Create a basic project
+			project := workspace.Project{
+				Name: "test-project",
+				Runtime: workspace.NewProjectRuntimeInfo("python", map[string]interface{}{
+					"toolchain": "pip",
+				}),
+			}
+
+			// Call GenerateProject with the typechecker
+			err := GenerateProject(tempDir, project, program, map[string]string{}, tc.typechecker, "pip")
+			require.NoError(t, err)
+
+			// Read the generated requirements.txt
+			requirementsPath := tempDir + "/requirements.txt"
+			requirementsContent, err := os.ReadFile(requirementsPath)
+			require.NoError(t, err)
+
+			requirementsStr := string(requirementsContent)
+
+			// Check that pulumi is always included
+			assert.Contains(t, requirementsStr, "pulumi>=3.0.0,<4.0.0")
+
+			// Check typechecker requirement
+			if tc.expectedRequirement != "" {
+				assert.Contains(t, requirementsStr, tc.expectedRequirement)
+			} else {
+				// If no typechecker, ensure no typechecker packages are included
+				assert.NotContains(t, requirementsStr, "mypy")
+				assert.NotContains(t, requirementsStr, "pyright")
+			}
+		})
+	}
 }
