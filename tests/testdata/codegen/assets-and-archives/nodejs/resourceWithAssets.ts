@@ -48,12 +48,12 @@ export class ResourceWithAssets extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.source === undefined) && !opts.urn) {
+            if (args?.source === undefined && !opts.urn) {
                 throw new Error("Missing required property 'source'");
             }
-            resourceInputs["archive"] = args ? args.archive : undefined;
-            resourceInputs["nested"] = args ? args.nested : undefined;
-            resourceInputs["source"] = args ? args.source : undefined;
+            resourceInputs["archive"] = args?.archive;
+            resourceInputs["nested"] = args?.nested;
+            resourceInputs["source"] = args?.source;
             resourceInputs["asset"] = undefined /*out*/;
         } else {
             resourceInputs["archive"] = undefined /*out*/;

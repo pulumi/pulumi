@@ -48,10 +48,10 @@ export class User extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.shared === undefined) && !opts.urn) {
+            if (args?.shared === undefined && !opts.urn) {
                 throw new Error("Missing required property 'shared'");
             }
-            resourceInputs["shared"] = args ? args.shared : undefined;
+            resourceInputs["shared"] = args?.shared;
             resourceInputs["name"] = undefined /*out*/;
             resourceInputs["password"] = undefined /*out*/;
         } else {

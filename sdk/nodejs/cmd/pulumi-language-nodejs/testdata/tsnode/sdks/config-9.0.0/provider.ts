@@ -34,11 +34,11 @@ export class Provider extends pulumi.ProviderResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            if ((!args || args.name === undefined) && !opts.urn) {
+            if (args?.name === undefined && !opts.urn) {
                 throw new Error("Missing required property 'name'");
             }
-            resourceInputs["name"] = args ? args.name : undefined;
-            resourceInputs["pluginDownloadURL"] = args ? args.pluginDownloadURL : undefined;
+            resourceInputs["name"] = args?.name;
+            resourceInputs["pluginDownloadURL"] = args?.pluginDownloadURL;
             resourceInputs["version"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);

@@ -46,7 +46,7 @@ export class ExampleServer extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["propertiesCollection"] = args ? args.propertiesCollection : undefined;
+            resourceInputs["propertiesCollection"] = args?.propertiesCollection;
             resourceInputs["name"] = undefined /*out*/;
         } else {
             resourceInputs["name"] = undefined /*out*/;

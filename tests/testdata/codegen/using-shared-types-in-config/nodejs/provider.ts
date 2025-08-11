@@ -42,19 +42,19 @@ export class Provider extends pulumi.ProviderResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            if ((!args || args.hash === undefined) && !opts.urn) {
+            if (args?.hash === undefined && !opts.urn) {
                 throw new Error("Missing required property 'hash'");
             }
-            if ((!args || args.shared === undefined) && !opts.urn) {
+            if (args?.shared === undefined && !opts.urn) {
                 throw new Error("Missing required property 'shared'");
             }
-            if ((!args || args.user === undefined) && !opts.urn) {
+            if (args?.user === undefined && !opts.urn) {
                 throw new Error("Missing required property 'user'");
             }
-            resourceInputs["hash"] = args ? args.hash : undefined;
+            resourceInputs["hash"] = args?.hash;
             resourceInputs["password"] = (args?.password ? pulumi.secret(args.password) : undefined) ?? (utilities.getEnv("FOO") || "");
-            resourceInputs["shared"] = pulumi.output(args ? args.shared : undefined).apply(JSON.stringify);
-            resourceInputs["user"] = args ? args.user : undefined;
+            resourceInputs["shared"] = pulumi.output(args?.shared).apply(JSON.stringify);
+            resourceInputs["user"] = args?.user;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         const secretOpts = { additionalSecretOutputs: ["password"] };

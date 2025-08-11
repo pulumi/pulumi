@@ -37,8 +37,8 @@ export class Component extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["eniConfig"] = args ? args.eniConfig : undefined;
-            resourceInputs["pod"] = args ? args.pod : undefined;
+            resourceInputs["eniConfig"] = args?.eniConfig;
+            resourceInputs["pod"] = args?.pod;
         } else {
             resourceInputs["eniConfig"] = undefined /*out*/;
             resourceInputs["pod"] = undefined /*out*/;

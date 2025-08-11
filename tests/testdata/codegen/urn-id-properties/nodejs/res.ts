@@ -49,8 +49,8 @@ export class Res extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["id"] = args ? args.id : undefined;
-            resourceInputs["urn"] = args ? args.urn : undefined;
+            resourceInputs["id"] = args?.id;
+            resourceInputs["urn"] = args?.urn;
             resourceInputs["output"] = undefined /*out*/;
         } else {
             resourceInputs["output"] = undefined /*out*/;

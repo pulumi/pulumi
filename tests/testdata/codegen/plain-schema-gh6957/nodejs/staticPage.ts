@@ -43,11 +43,11 @@ export class StaticPage extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.indexContent === undefined) && !opts.urn) {
+            if (args?.indexContent === undefined && !opts.urn) {
                 throw new Error("Missing required property 'indexContent'");
             }
-            resourceInputs["foo"] = args ? args.foo : undefined;
-            resourceInputs["indexContent"] = args ? args.indexContent : undefined;
+            resourceInputs["foo"] = args?.foo;
+            resourceInputs["indexContent"] = args?.indexContent;
             resourceInputs["bucket"] = undefined /*out*/;
             resourceInputs["websiteUrl"] = undefined /*out*/;
         } else {

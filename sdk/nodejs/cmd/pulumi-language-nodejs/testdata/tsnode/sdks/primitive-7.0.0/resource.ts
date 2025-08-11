@@ -49,30 +49,30 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.boolean === undefined) && !opts.urn) {
+            if (args?.boolean === undefined && !opts.urn) {
                 throw new Error("Missing required property 'boolean'");
             }
-            if ((!args || args.booleanMap === undefined) && !opts.urn) {
+            if (args?.booleanMap === undefined && !opts.urn) {
                 throw new Error("Missing required property 'booleanMap'");
             }
-            if ((!args || args.float === undefined) && !opts.urn) {
+            if (args?.float === undefined && !opts.urn) {
                 throw new Error("Missing required property 'float'");
             }
-            if ((!args || args.integer === undefined) && !opts.urn) {
+            if (args?.integer === undefined && !opts.urn) {
                 throw new Error("Missing required property 'integer'");
             }
-            if ((!args || args.numberArray === undefined) && !opts.urn) {
+            if (args?.numberArray === undefined && !opts.urn) {
                 throw new Error("Missing required property 'numberArray'");
             }
-            if ((!args || args.string === undefined) && !opts.urn) {
+            if (args?.string === undefined && !opts.urn) {
                 throw new Error("Missing required property 'string'");
             }
-            resourceInputs["boolean"] = args ? args.boolean : undefined;
-            resourceInputs["booleanMap"] = args ? args.booleanMap : undefined;
-            resourceInputs["float"] = args ? args.float : undefined;
-            resourceInputs["integer"] = args ? args.integer : undefined;
-            resourceInputs["numberArray"] = args ? args.numberArray : undefined;
-            resourceInputs["string"] = args ? args.string : undefined;
+            resourceInputs["boolean"] = args?.boolean;
+            resourceInputs["booleanMap"] = args?.booleanMap;
+            resourceInputs["float"] = args?.float;
+            resourceInputs["integer"] = args?.integer;
+            resourceInputs["numberArray"] = args?.numberArray;
+            resourceInputs["string"] = args?.string;
         } else {
             resourceInputs["boolean"] = undefined /*out*/;
             resourceInputs["booleanMap"] = undefined /*out*/;

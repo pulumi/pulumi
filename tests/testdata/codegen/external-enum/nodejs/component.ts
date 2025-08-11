@@ -50,8 +50,8 @@ export class Component extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["localEnum"] = args ? args.localEnum : undefined;
-            resourceInputs["remoteEnum"] = args ? args.remoteEnum : undefined;
+            resourceInputs["localEnum"] = args?.localEnum;
+            resourceInputs["remoteEnum"] = args?.remoteEnum;
         } else {
             resourceInputs["localEnum"] = undefined /*out*/;
             resourceInputs["remoteEnum"] = undefined /*out*/;

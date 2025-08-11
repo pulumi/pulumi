@@ -34,7 +34,7 @@ export class OtherResource extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["foo"] = args?.foo;
         } else {
             resourceInputs["foo"] = undefined /*out*/;
         }

@@ -73,11 +73,11 @@ export class ConfigMap extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["apiVersion"] = "v1";
-            resourceInputs["binaryData"] = args ? args.binaryData : undefined;
-            resourceInputs["data"] = args ? args.data : undefined;
-            resourceInputs["immutable"] = args ? args.immutable : undefined;
+            resourceInputs["binaryData"] = args?.binaryData;
+            resourceInputs["data"] = args?.data;
+            resourceInputs["immutable"] = args?.immutable;
             resourceInputs["kind"] = "ConfigMap";
-            resourceInputs["metadata"] = args ? args.metadata : undefined;
+            resourceInputs["metadata"] = args?.metadata;
         } else {
             resourceInputs["apiVersion"] = undefined /*out*/;
             resourceInputs["binaryData"] = undefined /*out*/;

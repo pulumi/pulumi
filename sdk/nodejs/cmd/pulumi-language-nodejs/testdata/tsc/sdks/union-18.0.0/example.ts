@@ -45,8 +45,8 @@ export class Example extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["mapMapUnionProperty"] = args ? args.mapMapUnionProperty : undefined;
-            resourceInputs["stringOrIntegerProperty"] = args ? args.stringOrIntegerProperty : undefined;
+            resourceInputs["mapMapUnionProperty"] = args?.mapMapUnionProperty;
+            resourceInputs["stringOrIntegerProperty"] = args?.stringOrIntegerProperty;
         } else {
             resourceInputs["mapMapUnionProperty"] = undefined /*out*/;
             resourceInputs["stringOrIntegerProperty"] = undefined /*out*/;
