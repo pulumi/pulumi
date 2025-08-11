@@ -342,7 +342,7 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 func (pc *Client) GetCLIVersionInfo(
 	ctx context.Context,
 	metadata map[string]string,
-) (semver.Version, semver.Version, semver.Version, int, error) {
+) (semver.Version, semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
 
 	headers := map[string][]string{}
@@ -363,32 +363,32 @@ func (pc *Client) GetCLIVersionInfo(
 		},
 	)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	// If there is no dev version, return the latest and oldest
 	// versions.  This can happen if the server does not include
 	// https://github.com/pulumi/pulumi-service/pull/17429 yet
 	if versionInfo.LatestDevVersion == "" {
-		return latestSem, oldestSem, semver.Version{}, versionInfo.CacheMS, nil
+		return latestSem, oldestSem, semver.Version{}, nil
 	}
 
 	devSem, err := semver.ParseTolerant(versionInfo.LatestDevVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
-	return latestSem, oldestSem, devSem, versionInfo.CacheMS, nil
+	return latestSem, oldestSem, devSem, nil
 }
 
 // GetDefaultOrg lists the backend's opinion of which user organization to use, if default organization
