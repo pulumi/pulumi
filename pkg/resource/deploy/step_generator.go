@@ -711,6 +711,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				sg.refreshAliasLock.Unlock()
 				sg.refreshStates[old] = state
 
+				// 'state' has up-dated dependencies from the program, but some of those dependencies may have been
+				// deleted in the meantime. We need to ensure the new dependencies filter those out.
+
 			}
 
 			contract.AssertNoErrorf(err, "expected a result from refresh step")

@@ -868,42 +868,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			continue
 		}
 
-		newDeps := []resource.URN{}
-		newPropDeps := map[resource.PropertyKey][]resource.URN{}
-
-		_, allDeps := new.GetAllDependencies()
-		for _, dep := range allDeps {
-			switch dep.Type {
-			case resource.ResourceParent:
-				// We handle parents separately later on (see undangleParentResources),
-				// so we'll skip over them here.
-				continue
-			case resource.ResourceDependency:
-				if referenceable[dep.URN] {
-					newDeps = append(newDeps, dep.URN)
-				}
-			case resource.ResourcePropertyDependency:
-				if referenceable[dep.URN] {
-					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
-				}
-			case resource.ResourceDeletedWith:
-				if !referenceable[dep.URN] {
-					new.DeletedWith = ""
-				}
-			}
-		}
-
-		// Since we can only have shrunk the sets of dependencies and property
-		// dependencies, we'll only update them if they were non empty to begin
-		// with. This is to avoid e.g. replacing a nil input with an non-nil but
-		// empty output, which while equivalent in many cases is not the same and
-		// could result in subtly different behaviour in some parts of the engine.
-		if len(new.Dependencies) > 0 {
-			new.Dependencies = newDeps
-		}
-		if len(new.PropertyDependencies) > 0 {
-			new.PropertyDependencies = newPropDeps
-		}
+		new.FilterDependencies(referenceable)
 
 		// Add this resource to the resource list and mark it as referenceable.
 		resources = append(resources, new)

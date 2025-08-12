@@ -221,3 +221,44 @@ func (s *State) GetAllDependencies() (string, []StateDependency) {
 	}
 	return s.Provider, allDeps
 }
+
+// FilterDependencies filters the dependencies of a resource state, removing any dependencies that are not safe to
+// reference.
+func (s *State) FilterDependencies(referenceable map[URN]bool) {
+	newDeps := []URN{}
+	newPropDeps := map[PropertyKey][]URN{}
+
+	_, allDeps := s.GetAllDependencies()
+	for _, dep := range allDeps {
+		switch dep.Type {
+		case ResourceParent:
+			// We handle parents separately later on (see undangleParentResources),
+			// so we'll skip over them here.
+			continue
+		case ResourceDependency:
+			if referenceable[dep.URN] {
+				newDeps = append(newDeps, dep.URN)
+			}
+		case ResourcePropertyDependency:
+			if referenceable[dep.URN] {
+				newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
+			}
+		case ResourceDeletedWith:
+			if !referenceable[dep.URN] {
+				s.DeletedWith = ""
+			}
+		}
+	}
+
+	// Since we can only have shrunk the sets of dependencies and property
+	// dependencies, we'll only update them if they were non empty to begin
+	// with. This is to avoid e.g. replacing a nil input with an non-nil but
+	// empty output, which while equivalent in many cases is not the same and
+	// could result in subtly different behaviour in some parts of the engine.
+	if len(s.Dependencies) > 0 {
+		s.Dependencies = newDeps
+	}
+	if len(s.PropertyDependencies) > 0 {
+		s.PropertyDependencies = newPropDeps
+	}
+}
