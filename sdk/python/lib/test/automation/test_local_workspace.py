@@ -971,6 +971,11 @@ class TestLocalWorkspace(unittest.TestCase):
 
             # Check that the JSON output could be parsed.
             assert result is not None
+
+            # pulumi destroy to clean up
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)
 
