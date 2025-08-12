@@ -3066,6 +3066,39 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+// Test that we use the `tsc` version from the provider's dependencies when compiling the provider.
+func TestNodePackageAddTSC(t *testing.T) {
+	for _, pm := range []string{"npm", "pnpm", "yarn", "bun"} {
+		t.Run(pm, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory("packageadd-tsc")
+			provider := filepath.Join(e.RootPath, "provider")
+			program := filepath.Join(e.RootPath, fmt.Sprintf("program-%s", pm))
+			bin := filepath.Join(e.RootPath, "bin")
+			e.CWD = provider
+			installNodejsProviderDependencies(t, provider)
+			e.CWD = program
+			e.RunCommand("pulumi", "install")
+			// `bin` has a fake `tsc` executable that exits with an error code. If we
+			// execute this instead of the tsc that ships with the package, the
+			// installation will fail.
+			path := os.Getenv("PATH")
+			e.SetEnvVars(fmt.Sprintf("PATH=%s:%s", bin, path))
+
+			e.RunCommand("pulumi", "package", "add", provider)
+
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "login", "--local")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--skip-preview")
+			e.RunCommand("pulumi", "destroy", "--skip-preview")
+		})
+	}
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/20068
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/nodejs
+  description: Make TypeScript a full dependency of local SDKs

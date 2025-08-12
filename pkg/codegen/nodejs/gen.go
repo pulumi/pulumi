@@ -2407,13 +2407,25 @@ func genNPMPackageMetadata(
 		}
 	}
 
-	devDependencies := map[string]string{}
-	if info.TypeScriptVersion != "" {
-		devDependencies["typescript"] = info.TypeScriptVersion
-	} else {
-		devDependencies["typescript"] = MinimumTypescriptVersion
+	typescriptVersion := info.TypeScriptVersion
+	if typescriptVersion == "" {
+		typescriptVersion = MinimumTypescriptVersion
 	}
-	devDependencies["@types/node"] = MinimumNodeTypesVersion
+
+	dependencies := map[string]string{}
+	if pkg.Parameterization != nil {
+		dependencies["async-mutex"] = "^0.5.0"
+	}
+	devDependencies := map[string]string{}
+	// Local SDKs require typescript as a normal dependency, so that we can
+	// compile the SDK in the postinstall script.
+	if localSDK {
+		dependencies["typescript"] = typescriptVersion
+		dependencies["@types/node"] = MinimumNodeTypesVersion
+	} else {
+		devDependencies["typescript"] = typescriptVersion
+		devDependencies["@types/node"] = MinimumNodeTypesVersion
+	}
 
 	version := "${VERSION}"
 	pluginVersion := ""
@@ -2449,11 +2461,6 @@ func genNPMPackageMetadata(
 			Name:     pkg.Name,
 			Version:  pluginVersion,
 		}
-	}
-
-	dependencies := map[string]string{}
-	if pkg.Parameterization != nil {
-		dependencies["async-mutex"] = "^0.5.0"
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2549,17 +2556,23 @@ func genNPMPackageMetadata(
 	return string(npmjson) + "\n", nil
 }
 
+// genPostInstallScript generates the postinstall script for local SDKs. The
+// local SDKs declare typescript as a dependencies. When the script is run via a
+// package manager, the package manager will add `node_modules/.bin` to the
+// path, ensuring we run the intended version of `tsc`.
 func genPostInstallScript() []byte {
 	return []byte(`const fs = require("node:fs");
-const path = require("node:path")
-const process = require("node:process")
+const path = require("node:path");
+const process = require("node:process");
 const { execSync } = require('node:child_process');
 try {
-  const out = execSync('tsc')
-  console.log(out.toString())
+  execSync("tsc");
 } catch (error) {
-  console.error(error.message + ": " + error.stdout.toString() + "\n" + error.stderr.toString())
-  process.exit(1)
+  console.error("Failed to run 'tsc'", {
+    stdout: error.stdout.toString(),
+    stderr: error.stderr.toString(),
+  });
+  process.exit(1);
 }
 // TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
 fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
