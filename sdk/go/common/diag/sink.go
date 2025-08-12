@@ -57,7 +57,6 @@ const (
 
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Pwd   string              // the working directory.
 	Color colors.Colorization // how output should be colorized.
 	Debug bool                // if true, debugging will be output to stdout.
 }
