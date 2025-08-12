@@ -821,6 +821,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 			old: state,
 			new: state.Copy(),
 			deployment: &Deployment{
+				ctx: &plugin.Context{Diag: &deploytest.NoopSink{}},
 				opts: &Options{
 					DryRun: true,
 				},

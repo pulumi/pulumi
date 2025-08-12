@@ -996,10 +996,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	inputs := new.Inputs
 	if old != nil {
 		// Set inputs back to their old values (if any) for any "ignored" properties
-		processedInputs, err := processIgnoreChanges(inputs, old.Inputs, goal.IgnoreChanges)
-		if err != nil {
-			return nil, false, err
-		}
+		processedInputs := processIgnoreChanges(sg.deployment.Diag(), urn, inputs, old.Inputs, goal.IgnoreChanges)
 		inputs = processedInputs
 	}
 
@@ -2491,6 +2488,7 @@ func (sg *stepGenerator) diff(
 	if !sg.deployment.opts.ParallelDiff {
 		// If parallel diff isn't enabled just do the diff directly.
 		diff, err := diffResource(
+			sg.deployment.Diag(),
 			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges)
 		return diff, nil, err
 	}
@@ -2517,7 +2515,7 @@ func (sg *stepGenerator) diff(
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
-func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
+func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
@@ -2540,10 +2538,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		new, res := processIgnoreChanges(newInputs, oldInputs, ignoreChanges)
-		if res != nil {
-			return plugin.DiffResult{}, err
-		}
+		new := processIgnoreChanges(d, urn, newInputs, oldInputs, ignoreChanges)
 		tmp := oldInputs.Diff(new)
 		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
@@ -2585,9 +2580,9 @@ func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.S
 
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
 // the effect of ensuring that no changes will be made for the corresponding property.
-func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resource.PropertyMap,
 	ignoreChanges []string,
-) (resource.PropertyMap, error) {
+) resource.PropertyMap {
 	ignoredInputs := inputs.Copy()
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
@@ -2601,10 +2596,10 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 		}
 	}
 	if len(invalidPaths) != 0 {
-		return nil, fmt.Errorf("cannot ignore changes to the following properties because one or more elements of "+
-			"the path are missing: %q", strings.Join(invalidPaths, ", "))
+		d.Infof(diag.Message(urn, "cannot ignore changes to the following properties because one or more elements of "+
+			"the path are missing: %q"), strings.Join(invalidPaths, ", "))
 	}
-	return ignoredInputs, nil
+	return ignoredInputs
 }
 
 func (sg *stepGenerator) loadResourceProvider(
@@ -2848,7 +2843,9 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := diffResource(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges)
+		diff, err := diffResource(
+			sg.deployment.Diag(),
+			r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges)
 		if err != nil {
 			return false, nil, err
 		}

@@ -1400,6 +1400,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// * newOutputs where oldOutputs are expected
 			// * oldInputs where newInputs are expected
 			diff, err := diffResource(
+				s.deployment.Diag(),
 				s.new.URN, s.new.ID,
 				// pass new inputs/outputs as old inputs/outputs
 				s.new.Inputs, s.new.Outputs,
@@ -1736,10 +1737,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	}
 
 	// Set inputs back to their old values (if any) for any "ignored" properties
-	processedInputs, err := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
-	if err != nil {
-		return resource.StatusOK, nil, err
-	}
+	processedInputs := processIgnoreChanges(s.deployment.Diag(), s.new.URN, s.new.Inputs, s.old.Inputs, s.ignoreChanges)
 	s.new.Inputs = processedInputs
 
 	// If we were asked to replace an existing, non-External resource, pend the deletion here.
@@ -2020,6 +2018,7 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	diff, err := diffResource(
+		s.deployment.Diag(),
 		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges)
 	if err != nil {
 		s.pcs.Reject(err)
