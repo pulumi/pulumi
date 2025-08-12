@@ -19,7 +19,7 @@ export class HelloWorldComponent extends pulumi.ComponentResource {
         return obj['__pulumiType'] === HelloWorldComponent.__pulumiType;
     }
 
-    public /*out*/ readonly parameterValue!: pulumi.Output<string>;
+    declare public /*out*/ readonly parameterValue: pulumi.Output<string>;
 
     /**
      * Create a HelloWorldComponent resource with the given unique name, arguments, and options.

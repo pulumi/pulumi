@@ -36,7 +36,7 @@ export class Res extends pulumi.CustomResource {
         return obj['__pulumiType'] === Res.__pulumiType;
     }
 
-    public /*out*/ readonly output!: pulumi.Output<outputs.InnerType | undefined>;
+    declare public /*out*/ readonly output: pulumi.Output<outputs.InnerType | undefined>;
 
     /**
      * Create a Res resource with the given unique name, arguments, and options.

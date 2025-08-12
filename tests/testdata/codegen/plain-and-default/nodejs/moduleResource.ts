@@ -34,7 +34,7 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
-    public readonly optionalBool!: pulumi.Output<boolean | undefined>;
+    declare public readonly optionalBool: pulumi.Output<boolean | undefined>;
 
     /**
      * Create a ModuleResource resource with the given unique name, arguments, and options.

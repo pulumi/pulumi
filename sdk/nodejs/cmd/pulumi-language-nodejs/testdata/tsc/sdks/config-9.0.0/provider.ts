@@ -19,9 +19,9 @@ export class Provider extends pulumi.ProviderResource {
         return obj['__pulumiType'] === "pulumi:providers:" + Provider.__pulumiType;
     }
 
-    public readonly name!: pulumi.Output<string>;
-    public readonly pluginDownloadURL!: pulumi.Output<string | undefined>;
-    public /*out*/ readonly version!: pulumi.Output<string>;
+    declare public readonly name: pulumi.Output<string>;
+    declare public readonly pluginDownloadURL: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly version: pulumi.Output<string>;
 
     /**
      * Create a Provider resource with the given unique name, arguments, and options.

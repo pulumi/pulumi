@@ -31,7 +31,7 @@ export class ConfigFetcher extends pulumi.CustomResource {
         return obj['__pulumiType'] === ConfigFetcher.__pulumiType;
     }
 
-    public /*out*/ readonly config!: pulumi.Output<string>;
+    declare public /*out*/ readonly config: pulumi.Output<string>;
 
     /**
      * Create a ConfigFetcher resource with the given unique name, arguments, and options.

@@ -101,7 +101,7 @@ export class SqlResourceSqlContainer extends pulumi.CustomResource {
         return obj['__pulumiType'] === SqlResourceSqlContainer.__pulumiType;
     }
 
-    public /*out*/ readonly resource!: pulumi.Output<outputs.documentdb.SqlContainerGetPropertiesResponseResource | undefined>;
+    declare public /*out*/ readonly resource: pulumi.Output<outputs.documentdb.SqlContainerGetPropertiesResponseResource | undefined>;
 
     /**
      * Create a SqlResourceSqlContainer resource with the given unique name, arguments, and options.

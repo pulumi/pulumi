@@ -36,8 +36,8 @@ export class Component extends pulumi.CustomResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public readonly localEnum!: pulumi.Output<enums.local.MyEnum | undefined>;
-    public readonly remoteEnum!: pulumi.Output<pulumiGoogleNative.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem | undefined>;
+    declare public readonly localEnum: pulumi.Output<enums.local.MyEnum | undefined>;
+    declare public readonly remoteEnum: pulumi.Output<pulumiGoogleNative.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.

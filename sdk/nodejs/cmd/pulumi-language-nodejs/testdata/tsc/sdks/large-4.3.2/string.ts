@@ -31,7 +31,7 @@ export class String extends pulumi.CustomResource {
         return obj['__pulumiType'] === String.__pulumiType;
     }
 
-    public readonly value!: pulumi.Output<string>;
+    declare public readonly value: pulumi.Output<string>;
 
     /**
      * Create a String resource with the given unique name, arguments, and options.

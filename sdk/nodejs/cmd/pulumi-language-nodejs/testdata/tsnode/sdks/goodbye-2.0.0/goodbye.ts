@@ -31,7 +31,7 @@ export class Goodbye extends pulumi.CustomResource {
         return obj['__pulumiType'] === Goodbye.__pulumiType;
     }
 
-    public /*out*/ readonly parameterValue!: pulumi.Output<string>;
+    declare public /*out*/ readonly parameterValue: pulumi.Output<string>;
 
     /**
      * Create a Goodbye resource with the given unique name, arguments, and options.

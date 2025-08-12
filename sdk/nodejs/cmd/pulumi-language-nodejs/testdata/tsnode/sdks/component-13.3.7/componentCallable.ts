@@ -22,7 +22,7 @@ export class ComponentCallable extends pulumi.ComponentResource {
         return obj['__pulumiType'] === ComponentCallable.__pulumiType;
     }
 
-    public readonly value!: pulumi.Output<string>;
+    declare public readonly value: pulumi.Output<string>;
 
     /**
      * Create a ComponentCallable resource with the given unique name, arguments, and options.

@@ -21,7 +21,7 @@ export class BarResource extends pulumi.ComponentResource {
         return obj['__pulumiType'] === BarResource.__pulumiType;
     }
 
-    public readonly foo!: pulumi.Output<Resource | undefined>;
+    declare public readonly foo: pulumi.Output<Resource | undefined>;
 
     /**
      * Create a BarResource resource with the given unique name, arguments, and options.

@@ -24,8 +24,8 @@ export class ComponentCustomRefOutput extends pulumi.ComponentResource {
         return obj['__pulumiType'] === ComponentCustomRefOutput.__pulumiType;
     }
 
-    public /*out*/ readonly ref!: pulumi.Output<Custom>;
-    public readonly value!: pulumi.Output<string>;
+    declare public /*out*/ readonly ref: pulumi.Output<Custom>;
+    declare public readonly value: pulumi.Output<string>;
 
     /**
      * Create a ComponentCustomRefOutput resource with the given unique name, arguments, and options.

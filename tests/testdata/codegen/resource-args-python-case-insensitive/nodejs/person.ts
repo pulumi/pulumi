@@ -33,8 +33,8 @@ export class Person extends pulumi.CustomResource {
         return obj['__pulumiType'] === Person.__pulumiType;
     }
 
-    public readonly name!: pulumi.Output<string | undefined>;
-    public readonly pets!: pulumi.Output<outputs.Pet[] | undefined>;
+    declare public readonly name: pulumi.Output<string | undefined>;
+    declare public readonly pets: pulumi.Output<outputs.Pet[] | undefined>;
 
     /**
      * Create a Person resource with the given unique name, arguments, and options.

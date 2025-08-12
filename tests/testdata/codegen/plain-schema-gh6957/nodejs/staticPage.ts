@@ -26,11 +26,11 @@ export class StaticPage extends pulumi.ComponentResource {
     /**
      * The bucket resource.
      */
-    public /*out*/ readonly bucket!: pulumi.Output<pulumiAws.s3.Bucket>;
+    declare public /*out*/ readonly bucket: pulumi.Output<pulumiAws.s3.Bucket>;
     /**
      * The website URL.
      */
-    public /*out*/ readonly websiteUrl!: pulumi.Output<string>;
+    declare public /*out*/ readonly websiteUrl: pulumi.Output<string>;
 
     /**
      * Create a StaticPage resource with the given unique name, arguments, and options.

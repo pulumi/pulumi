@@ -39,7 +39,7 @@ export class Foo extends pulumi.CustomResource {
     /**
      * A test for plain types
      */
-    public /*out*/ readonly defaultKubeClientSettings!: pulumi.Output<outputs.KubeClientSettings | undefined>;
+    declare public /*out*/ readonly defaultKubeClientSettings: pulumi.Output<outputs.KubeClientSettings | undefined>;
 
     /**
      * Create a Foo resource with the given unique name, arguments, and options.

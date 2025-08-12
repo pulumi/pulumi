@@ -31,7 +31,7 @@ export class Provider extends pulumi.CustomResource {
         return obj['__pulumiType'] === Provider.__pulumiType;
     }
 
-    public readonly a!: pulumi.Output<boolean | undefined>;
+    declare public readonly a: pulumi.Output<boolean | undefined>;
 
     /**
      * Create a Provider resource with the given unique name, arguments, and options.

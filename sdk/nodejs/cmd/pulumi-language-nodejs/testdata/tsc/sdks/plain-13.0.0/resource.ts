@@ -33,11 +33,11 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly data!: pulumi.Output<outputs.Data>;
+    declare public readonly data: pulumi.Output<outputs.Data>;
     /**
      * A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
      */
-    public readonly nonPlainData!: pulumi.Output<outputs.Data | undefined>;
+    declare public readonly nonPlainData: pulumi.Output<outputs.Data | undefined>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.

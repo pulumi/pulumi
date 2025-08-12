@@ -31,7 +31,7 @@ export class AssetResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === AssetResource.__pulumiType;
     }
 
-    public readonly value!: pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive>;
+    declare public readonly value: pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive>;
 
     /**
      * Create a AssetResource resource with the given unique name, arguments, and options.

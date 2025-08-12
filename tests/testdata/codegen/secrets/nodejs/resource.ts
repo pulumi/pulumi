@@ -33,12 +33,12 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly config!: pulumi.Output<outputs.Config>;
-    public readonly configArray!: pulumi.Output<outputs.Config[]>;
-    public readonly configMap!: pulumi.Output<{[key: string]: outputs.Config}>;
-    public readonly foo!: pulumi.Output<string>;
-    public readonly fooArray!: pulumi.Output<string[]>;
-    public readonly fooMap!: pulumi.Output<{[key: string]: string}>;
+    declare public readonly config: pulumi.Output<outputs.Config>;
+    declare public readonly configArray: pulumi.Output<outputs.Config[]>;
+    declare public readonly configMap: pulumi.Output<{[key: string]: outputs.Config}>;
+    declare public readonly foo: pulumi.Output<string>;
+    declare public readonly fooArray: pulumi.Output<string[]>;
+    declare public readonly fooMap: pulumi.Output<{[key: string]: string}>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.

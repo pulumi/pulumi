@@ -31,7 +31,7 @@ export class HelloWorld extends pulumi.CustomResource {
         return obj['__pulumiType'] === HelloWorld.__pulumiType;
     }
 
-    public /*out*/ readonly parameterValue!: pulumi.Output<string>;
+    declare public /*out*/ readonly parameterValue: pulumi.Output<string>;
 
     /**
      * Create a HelloWorld resource with the given unique name, arguments, and options.

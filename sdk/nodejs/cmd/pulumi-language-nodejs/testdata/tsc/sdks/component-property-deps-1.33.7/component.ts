@@ -24,7 +24,7 @@ export class Component extends pulumi.ComponentResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public /*out*/ readonly propertyDeps!: pulumi.Output<{[key: string]: string[]}>;
+    declare public /*out*/ readonly propertyDeps: pulumi.Output<{[key: string]: string[]}>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.

@@ -34,8 +34,8 @@ export class User extends pulumi.CustomResource {
         return obj['__pulumiType'] === User.__pulumiType;
     }
 
-    public /*out*/ readonly name!: pulumi.Output<string>;
-    public /*out*/ readonly password!: pulumi.Output<string>;
+    declare public /*out*/ readonly name: pulumi.Output<string>;
+    declare public /*out*/ readonly password: pulumi.Output<string>;
 
     /**
      * Create a User resource with the given unique name, arguments, and options.

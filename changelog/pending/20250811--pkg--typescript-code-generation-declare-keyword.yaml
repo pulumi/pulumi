@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Make TypeScript code generation use 'declare' keyword instead of definite assertion operator, to avoid setting all fields to undefined when targeting environments new enough
