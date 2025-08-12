@@ -534,17 +534,13 @@ class EngineEvent(BaseEvent):
     message. EngineEvent is a discriminated union of all possible event types, and exactly one
     field will be non-nil.
 
-    Attributes
-    ----------
-    sequence: str
-        Sequence is a unique, and monotonically increasing number for each engine event sent to the
+    :param sequence: Sequence is a unique, and monotonically increasing number for each engine event sent to the
         Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
         the sequence number is to ensure events can be placed into a total ordering.
         - No two events can have the same sequence number.
-        - Events with a lower sequence number must have been emitted before those with a higher
-          sequence number.
-    timestamp: int
-        Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+        - Events with a lower sequence number must have been emitted before those with a higher sequence number.
+
+    :param timestamp: Timestamp is a Unix timestamp (seconds) of when the event was emitted.
     """
 
     def __init__(

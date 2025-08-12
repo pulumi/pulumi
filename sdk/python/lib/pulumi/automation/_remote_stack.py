@@ -131,7 +131,7 @@ class RemoteStack:
     def cancel(self) -> None:
         """
         Cancel stops a stack's currently running update. It returns an error if no update is currently running.
-        Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
+        Note that this operation is **very dangerous**, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
         """
         self.__stack.cancel()

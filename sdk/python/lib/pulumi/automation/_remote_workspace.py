@@ -50,6 +50,7 @@ class RemoteGitAuth:
     """
     Authentication options for the repository that can be specified for a private Git repo.
     There are three different authentication paths:
+
      - Personal accesstoken
      - SSH private key (and its optional password)
      - Basic auth username and password
