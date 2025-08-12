@@ -193,6 +193,13 @@ class DestroyResult(BaseResult):
 
 
 class Stack:
+    """
+    Stack is an isolated, independently configurable instance of a Pulumi program.
+    Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
+    Multiple Stacks are commonly used to denote different phases of development
+    (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
+    """
+
     @classmethod
     def create(cls, stack_name: str, workspace: Workspace) -> "Stack":
         """
@@ -232,10 +239,9 @@ class Stack:
 
     def __init__(self, name: str, workspace: Workspace, mode: StackInitMode) -> None:
         """
-        Stack is an isolated, independently configurable instance of a Pulumi program.
-        Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
-        Multiple Stacks are commonly used to denote different phases of development
-        (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
+        :param name: The name of the stack.
+        :param workspace: The workspace the Stack was created from.
+        :param mode: Whether to create, select or create and select the stack.
         """
         self.name = name
         self.workspace = workspace
@@ -1334,7 +1340,7 @@ class Stack:
     def cancel(self) -> None:
         """
         Cancel stops a stack's currently running update. It returns an error if no update is currently running.
-        Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
+        Note that this operation is **very dangerous**, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
         """
         self._run_pulumi_cmd_sync(["cancel", "--yes"])

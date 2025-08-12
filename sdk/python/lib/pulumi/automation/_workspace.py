@@ -395,7 +395,7 @@ class Workspace(ABC):
 
         :param str stack_name: The name of the stack to create
         :returns: None
-        :raises CommandError Raised if a stack with the same name exists.
+        :raises CommandError: Raised if a stack with the same name exists.
         """
 
     @abstractmethod
@@ -405,7 +405,7 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack to select
         :returns: None
-        :raises CommandError Raised if no matching stack exists.
+        :raises CommandError: Raised if no matching stack exists.
         """
 
     @abstractmethod

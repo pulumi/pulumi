@@ -776,7 +776,7 @@ def create_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -836,7 +836,7 @@ def select_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -895,7 +895,7 @@ def create_or_select_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
