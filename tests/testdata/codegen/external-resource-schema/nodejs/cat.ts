@@ -48,8 +48,8 @@ export class Cat extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["age"] = args ? args.age : undefined;
-            resourceInputs["pet"] = args ? args.pet : undefined;
+            resourceInputs["age"] = args?.age;
+            resourceInputs["pet"] = args?.pet;
             resourceInputs["name"] = undefined /*out*/;
         } else {
             resourceInputs["name"] = undefined /*out*/;

@@ -56,10 +56,10 @@ export class TypeUses extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["bar"] = args ? args.bar : undefined;
-            resourceInputs["baz"] = args ? args.baz : undefined;
-            resourceInputs["foo"] = args ? args.foo : undefined;
-            resourceInputs["qux"] = args ? args.qux : undefined;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["baz"] = args?.baz;
+            resourceInputs["foo"] = args?.foo;
+            resourceInputs["qux"] = args?.qux;
             resourceInputs["alpha"] = undefined /*out*/;
             resourceInputs["beta"] = undefined /*out*/;
             resourceInputs["gamma"] = undefined /*out*/;

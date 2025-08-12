@@ -58,12 +58,12 @@ export class Release extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.chart === undefined) && !opts.urn) {
+            if (args?.chart === undefined && !opts.urn) {
                 throw new Error("Missing required property 'chart'");
             }
-            resourceInputs["chart"] = args ? args.chart : undefined;
-            resourceInputs["valueYamlFiles"] = args ? args.valueYamlFiles : undefined;
-            resourceInputs["values"] = args ? args.values : undefined;
+            resourceInputs["chart"] = args?.chart;
+            resourceInputs["valueYamlFiles"] = args?.valueYamlFiles;
+            resourceInputs["values"] = args?.values;
         } else {
             resourceInputs["chart"] = undefined /*out*/;
             resourceInputs["valueYamlFiles"] = undefined /*out*/;

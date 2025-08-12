@@ -45,10 +45,10 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.resourceGroup === undefined) && !opts.urn) {
+            if (args?.resourceGroup === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resourceGroup'");
             }
-            resourceInputs["resourceGroup"] = args ? args.resourceGroup : undefined;
+            resourceInputs["resourceGroup"] = args?.resourceGroup;
             resourceInputs["acrLoginServerOut"] = undefined /*out*/;
             resourceInputs["registry"] = undefined /*out*/;
             resourceInputs["replication"] = undefined /*out*/;

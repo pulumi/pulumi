@@ -44,7 +44,7 @@ export class Provider extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["a"] = args ? args.a : undefined;
+            resourceInputs["a"] = args?.a;
         } else {
             resourceInputs["a"] = undefined /*out*/;
         }

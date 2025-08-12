@@ -38,10 +38,10 @@ export class ConfigGroup extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["files"] = args ? args.files : undefined;
-            resourceInputs["objs"] = args ? args.objs : undefined;
-            resourceInputs["resourcePrefix"] = args ? args.resourcePrefix : undefined;
-            resourceInputs["yaml"] = args ? args.yaml : undefined;
+            resourceInputs["files"] = args?.files;
+            resourceInputs["objs"] = args?.objs;
+            resourceInputs["resourcePrefix"] = args?.resourcePrefix;
+            resourceInputs["yaml"] = args?.yaml;
             resourceInputs["resources"] = undefined /*out*/;
         } else {
             resourceInputs["resources"] = undefined /*out*/;

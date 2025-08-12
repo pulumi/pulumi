@@ -38,10 +38,10 @@ export class ComponentCustomRefInputOutput extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.inputRef === undefined) && !opts.urn) {
+            if (args?.inputRef === undefined && !opts.urn) {
                 throw new Error("Missing required property 'inputRef'");
             }
-            resourceInputs["inputRef"] = args ? args.inputRef : undefined;
+            resourceInputs["inputRef"] = args?.inputRef;
             resourceInputs["outputRef"] = undefined /*out*/;
         } else {
             resourceInputs["inputRef"] = undefined /*out*/;

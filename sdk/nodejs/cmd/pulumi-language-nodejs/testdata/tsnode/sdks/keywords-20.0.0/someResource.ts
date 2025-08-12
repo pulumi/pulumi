@@ -45,14 +45,14 @@ export class SomeResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.builtins === undefined) && !opts.urn) {
+            if (args?.builtins === undefined && !opts.urn) {
                 throw new Error("Missing required property 'builtins'");
             }
-            if ((!args || args.property === undefined) && !opts.urn) {
+            if (args?.property === undefined && !opts.urn) {
                 throw new Error("Missing required property 'property'");
             }
-            resourceInputs["builtins"] = args ? args.builtins : undefined;
-            resourceInputs["property"] = args ? args.property : undefined;
+            resourceInputs["builtins"] = args?.builtins;
+            resourceInputs["property"] = args?.property;
         } else {
             resourceInputs["builtins"] = undefined /*out*/;
             resourceInputs["property"] = undefined /*out*/;

@@ -49,22 +49,22 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.private === undefined) && !opts.urn) {
+            if (args?.private === undefined && !opts.urn) {
                 throw new Error("Missing required property 'private'");
             }
-            if ((!args || args.privateData === undefined) && !opts.urn) {
+            if (args?.privateData === undefined && !opts.urn) {
                 throw new Error("Missing required property 'privateData'");
             }
-            if ((!args || args.public === undefined) && !opts.urn) {
+            if (args?.public === undefined && !opts.urn) {
                 throw new Error("Missing required property 'public'");
             }
-            if ((!args || args.publicData === undefined) && !opts.urn) {
+            if (args?.publicData === undefined && !opts.urn) {
                 throw new Error("Missing required property 'publicData'");
             }
             resourceInputs["private"] = args?.private ? pulumi.secret(args.private) : undefined;
             resourceInputs["privateData"] = args?.privateData ? pulumi.secret(args.privateData) : undefined;
-            resourceInputs["public"] = args ? args.public : undefined;
-            resourceInputs["publicData"] = args ? args.publicData : undefined;
+            resourceInputs["public"] = args?.public;
+            resourceInputs["publicData"] = args?.publicData;
         } else {
             resourceInputs["private"] = undefined /*out*/;
             resourceInputs["privateData"] = undefined /*out*/;

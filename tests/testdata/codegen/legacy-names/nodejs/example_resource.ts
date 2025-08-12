@@ -49,8 +49,8 @@ export class Example_resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["map_enum"] = args ? args.map_enum : undefined;
-            resourceInputs["request_HTTP"] = args ? args.request_HTTP : undefined;
+            resourceInputs["map_enum"] = args?.map_enum;
+            resourceInputs["request_HTTP"] = args?.request_HTTP;
             resourceInputs["URL"] = undefined /*out*/;
             resourceInputs["good_URLs"] = undefined /*out*/;
         } else {

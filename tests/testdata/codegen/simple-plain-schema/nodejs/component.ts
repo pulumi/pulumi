@@ -42,25 +42,25 @@ export class Component extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.a === undefined) && !opts.urn) {
+            if (args?.a === undefined && !opts.urn) {
                 throw new Error("Missing required property 'a'");
             }
-            if ((!args || args.c === undefined) && !opts.urn) {
+            if (args?.c === undefined && !opts.urn) {
                 throw new Error("Missing required property 'c'");
             }
-            if ((!args || args.e === undefined) && !opts.urn) {
+            if (args?.e === undefined && !opts.urn) {
                 throw new Error("Missing required property 'e'");
             }
-            resourceInputs["a"] = args ? args.a : undefined;
-            resourceInputs["b"] = args ? args.b : undefined;
-            resourceInputs["bar"] = args ? args.bar : undefined;
-            resourceInputs["baz"] = args ? args.baz : undefined;
-            resourceInputs["bazMap"] = args ? args.bazMap : undefined;
-            resourceInputs["c"] = args ? args.c : undefined;
-            resourceInputs["d"] = args ? args.d : undefined;
-            resourceInputs["e"] = args ? args.e : undefined;
-            resourceInputs["f"] = args ? args.f : undefined;
-            resourceInputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["a"] = args?.a;
+            resourceInputs["b"] = args?.b;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["baz"] = args?.baz;
+            resourceInputs["bazMap"] = args?.bazMap;
+            resourceInputs["c"] = args?.c;
+            resourceInputs["d"] = args?.d;
+            resourceInputs["e"] = args?.e;
+            resourceInputs["f"] = args?.f;
+            resourceInputs["foo"] = args?.foo;
         } else {
             resourceInputs["a"] = undefined /*out*/;
             resourceInputs["b"] = undefined /*out*/;

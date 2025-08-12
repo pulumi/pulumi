@@ -750,7 +750,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired() {
-				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
+				fmt.Fprintf(w, "            if (args?.%s === undefined && !opts.urn) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -770,11 +770,16 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults("args." + prop.Name)
+			argRef := "args." + prop.Name
+			argValue := applyDefaults(argRef)
 			if prop.Secret {
 				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
-				arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				if argRef == argValue {
+					arg = "args?." + prop.Name
+				} else {
+					arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				}
 			}
 
 			prefix := "            "
@@ -835,7 +840,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
-				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
+				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state?.%[1]s;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")

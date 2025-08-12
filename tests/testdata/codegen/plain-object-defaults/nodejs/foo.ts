@@ -52,10 +52,10 @@ export class Foo extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.backupKubeClientSettings === undefined) && !opts.urn) {
+            if (args?.backupKubeClientSettings === undefined && !opts.urn) {
                 throw new Error("Missing required property 'backupKubeClientSettings'");
             }
-            resourceInputs["argument"] = args ? args.argument : undefined;
+            resourceInputs["argument"] = args?.argument;
             resourceInputs["backupKubeClientSettings"] = args ? (args.backupKubeClientSettings ? pulumi.output(args.backupKubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
             resourceInputs["kubeClientSettings"] = args ? (args.kubeClientSettings ? pulumi.output(args.kubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
             resourceInputs["settings"] = args ? (args.settings ? pulumi.output(args.settings).apply(inputs.layeredTypeArgsProvideDefaults) : undefined) : undefined;

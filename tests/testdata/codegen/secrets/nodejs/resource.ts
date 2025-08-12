@@ -51,22 +51,22 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.config === undefined) && !opts.urn) {
+            if (args?.config === undefined && !opts.urn) {
                 throw new Error("Missing required property 'config'");
             }
-            if ((!args || args.configArray === undefined) && !opts.urn) {
+            if (args?.configArray === undefined && !opts.urn) {
                 throw new Error("Missing required property 'configArray'");
             }
-            if ((!args || args.configMap === undefined) && !opts.urn) {
+            if (args?.configMap === undefined && !opts.urn) {
                 throw new Error("Missing required property 'configMap'");
             }
-            if ((!args || args.foo === undefined) && !opts.urn) {
+            if (args?.foo === undefined && !opts.urn) {
                 throw new Error("Missing required property 'foo'");
             }
-            if ((!args || args.fooArray === undefined) && !opts.urn) {
+            if (args?.fooArray === undefined && !opts.urn) {
                 throw new Error("Missing required property 'fooArray'");
             }
-            if ((!args || args.fooMap === undefined) && !opts.urn) {
+            if (args?.fooMap === undefined && !opts.urn) {
                 throw new Error("Missing required property 'fooMap'");
             }
             resourceInputs["config"] = args?.config ? pulumi.secret(args.config) : undefined;

@@ -50,11 +50,11 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.data === undefined) && !opts.urn) {
+            if (args?.data === undefined && !opts.urn) {
                 throw new Error("Missing required property 'data'");
             }
-            resourceInputs["data"] = args ? args.data : undefined;
-            resourceInputs["nonPlainData"] = args ? args.nonPlainData : undefined;
+            resourceInputs["data"] = args?.data;
+            resourceInputs["nonPlainData"] = args?.nonPlainData;
         } else {
             resourceInputs["data"] = undefined /*out*/;
             resourceInputs["nonPlainData"] = undefined /*out*/;
