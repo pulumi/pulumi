@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: pkg
-  description: TypeScript code generation uses nullish coalesce operator for required property checks, as well as state and args accessing whenever sensible
+  description: Make TypeScript code generation use nullish coalesce operator for required property checks, as well as state and args accessing whenever sensible
