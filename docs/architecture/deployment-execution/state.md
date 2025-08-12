@@ -52,7 +52,10 @@ resouces, while removing the "pending operation" entry.
 
 Note that the engine is currently free to modify the snapshot in any way, and we'll
 always upload that internal snapshot, since the snapshot manager internally uses
-a pointer to the same snapshot as the engine is using.
+a pointer to the same snapshot as the engine is using. The engine makes use of this
+for example for marking snapshot entries as `Delete=true` or `PendingReplacement=true`,
+as well as for changing outputs due to a `RegisterResourceOutputs` call. It's also
+used for refreshes, and for default provider updates.
 
 Another important thing to note here is that each of the updates to the snapshot
 needs to happen sequentially. This is so the snapshot is always consistent. If we
