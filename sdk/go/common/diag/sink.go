@@ -39,9 +39,6 @@ type Sink interface {
 	Errorf(diag *Diag, args ...interface{})
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
-
-	// Stringify stringifies a diagnostic into a prefix and message that is appropriate for printing.
-	Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string)
 }
 
 // Severity dictates the kind of diagnostic.
