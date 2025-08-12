@@ -2355,6 +2355,7 @@ func TestParameterizedNode(t *testing.T) {
 		Verbose:       true,
 		DebugLogLevel: 10,
 		Dir:           filepath.Join("nodejs", "parameterized"),
+		Dependencies:  []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -2366,9 +2367,6 @@ func TestParameterizedNode(t *testing.T) {
 				return err
 			}
 			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
-
-			fmt.Println("coreSDK", coreSDK)
-			fmt.Println("packagejson", packageJSON)
 
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
