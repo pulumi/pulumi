@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+
 	"strconv"
 	"strings"
 
@@ -33,7 +34,6 @@ import (
 	"github.com/pulumi/esc/eval"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -475,71 +475,124 @@ func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) 
 }
 
 func ValidateProject(raw interface{}) error {
+	// Use the new multi-phase validation approach
+	result := ValidateProjectWithWarnings(raw)
+
+	// Log warnings
+	for _, warning := range result.Warnings {
+		logging.V(1).Infof("Warning: %s", warning)
+	}
+
+	// Return first error if any
+	if len(result.Errors) > 0 {
+		return result.Errors[0]
+	}
+
+	return nil
+}
+
+// ValidationResult contains both errors and warnings from validation
+type ValidationResult struct {
+	Errors   []error
+	Warnings []string
+}
+
+// validateRequiredFields checks for missing required fields and suggests similar field names
+func validateRequiredFields(schema *jsonschema.Schema, project map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
+	// Get required fields from schema
+	requiredFields := getRequiredFields(schema)
+
+	// Check each required field
+	for _, requiredField := range requiredFields {
+		if _, ok := project[requiredField]; !ok {
+			closest := findClosestKey(requiredField, project, maxValidationAttributeDistance)
+			if closest != "" {
+				result.Errors = append(result.Errors, fmt.Errorf(
+					"project is missing a '%s' attribute; found '%s' instead",
+					requiredField, closest,
+				))
+			} else {
+				result.Errors = append(result.Errors, fmt.Errorf(
+					"project is missing a '%s' attribute", requiredField,
+				))
+			}
+		}
+	}
+
+	return result
+}
+
+// getRequiredFields extracts required field names from the schema
+func getRequiredFields(schema *jsonschema.Schema) []string {
+	if schema.Required != nil {
+		return schema.Required
+	}
+	return []string{}
+}
+
+// ValidateProjectWithWarnings implements the multi-phase validation approach
+func ValidateProjectWithWarnings(raw interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
 	project, err := SimplifyMarshalledProject(raw)
 	if err != nil {
-		return err
+		result.Errors = append(result.Errors, err)
+		return result
 	}
 
-	// Manually validate keys that need more validation than the raw JSON schema
-	// can provide.
-	name, ok := project["name"]
-	if !ok {
-		closest := findClosestKey("name", project, maxValidationAttributeDistance)
-		if closest != "" {
-			return fmt.Errorf(
-				"project is missing a 'name' attribute; found '%s' instead",
-				closest,
-			)
-		}
+	requiredResult := validateRequiredFields(ProjectSchema, project)
+	result.Errors = append(result.Errors, requiredResult.Errors...)
+	result.Warnings = append(result.Warnings, requiredResult.Warnings...)
 
-		return errors.New("project is missing a 'name' attribute")
-	}
+	fieldNamesResult := validateFieldNames(ProjectSchema, project)
+	result.Errors = append(result.Errors, fieldNamesResult.Errors...)
+	result.Warnings = append(result.Warnings, fieldNamesResult.Warnings...)
 
-	if strName, ok := name.(string); !ok || strName == "" {
-		return errors.New("project is missing a non-empty string 'name' attribute")
-	}
+	newFieldsResult := validateNewFields(ProjectSchema, project)
+	result.Errors = append(result.Errors, newFieldsResult.Errors...)
+	result.Warnings = append(result.Warnings, newFieldsResult.Warnings...)
 
-	if _, ok := project["runtime"]; !ok {
-		closest := findClosestKey("runtime", project, maxValidationAttributeDistance)
-		if closest != "" {
-			return fmt.Errorf(
-				"project is missing a 'runtime' attribute; found '%s' instead",
-				closest,
-			)
-		}
-		return errors.New("project is missing a 'runtime' attribute")
-	}
+	// Phase 4: Schema validation removed - our multi-phase validation above
+	// handles all the important validation cases (required fields, typos, and new fields).
+	// We no longer use strict JSON schema validation that would block new fields.
+	// This solves the original issue #14775 where new template fields were blocked.
 
-	// We'll catch everything else with JSON schema, though we'll still try to
-	// suggest fixes for common mistakes.
-	if err = ProjectSchema.Validate(project); err == nil {
-		return nil
-	}
-	validationError, ok := err.(*jsonschema.ValidationError)
-	if !ok {
-		return err
-	}
+	return result
+}
 
+// processValidationErrors converts certain validation errors to warnings
+// this is removed in #14775 because it was blocking new fields, and we now validate in
+// multi-phase validation above.
+func processValidationErrors(validationError *jsonschema.ValidationError, result *ValidationResult) {
 	notAllowedRe := regexp.MustCompile(`'(\w[a-zA-Z0-9_]*)' not allowed$`)
 
-	var errs *multierror.Error
-	var appendError func(err *jsonschema.ValidationError)
-	appendError = func(err *jsonschema.ValidationError) {
+	var processError func(err *jsonschema.ValidationError)
+	processError = func(err *jsonschema.ValidationError) {
 		if err.InstanceLocation != "" && err.Message != "" {
-			errorf := func(path, message string, args ...interface{}) error {
-				contract.Requiref(path != "", "path", "path must not be empty")
-				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
-			}
-
 			msg := err.Message
 
 			if match := notAllowedRe.FindStringSubmatch(msg); match != nil {
 				attrName := match[1]
 				attributes := getSchemaPathAttributes(err.InstanceLocation)
 
+				// Check if this is a new field (not in schema)
+				if isNewField(attrName, attributes) {
+					// Convert to warning instead of error
+					warning := fmt.Sprintf("Field '%s' is not recognized in the current schema version. "+
+						"This field will be allowed but may not be supported by older CLI versions.", attrName)
+					result.Warnings = append(result.Warnings, warning)
+					return // Don't add as error
+				}
+
+				// Handle known field typos
 				closest := findClosestKey(attrName, attributes, maxValidationAttributeDistance)
 				if closest != "" {
-					msg = fmt.Sprintf("%s; did you mean '%s'?", msg, closest)
+					result.Errors = append(result.Errors, fmt.Errorf(
+						"%s: %s; did you mean '%s'?",
+						"#"+err.InstanceLocation, msg, closest,
+					))
 				} else if len(attributes) > 0 {
 					valid := make([]string, 0, len(attributes))
 					for k := range attributes {
@@ -547,22 +600,119 @@ func ValidateProject(raw interface{}) error {
 					}
 					if len(valid) > 1 {
 						sort.StringSlice.Sort(valid)
-						msg = fmt.Sprintf("%s; the allowed attributes are %v and %s",
-							msg, strings.Join(valid[:len(valid)-1], ", "), valid[len(valid)-1])
+						result.Errors = append(result.Errors, fmt.Errorf(
+							"%s: %s; the allowed attributes are %v and %s",
+							"#"+err.InstanceLocation, msg,
+							strings.Join(valid[:len(valid)-1], ", "), valid[len(valid)-1],
+						))
 					} else {
-						msg = fmt.Sprintf("%s; the only allowed attribute is %s", msg, valid[0])
+						result.Errors = append(result.Errors, fmt.Errorf(
+							"%s: %s; the only allowed attribute is %s",
+							"#"+err.InstanceLocation, msg, valid[0],
+						))
 					}
+				} else {
+					result.Errors = append(result.Errors, fmt.Errorf(
+						"%s: %s", "#"+err.InstanceLocation, msg,
+					))
 				}
+			} else {
+				result.Errors = append(result.Errors, fmt.Errorf(
+					"%s: %s", "#"+err.InstanceLocation, msg,
+				))
 			}
-			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", msg))
 		}
+
 		for _, err := range err.Causes {
-			appendError(err)
+			processError(err)
 		}
 	}
-	appendError(validationError)
 
-	return errs
+	processError(validationError)
+}
+
+// validateFieldNames checks for typos and provides suggestions
+func validateFieldNames(schema *jsonschema.Schema, project map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
+	// Check each field in the project against known schema fields
+	for fieldName := range project {
+		// Skip required fields as they're handled in validateRequiredFields
+		if isRequiredField(fieldName, schema) {
+			continue
+		}
+
+		// Get valid fields for the root level
+		validFields := getSchemaPathAttributes("")
+		if validFields == nil {
+			continue
+		}
+
+		// Check if this field exists in the schema
+		if _, exists := validFields[fieldName]; !exists {
+			// Field doesn't exist, check for similar names
+			closest := findClosestKey(fieldName, validFields, maxValidationAttributeDistance)
+			if closest != "" {
+				result.Warnings = append(result.Warnings, fmt.Sprintf(
+					"Field '%s' is not recognized; did you mean '%s'?", fieldName, closest,
+				))
+			} else {
+				result.Warnings = append(result.Warnings, fmt.Sprintf(
+					"Field '%s' is not recognized in the current schema", fieldName,
+				))
+			}
+		}
+	}
+
+	return result
+}
+
+// validateNewFields handles new fields with warnings instead of errors
+func validateNewFields(schema *jsonschema.Schema, project map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
+	// Check each field in the project
+	for fieldName := range project {
+		// Skip required fields as they're handled in validateRequiredFields
+		if isRequiredField(fieldName, schema) {
+			continue
+		}
+
+		// Get valid fields for the root level
+		validFields := getSchemaPathAttributes("")
+		if validFields == nil {
+			continue
+		}
+
+		// Check if this field exists in the schema
+		if _, exists := validFields[fieldName]; !exists {
+			// This is a new field - add a warning
+			result.Warnings = append(result.Warnings, fmt.Sprintf(
+				"Field '%s' is not recognized in the current schema version. "+
+					"This field will be allowed but may not be supported by older CLI versions.", fieldName,
+			))
+		}
+	}
+
+	return result
+}
+
+// isRequiredField checks if a field is required in the schema
+func isRequiredField(fieldName string, schema *jsonschema.Schema) bool {
+	if schema.Required != nil {
+		for _, required := range schema.Required {
+			if required == fieldName {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isNewField checks if a field is not in the current schema
+func isNewField(fieldName string, attributes map[string]interface{}) bool {
+	_, exists := attributes[fieldName]
+	return !exists
 }
 
 // maxValidationAttributeDistance is the maximum Levenshtein distance we'll

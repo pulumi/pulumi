@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/esc"
@@ -2371,4 +2372,266 @@ func TestAddPackage(t *testing.T) {
 		_, isSpec := proj.Packages["string-package"].value.(PackageSpec)
 		require.True(t, isSpec, "Package should be converted to PackageSpec when parameters are added")
 	})
+}
+
+func TestValidateProjectWithWarnings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		project      map[string]interface{}
+		wantErr      bool
+		wantWarnings []string
+	}{
+		{
+			name: "valid project",
+			project: map[string]interface{}{
+				"name":    "test-project",
+				"runtime": "nodejs",
+			},
+			wantErr:      false,
+			wantWarnings: nil,
+		},
+		{
+			name: "missing name with typo",
+			project: map[string]interface{}{
+				"nam":     "test-project", // typo
+				"runtime": "nodejs",
+			},
+			wantErr:      true,
+			wantWarnings: nil,
+		},
+		{
+			name: "template with new field warning",
+			project: map[string]interface{}{
+				"name":    "test-project",
+				"runtime": "nodejs",
+				"template": map[string]interface{}{
+					"displayName": "Test Template",
+					"newField":    "value", // new field in template section
+				},
+			},
+			wantErr:      false,
+			wantWarnings: []string{"Field 'newField' is not recognized in the current schema version"},
+		},
+		{
+			name: "missing required fields",
+			project: map[string]interface{}{
+				"description": "test project",
+			},
+			wantErr:      true,
+			wantWarnings: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ValidateProjectWithWarnings(tt.project)
+
+			// Check errors
+			if tt.wantErr && len(result.Errors) == 0 {
+				t.Errorf("ValidateProjectWithWarnings() expected error but got none")
+			}
+			if !tt.wantErr && len(result.Errors) > 0 {
+				t.Errorf("ValidateProjectWithWarnings() unexpected error: %v", result.Errors[0])
+			}
+
+			// Check warnings
+			if tt.wantWarnings != nil {
+				if len(result.Warnings) == 0 {
+					t.Errorf("ValidateProjectWithWarnings() expected warnings but got none")
+				} else {
+					// Check if any of the expected warnings are present
+					found := false
+					for _, expectedWarning := range tt.wantWarnings {
+						for _, actualWarning := range result.Warnings {
+							if strings.Contains(actualWarning, expectedWarning) {
+								found = true
+								break
+							}
+						}
+						if found {
+							break
+						}
+					}
+					if !found {
+						t.Errorf("ValidateProjectWithWarnings() expected warning containing one of %v, got %v",
+							tt.wantWarnings, result.Warnings)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestValidateRequiredFields(t *testing.T) {
+	t.Parallel()
+
+	project := map[string]interface{}{
+		"nam":        "test-project", // typo for "name"
+		"runtim":     "nodejs",       // typo for "runtime"
+		"descripton": "test",         // typo for "description"
+	}
+
+	result := validateRequiredFields(ProjectSchema, project)
+
+	if len(result.Errors) == 0 {
+		t.Errorf("validateRequiredFields() expected errors for missing required fields")
+	}
+
+	// Check that we get suggestions for typos
+	errorMessages := make([]string, len(result.Errors))
+	for i, err := range result.Errors {
+		errorMessages[i] = err.Error()
+	}
+
+	// Should suggest corrections for "name" and "runtime"
+	nameSuggestion := false
+	runtimeSuggestion := false
+
+	for _, msg := range errorMessages {
+		if strings.Contains(msg, "name") && strings.Contains(msg, "nam") {
+			nameSuggestion = true
+		}
+		if strings.Contains(msg, "runtime") && strings.Contains(msg, "runtim") {
+			runtimeSuggestion = true
+		}
+	}
+
+	if !nameSuggestion {
+		t.Errorf("validateRequiredFields() should suggest 'name' for 'nam'")
+	}
+	if !runtimeSuggestion {
+		t.Errorf("validateRequiredFields() should suggest 'runtime' for 'runtim'")
+	}
+}
+
+func TestRequiredFieldValidationPreserved(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		project map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "missing name",
+			project: map[string]interface{}{
+				"runtime": "nodejs",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing runtime",
+			project: map[string]interface{}{
+				"name": "test-project",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing both required fields",
+			project: map[string]interface{}{
+				"description": "test project",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid project with all required fields",
+			project: map[string]interface{}{
+				"name":    "test-project",
+				"runtime": "nodejs",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid project with additional fields",
+			project: map[string]interface{}{
+				"name":        "test-project",
+				"runtime":     "nodejs",
+				"description": "test project",
+				"author":      "test author",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateProject(tt.project)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("ValidateProject() expected error but got none")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("ValidateProject() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateFieldNames(t *testing.T) {
+	t.Parallel()
+
+	project := map[string]interface{}{
+		"name":       "test-project",
+		"runtime":    "nodejs",
+		"descripton": "test", // typo for "description"
+		"auther":     "test", // typo for "author"
+		"websit":     "test", // typo for "website"
+	}
+
+	result := validateFieldNames(ProjectSchema, project)
+
+	// Should have warnings for typos
+	if len(result.Warnings) == 0 {
+		t.Errorf("validateFieldNames() expected warnings for typos")
+	}
+
+	// Check for specific typo suggestions
+	warningMessages := strings.Join(result.Warnings, " ")
+
+	// Should suggest corrections for typos
+	if !strings.Contains(warningMessages, "descripton") || !strings.Contains(warningMessages, "description") {
+		t.Errorf("validateFieldNames() should suggest 'description' for 'descripton'")
+	}
+	if !strings.Contains(warningMessages, "auther") || !strings.Contains(warningMessages, "author") {
+		t.Errorf("validateFieldNames() should suggest 'author' for 'auther'")
+	}
+	if !strings.Contains(warningMessages, "websit") || !strings.Contains(warningMessages, "website") {
+		t.Errorf("validateFieldNames() should suggest 'website' for 'websit'")
+	}
+}
+
+func TestValidateNewFields(t *testing.T) {
+	t.Parallel()
+
+	project := map[string]interface{}{
+		"name":        "test-project",
+		"runtime":     "nodejs",
+		"newField":    "value", // new field not in schema
+		"customField": "value", // another new field
+	}
+
+	result := validateNewFields(ProjectSchema, project)
+
+	// Should have warnings for new fields
+	if len(result.Warnings) == 0 {
+		t.Errorf("validateNewFields() expected warnings for new fields")
+	}
+
+	// Check for specific new field warnings
+	warningMessages := strings.Join(result.Warnings, " ")
+
+	// Should warn about new fields
+	if !strings.Contains(warningMessages, "newField") {
+		t.Errorf("validateNewFields() should warn about 'newField'")
+	}
+	if !strings.Contains(warningMessages, "customField") {
+		t.Errorf("validateNewFields() should warn about 'customField'")
+	}
+
+	// Should mention schema version
+	if !strings.Contains(warningMessages, "schema version") {
+		t.Errorf("validateNewFields() should mention schema version")
+	}
 }
