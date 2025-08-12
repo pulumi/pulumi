@@ -953,6 +953,32 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_preview_with_json(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi preview
+            preview_res = stack.preview(json=True)
+
+            result = json.loads(preview_res.stdout)
+
+            # Check that the JSON output could be parsed.
+            assert result is not None
+
+            # pulumi destroy to clean up
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_stack_lifecycle_inline_program_remove_without_destroy(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)

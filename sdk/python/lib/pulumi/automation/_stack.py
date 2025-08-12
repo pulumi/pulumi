@@ -436,6 +436,7 @@ class Stack:
         refresh: Optional[bool] = None,
         config_file: Optional[str] = None,
         run_program: Optional[bool] = None,
+        json: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -470,6 +471,7 @@ class Stack:
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
         :param config_file: Path to a Pulumi config file to use for this update.
+        :param json: Output the preview in JSON format.
         :returns: PreviewResult
         """
         program = program or self.workspace.program
@@ -521,6 +523,9 @@ class Stack:
         log_file, temp_dir = _create_log_file("preview")
         args.extend(["--event-log", log_file])
         summary_events: List[SummaryEvent] = []
+
+        if json:
+            args.extend(["--json"])
 
         def on_event_callback(event: EngineEvent) -> None:
             if event.summary_event:
