@@ -3068,6 +3068,7 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 
 // Test that we use the `tsc` version from the provider's dependencies when compiling the provider.
 func TestNodePackageAddTSC(t *testing.T) {
+	t.Parallel()
 	for _, pm := range []string{"npm", "pnpm", "yarn", "bun"} {
 		t.Run(pm, func(t *testing.T) {
 			t.Parallel()
@@ -3075,7 +3076,7 @@ func TestNodePackageAddTSC(t *testing.T) {
 			defer e.DeleteIfNotFailed()
 			e.ImportDirectory("packageadd-tsc")
 			provider := filepath.Join(e.RootPath, "provider")
-			program := filepath.Join(e.RootPath, fmt.Sprintf("program-%s", pm))
+			program := filepath.Join(e.RootPath, "program-"+pm)
 			bin := filepath.Join(e.RootPath, "bin")
 			e.CWD = provider
 			installNodejsProviderDependencies(t, provider)
