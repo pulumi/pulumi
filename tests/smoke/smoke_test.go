@@ -1142,6 +1142,8 @@ example = airbyte.Provider("provider")`)
 
 // Test that `destroy --exclude-protected --remove` removes the stack if the stack is empty.
 func TestDestroyProtectedEmpty(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -1149,7 +1151,7 @@ func TestDestroyProtectedEmpty(t *testing.T) {
 	e.RunCommand("pulumi", "new", "python", "--force", "--yes")
 	// Init a new empty stack
 	e.RunCommand("pulumi", "stack", "init", "empty-test-stack")
-	// Then immediatly destroy it
+	// Then immediately destroy it
 	e.RunCommand("pulumi", "destroy", "--yes", "--exclude-protected", "--remove")
 	// It should be removed
 	stdout, _ := e.RunCommand("pulumi", "stack", "ls")
