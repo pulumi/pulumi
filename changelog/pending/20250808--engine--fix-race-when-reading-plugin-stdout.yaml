@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix race when reading plugin stdout

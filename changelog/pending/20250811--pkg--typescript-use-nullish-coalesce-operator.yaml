@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: pkg
-  description: Make TypeScript code generation use nullish coalesce operator for required property checks, as well as state and args accessing whenever sensible

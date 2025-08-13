@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix a snapshot integrity error in `up --refresh --run-program` when replacing resources
