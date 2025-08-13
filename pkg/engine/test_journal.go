@@ -26,21 +26,21 @@ import (
 
 var _ = SnapshotManager((*TestJournal)(nil))
 
-type JournalEntryKind int
+type TestJournalEntryKind int
 
 const (
-	JournalEntryBegin   JournalEntryKind = 0
-	JournalEntrySuccess JournalEntryKind = 1
-	JournalEntryFailure JournalEntryKind = 2
-	JournalEntryOutputs JournalEntryKind = 4
+	TestJournalEntryBegin   TestJournalEntryKind = 0
+	TestJournalEntrySuccess TestJournalEntryKind = 1
+	TestJournalEntryFailure TestJournalEntryKind = 2
+	TestJournalEntryOutputs TestJournalEntryKind = 4
 )
 
-type JournalEntry struct {
-	Kind JournalEntryKind
+type TestJournalEntry struct {
+	Kind TestJournalEntryKind
 	Step deploy.Step
 }
 
-type JournalEntries []JournalEntry
+type JournalEntries []TestJournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
@@ -53,7 +53,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
 		switch e.Kind {
-		case JournalEntryBegin:
+		case TestJournalEntryBegin:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
@@ -66,7 +66,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpImport, deploy.OpImportReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeImporting))
 			}
-		case JournalEntryFailure, JournalEntrySuccess:
+		case TestJournalEntryFailure, TestJournalEntrySuccess:
 			switch e.Step.Op() {
 			//nolint:lll
 			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate,
@@ -75,12 +75,12 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				doneOps[e.Step.Old()] = true
 			}
-		case JournalEntryOutputs:
+		case TestJournalEntryOutputs:
 			// We do nothing for outputs, since they don't affect the snapshot.
 		}
 
 		// Now mark resources done as necessary.
-		if e.Kind == JournalEntrySuccess {
+		if e.Kind == TestJournalEntrySuccess {
 			switch e.Step.Op() {
 			case deploy.OpSame:
 				step, ok := e.Step.(*deploy.SameStep)
@@ -190,7 +190,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 
 type TestJournal struct {
 	entries JournalEntries
-	events  chan JournalEntry
+	events  chan TestJournalEntry
 	cancel  chan bool
 	done    chan bool
 }
@@ -210,7 +210,7 @@ func (j *TestJournal) Close() error {
 
 func (j *TestJournal) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	select {
-	case j.events <- JournalEntry{Kind: JournalEntryBegin, Step: step}:
+	case j.events <- TestJournalEntry{Kind: TestJournalEntryBegin, Step: step}:
 		return j, nil
 	case <-j.cancel:
 		return nil, errors.New("journal closed")
@@ -218,12 +218,12 @@ func (j *TestJournal) BeginMutation(step deploy.Step) (SnapshotMutation, error) 
 }
 
 func (j *TestJournal) End(step deploy.Step, success bool) error {
-	kind := JournalEntryFailure
+	kind := TestJournalEntryFailure
 	if success {
-		kind = JournalEntrySuccess
+		kind = TestJournalEntrySuccess
 	}
 	select {
-	case j.events <- JournalEntry{Kind: kind, Step: step}:
+	case j.events <- TestJournalEntry{Kind: kind, Step: step}:
 		return nil
 	case <-j.cancel:
 		return errors.New("journal closed")
@@ -232,7 +232,7 @@ func (j *TestJournal) End(step deploy.Step, success bool) error {
 
 func (j *TestJournal) RegisterResourceOutputs(step deploy.Step) error {
 	select {
-	case j.events <- JournalEntry{Kind: JournalEntryOutputs, Step: step}:
+	case j.events <- TestJournalEntry{Kind: TestJournalEntryOutputs, Step: step}:
 		return nil
 	case <-j.cancel:
 		return errors.New("journal closed")
@@ -253,7 +253,7 @@ func (j *TestJournal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 // produce the same snapshot.
 func NewTestJournal() *TestJournal {
 	j := &TestJournal{
-		events: make(chan JournalEntry),
+		events: make(chan TestJournalEntry),
 		cancel: make(chan bool),
 		done:   make(chan bool),
 	}

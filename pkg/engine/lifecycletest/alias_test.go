@@ -210,12 +210,12 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 								continue
 							}
 							switch entry.Kind {
-							case JournalEntrySuccess:
+							case TestJournalEntrySuccess:
 								assert.Subset(t, allowedOps, []display.StepOp{entry.Step.Op()})
-							case JournalEntryFailure:
+							case TestJournalEntryFailure:
 								assert.Fail(t, "unexpected failure in journal")
-							case JournalEntryBegin:
-							case JournalEntryOutputs:
+							case TestJournalEntryBegin:
+							case TestJournalEntryOutputs:
 							}
 						}
 

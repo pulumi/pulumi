@@ -774,14 +774,14 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 		resADeleted := false
 		resBDeleted := false
 		for _, entry := range entries {
-			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resA" {
+			if entry.Kind == engine.TestJournalEntrySuccess && entry.Step.URN().Name() == "resA" {
 				switch entry.Step.Op() {
 				case deploy.OpDeleteReplaced:
 					resADeleted = true
 				}
 			}
 
-			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resB" {
+			if entry.Kind == engine.TestJournalEntrySuccess && entry.Step.URN().Name() == "resB" {
 				switch entry.Step.Op() {
 				case deploy.OpDeleteReplaced:
 					assert.False(t, resADeleted, "resA should not have been deleted yet")
