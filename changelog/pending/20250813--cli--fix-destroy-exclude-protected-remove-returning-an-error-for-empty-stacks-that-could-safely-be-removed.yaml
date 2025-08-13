@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix `destroy --exclude-protected --remove` returning an error for empty stacks that could safely be removed
