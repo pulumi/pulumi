@@ -37,10 +37,10 @@ const (
 )
 
 // The mode that controls how the provider handles the proposed name. If not specified, defaults to `PROPOSE`.
-//   - `PROPOSE`: The provider may use the proposed name as a suggestion but is free to modify it.
-//   - `ENFORCE`: The provider must use exactly the proposed name or return an error.
-//   - `DISABLE`: The provider should disable automatic naming and return an error if no explicit name
-//     is provided by user's program.
+// - `PROPOSE`: The provider may use the proposed name as a suggestion but is free to modify it.
+// - `ENFORCE`: The provider must use exactly the proposed name or return an error.
+// - `DISABLE`: The provider should disable automatic naming and return an error if no explicit name
+//   is provided by user's program.
 type CheckRequest_AutonamingOptions_Mode int32
 
 const (
@@ -395,10 +395,10 @@ func (x *ProviderHandshakeResponse) GetSupportsAutonamingConfiguration() bool {
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
 // `ParameterizeRequest` may contain either:
 //
-//   - a string array (`ParametersArgs`), intended to represent a set of command-line arguments so as to support
-//     instantiating a parameterized provider from a command-line invocation (e.g. to generate an SDK).
-//   - a byte array accompanied by a name and version (`ParametersValue`), intended to represent a parameter embedded in a
-//     previously generated SDK.
+// * a string array (`ParametersArgs`), intended to represent a set of command-line arguments so as to support
+//   instantiating a parameterized provider from a command-line invocation (e.g. to generate an SDK).
+// * a byte array accompanied by a name and version (`ParametersValue`), intended to represent a parameter embedded in a
+//   previously generated SDK.
 //
 // Embedding parameter values in SDKs allows programs to consume parameterized providers without needing to know the
 // details of the parameterization. Allowing the representation embedded into an SDK to differ from that supplied on the
@@ -1413,11 +1413,11 @@ func (x *CheckRequest) GetAutonaming() *CheckRequest_AutonamingOptions {
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
 // [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may contain either:
 //
-//   - a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
-//     subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
-//     [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
-//     to any of the supported lifecycle methods that accept provider inputs.
-//   - a set of `failures` detailing invalid inputs.
+// * a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
+//   subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
+//   [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
+//   to any of the supported lifecycle methods that accept provider inputs.
+// * a set of `failures` detailing invalid inputs.
 //
 // In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
 // persisted to Pulumi state and passed to subsequent calls.
@@ -1733,13 +1733,13 @@ func (x *PropertyDiff) GetInputDiff() bool {
 // `DiffResponse` has evolved since its inception and there are now a number of ways that providers can signal their
 // intent to callers:
 //
-//   - *Simple diffs* utilise the `changes` field to signal which fields are responsible for a change, and the `replaces`
-//     field to further communicate which changes (if any) require a replacement as opposed to an update.
+// * *Simple diffs* utilise the `changes` field to signal which fields are responsible for a change, and the `replaces`
+//   field to further communicate which changes (if any) require a replacement as opposed to an update.
 //
-//   - *Detailed diffs* are those with `hasDetailedDiff` set, and utilise the `detailedDiff` field to provide a more
-//     granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
-//     precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
-//     change occurred (e.g. a field was added, deleted or updated).
+// * *Detailed diffs* are those with `hasDetailedDiff` set, and utilise the `detailedDiff` field to provide a more
+//   granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
+//   precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
+//   change occurred (e.g. a field was added, deleted or updated).
 //
 // The response must satisfy the following invariants:
 //
