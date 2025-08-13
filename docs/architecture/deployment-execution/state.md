@@ -63,6 +63,210 @@ were to do snapshot updates in parallel, it would be possible that we overwrite
 a snapshot with more information, with one that has been generated earlier, that
 doesn't include the latest updates yet.
 
+(snapshot-journaling)=
+### Snapshot Journaling
+
+To avoid the problem of not being able to send snapshot updates in parallel, and
+to save on bandwidth costs, we are implementing a journaling approach. Instead of
+sending the full snapshot we can create a journal entry for each step, and replay
+them in sequence on top of the current snapshot, to create a new valid snapshot.
+
+This can be done due to the fact that that the engine and the snapshot manager can
+start with the same base snapshot, on top of which the entries are applied. And
+because the engine never starts a new update before any of the dependents have
+completed, it is always safe to apply all current journal entries in order, to
+reconstruct the snapshot. In particular this is different from the snapshotting
+implementation in that we can't rely on the engine setting fields in the snapshot
+anymore, but need to encode all of this information in the journal entries.
+
+In the first pass of the implementation, we still send the whole snapshot to the
+backend. In later stages of the implementation, backends that can handle it, can
+receive the journal entries directly, and rebuild the snapshot on the backend.
+
+To make sure we always operate on the same snapshot the backend has access to,
+and to be able to confidently test the implementation against the lifecycletests,
+the journaler only has access to a copy of the snapshot, where all resources are
+deep copied. This way we make sure that we don't make use of snapshot entries
+being modified by the engine.
+
+The snapshot may be updated once at the beginning, for provider migrations. In
+that case we do a "write" operation update the snapshot. It is not valid to do
+this after any journal entries have been created, because resources might now be
+in different places in the resource list.
+
+#### Journal entry details
+
+There's various types of Journal entries, all with slightly different semantics.
+This section describes them. All journal entries are associated with increasong
+IDs. This allows us to both correlate the start and end of an operation, as well
+as order the journal entries for replaying.
+
+Note that journal entries can arrive out of order at the backend. However the
+engine guarantees a partial order, as operations for dependents of a resource
+will never start being processed before the dependency has finished its
+operation. It's always safe to replay all the journal entries that have arrived
+at the backend, in increasing order of their IDs, even if some IDs are missing.
+
+##### JournalEntryBegin
+
+This journal entry type is emitted at the start of each step. It's optionally
+associated with a `resource.Operation`, that should be recorded as a "pending
+operation" in the snapshot, until we have a corresponding journal entry
+finalizing the operation. The begin journal entries are also used to mark
+resources as `Delete=true` if necessary, by setting the `DeleteOld` field to the
+index of the resource that should be marked for deletion.
+
+##### JournalEntrySuccess
+
+Whenever we successfully run a resource step, we emit a success journal
+entry. This Journal Entry contains the following information:
+- DeleteOld: If >= 0, the index in the resource list in the snapshot for an entry
+  that should be deleted.
+- DeleteNew: If > 0, the operation ID of a resource that's to be deleted, e.g. if
+  a previous operation created a resource, but it's no longer needed/replaced.
+- PendingReplacement: If >= 0, the index of a resource that should be marked as
+  pending replacement.
+- State: The newly created resource state of the journal entry, if any.
+- ElideWrite: True if the write can be elided. This is only used in the local
+  implementation. If true, we don't need to send a new snapshot. The journal
+  entry still needs to be sent to the backend.
+- IsRefresh: True if the journal entry is part of a refresh operation. If there
+  are any refresh operations, we need to rebuild the base state. Refreshes can
+  delete resources, without updating their dependants. So we need to rebuild the
+  base state, removing no longer existing resources from dependency lists.
+
+##### JournalEntryFailure
+
+This is emitted if a step fails. In this case no resource has been changed by the
+step, so we just remove any pending operation that we created when we emitted the
+"begin" entry with the same operation ID.
+
+##### JournalEntryRefreshSuccess
+
+This is a special journal entry for refreshes that the engine does not mark as
+`Persisted()`. For refreshes, the engine would traditionally just update the base
+snapshot, without involving the snapshot code. This however does not work with
+the journaling code, as we operate on a copy of the snapshot. The difference
+between a refresh success and a success journal entry, is that for refresh
+successes, we need to replace the resource in the snapshot at the same index as
+it was before. E.g. if `DeleteOld` is 1, we need to put the new state at index 1,
+while if the same thing was true for a regular success entry, we would delete the
+old resource, and add the new one to the end of the resource list.
+
+##### JournalEntryOutputs
+
+This journal event is emitted when the outputs of a resource have
+changed. Similar to the "refresh success" journal entry, we replace the old state
+with the new one here.
+
+##### JournalEntryWrite
+
+This special journal entry is only allowed once, at the very beginning of the
+whole sequence of events, to write a new snapshot, in case of provider migrations
+as mentioned above. The only field set here is `NewSnapshot`, which contains the
+new snapshot, which will be deep copied to make sure we don't change any
+pointers.
+
+#### Pseudocode
+
+Following is the pseudocode for constructing the snapshot from journal entries:
+
+```
+
+# Apply snapshot writes
+snapshot = find_write_journal_entry_or_use_base(base, journal)
+
+# Track changes
+deletes, snapshot_deletes, mark_deleted, mark_pending = set(), set(), set(), set()
+replacements, snapshot_replacements = {}, {}
+
+# Build change maps
+for entry in journal:
+    if entry.type == SUCCESS and entry.delete_id:
+        deletes.add(entry.delete_id)
+
+    if entry.type in [REFRESH_SUCCESS, OUTPUTS] and entry.state:
+        if entry.delete_id:
+            replacements[entry.delete_id] = entry.state
+
+# Process operations
+incomplete_ops = {}
+has_refresh = false
+
+for entry in journal:
+    match entry.type:
+        case BEGIN:
+            incomplete_ops[entry.op_id] = entry
+            if entry.old_index >= 0:
+                mark_deleted.add(entry.old_index)
+
+        case SUCCESS:
+            del incomplete_ops[entry.op_id]
+
+            if entry.op_id in replacements:
+                resources.append(replacements[entry.op_id])
+            elif entry.state and entry.op_id not in deletes:
+                resources.append(entry.state)
+
+            if entry.old_index >= 0:
+                snapshot_deletes.add(entry.old_index)
+            has_refresh |= entry.is_refresh
+
+        case REFRESH_SUCCESS:
+            del incomplete_ops[entry.op_id]
+            has_refresh = true
+            if entry.old_index >= 0:
+                if entry.state:
+                    snapshot_replacements[entry.old_index] = entry.state
+                else:
+                    snapshot_deletes.add(entry.old_index)
+
+        case FAILURE:
+            if entry.op_id in incomplete_ops:
+                old_op = incomplete_ops[entry.op_id]
+                if old_op.old_index in mark_deleted:
+                    mark_deleted.remove(old_op.old_index)
+            del incomplete_ops[entry.op_id]
+
+        case OUTPUTS:
+            if entry.state and entry.old_index >= 0:
+                snapshot_replacements[entry.old_index] = entry.state
+
+# Merge snapshot resources
+for i, res in enumerate(snapshot.resources):
+    if i not in snapshot_deletes:
+        if i in snapshot_replacements:
+            resources.append(snapshot_replacements[i])
+        else:
+            if i in mark_deleted:
+                res.delete = true
+            resources.append(res)
+
+# Collect pending operations
+pending_ops = [op.operation for op in incomplete_ops.values() if op.operation]
+pending_ops.extend([op for op in snapshot.pending_ops if op.type == CREATE])
+
+# Rebuild and return
+if has_refresh:
+    rebuild_dependencies(resources)
+```
+
+As mentioned above, Journal Entries need to be stored before the
+BeginOperation/EndOperation calls finish, so the engine only starts the next step
+after the journal entry for the dependents is saved before we work on any of the
+dependencies. That's the main ordering requirement.
+
+On the service side this is easiest to reproduce by replaying all journal entries
+we have (the CLI will wait to start with dependencies until we got a reply from
+the server), in order of their operation IDs.
+
+### REST API
+
+The service will get a now api `createjournalentry`, that will get the serialized
+journal entry and store it in MySQL for later replaying. The service is expected
+to reconstruct the snapshot itself after the operation finished, and the API for
+getting the snapshot stays the same as it is currently.
+
 (snapshot-integrity)=
 ## Snapshot integrity
 
