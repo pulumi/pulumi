@@ -33,6 +33,36 @@ remote HTTP service, which is responsible for managing the underlying state.
 [Pulumi Cloud](https://www.pulumi.com/product/pulumi-cloud/) is the primary
 example of this.
 
+(snapshots)=
+## Snapshots
+
+The Pulumi CLI generates a new snapshot at the start and at the end of each
+operation, unless the `PULUMI_SKIP_CHECKPOINTS` environment variable is set.
+
+Currently we upload either a full snapshot, or the diff to the previous snapshot
+if the HTTP state backend is used, and the snapshot is sufficiently large.
+
+Depending on the step type, at the start of the operation we create a "pending
+operation" entry. This is created, so if anything goes wrong during the operation,
+e.g. the connection drops while we set up a resource, we have a record of it, and
+the user can manually go through them and either delete the entry if the resource
+has not been created in the provider, or import the resource into the state. At
+the end of each operation, we finalize the entry, and add it to the list of
+resouces, while removing the "pending operation" entry.
+
+Note that the engine is currently free to modify the snapshot in any way, and we'll
+always upload that internal snapshot, since the snapshot manager internally uses
+a pointer to the same snapshot as the engine is using. The engine makes use of this
+for example for marking snapshot entries as `Delete=true` or `PendingReplacement=true`,
+as well as for changing outputs due to a `RegisterResourceOutputs` call. It's also
+used for refreshes, and for default provider updates.
+
+Another important thing to note here is that each of the updates to the snapshot
+needs to happen sequentially. This is so the snapshot is always consistent. If we
+were to do snapshot updates in parallel, it would be possible that we overwrite
+a snapshot with more information, with one that has been generated earlier, that
+doesn't include the latest updates yet.
+
 (snapshot-integrity)=
 ## Snapshot integrity
 
