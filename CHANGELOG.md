@@ -1,5 +1,42 @@
 # Changelog
 
+## 3.189.0 (2025-08-12)
+
+
+### Features
+
+- [sdk] Remove CacheMS from CLIVersionResponse
+  [#20264](https://github.com/pulumi/pulumi/pull/20264)
+
+- [sdk/go] Calculate PluginInfo.Size on demand
+  [#20241](https://github.com/pulumi/pulumi/pull/20241)
+
+- [auto/python] Surface `json` option to `pulumi preview` calls in Python when using the `pulumi.automation` package.
+  [#20233](https://github.com/pulumi/pulumi/pull/20233)
+
+
+### Bug Fixes
+
+- [cli/package] Fix incorrect console URLs being displayed after publishing a policy
+  [#20255](https://github.com/pulumi/pulumi/pull/20255)
+
+- [engine] Fix race when reading plugin stdout
+  [#20242](https://github.com/pulumi/pulumi/pull/20242)
+
+- [sdk/nodejs] Fix component providers when using pnpm
+  [#20253](https://github.com/pulumi/pulumi/pull/20253)
+
+
+### Miscellaneous
+
+- [pkg] Make TypeScript code generation use nullish coalesce operator for required property checks, as well as state and args accessing whenever sensible
+
+- [sdk/nodejs] Fix swapped stderr/stdout callback comments in PreviewOptions interface
+  [#20250](https://github.com/pulumi/pulumi/pull/20250)
+
+- [sdkgen] Don’t create empty maps for language specific overrides
+  [#20237](https://github.com/pulumi/pulumi/pull/20237)
+
 ## 3.188.0 (2025-08-07)
 
 
