@@ -286,10 +286,12 @@ func NewDestroyCmd() *cobra.Command {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
 					}
-					// We need to return now. Otherwise the update will conclude
-					// we tried to destroy everything and error for trying to
-					// destroy a protected resource.
-					return nil
+					// We need to return now. Otherwise the update will conclude we tried to destroy
+					// everything and error for trying to destroy a protected resource. _Unless_ there are no
+					// resources in which case we can do a no-op destroy and remove the stack (if requested).
+					if protectedCount != 0 {
+						return nil
+					}
 				}
 			}
 
