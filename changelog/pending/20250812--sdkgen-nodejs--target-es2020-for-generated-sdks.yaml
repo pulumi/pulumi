@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen/nodejs
+  description: Target ES2020 for generated SDKs

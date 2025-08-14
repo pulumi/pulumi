@@ -2590,7 +2590,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 	fmt.Fprintf(w, `{
     "compilerOptions": {
         "outDir": "bin",
-        "target": "es2016",
+        "target": "ES2020",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
