@@ -80,6 +80,9 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	case engine.CancelEvent:
 		return ""
 
+	case engine.ErrorEvent:
+		return ""
+
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
