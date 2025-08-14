@@ -579,16 +579,12 @@ func NewPreviewCmd() *cobra.Command {
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "save-plan", "",
-		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
+		"[PREVIEW] Save the operations proposed by the preview to a plan file at the given path")
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false,
 		"Show secrets in plaintext in the CLI output,"+
 			" if used with --save-plan the secrets will also be shown in the plan file. Defaults to `false`")
 
-	if !env.Experimental.Value() {
-		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
-			`Could not mark "save-plan" as hidden`)
-	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
 		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
