@@ -83,7 +83,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			deletedID0, deletedID1 := false, false
 			for _, entry := range entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
-				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
 					continue
 				}
@@ -160,7 +160,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 			deletedID0, deletedID1 := false, false
 			for _, entry := range entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
-				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
 					continue
 				}

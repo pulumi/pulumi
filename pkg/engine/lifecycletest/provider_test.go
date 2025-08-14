@@ -260,7 +260,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -352,7 +352,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -622,7 +622,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					}
 				}
 
-				if entry.Kind != JournalEntrySuccess || op != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || op != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -726,7 +726,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 			createdProvider, createdResource := false, false
 			deletedProvider, deletedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess {
+				if entry.Kind != TestJournalEntrySuccess {
 					continue
 				}
 
@@ -818,7 +818,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 						events []Event, err error,
 					) error {
 						for _, entry := range entries {
-							if entry.Kind != JournalEntrySuccess {
+							if entry.Kind != TestJournalEntrySuccess {
 								continue
 							}
 
@@ -946,7 +946,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 						events []Event, err error,
 					) error {
 						for _, entry := range entries {
-							if entry.Kind != JournalEntrySuccess {
+							if entry.Kind != TestJournalEntrySuccess {
 								continue
 							}
 
@@ -1065,7 +1065,7 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 						events []Event, err error,
 					) error {
 						for _, entry := range entries {
-							if entry.Kind != JournalEntrySuccess {
+							if entry.Kind != TestJournalEntrySuccess {
 								continue
 							}
 

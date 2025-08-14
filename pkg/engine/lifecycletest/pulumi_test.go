@@ -61,7 +61,7 @@ import (
 func SuccessfulSteps(entries JournalEntries) []deploy.Step {
 	var steps []deploy.Step
 	for _, entry := range entries {
-		if entry.Kind == JournalEntrySuccess {
+		if entry.Kind == TestJournalEntrySuccess {
 			steps = append(steps, entry.Step)
 		}
 	}
@@ -1002,9 +1002,9 @@ func TestUpdatePartialFailure(t *testing.T) {
 					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
 					//nolint:exhaustive // default case signifies testing failure
 					switch entry.Kind {
-					case JournalEntryBegin:
+					case TestJournalEntryBegin:
 						continue
-					case JournalEntrySuccess:
+					case TestJournalEntrySuccess:
 						inputs := entry.Step.New().Inputs
 						outputs := entry.Step.New().Outputs
 						require.Len(t, inputs, 1)
@@ -2054,7 +2054,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
 

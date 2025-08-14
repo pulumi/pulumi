@@ -143,10 +143,10 @@ func TestImportOption(t *testing.T) {
 				case resURN:
 					if seenImport {
 						assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
-						seenUpdate = entry.Kind == JournalEntrySuccess
+						seenUpdate = entry.Kind == TestJournalEntrySuccess
 					} else {
 						assert.Equal(t, deploy.OpImport, entry.Step.Op())
-						seenImport = entry.Kind == JournalEntrySuccess
+						seenImport = entry.Kind == TestJournalEntrySuccess
 					}
 				default:
 					t.Fatalf("unexpected resource %v", urn)
@@ -1511,10 +1511,10 @@ func TestImportWithFailedUpdate(t *testing.T) {
 				case resURN:
 					if seenImport {
 						assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
-						seenUpdate = entry.Kind == JournalEntryFailure
+						seenUpdate = entry.Kind == TestJournalEntryFailure
 					} else {
 						assert.Equal(t, deploy.OpImport, entry.Step.Op())
-						seenImport = entry.Kind == JournalEntrySuccess
+						seenImport = entry.Kind == TestJournalEntrySuccess
 					}
 				default:
 					t.Fatalf("unexpected resource %v", urn)
