@@ -54,7 +54,7 @@ type EventPayload interface {
 	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
 		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload |
-		ProgressEventPayload
+		ProgressEventPayload | ErrorEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -98,6 +98,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = StartDebuggingEvent
 	case ProgressEventPayload:
 		typ = ProgressEvent
+	case ErrorEventPayload:
+		typ = ErrorEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -125,6 +127,7 @@ const (
 	PolicyLoadEvent         EventType = "policy-load"
 	StartDebuggingEvent     EventType = "debugging-start"
 	ProgressEvent           EventType = "progress"
+	ErrorEvent              EventType = "error"
 )
 
 // ProgressType is the type of download occurring.
@@ -268,6 +271,10 @@ type ResourcePreEventPayload struct {
 	// Internal is set for events that should not be shown to a user but are expected to be used in other parts of the
 	// Pulumi system.
 	Internal bool
+}
+
+type ErrorEventPayload struct {
+	Error error
 }
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.

@@ -212,6 +212,14 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Total:     p.Total,
 			Done:      p.Done,
 		}
+	case engine.ErrorEvent:
+		p, ok := e.Payload().(engine.ErrorEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ErrorEvent = &apitype.ErrorEvent{
+			Error: p.Error.Error(),
+		}
 
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
