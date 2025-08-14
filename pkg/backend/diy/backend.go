@@ -1200,8 +1200,7 @@ func (b *diyBackend) apply(
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		journal := backend.NewSnapshotJournaler(persister, op.SecretsManager, update.Target.Snapshot)
-		manager = backend.NewSnapshotManager(journal, update.Target.Snapshot)
+		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
 	}
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),

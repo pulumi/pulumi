@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -29,26 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
-
-// Journal defines an interface for journal operations. The underlying implementation of this interface
-// is responsible for recording and storing the operations, and constructing a snapshot/storing them
-// for later replaying.
-type Journal interface {
-	// BeginOperation begins a new operation in the journal. This should be called before any
-	// mutation is performed on the snapshot. The journal entry should contain the operation ID,
-	// which is used to correlate the begin and end operations in the journal.
-	BeginOperation(entry JournalEntry) error
-	// EndOperation ends an operation in the journal. This should be called after the mutation is
-	// performed on the snapshot. The journal entry should contain the operation ID, which is used
-	// to correlate the begin and end operations in the journal.
-	EndOperation(entry JournalEntry) error
-	// Write updates the base snapshot for this journal. This is used e.g. when providers have
-	// been updated, and we can't simply reuse the base snapshot from the previous plan. This
-	// needs to be called before any other mutation requests.
-	Write(newBase *deploy.Snapshot) error
-	// Close closes the journal, flushing any pending operations.
-	Close() error
-}
 
 // rebuildDependencies rebuilds the dependencies of the resources in the snapshot based on the
 // resources that are present in the snapshot. This is necessary if a refresh happens, because
@@ -131,7 +112,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	snap := sj.snapshot
 
 	for _, entry := range sj.journalEntries {
-		if entry.Kind == JournalEntryWrite {
+		if entry.Kind == engine.JournalEntryWrite {
 			snap = entry.NewSnapshot
 			contract.Assertf(entry.OperationID == 0, "rebase journal entry must not have an operation ID")
 		}
@@ -150,11 +131,11 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	// markAsPendingReplacement tracks indices of resources in the snapshot that are to be marked for pending replacement.
 	markAsPendingReplacement := make(map[int]struct{})
 	for _, entry := range sj.journalEntries {
-		if entry.Kind == JournalEntrySuccess && entry.DeleteNew != 0 {
+		if entry.Kind == engine.JournalEntrySuccess && entry.DeleteNew != 0 {
 			toDelete[entry.DeleteNew] = struct{}{}
 		}
 
-		if entry.Kind == JournalEntryRefreshSuccess && entry.State != nil {
+		if entry.Kind == engine.JournalEntryRefreshSuccess && entry.State != nil {
 			// If we have a refresh, and the resource is not being deleted,
 			// we want to substitute the old resource, instead of appending
 			// it to the end.
@@ -163,7 +144,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			}
 		}
 
-		if entry.Kind == JournalEntryOutputs && entry.State != nil && !entry.ElideWrite {
+		if entry.Kind == engine.JournalEntryOutputs && entry.State != nil && !entry.ElideWrite {
 			// Similar to refreshes, if we have new outputs, we need to *replace* the
 			// old resource at the same place in the resource list as the new one.
 			if entry.DeleteNew != 0 {
@@ -172,17 +153,17 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		}
 	}
 
-	incompleteOps := make(map[uint64]JournalEntry)
+	incompleteOps := make(map[uint64]engine.JournalEntry)
 	hasRefresh := false
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sj.journalEntries {
 		switch entry.Kind {
-		case JournalEntryBegin:
+		case engine.JournalEntryBegin:
 			incompleteOps[entry.OperationID] = entry
 			if entry.DeleteOld >= 0 {
 				markAsDeletion[entry.DeleteOld] = struct{}{}
 			}
-		case JournalEntrySuccess:
+		case engine.JournalEntrySuccess:
 			delete(incompleteOps, entry.OperationID)
 			// If this is a success, we need to add the resource to the list of resources.
 			_, del := toDelete[entry.OperationID]
@@ -201,7 +182,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			if entry.IsRefresh {
 				hasRefresh = true
 			}
-		case JournalEntryRefreshSuccess:
+		case engine.JournalEntryRefreshSuccess:
 			delete(incompleteOps, entry.OperationID)
 			hasRefresh = true
 			if entry.DeleteOld >= 0 {
@@ -211,9 +192,9 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 					toReplaceInSnapshot[entry.DeleteOld] = entry.State
 				}
 			}
-		case JournalEntryFailure:
+		case engine.JournalEntryFailure:
 			op := incompleteOps[entry.OperationID]
-			if op.Kind == JournalEntryBegin {
+			if op.Kind == engine.JournalEntryBegin {
 				// If we marked this resource for deletion earlier, we need to
 				// undo that if the operation failed.
 				if _, ok := markAsDeletion[op.DeleteOld]; ok {
@@ -222,11 +203,11 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				}
 			}
 			delete(incompleteOps, entry.OperationID)
-		case JournalEntryOutputs:
+		case engine.JournalEntryOutputs:
 			if entry.State != nil && !entry.ElideWrite && entry.DeleteOld >= 0 {
 				toReplaceInSnapshot[entry.DeleteOld] = entry.State
 			}
-		case JournalEntryWrite:
+		case engine.JournalEntryWrite:
 			// Already handled above.
 		}
 	}
@@ -392,7 +373,7 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 	for {
 		select {
 		case request := <-journalEvents:
-			if request.JournalEntry.Kind == JournalEntryWrite {
+			if request.JournalEntry.Kind == engine.JournalEntryWrite {
 				contract.Assertf(len(sj.journalEntries) == 0, "should not have seen an jornalentry before a rebase")
 			}
 			sj.journalEntries = append(sj.journalEntries, request.JournalEntry)
@@ -408,7 +389,7 @@ type snapshotJournaler struct {
 	persister      SnapshotPersister
 	snapshot       *deploy.Snapshot
 	journalEvents  chan ResultJournalEntry
-	journalEntries []JournalEntry
+	journalEntries []engine.JournalEntry
 	cancel         chan bool
 	done           chan error
 	secretsManager secrets.Manager
@@ -437,7 +418,7 @@ func NewSnapshotJournaler(
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
-) Journal {
+) engine.Journal {
 	snapCopy := &deploy.Snapshot{}
 	if baseSnap != nil {
 		snapCopy = &deploy.Snapshot{
@@ -464,7 +445,7 @@ func NewSnapshotJournaler(
 		persister:      persister,
 		snapshot:       snapCopy,
 		journalEvents:  journalEvents,
-		journalEntries: make([]JournalEntry, 0),
+		journalEntries: make([]engine.JournalEntry, 0),
 		secretsManager: secretsManager,
 		cancel:         cancel,
 		done:           done,
@@ -482,11 +463,11 @@ func NewSnapshotJournaler(
 }
 
 type ResultJournalEntry struct {
-	JournalEntry JournalEntry
+	JournalEntry engine.JournalEntry
 	result       chan error
 }
 
-func (sj *snapshotJournaler) journalMutation(entry JournalEntry) error {
+func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	result := make(chan error)
 	select {
 	case sj.journalEvents <- ResultJournalEntry{JournalEntry: entry, result: result}:
@@ -496,11 +477,11 @@ func (sj *snapshotJournaler) journalMutation(entry JournalEntry) error {
 	}
 }
 
-func (sj *snapshotJournaler) BeginOperation(entry JournalEntry) error {
+func (sj *snapshotJournaler) BeginOperation(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
 }
 
-func (sj *snapshotJournaler) EndOperation(entry JournalEntry) error {
+func (sj *snapshotJournaler) EndOperation(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
 }
 
@@ -526,8 +507,8 @@ func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
 		snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
 	}
 	sj.snapshot = snapCopy
-	return sj.journalMutation(JournalEntry{
-		Kind:        JournalEntryWrite,
+	return sj.journalMutation(engine.JournalEntry{
+		Kind:        engine.JournalEntryWrite,
 		NewSnapshot: snapCopy,
 	})
 }

@@ -15,9 +15,14 @@
 package engine
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"reflect"
 
+	"github.com/go-test/deep"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // SnapshotManager manages an in-memory resource graph.
@@ -45,4 +50,90 @@ type SnapshotMutation interface {
 	// End terminates the transaction and commits the results to the snapshot, returning an error if this
 	// failed to complete.
 	End(step deploy.Step, successful bool) error
+}
+
+func SnapshotEqual(journal, manager *deploy.Snapshot) error {
+	// Just want to check the same operations and resources are counted, but order might be slightly different.
+	if journal == nil && manager == nil {
+		return nil
+	}
+	if journal == nil {
+		return errors.New("journal snapshot is nil")
+	}
+	if manager == nil {
+		return errors.New("manager snapshot is nil")
+	}
+
+	// Manifests and SecretsManagers are known to differ because we don't thread them through for the Journal code.
+
+	if len(journal.PendingOperations) != len(manager.PendingOperations) {
+		return errors.New("journal and manager pending operations differ")
+	}
+
+	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+
+	for _, mop := range manager.PendingOperations {
+		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
+	}
+	for _, jop := range journal.PendingOperations {
+		found := false
+		for _, mop := range pendingOpsMap[jop.Resource.URN] {
+			if reflect.DeepEqual(jop, mop) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("journal and manager pending operations differ, %v not found in manager", jop)
+		}
+	}
+
+	if len(journal.Resources) != len(manager.Resources) {
+		var journalResources string
+		for _, r := range journal.Resources {
+			journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		var managerResources string
+		for _, r := range manager.Resources {
+			managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
+			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
+	}
+
+	resourcesMap := make(map[resource.URN][]*resource.State)
+
+	for _, mr := range manager.Resources {
+		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
+	}
+
+	for _, jr := range journal.Resources {
+		found := false
+		var diffStr string
+		for _, mr := range resourcesMap[jr.URN] {
+			if diff := deep.Equal(jr, mr); diff != nil {
+				if jr.URN == mr.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var journalResources string
+			for _, jr := range journal.Resources {
+				journalResources += fmt.Sprintf("Journal resource: %v\n", jr)
+			}
+			var managerResources string
+			for _, mr := range manager.Resources {
+				managerResources += fmt.Sprintf("Manager resource: %v\n", mr)
+			}
+			return fmt.Errorf("journal and manager resources differ, %v not found in manager.\n"+
+				"Journal: %v\nManager: %v\nDiffs: %v",
+				jr, journalResources, managerResources, diffStr)
+		}
+	}
+
+	return nil
 }

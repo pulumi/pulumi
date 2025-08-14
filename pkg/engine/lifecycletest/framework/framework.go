@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/go-test/deep"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,92 +78,6 @@ type TB interface {
 	FailNow()
 	Fail()
 	Failed() bool
-}
-
-func snapshotEqual(journal, manager *deploy.Snapshot) error {
-	// Just want to check the same operations and resources are counted, but order might be slightly different.
-	if journal == nil && manager == nil {
-		return nil
-	}
-	if journal == nil {
-		return errors.New("journal snapshot is nil")
-	}
-	if manager == nil {
-		return errors.New("manager snapshot is nil")
-	}
-
-	// Manifests and SecretsManagers are known to differ because we don't thread them through for the Journal code.
-
-	if len(journal.PendingOperations) != len(manager.PendingOperations) {
-		return errors.New("journal and manager pending operations differ")
-	}
-
-	pendingOpsMap := make(map[resource.URN][]resource.Operation)
-
-	for _, mop := range manager.PendingOperations {
-		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
-	}
-	for _, jop := range journal.PendingOperations {
-		found := false
-		for _, mop := range pendingOpsMap[jop.Resource.URN] {
-			if reflect.DeepEqual(jop, mop) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("journal and manager pending operations differ, %v not found in manager", jop)
-		}
-	}
-
-	if len(journal.Resources) != len(manager.Resources) {
-		var journalResources string
-		for _, r := range journal.Resources {
-			journalResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
-		}
-		var managerResources string
-		for _, r := range manager.Resources {
-			managerResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
-		}
-		return fmt.Errorf("journal and manager resources differ, %d in journal (have %v), %d in manager (have %v)",
-			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
-	}
-
-	resourcesMap := make(map[resource.URN][]*resource.State)
-
-	for _, mr := range manager.Resources {
-		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
-	}
-
-	for _, jr := range journal.Resources {
-		found := false
-		var diffStr string
-		for _, mr := range resourcesMap[jr.URN] {
-			if diff := deep.Equal(jr, mr); diff != nil {
-				if jr.URN == mr.URN {
-					diffStr += fmt.Sprintf("%s\n", diff)
-				}
-			} else {
-				found = true
-				break
-			}
-		}
-		if !found {
-			var journalResources string
-			for _, jr := range journal.Resources {
-				journalResources += fmt.Sprintf("Journal resource: %v\n", jr)
-			}
-			var managerResources string
-			for _, mr := range manager.Resources {
-				managerResources += fmt.Sprintf("Manager resource: %v\n", mr)
-			}
-			return fmt.Errorf("journal and manager resources differ, %v not found in manager.\n"+
-				"Journal: %v\nManager: %v\nDiffs: %v",
-				jr, journalResources, managerResources, diffStr)
-		}
-	}
-
-	return nil
 }
 
 // The nopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
@@ -306,15 +219,21 @@ func (op TestOp) runWithContext(
 	journal := engine.NewTestJournal()
 	persister := &backend.ValidatingPersister{
 		ErrorFunc: func(err error) {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("manager validation error: %w", err))
+		},
+	}
+	journalPersister := &backend.ValidatingPersister{
+		ErrorFunc: func(err error) {
+			errs = append(errs, fmt.Errorf("journal validation error: %w", err))
 		},
 	}
 	secretsManager := b64.NewBase64SecretsManager()
-	journaler := backend.NewSnapshotJournaler(persister, secretsManager, target.Snapshot)
-	snapshotManager := backend.NewSnapshotManager(journaler, target.Snapshot)
+	journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot)
+	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+	journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
 
 	combined := &engine.CombinedManager{
-		Managers: []engine.SnapshotManager{journal, snapshotManager},
+		Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},
 	}
 
 	ctx := &engine.Context{
@@ -410,7 +329,8 @@ func (op TestOp) runWithContext(
 	}
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
-	errs = append(errs, snapshotEqual(snap, persister.Snap))
+	errs = append(errs, engine.SnapshotEqual(snap, persister.Snap))
+	errs = append(errs, engine.SnapshotEqual(snap, journalPersister.Snap))
 
 	return nil, snap, errors.Join(errs...)
 }
