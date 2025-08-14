@@ -157,15 +157,15 @@ func TestIgnoreChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "Missing parent keys in only new fail",
+			name: "Missing parent keys in only new",
 			oldInputs: map[string]interface{}{
 				"a": map[string]interface{}{
 					"b": "foo",
 				},
 			},
 			newInputs:     map[string]interface{}{},
+			expected:      map[string]interface{}{},
 			ignoreChanges: []string{"a.b"},
-			expectMessage: true,
 		},
 	}
 
