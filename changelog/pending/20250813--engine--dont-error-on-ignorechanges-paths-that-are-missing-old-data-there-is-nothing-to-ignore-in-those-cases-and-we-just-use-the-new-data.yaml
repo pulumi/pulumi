@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Don't error on `ignoreChanges` paths that are missing old data, there is nothing to ignore in those cases and we just use the new data

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -36,7 +37,7 @@ func TestIgnoreChanges(t *testing.T) {
 		newInputs     map[string]interface{}
 		expected      map[string]interface{}
 		ignoreChanges []string
-		expectFailure bool
+		expectMessage bool
 	}{
 		{
 			name: "Present in old and new sets",
@@ -156,15 +157,15 @@ func TestIgnoreChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "Missing parent keys in only new fail",
+			name: "Missing parent keys in only new",
 			oldInputs: map[string]interface{}{
 				"a": map[string]interface{}{
 					"b": "foo",
 				},
 			},
 			newInputs:     map[string]interface{}{},
+			expected:      map[string]interface{}{},
 			ignoreChanges: []string{"a.b"},
-			expectFailure: true,
 		},
 	}
 
@@ -180,12 +181,16 @@ func TestIgnoreChanges(t *testing.T) {
 				expected = resource.NewPropertyMapFromMap(c.expected)
 			}
 
-			processed, err := processIgnoreChanges(news, olds, c.ignoreChanges)
-			if c.expectFailure {
-				assert.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, expected, processed)
+			d := &diag.MockSink{}
+			urn := resource.URN("urn:pulumi:dev::test::test:resource:Resource::my-resource")
+
+			processed := processIgnoreChanges(d, urn, news, olds, c.ignoreChanges)
+			assert.Equal(t, expected, processed)
+			if c.expectMessage {
+				infomsgs := d.Messages[diag.Info]
+				require.Len(t, infomsgs, 1, "Expected an info message for %q", c.name)
+				infomsg := infomsgs[0]
+				require.Len(t, infomsg.Args, 1, "Expected one argument in info message for %q", c.name)
 			}
 		})
 	}
@@ -377,7 +382,9 @@ func TestEngineDiff(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
+			d := &diag.MockSink{}
+			diff, err := diffResource(
+				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
