@@ -101,6 +101,15 @@ type SummaryEvent struct {
 	IsPreview bool `json:"isPreview"`
 }
 
+// ErrorEvent is emitted when an internal error occurs in the engine. This is not meant
+// to be used for user facing errors, but rather for internal errors, where an event
+// can help with debugging.
+
+type ErrorEvent struct {
+	// Error is the error message.
+	Error string `json:"error"`
+}
+
 // DiffKind describes the kind of a particular property diff.
 type DiffKind string
 
@@ -264,6 +273,7 @@ type EngineEvent struct {
 	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
 	StartDebuggingEvent    *StartDebuggingEvent    `json:"startDebuggingEvent,omitempty"`
 	ProgressEvent          *ProgressEvent          `json:"progressEvent,omitempty"`
+	ErrorEvent             *ErrorEvent             `json:"errorEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

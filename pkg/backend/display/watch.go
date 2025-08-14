@@ -56,7 +56,7 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			continue
 		// Events occurring early:
 		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent,
-			engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
+			engine.PolicyLoadEvent, engine.PolicyRemediationEvent, engine.ErrorEvent:
 			// Ignore it
 			continue
 		case engine.PolicyViolationEvent:
