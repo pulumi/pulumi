@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -52,13 +53,13 @@ func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
 	return m.SavedSnapshots[len(m.SavedSnapshots)-1]
 }
 
-func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotManager, *MockStackPersister) {
 	err := baseSnap.VerifyIntegrity()
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
 	journal := NewSnapshotJournaler(sp, baseSnap.SecretsManager, baseSnap)
-	return NewSnapshotManager(journal, baseSnap), sp
+	return engine.NewJournalSnapshotManager(journal, baseSnap), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -1066,7 +1067,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := NewSnapshotManager(journal, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
 	err := sm.Close()
 
@@ -1084,7 +1085,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 
 	sp := &MockStackPersister{}
 	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := NewSnapshotManager(journal, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
 	err := sm.Close()
 
@@ -1104,7 +1105,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := NewSnapshotManager(journal, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
 	err := sm.Close()
 
@@ -1124,7 +1125,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := NewSnapshotManager(journal, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
 	err := sm.Close()
 
