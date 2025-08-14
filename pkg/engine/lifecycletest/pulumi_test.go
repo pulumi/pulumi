@@ -1611,13 +1611,13 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 			Inputs:        resource.PropertyMap{},
 			IgnoreChanges: []string{"foo.bar"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, resp.Outputs)
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1626,7 +1626,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 			},
 			IgnoreChanges: []string{"qux[0]"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"qux": resource.NewArrayProperty([]resource.PropertyValue{}),
 		}, resp.Outputs)
@@ -1634,20 +1634,20 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:        resource.PropertyMap{},
 			IgnoreChanges: []string{"qux[0]"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, resp.Outputs)
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1659,7 +1659,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 			},
 			IgnoreChanges: []string{"qux[1]"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"qux": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("zed"),
@@ -1670,7 +1670,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type DiffFunc = func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error)
