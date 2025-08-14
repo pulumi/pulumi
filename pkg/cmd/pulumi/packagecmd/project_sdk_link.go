@@ -219,6 +219,8 @@ func linkNodeJsPackage(ctx *LinkPackageContext) error {
 		if packagemanager, ok := options["packagemanager"]; ok {
 			if pm, ok := packagemanager.(string); ok {
 				switch pm {
+				case "bun":
+					addCmd = exec.Command(pm, "add", packageSpecifier, "--trust")
 				case "npm":
 					fallthrough
 				case "yarn":
@@ -247,6 +249,8 @@ func linkNodeJsPackage(ctx *LinkPackageContext) error {
 		if packagemanager, ok := options["packagemanager"]; ok {
 			if pm, ok := packagemanager.(string); ok {
 				switch pm {
+				case "bun":
+					addCmd = exec.Command(pm, "pm", "pkg", "set", packageSpecifier)
 				case "npm":
 					fallthrough
 				case "pnpm":
