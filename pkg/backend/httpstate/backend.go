@@ -1670,6 +1670,12 @@ func (b *cloudBackend) runEngineAction(
 		Events:          engineEvents,
 		SnapshotManager: combinedManager,
 		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		SnapshotCompareFunc: func() error {
+			if snapshotManager == nil || journalPersister == nil {
+				return nil
+			}
+			return engine.SnapshotEqual(snapshotManager.Snap(), journalPersister.Snap)
+		},
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -1701,15 +1707,6 @@ func (b *cloudBackend) runEngineAction(
 		contract.Failf("unexpected %s event", kind)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
-	}
-
-	if snapshotManager != nil && combinedManager != nil {
-		err := engine.SnapshotEqual(snapshotManager.Snap(), journalPersister.Snap)
-		if err != nil {
-			engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
-				Error: fmt.Errorf("snapshot mismatch: %w", err),
-			})
-		}
 	}
 
 	// Wait for dependent channels to finish processing engineEvents before closing.
