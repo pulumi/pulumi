@@ -5,7 +5,7 @@ import * as assert from "assert";
 import * as pulumi from "@pulumi/pulumi";
 
 class Child extends pulumi.ComponentResource {
-    public readonly message!: pulumi.Output<string>;
+    declare public readonly message: pulumi.Output<string>;
     constructor(name: string, message?: string, opts?: pulumi.ResourceOptions) {
         const args = { message }
         super("test:index:Child", name, args, opts);
@@ -17,7 +17,7 @@ class Child extends pulumi.ComponentResource {
 }
 
 class Container extends pulumi.ComponentResource {
-    public readonly child!: pulumi.Output<Child>;
+    declare public readonly child: pulumi.Output<Child>;
     constructor(name: string, child?: Child, opts?: pulumi.ResourceOptions) {
         const args = { child };
         super("test:index:Container", name, args, opts);

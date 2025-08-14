@@ -23,8 +23,8 @@ export class Component extends pulumi.ComponentResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public readonly eniConfig!: pulumi.Output<{[key: string]: outputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpec} | undefined>;
-    public readonly pod!: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
+    declare public readonly eniConfig: pulumi.Output<{[key: string]: outputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpec} | undefined>;
+    declare public readonly pod: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.

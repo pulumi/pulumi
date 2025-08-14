@@ -9,8 +9,8 @@ interface ComponentArgs {
 }
 
 class Component extends pulumi.ComponentResource {
-    public readonly first!: pulumi.Output<string>;
-    public readonly second!: pulumi.Output<string>;
+    declare public readonly first: pulumi.Output<string>;
+    declare public readonly second: pulumi.Output<string>;
 
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         if (opts?.urn) {

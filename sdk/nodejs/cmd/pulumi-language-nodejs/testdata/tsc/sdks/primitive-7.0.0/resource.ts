@@ -31,12 +31,12 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly boolean!: pulumi.Output<boolean>;
-    public readonly booleanMap!: pulumi.Output<{[key: string]: boolean}>;
-    public readonly float!: pulumi.Output<number>;
-    public readonly integer!: pulumi.Output<number>;
-    public readonly numberArray!: pulumi.Output<number[]>;
-    public readonly string!: pulumi.Output<string>;
+    declare public readonly boolean: pulumi.Output<boolean>;
+    declare public readonly booleanMap: pulumi.Output<{[key: string]: boolean}>;
+    declare public readonly float: pulumi.Output<number>;
+    declare public readonly integer: pulumi.Output<number>;
+    declare public readonly numberArray: pulumi.Output<number[]>;
+    declare public readonly string: pulumi.Output<string>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.

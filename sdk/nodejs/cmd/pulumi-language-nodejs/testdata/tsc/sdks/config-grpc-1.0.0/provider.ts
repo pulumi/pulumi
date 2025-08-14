@@ -21,12 +21,12 @@ export class Provider extends pulumi.ProviderResource {
         return obj['__pulumiType'] === "pulumi:providers:" + Provider.__pulumiType;
     }
 
-    public readonly secretString1!: pulumi.Output<string | undefined>;
-    public readonly secretString2!: pulumi.Output<string | undefined>;
-    public readonly secretString3!: pulumi.Output<string | undefined>;
-    public readonly string1!: pulumi.Output<string | undefined>;
-    public readonly string2!: pulumi.Output<string | undefined>;
-    public readonly string3!: pulumi.Output<string | undefined>;
+    declare public readonly secretString1: pulumi.Output<string | undefined>;
+    declare public readonly secretString2: pulumi.Output<string | undefined>;
+    declare public readonly secretString3: pulumi.Output<string | undefined>;
+    declare public readonly string1: pulumi.Output<string | undefined>;
+    declare public readonly string2: pulumi.Output<string | undefined>;
+    declare public readonly string3: pulumi.Output<string | undefined>;
 
     /**
      * Create a Provider resource with the given unique name, arguments, and options.

@@ -25,11 +25,11 @@ export class Provider extends pulumi.ProviderResource {
     /**
      * The password. It is very secret.
      */
-    public readonly password!: pulumi.Output<string | undefined>;
+    declare public readonly password: pulumi.Output<string | undefined>;
     /**
      * The username. Its important but not secret.
      */
-    public readonly user!: pulumi.Output<string>;
+    declare public readonly user: pulumi.Output<string>;
 
     /**
      * Create a Provider resource with the given unique name, arguments, and options.

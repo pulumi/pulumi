@@ -35,9 +35,9 @@ export class TypeUses extends pulumi.CustomResource {
         return obj['__pulumiType'] === TypeUses.__pulumiType;
     }
 
-    public readonly bar!: pulumi.Output<outputs.SomeOtherObject | undefined>;
-    public readonly baz!: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
-    public readonly foo!: pulumi.Output<outputs.Object | undefined>;
+    declare public readonly bar: pulumi.Output<outputs.SomeOtherObject | undefined>;
+    declare public readonly baz: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
+    declare public readonly foo: pulumi.Output<outputs.Object | undefined>;
 
     /**
      * Create a TypeUses resource with the given unique name, arguments, and options.

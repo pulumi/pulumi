@@ -33,9 +33,9 @@ export class ResourceWithAssets extends pulumi.CustomResource {
         return obj['__pulumiType'] === ResourceWithAssets.__pulumiType;
     }
 
-    public readonly archive!: pulumi.Output<pulumi.asset.Archive>;
-    public /*out*/ readonly asset!: pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive>;
-    public readonly nested!: pulumi.Output<outputs.TypeWithAssets | undefined>;
+    declare public readonly archive: pulumi.Output<pulumi.asset.Archive>;
+    declare public /*out*/ readonly asset: pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive>;
+    declare public readonly nested: pulumi.Output<outputs.TypeWithAssets | undefined>;
 
     /**
      * Create a ResourceWithAssets resource with the given unique name, arguments, and options.

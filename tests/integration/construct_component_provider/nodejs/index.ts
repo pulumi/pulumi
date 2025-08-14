@@ -3,7 +3,7 @@
 import * as pulumi from "@pulumi/pulumi";
 
 class Provider extends pulumi.ProviderResource {
-    public readonly message!: pulumi.Output<string>;
+    declare public readonly message: pulumi.Output<string>;
 
     constructor(name: string, message: string, opts?: pulumi.ResourceOptions) {
         super("testcomponent", name, { message }, opts);
@@ -11,7 +11,7 @@ class Provider extends pulumi.ProviderResource {
 }
 
 class Component extends pulumi.ComponentResource {
-    public readonly message!: pulumi.Output<string>;
+    declare public readonly message: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         const inputs = {

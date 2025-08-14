@@ -33,7 +33,7 @@ export class ExampleServer extends pulumi.CustomResource {
         return obj['__pulumiType'] === ExampleServer.__pulumiType;
     }
 
-    public /*out*/ readonly name!: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly name: pulumi.Output<string | undefined>;
 
     /**
      * Create a ExampleServer resource with the given unique name, arguments, and options.

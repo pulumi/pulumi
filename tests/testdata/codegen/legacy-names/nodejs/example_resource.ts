@@ -34,9 +34,9 @@ export class Example_resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Example_resource.__pulumiType;
     }
 
-    public /*out*/ readonly URL!: pulumi.Output<string | undefined>;
-    public /*out*/ readonly good_URLs!: pulumi.Output<string[] | undefined>;
-    public readonly map_enum!: pulumi.Output<{[key: string]: enums.Enum_XYZ}[] | undefined>;
+    declare public /*out*/ readonly URL: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly good_URLs: pulumi.Output<string[] | undefined>;
+    declare public readonly map_enum: pulumi.Output<{[key: string]: enums.Enum_XYZ}[] | undefined>;
 
     /**
      * Create a Example_resource resource with the given unique name, arguments, and options.

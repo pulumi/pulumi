@@ -34,9 +34,9 @@ export class Component extends pulumi.CustomResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public /*out*/ readonly provider!: pulumi.Output<pulumiKubernetes.Provider | undefined>;
-    public /*out*/ readonly securityGroup!: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
-    public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
+    declare public /*out*/ readonly provider: pulumi.Output<pulumiKubernetes.Provider | undefined>;
+    declare public /*out*/ readonly securityGroup: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
+    declare public /*out*/ readonly storageClasses: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.

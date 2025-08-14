@@ -31,7 +31,7 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly text!: pulumi.Output<string>;
+    declare public readonly text: pulumi.Output<string>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.

@@ -35,7 +35,7 @@ export class Cat extends pulumi.CustomResource {
         return obj['__pulumiType'] === Cat.__pulumiType;
     }
 
-    public /*out*/ readonly name!: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly name: pulumi.Output<string | undefined>;
 
     /**
      * Create a Cat resource with the given unique name, arguments, and options.

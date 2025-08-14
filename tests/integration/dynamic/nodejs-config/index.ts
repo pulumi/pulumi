@@ -3,8 +3,8 @@
 import * as pulumi from "@pulumi/pulumi";
 
 class CustomResource extends pulumi.dynamic.Resource {
-    public readonly authenticated!: pulumi.Output<string>;
-    public readonly color!: pulumi.Output<string>;
+    declare public readonly authenticated: pulumi.Output<string>;
+    declare public readonly color: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.ResourceOptions) {
         super(

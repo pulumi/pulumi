@@ -6,7 +6,7 @@ import * as provider from "@pulumi/pulumi/provider";
 const version = "0.0.1";
 
 class Provider extends pulumi.ProviderResource {
-    public readonly message!: pulumi.Output<string>;
+    declare public readonly message: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.ResourceOptions) {
         super("testcomponent", name, { "message": undefined }, opts);

@@ -31,7 +31,7 @@ export class SomeResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === SomeResource.__pulumiType;
     }
 
-    public /*out*/ readonly theOutput!: pulumi.Output<boolean>;
+    declare public /*out*/ readonly theOutput: pulumi.Output<boolean>;
 
     /**
      * Create a SomeResource resource with the given unique name, arguments, and options.

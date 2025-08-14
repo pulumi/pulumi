@@ -24,15 +24,15 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
     /**
      * The login server url
      */
-    public /*out*/ readonly acrLoginServerOut!: pulumi.Output<string>;
+    declare public /*out*/ readonly acrLoginServerOut: pulumi.Output<string>;
     /**
      * The Registry
      */
-    public /*out*/ readonly registry!: pulumi.Output<pulumiAzureNative.containerregistry.Registry>;
+    declare public /*out*/ readonly registry: pulumi.Output<pulumiAzureNative.containerregistry.Registry>;
     /**
      * The replication policy
      */
-    public /*out*/ readonly replication!: pulumi.Output<pulumiAzureNative.containerregistry.Replication>;
+    declare public /*out*/ readonly replication: pulumi.Output<pulumiAzureNative.containerregistry.Replication>;
 
     /**
      * Create a RegistryGeoReplication resource with the given unique name, arguments, and options.

@@ -31,7 +31,7 @@ export class BasicResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === BasicResource.__pulumiType;
     }
 
-    public readonly bar!: pulumi.Output<string>;
+    declare public readonly bar: pulumi.Output<string>;
 
     /**
      * Create a BasicResource resource with the given unique name, arguments, and options.
