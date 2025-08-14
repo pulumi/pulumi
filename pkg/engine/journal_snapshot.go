@@ -695,8 +695,8 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return ism.manager.journal.EndOperation(journalEntry)
 }
 
-// NewJournalSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister, default secrets
-// manager and base snapshot.
+// NewJournalSnapshotManager creates a new SnapshotManager for the given stack name, using the
+// given persister, default secrets manager and base snapshot.
 //
 // It is *very important* that the baseSnap pointer refers to the same Snapshot given to the engine! The engine will
 // mutate this object, and the snapshot manager will do pointer comparisons to determine indices
