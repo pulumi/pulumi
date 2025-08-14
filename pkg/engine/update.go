@@ -551,7 +551,18 @@ func update(
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx)
+	plan, changes, err := deployment.run(ctx)
+
+	if ctx.SnapshotCompareFunc != nil {
+		snapErr := ctx.SnapshotCompareFunc()
+		if snapErr != nil {
+			ctx.Events <- NewEvent(ErrorEventPayload{
+				Error: fmt.Errorf("snapshot mismatch: %w", err),
+			})
+		}
+	}
+
+	return plan, changes, err
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
