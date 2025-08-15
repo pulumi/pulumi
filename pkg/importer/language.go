@@ -130,6 +130,9 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 		}
 
 		name := sanitizeName(state.URN.Name())
+		if mappedName, ok := names[state.URN]; ok {
+			name = mappedName
+		}
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
 			Root:  name,
 			Value: resourceID,
