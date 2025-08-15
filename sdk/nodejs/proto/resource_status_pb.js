@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
@@ -148,8 +154,8 @@ proto.pulumirpc.PublishViewStepsRequest.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.PublishViewStepsRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    stepsList: jspb.Message.toObjectList(msg.getStepsList(),
+token: jspb.Message.getFieldWithDefault(msg, 1, ""),
+stepsList: jspb.Message.toObjectList(msg.getStepsList(),
     proto.pulumirpc.ViewStep.toObject, includeInstance)
   };
 
@@ -439,17 +445,17 @@ proto.pulumirpc.ViewStep.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.ViewStep.toObject = function(includeInstance, msg) {
   var f, obj = {
-    status: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    error: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    op: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    type: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    old: (f = msg.getOld()) && proto.pulumirpc.ViewStepState.toObject(includeInstance, f),
-    pb_new: (f = msg.getNew()) && proto.pulumirpc.ViewStepState.toObject(includeInstance, f),
-    keysList: (f = jspb.Message.getRepeatedField(msg, 8)) == null ? undefined : f,
-    diffsList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f,
-    detailedDiffMap: (f = msg.getDetailedDiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
-    hasDetailedDiff: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
+status: jspb.Message.getFieldWithDefault(msg, 1, 0),
+error: jspb.Message.getFieldWithDefault(msg, 2, ""),
+op: jspb.Message.getFieldWithDefault(msg, 3, 0),
+type: jspb.Message.getFieldWithDefault(msg, 4, ""),
+name: jspb.Message.getFieldWithDefault(msg, 5, ""),
+old: (f = msg.getOld()) && proto.pulumirpc.ViewStepState.toObject(includeInstance, f),
+pb_new: (f = msg.getNew()) && proto.pulumirpc.ViewStepState.toObject(includeInstance, f),
+keysList: (f = jspb.Message.getRepeatedField(msg, 8)) == null ? undefined : f,
+diffsList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f,
+detailedDiffMap: (f = msg.getDetailedDiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
+hasDetailedDiff: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
   };
 
   if (includeInstance) {
@@ -930,7 +936,8 @@ proto.pulumirpc.ViewStep.prototype.getDetailedDiffMap = function(opt_noLazyCreat
  */
 proto.pulumirpc.ViewStep.prototype.clearDetailedDiffMap = function() {
   this.getDetailedDiffMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -983,12 +990,12 @@ proto.pulumirpc.ViewStepState.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.ViewStepState.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    parentType: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    parentName: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+parentType: jspb.Message.getFieldWithDefault(msg, 3, ""),
+parentName: jspb.Message.getFieldWithDefault(msg, 4, ""),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {

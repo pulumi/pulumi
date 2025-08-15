@@ -1,12 +1,12 @@
 FROM pulumi/pulumi
 
 # Install golangci-lint
-RUN version=1.42.1 \
+RUN version=2.1.6 \
     && curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /go/bin v$version \
     && golangci-lint version
 
 # Install pulumictl
-RUN version=0.0.42 \
+RUN version=0.0.46 \
     && curl -fsSLO https://github.com/pulumi/pulumictl/releases/download/v$version/pulumictl-v$version-linux-amd64.tar.gz \
     && tar -xzf pulumictl-v$version-linux-amd64.tar.gz --directory /usr/local/bin --no-same-owner pulumictl \
     && rm -f pulumictl-v$version-linux-amd64.tar.gz \
