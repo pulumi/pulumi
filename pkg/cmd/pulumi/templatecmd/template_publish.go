@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -86,6 +87,11 @@ func (tplCmd *templatePublishCmd) Run(
 		return fmt.Errorf("template directory does not exist: %s", templateDir)
 	}
 
+	absTemplateDir, err := filepath.Abs(templateDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for template directory: %w", err)
+	}
+
 	version, err := semver.ParseTolerant(args.version)
 	if err != nil {
 		return fmt.Errorf("invalid version format: %w", err)
@@ -125,7 +131,7 @@ func (tplCmd *templatePublishCmd) Run(
 	}
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "Creating archive from directory: %s\n", templateDir)
-	archiveBytes, err := archive.TGZ(templateDir, "", true /*useDefaultExcludes*/)
+	archiveBytes, err := archive.TGZ(absTemplateDir, "", true /*useDefaultExcludes*/)
 	if err != nil {
 		return fmt.Errorf("failed to create archive: %w", err)
 	}
