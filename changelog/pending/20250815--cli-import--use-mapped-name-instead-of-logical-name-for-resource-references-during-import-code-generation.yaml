@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Use mapped name instead of logical name for resource references during import code generation

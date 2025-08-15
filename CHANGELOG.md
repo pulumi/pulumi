@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.190.0 (2025-08-15)
+
+
+### Features
+
+- [engine] Don't error on `ignoreChanges` paths that are missing old data, there is nothing to ignore in those cases and we just use the new data
+  [#20278](https://github.com/pulumi/pulumi/pull/20278)
+
+
+### Bug Fixes
+
+- [cli] Fix `destroy --exclude-protected --remove` returning an error for empty stacks that could safely be removed
+  [#20283](https://github.com/pulumi/pulumi/pull/20283)
+
+- [cli] Fix `pulumi template publish` failing with relative paths by normalizing to absolute paths before archive creation
+  [#20301](https://github.com/pulumi/pulumi/pull/20301)
+
+- [cli/import] Use mapped name instead of logical name for resource references during import code generation
+  [#20300](https://github.com/pulumi/pulumi/pull/20300)
+
+- [pkg] Make TypeScript code generation use 'declare' keyword instead of definite assertion operator, to avoid setting all fields to undefined when targeting environments new enough
+  [#20261](https://github.com/pulumi/pulumi/pull/20261)
+
+- [sdkgen/nodejs] Make TypeScript a full dependency of local SDKs
+  [#20272](https://github.com/pulumi/pulumi/pull/20272)
+
+
+### Miscellaneous
+
+- [build] Updates protobuf and grpc to v5, bumping dependencies in the Go, Node.js, and Python SDKs
+  [#19588](https://github.com/pulumi/pulumi/pull/19588)
+
+- [build] Update latest Go version to 1.25
+  [#20284](https://github.com/pulumi/pulumi/pull/20284)
+
+- [sdkgen/nodejs] Target ES2020 for generated SDKs
+  [#20276](https://github.com/pulumi/pulumi/pull/20276)
+
 ## 3.189.0 (2025-08-12)
 
 

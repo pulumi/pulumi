@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: build
-  description: Update latest Go version to 1.25
