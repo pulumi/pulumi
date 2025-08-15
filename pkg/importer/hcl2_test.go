@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
@@ -543,6 +544,89 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 
 resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
     bucket = exampleBucket.id
+    storageClass = "STANDARD"
+
+}
+`
+
+	assert.Equal(t, expectedCode, hcl2Text.String(), "Generated HCL2 code does not match expected code")
+}
+
+// Testing that the generated HCL code distinguishes between the logical name (imported from the state)
+// and the lexical name used to generate the program with its references.
+// Also shows that the logical name is emitted in the form of the __logicalName attribute.
+func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGeneratedCode(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
+	logicalName := "Bucket & Stuff"
+	bucketUrn := "urn:pulumi:stack::project::aws:s3/bucket:Bucket::" + logicalName
+	nameTable := NameTable{
+		urn.URN(bucketUrn): "lexicalName",
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:      urn.URN(bucketUrn),
+			ID:       "provider-generated-bucket-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:     "provider-generated-bucket-object-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				// this will be replaced with a reference to exampleBucket.id in the generated code
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "STANDARD",
+			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := make([]*resource.State, 0)
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	importState := createImportState(states, snapshot, nameTable)
+
+	var hcl2Text strings.Builder
+	for i, state := range states {
+		hcl2Def, _, err := GenerateHCL2Definition(loader, state, importState)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		pre := ""
+		if i > 0 {
+			pre = "\n"
+		}
+		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+		contract.IgnoreError(err)
+	}
+
+	expectedCode := `resource lexicalName "aws:s3/bucket:Bucket" {
+    __logicalName = "Bucket & Stuff"
+
+}
+
+resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+    bucket = lexicalName.id
     storageClass = "STANDARD"
 
 }
