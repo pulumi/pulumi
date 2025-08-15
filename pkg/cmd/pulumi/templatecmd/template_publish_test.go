@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -365,6 +366,65 @@ runtime: nodejs
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, customErr)
+}
+
+//nolint:paralleltest // This test uses the global backend variable
+func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
+	tmpDir := t.TempDir()
+	templateSubDir := filepath.Join(tmpDir, "template-subdir")
+	require.NoError(t, os.Mkdir(templateSubDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(templateSubDir, "Pulumi.yaml"), []byte("name: test"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(templateSubDir, "index.ts"), []byte("export {};"), 0o600))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	defer func(dir string) {
+		err := os.Chdir(dir)
+		require.NoError(t, err)
+	}(originalWd)
+	err = os.Chdir(tmpDir)
+	require.NoError(t, err)
+
+	mockCloudRegistry := &backend.MockCloudRegistry{
+		PublishTemplateF: func(ctx context.Context, op apitype.TemplatePublishOp) error {
+			archiveBytes, _ := io.ReadAll(op.Archive)
+			reader := bytes.NewReader(archiveBytes)
+			gzr, _ := gzip.NewReader(reader)
+			defer func(gzr *gzip.Reader) {
+				err := gzr.Close()
+				require.NoError(t, err)
+			}(gzr)
+
+			tarReader := tar.NewReader(gzr)
+			var entries []string
+			for {
+				header, err := tarReader.Next()
+				if err == io.EOF {
+					break
+				}
+				entries = append(entries, header.Name)
+			}
+
+			t.Logf("Archive entries: %v", entries)
+			assert.Contains(t, entries, "Pulumi.yaml", "Pulumi.yaml should be at root")
+			assert.Contains(t, entries, "index.ts", "index.ts should be at root")
+			return nil
+		},
+	}
+
+	testutil.MockBackendInstance(t, &backend.MockBackend{
+		GetCloudRegistryF: func() (backend.CloudRegistry, error) { return mockCloudRegistry, nil },
+	})
+
+	cmd := &templatePublishCmd{
+		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) { return "org", nil },
+	}
+
+	err = cmd.Run(context.Background(), &cobra.Command{}, publishTemplateArgs{
+		publisher: "test", name: "test", version: "1.0.0",
+	}, "./template-subdir")
+
+	require.NoError(t, err)
 }
 
 //nolint:paralleltest // This test uses the global backend variable
