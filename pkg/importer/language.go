@@ -129,7 +129,7 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 			continue
 		}
 
-		name := sanitizeName(state.URN.Name())
+		name := state.URN.Name()
 		if mappedName, ok := names[state.URN]; ok {
 			name = mappedName
 		}
