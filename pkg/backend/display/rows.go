@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
@@ -308,7 +309,10 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := urn.Name()
+	// URNs can contain characters that can't be displayed, use `QuoteToGraphic`
+	// to escape these so they can be safely displayed.
+	name := strconv.QuoteToGraphic(urn.Name())
+	name = name[1 : len(name)-1] // trim the quotes
 	typ := urn.Type().DisplayName()
 
 	done := data.IsDone()
