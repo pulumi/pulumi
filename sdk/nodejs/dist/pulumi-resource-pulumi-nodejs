@@ -1,5 +1,7 @@
 #!/bin/sh
-PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH=$(node -e "console.log(require.resolve('@pulumi/pulumi/cmd/dynamic-provider'))")
+# FIXME: bun
+PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH=$(bun -e "console.log(require.resolve('@pulumi/pulumi/cmd/dynamic-provider'))")
 if [ ! -z "$PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH" ]; then
-    node "$PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH" $@
+    # FIXME: bun
+    bun "$PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH" $@
 fi
