@@ -1649,10 +1649,17 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// We only need a snapshot manager if we're doing an update.
+	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
+	journalPersister := &backend.InMemoryPersister{}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
+		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
+		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+		combinedManager = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+		}
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -1661,8 +1668,14 @@ func (b *cloudBackend) runEngineAction(
 	engineCtx := &engine.Context{
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
-		SnapshotManager: snapshotManager,
+		SnapshotManager: combinedManager,
 		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		SnapshotCompareFunc: func() error {
+			if snapshotManager == nil || journalPersister == nil {
+				return nil
+			}
+			return engine.SnapshotEqual(snapshotManager.Snap(), journalPersister.Snap)
+		},
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
