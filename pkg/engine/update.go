@@ -579,6 +579,11 @@ func abbreviateFilePath(path string) string {
 	return path
 }
 
+var (
+	_ = deploy.StepExecutorEvents(&updateActions{})
+	_ = runActions(&updateActions{})
+)
+
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context *Context
@@ -763,6 +768,11 @@ func (acts *updateActions) MaybeCorrupt() bool {
 func (acts *updateActions) Changes() display.ResourceChanges {
 	return display.ResourceChanges(acts.Ops)
 }
+
+var (
+	_ = deploy.StepExecutorEvents(&previewActions{})
+	_ = runActions(&previewActions{})
+)
 
 type previewActions struct {
 	Ops     map[display.StepOp]int
