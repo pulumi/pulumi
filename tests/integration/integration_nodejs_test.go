@@ -2446,8 +2446,9 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	// terraform converter 1.2.1 uses terraform-provider 0.8.1
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "1.2.1")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.1")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
@@ -2482,8 +2483,9 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	// terraform converter 1.2.1 uses terraform-provider 0.8.1
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "1.2.1")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.1")
 	_, _ = e.RunCommand(
 		"pulumi", "convert",
 		"--from", "terraform",
