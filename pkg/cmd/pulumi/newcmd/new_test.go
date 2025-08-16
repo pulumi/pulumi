@@ -1158,3 +1158,22 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 		assert.Contains(t, actualP, e)
 	}
 }
+
+//nolint:paralleltest // mocks backendInstance
+func TestNoPromptWithYes(t *testing.T) {
+	for _, interactive := range []bool{true, false} {
+		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
+			args := newArgs{
+				interactive: interactive,
+				yes:         true,
+			}
+
+			mockBackend := &backend.MockBackend{
+				SupportsTemplatesF: func() bool { return false },
+				NameF:              func() string { return "mock" },
+			}
+
+			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
+		})
+	}
+}

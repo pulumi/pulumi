@@ -240,6 +240,46 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, backendURL, b.URL())
 }
 
+func TestRunNewYesNoTemplate(t *testing.T) {
+	t.Parallel()
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "", // empty
+		prompt:            ui.PromptForValue,
+		chooseTemplate:    ChooseTemplate,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+		dir:               t.TempDir(),
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
+}
+
+func TestRunNewYesWithTemplate(t *testing.T) {
+	t.Parallel()
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "python",
+		prompt:            ui.PromptForValue,
+		chooseTemplate:    ChooseTemplate,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+		dir:               t.TempDir(),
+	}
+
+	err := runNew(context.Background(), args)
+	require.NoError(t, err)
+	proj := loadProject(t, args.dir)
+	require.Equal(t, "python", proj.Runtime.Name())
+}
+
 const (
 	projectName = "test_project"
 	stackName   = "test_stack"
