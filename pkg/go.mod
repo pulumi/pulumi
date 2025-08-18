@@ -46,7 +46,7 @@ require (
 	gocloud.dev v0.37.0
 	gocloud.dev/secrets/hashivault v0.37.0
 	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.15.0
 	google.golang.org/api v0.169.0
@@ -91,6 +91,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pgavlin/fx v0.1.6
+	github.com/pgavlin/fx/v2 v2.0.10
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.17.0
@@ -252,7 +253,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
+	golang.org/x/tools v0.34.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect

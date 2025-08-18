@@ -1675,6 +1675,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          s.new.SourcePosition,
+		StackTrace:              s.new.StackTrace,
 		IgnoreChanges:           s.new.IgnoreChanges,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,

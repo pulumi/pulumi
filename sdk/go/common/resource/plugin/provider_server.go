@@ -796,6 +796,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		DryRun:           req.GetDryRun(),
 		Parallel:         req.GetParallel(),
 		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
 	}
 
 	aliases := make([]resource.Alias, len(req.GetAliases()))
@@ -917,12 +918,13 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		cfg[configKey] = v
 	}
 	info := CallInfo{
-		Project:        req.GetProject(),
-		Stack:          req.GetStack(),
-		Config:         cfg,
-		DryRun:         req.GetDryRun(),
-		Parallel:       req.GetParallel(),
-		MonitorAddress: req.GetMonitorEndpoint(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           cfg,
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {

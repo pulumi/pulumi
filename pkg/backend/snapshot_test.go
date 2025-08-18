@@ -393,10 +393,11 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Source position is not a meaningful change, and we batch them up for performance reasons
+	// Source positions + stack traces are not meaningful changes, and we batch them up for performance reasons
 	manager, sp := MockSetup(t, snap)
 	sourceUpdated := NewResource(resourceA.URN)
 	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
+	sourceUpdated.StackTrace = []resource.StackFrame{{SourcePosition: provider.SourcePosition}}
 	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
 	mutation, err := manager.BeginMutation(sourceUpdatedSame)
 	require.NoError(t, err)

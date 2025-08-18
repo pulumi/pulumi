@@ -106,7 +106,7 @@ func TestImportOption(t *testing.T) {
 	expectedID := resource.ID("imported-id")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if readID != "" {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", nil, "", "")
 			require.NoError(t, err)
 		} else {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
