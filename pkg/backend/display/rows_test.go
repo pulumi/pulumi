@@ -49,14 +49,21 @@ func TestResourceRowDataColorizedColumns(t *testing.T) {
 			expected: "stack:proj::provider:🦄",
 		},
 		{
-			name:     "emoji with ZWJ",
-			urn:      "urn:pulumi:stack:proj::provider:🕵️", // Emoji with ZWJ
-			expected: "stack:proj::provider:🕵️",
+			name: "emoji with ZWJ",
+			urn:  "urn:pulumi:stack:proj::provider:\U0001F575\U0001F3FD\u200D\u2642\uFE0F", // Emoji with ZWJ 🕵🏽‍♂️
+			// Arguably this could be as is without escaping, but
+			// strconv.QuoteToGraphic always escales zero width spaces..
+			expected: "stack:proj::provider:🕵🏽\\u200d♂️",
 		},
 		{
 			name:     "zwj",
 			urn:      "urn:pulumi:stack:proj::provider:A\u00A0Z", // Non-breaking space
 			expected: "stack:proj::provider:A\u00a0Z",
+		},
+		{
+			name:     "zwj",
+			urn:      "urn:pulumi:stack:proj::provider:A\u200dZ", // ZWJ
+			expected: "stack:proj::provider:A\\u200dZ",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

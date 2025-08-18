@@ -1,10 +1,10 @@
 <{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::\"double quotes\"]
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::"double quotes"]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::\"double quotes\"]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::"double quotes"::57efe783-6233-4e76-86ab-e1061b5f8abd]
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::"double quotes"]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::"double quotes"::83a289e4-1328-4bd7-8cd1-f2d560fae59c]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typB: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::\"double quotes\"]
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::"double quotes"]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 3 created<{%reset%}>
 

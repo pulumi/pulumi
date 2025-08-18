@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -259,6 +260,9 @@ func fprintIgnoreError(w io.Writer, a ...interface{}) {
 // to escape these so they can be safely displayed.
 func escapeURN(urn string) string {
 	name := strconv.QuoteToGraphic(urn)
-	name = name[1 : len(name)-1] // trim the quotes
+	name = name[1 : len(name)-1] // Trim the outer quotes from `QuoteToGraphic`
+	// QuoteToGraphic escapes double quotes, but we don't want that, unescape them.
+	name = strings.ReplaceAll(name, "\\\\", "\\") // Unescape backslashes ...
+	name = strings.ReplaceAll(name, "\\\"", "\"") // ... then unescape quotes
 	return name
 }
