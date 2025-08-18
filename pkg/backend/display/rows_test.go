@@ -26,6 +26,8 @@ import (
 )
 
 func TestResourceRowDataColorizedColumns(t *testing.T) {
+	t.Parallel()
+
 	out := bytes.Buffer{}
 	term := terminal.NewMockTerminal(&out, 80, 20, true)
 	_, display := createRendererAndDisplay(term, true)
@@ -58,6 +60,8 @@ func TestResourceRowDataColorizedColumns(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			row := &resourceRowData{
 				display:  display,
 				diagInfo: &DiagInfo{},
