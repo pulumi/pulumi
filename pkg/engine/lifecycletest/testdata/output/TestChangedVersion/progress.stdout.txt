@@ -1,0 +1,14 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0" attempted to change version from "1.0.0" to "2.0.0"<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:providers:pkgA (default_1_0_0):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>provider "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0" attempted to change version from "1.0.0" to "2.0.0"<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
