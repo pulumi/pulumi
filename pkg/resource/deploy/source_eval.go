@@ -499,6 +499,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			RetainOnDelete:          nil,
 			DeletedWith:             "",
 			SourcePosition:          "",
+			StackTrace:              nil,
 			ResourceHooks:           nil,
 		}.Make(),
 		done: done,
@@ -1274,18 +1275,22 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
 
+	stackTraceHandle := rm.sourcePositions.recordParentRequest(req)
+	defer stackTraceHandle.Release()
+
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
 	for key, output := range args {
 		argDependencies[key] = extendOutputDependencies(argDependencies[key], output)
 	}
 
 	info := plugin.CallInfo{
-		Project:        rm.constructInfo.Project,
-		Stack:          rm.constructInfo.Stack,
-		Config:         rm.constructInfo.Config,
-		DryRun:         rm.constructInfo.DryRun,
-		Parallel:       rm.constructInfo.Parallel,
-		MonitorAddress: rm.constructInfo.MonitorAddress,
+		Project:          rm.constructInfo.Project,
+		Stack:            rm.constructInfo.Stack,
+		Config:           rm.constructInfo.Config,
+		DryRun:           rm.constructInfo.DryRun,
+		Parallel:         rm.constructInfo.Parallel,
+		MonitorAddress:   rm.constructInfo.MonitorAddress,
+		StackTraceHandle: stackTraceHandle.value,
 	}
 	options := plugin.CallOptions{
 		ArgDependencies: argDependencies,
@@ -1423,6 +1428,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
 
+	sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
+
 	event := &readResourceEvent{
 		id:                      id,
 		name:                    name,
@@ -1432,7 +1439,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		props:                   props,
 		dependencies:            deps,
 		additionalSecretOutputs: additionalSecretOutputs,
-		sourcePosition:          rm.sourcePositions.getFromRequest(req),
+		sourcePosition:          sourcePosition,
+		stackTrace:              stackTrace,
 		done:                    make(chan *ReadResult),
 	}
 	select {
@@ -1784,8 +1792,13 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	return &goal
 }
 
+type stackTrace = []resource.StackFrame
+
 type sourcePositions struct {
 	projectRoot string
+
+	// map[string]stackTrace: maps stack cookies to stack traces
+	stackTraces sync.Map
 }
 
 func newSourcePositions(projectRoot string) *sourcePositions {
@@ -1803,7 +1816,7 @@ func (s *sourcePositions) parseSourcePosition(raw *pulumirpc.SourcePosition) (st
 		return "", nil
 	}
 
-	if raw.Line <= 0 {
+	if raw.Line < 0 {
 		return "", fmt.Errorf("invalid line number %v", raw.Line)
 	}
 
@@ -1839,20 +1852,76 @@ func (s *sourcePositions) parseSourcePosition(raw *pulumirpc.SourcePosition) (st
 	return posURL.String(), nil
 }
 
+func (s *sourcePositions) newStackTrace(raw *pulumirpc.StackTrace) stackTrace {
+	if raw == nil {
+		return nil
+	}
+
+	return slice.Map(raw.Frames, func(f *pulumirpc.StackFrame) resource.StackFrame {
+		pc, err := s.parseSourcePosition(f.GetPc())
+		if err != nil {
+			logging.V(5).Infof("failed to parse frame source position %#v: %v", f.GetPc(), err)
+			return resource.StackFrame{}
+		}
+		return resource.StackFrame{SourcePosition: pc}
+	})
+}
+
 // Allow getFromRequest to accept any gRPC request that has a source position (ReadResourceRequest,
 // RegisterResourceRequest, ResourceInvokeRequest, and CallRequest).
 type hasSourcePosition interface {
 	GetSourcePosition() *pulumirpc.SourcePosition
+	GetStackTrace() *pulumirpc.StackTrace
+}
+
+type hasParentStackTraceHandle interface {
+	GetParentStackTraceHandle() string
+}
+
+type stackHandle struct {
+	sourcePositions *sourcePositions
+	value           string
+}
+
+func (s stackHandle) Release() {
+	if s.sourcePositions != nil {
+		s.sourcePositions.stackTraces.Delete(s.value)
+	}
+}
+
+// recordParentRequest fetches position information from an incoming request. If the request contains a stack trace,
+// the stack trace is associated with a handle to be passed along to other requests.
+func (s *sourcePositions) recordParentRequest(req hasSourcePosition) stackHandle {
+	_, stack := s.getFromRequest(req)
+	if stack == nil {
+		return stackHandle{}
+	}
+
+	value := uuid.New().String()
+	if _, exists := s.stackTraces.LoadOrStore(value, stack); exists {
+		logging.V(5).Infof("stack cookie collision for key %v", value)
+		return stackHandle{}
+	}
+
+	return stackHandle{sourcePositions: s, value: value}
 }
 
 // getFromRequest returns any source position information from an incoming request.
-func (s *sourcePositions) getFromRequest(req hasSourcePosition) string {
+func (s *sourcePositions) getFromRequest(req hasSourcePosition) (string, stackTrace) {
 	pos, err := s.parseSourcePosition(req.GetSourcePosition())
 	if err != nil {
 		logging.V(5).Infof("parsing source position %#v: %v", req.GetSourcePosition(), err)
-		return ""
+		return "", nil
 	}
-	return pos
+	stack := s.newStackTrace(req.GetStackTrace())
+	if req, ok := req.(hasParentStackTraceHandle); ok {
+		if handle := req.GetParentStackTraceHandle(); handle != "" {
+			if parent, ok := s.stackTraces.Load(handle); ok {
+				stack = append(append(stackTrace(nil), parent.(stackTrace)...), stack...)
+			}
+		}
+	}
+	return pos, stack
 }
 
 // requestFromNodeJS returns true if the request is coming from a Node.js language runtime
@@ -1990,7 +2059,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
 	id := resource.ID(req.GetImportId())
-	sourcePosition := rm.sourcePositions.getFromRequest(req)
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -2466,12 +2534,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
+		stackTraceHandle := rm.sourcePositions.recordParentRequest(req)
+		defer stackTraceHandle.Release()
+
+		info := rm.constructInfo
+		info.StackTraceHandle = stackTraceHandle.value
+
 		// Run construct in a go routine so we can react to a cancellation on rm.cancel.
 		var constructResult plugin.ConstructResult
 		constructDone := make(chan error)
 		go func() {
 			constructResult, err = provider.Construct(ctx, plugin.ConstructRequest{
-				Info:    rm.constructInfo,
+				Info:    info,
 				Type:    t,
 				Name:    name,
 				Parent:  parent,
@@ -2555,6 +2629,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				timeouts.Update = seconds
 			}
 		}
+
+		sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
 		goal := resource.NewGoal{
 			Type:                    t,
 			Name:                    name,
@@ -2576,6 +2652,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			RetainOnDelete:          retainOnDelete,
 			DeletedWith:             deletedWith,
 			SourcePosition:          sourcePosition,
+			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
 		}.Make()
 		if goal.Parent != "" {
@@ -2854,6 +2931,7 @@ type readResourceEvent struct {
 	dependencies            []resource.URN
 	additionalSecretOutputs []resource.PropertyKey
 	sourcePosition          string
+	stackTrace              []resource.StackFrame
 	done                    chan *ReadResult
 }
 
@@ -2871,7 +2949,8 @@ func (g *readResourceEvent) Dependencies() []resource.URN     { return g.depende
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }
-func (g *readResourceEvent) SourcePosition() string { return g.sourcePosition }
+func (g *readResourceEvent) SourcePosition() string            { return g.sourcePosition }
+func (g *readResourceEvent) StackTrace() []resource.StackFrame { return g.stackTrace }
 
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result

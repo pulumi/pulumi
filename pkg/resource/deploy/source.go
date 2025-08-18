@@ -135,6 +135,8 @@ type ReadResourceEvent interface {
 	AdditionalSecretOutputs() []resource.PropertyKey
 	// The source position of the resource read
 	SourcePosition() string
+	// The stack grace at the time of the read
+	StackTrace() []resource.StackFrame
 }
 
 type ReadResult struct {

@@ -1879,6 +1879,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		RetainOnDelete:          req.Options.RetainOnDelete,
 		AcceptsOutputValues:     true,
 		ResourceHooks:           resourceHook,
+		StackTraceHandle:        req.Info.StackTraceHandle,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
 		rpcReq.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{
@@ -2042,6 +2043,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		Parallel:            req.Info.Parallel,
 		MonitorEndpoint:     req.Info.MonitorAddress,
 		AcceptsOutputValues: true,
+		StackTraceHandle:    req.Info.StackTraceHandle,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
