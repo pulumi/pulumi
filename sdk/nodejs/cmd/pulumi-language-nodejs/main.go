@@ -701,13 +701,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	// If we're forcing tsc the program directory for running is actually ./bin
-	programDirectory := req.Info.ProgramDirectory
+	// If we're forcing tsc the program directory for running is actually ./bin, we fixup EntryPoint here so execNodejs
+	// passes it to nodejs to run.
 	if host.forceTsc {
-		req.Info.ProgramDirectory = filepath.Join(programDirectory, "bin")
+		req.Info.EntryPoint = "bin"
 	}
 
-	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin, false)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, false)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}

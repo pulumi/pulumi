@@ -113,7 +113,6 @@ func TestLanguage(t *testing.T) {
 
 	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
 	for _, forceTsc := range []bool{false, true} {
-		forceTsc := forceTsc
 		t.Run(fmt.Sprintf("forceTsc=%v", forceTsc), func(t *testing.T) {
 			t.Parallel()
 
