@@ -193,6 +193,8 @@ type ReadResourceRequest struct {
 	PluginDownloadURL       string                 `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // the server url of the provider to use when servicing this request.
 	PluginChecksums         map[string][]byte      `protobuf:"bytes,15,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums of the provider to use when servicing this request.
 	SourcePosition          *SourcePosition        `protobuf:"bytes,14,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                             // the optional source position of the user code that initiated the read.
+	StackTrace              *StackTrace            `protobuf:"bytes,17,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`                                                                                     // the optional stack trace at the time of the request.
+	ParentStackTraceHandle  string                 `protobuf:"bytes,18,opt,name=parentStackTraceHandle,proto3" json:"parentStackTraceHandle,omitempty"`                                                             // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 	PackageRef              string                 `protobuf:"bytes,16,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
@@ -326,6 +328,20 @@ func (x *ReadResourceRequest) GetSourcePosition() *SourcePosition {
 	return nil
 }
 
+func (x *ReadResourceRequest) GetStackTrace() *StackTrace {
+	if x != nil {
+		return x.StackTrace
+	}
+	return nil
+}
+
+func (x *ReadResourceRequest) GetParentStackTraceHandle() string {
+	if x != nil {
+		return x.ParentStackTraceHandle
+	}
+	return ""
+}
+
 func (x *ReadResourceRequest) GetPackageRef() string {
 	if x != nil {
 		return x.PackageRef
@@ -426,6 +442,8 @@ type RegisterResourceRequest struct {
 	// true, but it's not necessary.
 	AliasSpecs              bool            `protobuf:"varint,28,opt,name=aliasSpecs,proto3" json:"aliasSpecs,omitempty"`
 	SourcePosition          *SourcePosition `protobuf:"bytes,29,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                    // the optional source position of the user code that initiated the register.
+	StackTrace              *StackTrace     `protobuf:"bytes,35,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`                            // the optional stack trace at the time of the request.
+	ParentStackTraceHandle  string          `protobuf:"bytes,36,opt,name=parentStackTraceHandle,proto3" json:"parentStackTraceHandle,omitempty"`    // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 	Transforms              []*Callback     `protobuf:"bytes,31,rep,name=transforms,proto3" json:"transforms,omitempty"`                            // a list of transforms to apply to the resource before registering it.
 	SupportsResultReporting bool            `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
 	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
@@ -675,6 +693,20 @@ func (x *RegisterResourceRequest) GetSourcePosition() *SourcePosition {
 	return nil
 }
 
+func (x *RegisterResourceRequest) GetStackTrace() *StackTrace {
+	if x != nil {
+		return x.StackTrace
+	}
+	return nil
+}
+
+func (x *RegisterResourceRequest) GetParentStackTraceHandle() string {
+	if x != nil {
+		return x.ParentStackTraceHandle
+	}
+	return ""
+}
+
 func (x *RegisterResourceRequest) GetTransforms() []*Callback {
 	if x != nil {
 		return x.Transforms
@@ -851,18 +883,20 @@ func (x *RegisterResourceOutputsRequest) GetOutputs() *structpb.Struct {
 }
 
 type ResourceInvokeRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Tok               string                 `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`                                                                                                   // the function token to invoke.
-	Args              *structpb.Struct       `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                                                 // the arguments for the function invocation.
-	Provider          string                 `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                         // an optional reference to the provider version to use for this invoke.
-	Version           string                 `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`                                                                                           // the version of the provider to use when servicing this request.
-	AcceptResources   bool                   `protobuf:"varint,5,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                                          // when true operations should return resource references as strongly typed.
-	PluginDownloadURL string                 `protobuf:"bytes,6,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // an optional reference to the provider url to use for this invoke.
-	PluginChecksums   map[string][]byte      `protobuf:"bytes,8,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums expected for the provider plugin.
-	SourcePosition    *SourcePosition        `protobuf:"bytes,7,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                             // the optional source position of the user code that initiated the invoke.
-	PackageRef        string                 `protobuf:"bytes,9,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Tok                    string                 `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`                                                                                                   // the function token to invoke.
+	Args                   *structpb.Struct       `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                                                 // the arguments for the function invocation.
+	Provider               string                 `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                         // an optional reference to the provider version to use for this invoke.
+	Version                string                 `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`                                                                                           // the version of the provider to use when servicing this request.
+	AcceptResources        bool                   `protobuf:"varint,5,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                                          // when true operations should return resource references as strongly typed.
+	PluginDownloadURL      string                 `protobuf:"bytes,6,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // an optional reference to the provider url to use for this invoke.
+	PluginChecksums        map[string][]byte      `protobuf:"bytes,8,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums expected for the provider plugin.
+	SourcePosition         *SourcePosition        `protobuf:"bytes,7,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                             // the optional source position of the user code that initiated the invoke.
+	StackTrace             *StackTrace            `protobuf:"bytes,10,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`                                                                                    // the optional stack trace at the time of the request.
+	ParentStackTraceHandle string                 `protobuf:"bytes,11,opt,name=parentStackTraceHandle,proto3" json:"parentStackTraceHandle,omitempty"`                                                            // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
+	PackageRef             string                 `protobuf:"bytes,9,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ResourceInvokeRequest) Reset() {
@@ -951,6 +985,20 @@ func (x *ResourceInvokeRequest) GetSourcePosition() *SourcePosition {
 	return nil
 }
 
+func (x *ResourceInvokeRequest) GetStackTrace() *StackTrace {
+	if x != nil {
+		return x.StackTrace
+	}
+	return nil
+}
+
+func (x *ResourceInvokeRequest) GetParentStackTraceHandle() string {
+	if x != nil {
+		return x.ParentStackTraceHandle
+	}
+	return ""
+}
+
 func (x *ResourceInvokeRequest) GetPackageRef() string {
 	if x != nil {
 		return x.PackageRef
@@ -959,18 +1007,20 @@ func (x *ResourceInvokeRequest) GetPackageRef() string {
 }
 
 type ResourceCallRequest struct {
-	state             protoimpl.MessageState                               `protogen:"open.v1"`
-	Tok               string                                               `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`                                                                                                    // the function token to invoke.
-	Args              *structpb.Struct                                     `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                                                  // the arguments for the function invocation.
-	ArgDependencies   map[string]*ResourceCallRequest_ArgumentDependencies `protobuf:"bytes,3,rep,name=argDependencies,proto3" json:"argDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`  // a map from argument keys to the dependencies of the argument.
-	Provider          string                                               `protobuf:"bytes,4,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                          // an optional reference to the provider to use for this invoke.
-	Version           string                                               `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`                                                                                            // the version of the provider to use when servicing this request.
-	PluginDownloadURL string                                               `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // the pluginDownloadURL of the provider to use when servicing this request.
-	PluginChecksums   map[string][]byte                                    `protobuf:"bytes,16,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums of the provider to use when servicing this request.
-	SourcePosition    *SourcePosition                                      `protobuf:"bytes,15,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                             // the optional source position of the user code that initiated the call.
-	PackageRef        string                                               `protobuf:"bytes,17,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                  protoimpl.MessageState                               `protogen:"open.v1"`
+	Tok                    string                                               `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`                                                                                                    // the function token to invoke.
+	Args                   *structpb.Struct                                     `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                                                  // the arguments for the function invocation.
+	ArgDependencies        map[string]*ResourceCallRequest_ArgumentDependencies `protobuf:"bytes,3,rep,name=argDependencies,proto3" json:"argDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`  // a map from argument keys to the dependencies of the argument.
+	Provider               string                                               `protobuf:"bytes,4,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                          // an optional reference to the provider to use for this invoke.
+	Version                string                                               `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`                                                                                            // the version of the provider to use when servicing this request.
+	PluginDownloadURL      string                                               `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // the pluginDownloadURL of the provider to use when servicing this request.
+	PluginChecksums        map[string][]byte                                    `protobuf:"bytes,16,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums of the provider to use when servicing this request.
+	SourcePosition         *SourcePosition                                      `protobuf:"bytes,15,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                             // the optional source position of the user code that initiated the call.
+	StackTrace             *StackTrace                                          `protobuf:"bytes,18,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`                                                                                     // the optional stack trace at the time of the request.
+	ParentStackTraceHandle string                                               `protobuf:"bytes,19,opt,name=parentStackTraceHandle,proto3" json:"parentStackTraceHandle,omitempty"`                                                             // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
+	PackageRef             string                                               `protobuf:"bytes,17,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ResourceCallRequest) Reset() {
@@ -1057,6 +1107,20 @@ func (x *ResourceCallRequest) GetSourcePosition() *SourcePosition {
 		return x.SourcePosition
 	}
 	return nil
+}
+
+func (x *ResourceCallRequest) GetStackTrace() *StackTrace {
+	if x != nil {
+		return x.StackTrace
+	}
+	return nil
+}
+
+func (x *ResourceCallRequest) GetParentStackTraceHandle() string {
+	if x != nil {
+		return x.ParentStackTraceHandle
+	}
+	return ""
 }
 
 func (x *ResourceCallRequest) GetPackageRef() string {
@@ -2231,7 +2295,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x17SupportsFeatureResponse\x12\x1e\n" +
 	"\n" +
 	"hasSupport\x18\x01 \x01(\bR\n" +
-	"hasSupport\"\xc5\x05\n" +
+	"hasSupport\"\xb4\x06\n" +
 	"\x13ReadResourceRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
@@ -2249,7 +2313,11 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0facceptResources\x18\f \x01(\bR\x0facceptResources\x12,\n" +
 	"\x11pluginDownloadURL\x18\r \x01(\tR\x11pluginDownloadURL\x12]\n" +
 	"\x0fpluginChecksums\x18\x0f \x03(\v23.pulumirpc.ReadResourceRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12A\n" +
-	"\x0esourcePosition\x18\x0e \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x12\x1e\n" +
+	"\x0esourcePosition\x18\x0e \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x125\n" +
+	"\n" +
+	"stackTrace\x18\x11 \x01(\v2\x15.pulumirpc.StackTraceR\n" +
+	"stackTrace\x126\n" +
+	"\x16parentStackTraceHandle\x18\x12 \x01(\tR\x16parentStackTraceHandle\x12\x1e\n" +
 	"\n" +
 	"packageRef\x18\x10 \x01(\tR\n" +
 	"packageRef\x1aB\n" +
@@ -2260,7 +2328,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\x86\x12\n" +
+	"properties\"\xf5\x12\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2294,7 +2362,11 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"aliasSpecs\x18\x1c \x01(\bR\n" +
 	"aliasSpecs\x12A\n" +
-	"\x0esourcePosition\x18\x1d \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x123\n" +
+	"\x0esourcePosition\x18\x1d \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x125\n" +
+	"\n" +
+	"stackTrace\x18# \x01(\v2\x15.pulumirpc.StackTraceR\n" +
+	"stackTrace\x126\n" +
+	"\x16parentStackTraceHandle\x18$ \x01(\tR\x16parentStackTraceHandle\x123\n" +
 	"\n" +
 	"transforms\x18\x1f \x03(\v2\x13.pulumirpc.CallbackR\n" +
 	"transforms\x128\n" +
@@ -2344,7 +2416,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v28.pulumirpc.RegisterResourceResponse.PropertyDependenciesR\x05value:\x028\x01\"e\n" +
 	"\x1eRegisterResourceOutputsRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x121\n" +
-	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xec\x03\n" +
+	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xdb\x04\n" +
 	"\x15ResourceInvokeRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12\x1a\n" +
@@ -2353,13 +2425,18 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0facceptResources\x18\x05 \x01(\bR\x0facceptResources\x12,\n" +
 	"\x11pluginDownloadURL\x18\x06 \x01(\tR\x11pluginDownloadURL\x12_\n" +
 	"\x0fpluginChecksums\x18\b \x03(\v25.pulumirpc.ResourceInvokeRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12A\n" +
-	"\x0esourcePosition\x18\a \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x12\x1e\n" +
+	"\x0esourcePosition\x18\a \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x125\n" +
+	"\n" +
+	"stackTrace\x18\n" +
+	" \x01(\v2\x15.pulumirpc.StackTraceR\n" +
+	"stackTrace\x126\n" +
+	"\x16parentStackTraceHandle\x18\v \x01(\tR\x16parentStackTraceHandle\x12\x1e\n" +
 	"\n" +
 	"packageRef\x18\t \x01(\tR\n" +
 	"packageRef\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xcd\x06\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xbc\a\n" +
 	"\x13ResourceCallRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12]\n" +
@@ -2368,7 +2445,11 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\aversion\x18\x05 \x01(\tR\aversion\x12,\n" +
 	"\x11pluginDownloadURL\x18\r \x01(\tR\x11pluginDownloadURL\x12]\n" +
 	"\x0fpluginChecksums\x18\x10 \x03(\v23.pulumirpc.ResourceCallRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12A\n" +
-	"\x0esourcePosition\x18\x0f \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x12\x1e\n" +
+	"\x0esourcePosition\x18\x0f \x01(\v2\x19.pulumirpc.SourcePositionR\x0esourcePosition\x125\n" +
+	"\n" +
+	"stackTrace\x18\x12 \x01(\v2\x15.pulumirpc.StackTraceR\n" +
+	"stackTrace\x126\n" +
+	"\x16parentStackTraceHandle\x18\x13 \x01(\tR\x16parentStackTraceHandle\x12\x1e\n" +
 	"\n" +
 	"packageRef\x18\x11 \x01(\tR\n" +
 	"packageRef\x1a*\n" +
@@ -2548,88 +2629,93 @@ var file_pulumi_resource_proto_goTypes = []any{
 	nil,                     // 38: pulumirpc.RegisterPackageRequest.ChecksumsEntry
 	(*structpb.Struct)(nil), // 39: google.protobuf.Struct
 	(*SourcePosition)(nil),  // 40: pulumirpc.SourcePosition
-	(*Alias)(nil),           // 41: pulumirpc.Alias
-	(*Callback)(nil),        // 42: pulumirpc.Callback
-	(*emptypb.Empty)(nil),   // 43: google.protobuf.Empty
-	(*InvokeResponse)(nil),  // 44: pulumirpc.InvokeResponse
-	(*CallResponse)(nil),    // 45: pulumirpc.CallResponse
+	(*StackTrace)(nil),      // 41: pulumirpc.StackTrace
+	(*Alias)(nil),           // 42: pulumirpc.Alias
+	(*Callback)(nil),        // 43: pulumirpc.Callback
+	(*emptypb.Empty)(nil),   // 44: google.protobuf.Empty
+	(*InvokeResponse)(nil),  // 45: pulumirpc.InvokeResponse
+	(*CallResponse)(nil),    // 46: pulumirpc.CallResponse
 }
 var file_pulumi_resource_proto_depIdxs = []int32{
 	39, // 0: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
 	22, // 1: pulumirpc.ReadResourceRequest.pluginChecksums:type_name -> pulumirpc.ReadResourceRequest.PluginChecksumsEntry
 	40, // 2: pulumirpc.ReadResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	39, // 3: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct
-	39, // 4: pulumirpc.RegisterResourceRequest.object:type_name -> google.protobuf.Struct
-	25, // 5: pulumirpc.RegisterResourceRequest.propertyDependencies:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	24, // 6: pulumirpc.RegisterResourceRequest.customTimeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
-	26, // 7: pulumirpc.RegisterResourceRequest.providers:type_name -> pulumirpc.RegisterResourceRequest.ProvidersEntry
-	27, // 8: pulumirpc.RegisterResourceRequest.pluginChecksums:type_name -> pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
-	41, // 9: pulumirpc.RegisterResourceRequest.aliases:type_name -> pulumirpc.Alias
-	40, // 10: pulumirpc.RegisterResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	42, // 11: pulumirpc.RegisterResourceRequest.transforms:type_name -> pulumirpc.Callback
-	28, // 12: pulumirpc.RegisterResourceRequest.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
-	39, // 13: pulumirpc.RegisterResourceResponse.object:type_name -> google.protobuf.Struct
-	30, // 14: pulumirpc.RegisterResourceResponse.propertyDependencies:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
-	0,  // 15: pulumirpc.RegisterResourceResponse.result:type_name -> pulumirpc.Result
-	39, // 16: pulumirpc.RegisterResourceOutputsRequest.outputs:type_name -> google.protobuf.Struct
-	39, // 17: pulumirpc.ResourceInvokeRequest.args:type_name -> google.protobuf.Struct
-	31, // 18: pulumirpc.ResourceInvokeRequest.pluginChecksums:type_name -> pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
-	40, // 19: pulumirpc.ResourceInvokeRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	39, // 20: pulumirpc.ResourceCallRequest.args:type_name -> google.protobuf.Struct
-	33, // 21: pulumirpc.ResourceCallRequest.argDependencies:type_name -> pulumirpc.ResourceCallRequest.ArgDependenciesEntry
-	34, // 22: pulumirpc.ResourceCallRequest.pluginChecksums:type_name -> pulumirpc.ResourceCallRequest.PluginChecksumsEntry
-	40, // 23: pulumirpc.ResourceCallRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	41, // 24: pulumirpc.TransformResourceOptions.aliases:type_name -> pulumirpc.Alias
-	24, // 25: pulumirpc.TransformResourceOptions.custom_timeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
-	35, // 26: pulumirpc.TransformResourceOptions.providers:type_name -> pulumirpc.TransformResourceOptions.ProvidersEntry
-	36, // 27: pulumirpc.TransformResourceOptions.plugin_checksums:type_name -> pulumirpc.TransformResourceOptions.PluginChecksumsEntry
-	28, // 28: pulumirpc.TransformResourceOptions.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
-	39, // 29: pulumirpc.TransformRequest.properties:type_name -> google.protobuf.Struct
-	10, // 30: pulumirpc.TransformRequest.options:type_name -> pulumirpc.TransformResourceOptions
-	39, // 31: pulumirpc.TransformResponse.properties:type_name -> google.protobuf.Struct
-	10, // 32: pulumirpc.TransformResponse.options:type_name -> pulumirpc.TransformResourceOptions
-	39, // 33: pulumirpc.TransformInvokeRequest.args:type_name -> google.protobuf.Struct
-	15, // 34: pulumirpc.TransformInvokeRequest.options:type_name -> pulumirpc.TransformInvokeOptions
-	39, // 35: pulumirpc.TransformInvokeResponse.args:type_name -> google.protobuf.Struct
-	15, // 36: pulumirpc.TransformInvokeResponse.options:type_name -> pulumirpc.TransformInvokeOptions
-	37, // 37: pulumirpc.TransformInvokeOptions.plugin_checksums:type_name -> pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
-	39, // 38: pulumirpc.ResourceHookRequest.new_inputs:type_name -> google.protobuf.Struct
-	39, // 39: pulumirpc.ResourceHookRequest.old_inputs:type_name -> google.protobuf.Struct
-	39, // 40: pulumirpc.ResourceHookRequest.new_outputs:type_name -> google.protobuf.Struct
-	39, // 41: pulumirpc.ResourceHookRequest.old_outputs:type_name -> google.protobuf.Struct
-	38, // 42: pulumirpc.RegisterPackageRequest.checksums:type_name -> pulumirpc.RegisterPackageRequest.ChecksumsEntry
-	20, // 43: pulumirpc.RegisterPackageRequest.parameterization:type_name -> pulumirpc.Parameterization
-	42, // 44: pulumirpc.RegisterResourceHookRequest.callback:type_name -> pulumirpc.Callback
-	23, // 45: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependencies
-	29, // 46: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependencies
-	32, // 47: pulumirpc.ResourceCallRequest.ArgDependenciesEntry.value:type_name -> pulumirpc.ResourceCallRequest.ArgumentDependencies
-	1,  // 48: pulumirpc.ResourceMonitor.SupportsFeature:input_type -> pulumirpc.SupportsFeatureRequest
-	8,  // 49: pulumirpc.ResourceMonitor.Invoke:input_type -> pulumirpc.ResourceInvokeRequest
-	9,  // 50: pulumirpc.ResourceMonitor.Call:input_type -> pulumirpc.ResourceCallRequest
-	3,  // 51: pulumirpc.ResourceMonitor.ReadResource:input_type -> pulumirpc.ReadResourceRequest
-	5,  // 52: pulumirpc.ResourceMonitor.RegisterResource:input_type -> pulumirpc.RegisterResourceRequest
-	7,  // 53: pulumirpc.ResourceMonitor.RegisterResourceOutputs:input_type -> pulumirpc.RegisterResourceOutputsRequest
-	42, // 54: pulumirpc.ResourceMonitor.RegisterStackTransform:input_type -> pulumirpc.Callback
-	42, // 55: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:input_type -> pulumirpc.Callback
-	21, // 56: pulumirpc.ResourceMonitor.RegisterResourceHook:input_type -> pulumirpc.RegisterResourceHookRequest
-	18, // 57: pulumirpc.ResourceMonitor.RegisterPackage:input_type -> pulumirpc.RegisterPackageRequest
-	43, // 58: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:input_type -> google.protobuf.Empty
-	2,  // 59: pulumirpc.ResourceMonitor.SupportsFeature:output_type -> pulumirpc.SupportsFeatureResponse
-	44, // 60: pulumirpc.ResourceMonitor.Invoke:output_type -> pulumirpc.InvokeResponse
-	45, // 61: pulumirpc.ResourceMonitor.Call:output_type -> pulumirpc.CallResponse
-	4,  // 62: pulumirpc.ResourceMonitor.ReadResource:output_type -> pulumirpc.ReadResourceResponse
-	6,  // 63: pulumirpc.ResourceMonitor.RegisterResource:output_type -> pulumirpc.RegisterResourceResponse
-	43, // 64: pulumirpc.ResourceMonitor.RegisterResourceOutputs:output_type -> google.protobuf.Empty
-	43, // 65: pulumirpc.ResourceMonitor.RegisterStackTransform:output_type -> google.protobuf.Empty
-	43, // 66: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:output_type -> google.protobuf.Empty
-	43, // 67: pulumirpc.ResourceMonitor.RegisterResourceHook:output_type -> google.protobuf.Empty
-	19, // 68: pulumirpc.ResourceMonitor.RegisterPackage:output_type -> pulumirpc.RegisterPackageResponse
-	43, // 69: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:output_type -> google.protobuf.Empty
-	59, // [59:70] is the sub-list for method output_type
-	48, // [48:59] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	41, // 3: pulumirpc.ReadResourceRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	39, // 4: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct
+	39, // 5: pulumirpc.RegisterResourceRequest.object:type_name -> google.protobuf.Struct
+	25, // 6: pulumirpc.RegisterResourceRequest.propertyDependencies:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+	24, // 7: pulumirpc.RegisterResourceRequest.customTimeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
+	26, // 8: pulumirpc.RegisterResourceRequest.providers:type_name -> pulumirpc.RegisterResourceRequest.ProvidersEntry
+	27, // 9: pulumirpc.RegisterResourceRequest.pluginChecksums:type_name -> pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
+	42, // 10: pulumirpc.RegisterResourceRequest.aliases:type_name -> pulumirpc.Alias
+	40, // 11: pulumirpc.RegisterResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	41, // 12: pulumirpc.RegisterResourceRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	43, // 13: pulumirpc.RegisterResourceRequest.transforms:type_name -> pulumirpc.Callback
+	28, // 14: pulumirpc.RegisterResourceRequest.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+	39, // 15: pulumirpc.RegisterResourceResponse.object:type_name -> google.protobuf.Struct
+	30, // 16: pulumirpc.RegisterResourceResponse.propertyDependencies:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+	0,  // 17: pulumirpc.RegisterResourceResponse.result:type_name -> pulumirpc.Result
+	39, // 18: pulumirpc.RegisterResourceOutputsRequest.outputs:type_name -> google.protobuf.Struct
+	39, // 19: pulumirpc.ResourceInvokeRequest.args:type_name -> google.protobuf.Struct
+	31, // 20: pulumirpc.ResourceInvokeRequest.pluginChecksums:type_name -> pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
+	40, // 21: pulumirpc.ResourceInvokeRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	41, // 22: pulumirpc.ResourceInvokeRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	39, // 23: pulumirpc.ResourceCallRequest.args:type_name -> google.protobuf.Struct
+	33, // 24: pulumirpc.ResourceCallRequest.argDependencies:type_name -> pulumirpc.ResourceCallRequest.ArgDependenciesEntry
+	34, // 25: pulumirpc.ResourceCallRequest.pluginChecksums:type_name -> pulumirpc.ResourceCallRequest.PluginChecksumsEntry
+	40, // 26: pulumirpc.ResourceCallRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	41, // 27: pulumirpc.ResourceCallRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	42, // 28: pulumirpc.TransformResourceOptions.aliases:type_name -> pulumirpc.Alias
+	24, // 29: pulumirpc.TransformResourceOptions.custom_timeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
+	35, // 30: pulumirpc.TransformResourceOptions.providers:type_name -> pulumirpc.TransformResourceOptions.ProvidersEntry
+	36, // 31: pulumirpc.TransformResourceOptions.plugin_checksums:type_name -> pulumirpc.TransformResourceOptions.PluginChecksumsEntry
+	28, // 32: pulumirpc.TransformResourceOptions.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+	39, // 33: pulumirpc.TransformRequest.properties:type_name -> google.protobuf.Struct
+	10, // 34: pulumirpc.TransformRequest.options:type_name -> pulumirpc.TransformResourceOptions
+	39, // 35: pulumirpc.TransformResponse.properties:type_name -> google.protobuf.Struct
+	10, // 36: pulumirpc.TransformResponse.options:type_name -> pulumirpc.TransformResourceOptions
+	39, // 37: pulumirpc.TransformInvokeRequest.args:type_name -> google.protobuf.Struct
+	15, // 38: pulumirpc.TransformInvokeRequest.options:type_name -> pulumirpc.TransformInvokeOptions
+	39, // 39: pulumirpc.TransformInvokeResponse.args:type_name -> google.protobuf.Struct
+	15, // 40: pulumirpc.TransformInvokeResponse.options:type_name -> pulumirpc.TransformInvokeOptions
+	37, // 41: pulumirpc.TransformInvokeOptions.plugin_checksums:type_name -> pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
+	39, // 42: pulumirpc.ResourceHookRequest.new_inputs:type_name -> google.protobuf.Struct
+	39, // 43: pulumirpc.ResourceHookRequest.old_inputs:type_name -> google.protobuf.Struct
+	39, // 44: pulumirpc.ResourceHookRequest.new_outputs:type_name -> google.protobuf.Struct
+	39, // 45: pulumirpc.ResourceHookRequest.old_outputs:type_name -> google.protobuf.Struct
+	38, // 46: pulumirpc.RegisterPackageRequest.checksums:type_name -> pulumirpc.RegisterPackageRequest.ChecksumsEntry
+	20, // 47: pulumirpc.RegisterPackageRequest.parameterization:type_name -> pulumirpc.Parameterization
+	43, // 48: pulumirpc.RegisterResourceHookRequest.callback:type_name -> pulumirpc.Callback
+	23, // 49: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependencies
+	29, // 50: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependencies
+	32, // 51: pulumirpc.ResourceCallRequest.ArgDependenciesEntry.value:type_name -> pulumirpc.ResourceCallRequest.ArgumentDependencies
+	1,  // 52: pulumirpc.ResourceMonitor.SupportsFeature:input_type -> pulumirpc.SupportsFeatureRequest
+	8,  // 53: pulumirpc.ResourceMonitor.Invoke:input_type -> pulumirpc.ResourceInvokeRequest
+	9,  // 54: pulumirpc.ResourceMonitor.Call:input_type -> pulumirpc.ResourceCallRequest
+	3,  // 55: pulumirpc.ResourceMonitor.ReadResource:input_type -> pulumirpc.ReadResourceRequest
+	5,  // 56: pulumirpc.ResourceMonitor.RegisterResource:input_type -> pulumirpc.RegisterResourceRequest
+	7,  // 57: pulumirpc.ResourceMonitor.RegisterResourceOutputs:input_type -> pulumirpc.RegisterResourceOutputsRequest
+	43, // 58: pulumirpc.ResourceMonitor.RegisterStackTransform:input_type -> pulumirpc.Callback
+	43, // 59: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:input_type -> pulumirpc.Callback
+	21, // 60: pulumirpc.ResourceMonitor.RegisterResourceHook:input_type -> pulumirpc.RegisterResourceHookRequest
+	18, // 61: pulumirpc.ResourceMonitor.RegisterPackage:input_type -> pulumirpc.RegisterPackageRequest
+	44, // 62: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:input_type -> google.protobuf.Empty
+	2,  // 63: pulumirpc.ResourceMonitor.SupportsFeature:output_type -> pulumirpc.SupportsFeatureResponse
+	45, // 64: pulumirpc.ResourceMonitor.Invoke:output_type -> pulumirpc.InvokeResponse
+	46, // 65: pulumirpc.ResourceMonitor.Call:output_type -> pulumirpc.CallResponse
+	4,  // 66: pulumirpc.ResourceMonitor.ReadResource:output_type -> pulumirpc.ReadResourceResponse
+	6,  // 67: pulumirpc.ResourceMonitor.RegisterResource:output_type -> pulumirpc.RegisterResourceResponse
+	44, // 68: pulumirpc.ResourceMonitor.RegisterResourceOutputs:output_type -> google.protobuf.Empty
+	44, // 69: pulumirpc.ResourceMonitor.RegisterStackTransform:output_type -> google.protobuf.Empty
+	44, // 70: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:output_type -> google.protobuf.Empty
+	44, // 71: pulumirpc.ResourceMonitor.RegisterResourceHook:output_type -> google.protobuf.Empty
+	19, // 72: pulumirpc.ResourceMonitor.RegisterPackage:output_type -> pulumirpc.RegisterPackageResponse
+	44, // 73: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:output_type -> google.protobuf.Empty
+	63, // [63:74] is the sub-list for method output_type
+	52, // [52:63] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_resource_proto_init() }
