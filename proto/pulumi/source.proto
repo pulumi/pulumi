@@ -24,3 +24,13 @@ message SourcePosition {
     int32 line = 2; // The line in the file
     int32 column = 3; // The column in the line
 }
+
+// A StackFrame represents a single stack frame.
+message StackFrame {
+    SourcePosition pc = 1; // The position of the frame's program counter. Optional.
+}
+
+// A StackTrace represents the frames on the stack at the point of an RPC call.
+message StackTrace {
+    repeated StackFrame frames = 1; // The frames on the stack.
+}

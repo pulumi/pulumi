@@ -919,6 +919,8 @@ acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
 plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
 pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
+parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 18, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
@@ -1015,6 +1017,15 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 17:
+      var value = new pulumi_source_pb.StackTrace;
+      reader.readMessage(value,pulumi_source_pb.StackTrace.deserializeBinaryFromReader);
+      msg.setStacktrace(value);
+      break;
+    case 18:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParentstacktracehandle(value);
       break;
     case 16:
       var value = /** @type {string} */ (reader.readString());
@@ -1144,6 +1155,21 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
       14,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getStacktrace();
+  if (f != null) {
+    writer.writeMessage(
+      17,
+      f,
+      pulumi_source_pb.StackTrace.serializeBinaryToWriter
+    );
+  }
+  f = message.getParentstacktracehandle();
+  if (f.length > 0) {
+    writer.writeString(
+      18,
+      f
     );
   }
   f = message.getPackageref();
@@ -1490,6 +1516,61 @@ proto.pulumirpc.ReadResourceRequest.prototype.hasSourceposition = function() {
 
 
 /**
+ * optional StackTrace stackTrace = 17;
+ * @return {?proto.pulumirpc.StackTrace}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getStacktrace = function() {
+  return /** @type{?proto.pulumirpc.StackTrace} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.StackTrace, 17));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.StackTrace|undefined} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+*/
+proto.pulumirpc.ReadResourceRequest.prototype.setStacktrace = function(value) {
+  return jspb.Message.setWrapperField(this, 17, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.clearStacktrace = function() {
+  return this.setStacktrace(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.hasStacktrace = function() {
+  return jspb.Message.getField(this, 17) != null;
+};
+
+
+/**
+ * optional string parentStackTraceHandle = 18;
+ * @return {string}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getParentstacktracehandle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 18, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.setParentstacktracehandle = function(value) {
+  return jspb.Message.setProto3StringField(this, 18, value);
+};
+
+
+/**
  * optional string packageRef = 16;
  * @return {string}
  */
@@ -1758,6 +1839,8 @@ aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
 deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
 aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
+parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 36, ""),
 transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
     pulumi_callback_pb.Callback.toObject, includeInstance),
 supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false),
@@ -1928,6 +2011,15 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 35:
+      var value = new pulumi_source_pb.StackTrace;
+      reader.readMessage(value,pulumi_source_pb.StackTrace.deserializeBinaryFromReader);
+      msg.setStacktrace(value);
+      break;
+    case 36:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParentstacktracehandle(value);
       break;
     case 31:
       var value = new pulumi_callback_pb.Callback;
@@ -2179,6 +2271,21 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       29,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getStacktrace();
+  if (f != null) {
+    writer.writeMessage(
+      35,
+      f,
+      pulumi_source_pb.StackTrace.serializeBinaryToWriter
+    );
+  }
+  f = message.getParentstacktracehandle();
+  if (f.length > 0) {
+    writer.writeString(
+      36,
+      f
     );
   }
   f = message.getTransformsList();
@@ -3725,6 +3832,61 @@ proto.pulumirpc.RegisterResourceRequest.prototype.hasSourceposition = function()
 
 
 /**
+ * optional StackTrace stackTrace = 35;
+ * @return {?proto.pulumirpc.StackTrace}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getStacktrace = function() {
+  return /** @type{?proto.pulumirpc.StackTrace} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.StackTrace, 35));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.StackTrace|undefined} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setStacktrace = function(value) {
+  return jspb.Message.setWrapperField(this, 35, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearStacktrace = function() {
+  return this.setStacktrace(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasStacktrace = function() {
+  return jspb.Message.getField(this, 35) != null;
+};
+
+
+/**
+ * optional string parentStackTraceHandle = 36;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getParentstacktracehandle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 36, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setParentstacktracehandle = function(value) {
+  return jspb.Message.setProto3StringField(this, 36, value);
+};
+
+
+/**
  * repeated Callback transforms = 31;
  * @return {!Array<!proto.pulumirpc.Callback>}
  */
@@ -4573,6 +4735,8 @@ acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
 plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, ""),
 pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
+parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 11, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 9, "")
   };
 
@@ -4645,6 +4809,15 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 10:
+      var value = new pulumi_source_pb.StackTrace;
+      reader.readMessage(value,pulumi_source_pb.StackTrace.deserializeBinaryFromReader);
+      msg.setStacktrace(value);
+      break;
+    case 11:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParentstacktracehandle(value);
       break;
     case 9:
       var value = /** @type {string} */ (reader.readString());
@@ -4732,6 +4905,21 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
       7,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getStacktrace();
+  if (f != null) {
+    writer.writeMessage(
+      10,
+      f,
+      pulumi_source_pb.StackTrace.serializeBinaryToWriter
+    );
+  }
+  f = message.getParentstacktracehandle();
+  if (f.length > 0) {
+    writer.writeString(
+      11,
+      f
     );
   }
   f = message.getPackageref();
@@ -4932,6 +5120,61 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.hasSourceposition = function() {
 
 
 /**
+ * optional StackTrace stackTrace = 10;
+ * @return {?proto.pulumirpc.StackTrace}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getStacktrace = function() {
+  return /** @type{?proto.pulumirpc.StackTrace} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.StackTrace, 10));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.StackTrace|undefined} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+*/
+proto.pulumirpc.ResourceInvokeRequest.prototype.setStacktrace = function(value) {
+  return jspb.Message.setWrapperField(this, 10, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.clearStacktrace = function() {
+  return this.setStacktrace(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.hasStacktrace = function() {
+  return jspb.Message.getField(this, 10) != null;
+};
+
+
+/**
+ * optional string parentStackTraceHandle = 11;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getParentstacktracehandle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 11, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setParentstacktracehandle = function(value) {
+  return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
  * optional string packageRef = 9;
  * @return {string}
  */
@@ -4989,6 +5232,8 @@ version: jspb.Message.getFieldWithDefault(msg, 5, ""),
 plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
 pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
+parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 19, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
@@ -5063,6 +5308,15 @@ proto.pulumirpc.ResourceCallRequest.deserializeBinaryFromReader = function(msg, 
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 18:
+      var value = new pulumi_source_pb.StackTrace;
+      reader.readMessage(value,pulumi_source_pb.StackTrace.deserializeBinaryFromReader);
+      msg.setStacktrace(value);
+      break;
+    case 19:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParentstacktracehandle(value);
       break;
     case 17:
       var value = /** @type {string} */ (reader.readString());
@@ -5147,6 +5401,21 @@ proto.pulumirpc.ResourceCallRequest.serializeBinaryToWriter = function(message, 
       15,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getStacktrace();
+  if (f != null) {
+    writer.writeMessage(
+      18,
+      f,
+      pulumi_source_pb.StackTrace.serializeBinaryToWriter
+    );
+  }
+  f = message.getParentstacktracehandle();
+  if (f.length > 0) {
+    writer.writeString(
+      19,
+      f
     );
   }
   f = message.getPackageref();
@@ -5504,6 +5773,61 @@ proto.pulumirpc.ResourceCallRequest.prototype.clearSourceposition = function() {
  */
 proto.pulumirpc.ResourceCallRequest.prototype.hasSourceposition = function() {
   return jspb.Message.getField(this, 15) != null;
+};
+
+
+/**
+ * optional StackTrace stackTrace = 18;
+ * @return {?proto.pulumirpc.StackTrace}
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.getStacktrace = function() {
+  return /** @type{?proto.pulumirpc.StackTrace} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.StackTrace, 18));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.StackTrace|undefined} value
+ * @return {!proto.pulumirpc.ResourceCallRequest} returns this
+*/
+proto.pulumirpc.ResourceCallRequest.prototype.setStacktrace = function(value) {
+  return jspb.Message.setWrapperField(this, 18, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceCallRequest} returns this
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.clearStacktrace = function() {
+  return this.setStacktrace(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.hasStacktrace = function() {
+  return jspb.Message.getField(this, 18) != null;
+};
+
+
+/**
+ * optional string parentStackTraceHandle = 19;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.getParentstacktracehandle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 19, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceCallRequest} returns this
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.setParentstacktracehandle = function(value) {
+  return jspb.Message.setProto3StringField(this, 19, value);
 };
 
 

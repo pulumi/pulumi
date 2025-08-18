@@ -94,7 +94,9 @@ message ReadResourceRequest {
     string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
     map<string, bytes> pluginChecksums = 15; // a map of checksums of the provider to use when servicing this request.
 
-    SourcePosition sourcePosition = 14;    // the optional source position of the user code that initiated the read.
+    SourcePosition sourcePosition = 14; // the optional source position of the user code that initiated the read.
+    StackTrace stackTrace = 17;         // the optional stack trace at the time of the request.
+    string parentStackTraceHandle = 18; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 16; // a reference from RegisterPackageRequest.
 }
@@ -156,7 +158,9 @@ message RegisterResourceRequest {
     // true, but it's not necessary.
     bool aliasSpecs = 28;
 
-    SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
+    SourcePosition sourcePosition = 29; // the optional source position of the user code that initiated the register.
+    StackTrace stackTrace = 35;         // the optional stack trace at the time of the request.
+    string parentStackTraceHandle = 36; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     repeated Callback transforms = 31; // a list of transforms to apply to the resource before registering it.
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
@@ -214,7 +218,9 @@ message ResourceInvokeRequest {
     string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
     map<string, bytes> pluginChecksums = 8; // a map of checksums expected for the provider plugin.
 
-    SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
+    SourcePosition sourcePosition = 7;  // the optional source position of the user code that initiated the invoke.
+    StackTrace stackTrace = 10;         // the optional stack trace at the time of the request.
+    string parentStackTraceHandle = 11; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 9; // a reference from RegisterPackageRequest.
 }
@@ -240,6 +246,9 @@ message ResourceCallRequest {
     reserved "project", "stack", "config", "configSecretKeys", "dryRun", "parallel", "monitorEndpoint", "organization";
 
     SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
+    StackTrace stackTrace = 18;         // the optional stack trace at the time of the request.
+    string parentStackTraceHandle = 19; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
+
     string packageRef = 17; // a reference from RegisterPackageRequest.
 }
 

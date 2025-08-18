@@ -92,6 +92,13 @@ export class ReadResourceRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ReadResourceRequest;
+
+    hasStacktrace(): boolean;
+    clearStacktrace(): void;
+    getStacktrace(): pulumi_source_pb.StackTrace | undefined;
+    setStacktrace(value?: pulumi_source_pb.StackTrace): ReadResourceRequest;
+    getParentstacktracehandle(): string;
+    setParentstacktracehandle(value: string): ReadResourceRequest;
     getPackageref(): string;
     setPackageref(value: string): ReadResourceRequest;
 
@@ -122,6 +129,8 @@ export namespace ReadResourceRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        stacktrace?: pulumi_source_pb.StackTrace.AsObject,
+        parentstacktracehandle: string,
         packageref: string,
     }
 }
@@ -243,6 +252,13 @@ export class RegisterResourceRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): RegisterResourceRequest;
+
+    hasStacktrace(): boolean;
+    clearStacktrace(): void;
+    getStacktrace(): pulumi_source_pb.StackTrace | undefined;
+    setStacktrace(value?: pulumi_source_pb.StackTrace): RegisterResourceRequest;
+    getParentstacktracehandle(): string;
+    setParentstacktracehandle(value: string): RegisterResourceRequest;
     clearTransformsList(): void;
     getTransformsList(): Array<pulumi_callback_pb.Callback>;
     setTransformsList(value: Array<pulumi_callback_pb.Callback>): RegisterResourceRequest;
@@ -302,6 +318,8 @@ export namespace RegisterResourceRequest {
         deletedwith: string,
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        stacktrace?: pulumi_source_pb.StackTrace.AsObject,
+        parentstacktracehandle: string,
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
         packageref: string,
@@ -525,6 +543,13 @@ export class ResourceInvokeRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceInvokeRequest;
+
+    hasStacktrace(): boolean;
+    clearStacktrace(): void;
+    getStacktrace(): pulumi_source_pb.StackTrace | undefined;
+    setStacktrace(value?: pulumi_source_pb.StackTrace): ResourceInvokeRequest;
+    getParentstacktracehandle(): string;
+    setParentstacktracehandle(value: string): ResourceInvokeRequest;
     getPackageref(): string;
     setPackageref(value: string): ResourceInvokeRequest;
 
@@ -549,6 +574,8 @@ export namespace ResourceInvokeRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        stacktrace?: pulumi_source_pb.StackTrace.AsObject,
+        parentstacktracehandle: string,
         packageref: string,
     }
 }
@@ -578,6 +605,13 @@ export class ResourceCallRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceCallRequest;
+
+    hasStacktrace(): boolean;
+    clearStacktrace(): void;
+    getStacktrace(): pulumi_source_pb.StackTrace | undefined;
+    setStacktrace(value?: pulumi_source_pb.StackTrace): ResourceCallRequest;
+    getParentstacktracehandle(): string;
+    setParentstacktracehandle(value: string): ResourceCallRequest;
     getPackageref(): string;
     setPackageref(value: string): ResourceCallRequest;
 
@@ -603,6 +637,8 @@ export namespace ResourceCallRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        stacktrace?: pulumi_source_pb.StackTrace.AsObject,
+        parentstacktracehandle: string,
         packageref: string,
     }
 
