@@ -145,7 +145,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
 	if urn != "" {
-		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
+		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[urn=%s]\n", escapeURN(string(urn)))
 	}
 
 	if step.Provider != "" {

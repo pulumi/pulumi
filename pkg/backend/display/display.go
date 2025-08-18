@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -251,4 +252,13 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 func fprintIgnoreError(w io.Writer, a ...interface{}) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)
+}
+
+// escapeURN escapes URNs to make them safe for display.
+// URNs can contain characters that can't be displayed, we use `QuoteToGraphic`
+// to escape these so they can be safely displayed.
+func escapeURN(urn string) string {
+	name := strconv.QuoteToGraphic(urn)
+	name = name[1 : len(name)-1] // trim the quotes
+	return name
 }
