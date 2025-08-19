@@ -144,6 +144,12 @@ var RunProgram = env.Bool("RUN_PROGRAM",
 // will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
 var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 
+// By default `pulumi preview --json` emits a "PreviewDigest" JSON object to stdout. Setting this envvar changes
+// the behavior of `pulumi preview --json` to match the behavior of `pulumi up|destroy|refresh --json`, that is,
+// to stream JSON events to stdout.
+var EnableStreamingJSONPreview = env.Bool("ENABLE_STREAMING_JSON_PREVIEW",
+	"Enables streaming JSON events to stdout for preview operations when the --json flag is specified.")
+
 // Environment variables that affect the DIY backend.
 var (
 	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
