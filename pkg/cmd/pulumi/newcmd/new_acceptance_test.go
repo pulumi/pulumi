@@ -240,6 +240,47 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, backendURL, b.URL())
 }
 
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesNoTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "", // empty
+		prompt:            ui.PromptForValue,
+		chooseTemplate:    ChooseTemplate,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
+}
+
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "yaml",
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+	}
+
+	err := runNew(context.Background(), args)
+	require.NoError(t, err)
+	proj := loadProject(t, args.dir)
+	require.Equal(t, "yaml", proj.Runtime.Name())
+}
+
 const (
 	projectName = "test_project"
 	stackName   = "test_stack"

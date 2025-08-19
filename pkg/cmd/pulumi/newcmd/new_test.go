@@ -453,7 +453,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.ErrorContains(t, err, "no template selected")
+		assert.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
@@ -1156,5 +1156,24 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	actualP := parse(actual)
 	for _, e := range expectedP {
 		assert.Contains(t, actualP, e)
+	}
+}
+
+//nolint:paralleltest // mocks backendInstance
+func TestNoPromptWithYes(t *testing.T) {
+	for _, interactive := range []bool{true, false} {
+		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
+			args := newArgs{
+				interactive: interactive,
+				yes:         true,
+			}
+
+			mockBackend := &backend.MockBackend{
+				SupportsTemplatesF: func() bool { return false },
+				NameF:              func() string { return "mock" },
+			}
+
+			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
+		})
 	}
 }
