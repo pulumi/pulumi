@@ -21,6 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -97,6 +98,7 @@ const (
 	JournalEntryRefreshSuccess JournalEntryKind = 3
 	JournalEntryOutputs        JournalEntryKind = 4
 	JournalEntryWrite          JournalEntryKind = 5
+	JournalEntrySecretsManager JournalEntryKind = 6
 )
 
 func (k JournalEntryKind) String() string {
@@ -145,6 +147,8 @@ type JournalEntry struct {
 	ElideWrite bool
 	// If true, this journal entry is part of a refresh operation.
 	IsRefresh bool
+	// The SecretsManager associated with this journal entry, if any.
+	SecretsManager secrets.Manager
 
 	// The new snapshot if this journal entry is part of a rebase operation.
 	NewSnapshot *deploy.Snapshot
