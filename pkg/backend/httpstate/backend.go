@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -1663,19 +1664,21 @@ func (b *cloudBackend) runEngineAction(
 		},
 	}
 	var persister backend.SnapshotPersister
-	if useJournal {
-		journalPersister = b.newSnapshotPersister(ctx, update, tokenSource)
-		persister = &backend.InMemoryPersister{}
-	} else {
-		journalPersister = &backend.InMemoryPersister{}
-		persister = b.newSnapshotPersister(ctx, update, tokenSource)
-	}
+	persister = b.newSnapshotPersister(ctx, update, tokenSource)
 	if kind != apitype.PreviewUpdate && !dryRun {
-		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
-		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
-		combinedManager = &engine.CombinedManager{
-			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+		if useJournal {
+			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers: []engine.SnapshotManager{journalManager},
+			}
+		} else {
+			journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
+			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+			}
 		}
 	}
 
@@ -1688,6 +1691,9 @@ func (b *cloudBackend) runEngineAction(
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 		FinalizeUpdateFunc: func() {
+			if useJournal {
+				return
+			}
 			if snapshotManager == nil || journalPersister == nil {
 				return
 			}
