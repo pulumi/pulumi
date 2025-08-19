@@ -246,6 +246,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }
 

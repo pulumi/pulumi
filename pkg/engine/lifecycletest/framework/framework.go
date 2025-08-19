@@ -29,6 +29,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/go-test/deep"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -154,6 +156,51 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	return nil
 }
 
+// The nopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
+type nopPluginManager struct{}
+
+func (nopPluginManager) GetPluginPath(
+	ctx context.Context,
+	d diag.Sink,
+	spec workspace.PluginSpec,
+	projectPlugins []workspace.ProjectPlugin,
+) (string, error) {
+	return "installed", nil
+}
+
+func (nopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+	return true
+}
+
+func (nopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+	return true, nil
+}
+
+func (nopPluginManager) GetLatestPluginVersion(
+	ctx context.Context,
+	spec workspace.PluginSpec,
+) (*semver.Version, error) {
+	return semver.New("1.0.0")
+}
+
+func (nopPluginManager) DownloadPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (io.ReadCloser, int64, error) {
+	return io.NopCloser(bytes.NewReader(nil)), 0, nil
+}
+
+func (nopPluginManager) InstallPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	content workspace.PluginContent,
+	reinstall bool,
+) error {
+	return nil
+}
+
 func NewUpdateInfo(project workspace.Project, target deploy.Target) engine.UpdateInfo {
 	return engine.UpdateInfo{
 		// The tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
@@ -258,6 +305,7 @@ func (op TestOp) runWithContext(
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
+		PluginManager:   nopPluginManager{},
 	}
 
 	updateOpts := opts.Options()
