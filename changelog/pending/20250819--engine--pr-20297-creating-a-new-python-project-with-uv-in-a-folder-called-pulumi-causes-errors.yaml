@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: "PR# 20297 Creating a new python project with uv in a folder called pulumi causes errors"

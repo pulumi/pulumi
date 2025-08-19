@@ -66,6 +66,11 @@ func getPwdMain(root, main string) (string, string, error) {
 			pwd = filepath.Dir(main)
 			main = filepath.Base(main)
 		}
+		// PR# 20297: New python project ina folder called pulumi causes errors
+		if main == "pulumi" {
+			return "", "", fmt.Errorf("project 'main' cannot be named 'pulumi': %s", main)
+		}
+
 	}
 
 	return pwd, main, nil
