@@ -202,8 +202,9 @@ func installPackagesFromProject(
 			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
 		}
 
+		parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
 		_, _, err := packagecmd.InstallPackage(
-			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, packageSpec.Parameters, registry)
+			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, parameters, registry)
 		if err != nil {
 			return fmt.Errorf("failed to install package '%s': %w", name, err)
 		}

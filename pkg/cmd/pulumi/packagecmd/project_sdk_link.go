@@ -721,7 +721,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func SchemaFromSchemaSource(
-	pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
 	bind := func(
@@ -739,7 +739,7 @@ func SchemaFromSchemaSource(
 		return pkg, specOverride, nil
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
-		if len(args) > 0 {
+		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
 		}
 		f, err := os.ReadFile(packageSource)
@@ -752,7 +752,7 @@ func SchemaFromSchemaSource(
 		}
 		return bind(spec, nil)
 	} else if ext == ".json" {
-		if len(args) > 0 {
+		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for json files")
 		}
 
@@ -776,13 +776,13 @@ func SchemaFromSchemaSource(
 	}()
 
 	var request plugin.GetSchemaRequest
-	if len(args) > 0 {
+	if !parameters.Empty() {
 		if p.AlreadyParameterized {
 			return nil, nil,
 				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
 		}
 		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeArgs{Args: args},
+			Parameters: parameters,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameterize: %w", err)
@@ -811,62 +811,6 @@ func SchemaFromSchemaSource(
 	}
 	setSpecNamespace(&spec, pluginSpec)
 	return bind(spec, specOverride)
-}
-
-func SchemaFromSchemaSourceValueArgs(
-	pctx *plugin.Context,
-	packageSource string,
-	parameterizationValue []byte,
-	registry registry.Registry,
-) (*schema.Package, error) {
-	var spec schema.PackageSpec
-	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
-			AllowDanglingReferences: true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		return pkg, nil
-	}
-
-	p, _, err := ProviderFromSource(pctx, packageSource, registry)
-	if err != nil {
-		return nil, err
-	}
-	defer p.Provider.Close()
-
-	var request plugin.GetSchemaRequest
-	if parameterizationValue != nil {
-		if p.AlreadyParameterized {
-			return nil,
-				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
-		}
-		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeValue{Value: parameterizationValue},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("parameterize: %w", err)
-		}
-
-		request = plugin.GetSchemaRequest{
-			SubpackageName:    resp.Name,
-			SubpackageVersion: &resp.Version,
-		}
-	}
-
-	schema, err := p.Provider.GetSchema(pctx.Request(), request)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(schema.Schema, &spec)
-	if err != nil {
-		return nil, err
-	}
-	return bind(spec)
 }
 
 type Provider struct {
