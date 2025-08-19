@@ -97,9 +97,14 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 		return errors.New("journal and manager pending operations differ")
 	}
 
+	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+
+	for _, mop := range manager.PendingOperations {
+		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
+	}
 	for _, jop := range journal.PendingOperations {
 		found := false
-		for _, mop := range manager.PendingOperations {
+		for _, mop := range pendingOpsMap[jop.Resource.URN] {
 			if reflect.DeepEqual(jop, mop) {
 				found = true
 				break
@@ -123,10 +128,16 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
 	}
 
+	resourcesMap := make(map[resource.URN][]*resource.State)
+
+	for _, mr := range manager.Resources {
+		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
+	}
+
 	for _, jr := range journal.Resources {
 		found := false
 		var diffStr string
-		for _, mr := range manager.Resources {
+		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
 					diffStr += fmt.Sprintf("%s\n", diff)
