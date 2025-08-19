@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Check providers returning 'version' or '__internal' in their inputs.
+  description: Check providers returning 'version' or '__internal' in their inputs
