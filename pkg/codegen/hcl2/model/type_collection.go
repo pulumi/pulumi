@@ -119,7 +119,7 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 			}
 		}
 
-		if valueTypesAreObjects {
+		if valueTypesAreObjects && len(collectionType.ElementTypes) > 0 {
 			objectTypes := make([]*ObjectType, 0, len(collectionType.ElementTypes))
 			for _, t := range collectionType.ElementTypes {
 				if objType, ok := t.(*ObjectType); ok {
@@ -150,7 +150,7 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 			}
 		}
 
-		if valueTypesAreObjects {
+		if valueTypesAreObjects && len(types) > 0 {
 			objectTypes := make([]*ObjectType, 0, len(types))
 			for _, t := range types {
 				if objType, ok := t.(*ObjectType); ok {
