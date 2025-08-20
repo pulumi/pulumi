@@ -124,7 +124,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
 	if args.dir != "" {
-		// Check the base of the dir is not name pulumi
+		// Check the base of the dir is not named pulumi
 		baseDir := filepath.Base(args.dir)
 		if strings.ToLower(baseDir) == "pulumi" {
 			return fmt.Errorf("%s of project directory cannot be named pulumi", "Base")
