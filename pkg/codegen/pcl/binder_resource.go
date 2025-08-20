@@ -624,6 +624,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	// Bind the resource's body.
 	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
 	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+	for _, diag := range blockDiags {
+		if b.options.skipResourceTypecheck && diag.Severity == hcl.DiagError {
+			// If we are skipping resource type-checking, convert errors to warnings.
+			diag.Severity = hcl.DiagWarning
+		}
+	}
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block
