@@ -1075,3 +1075,34 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 	variableName := pcl.InferVariableName(traversal)
 	assert.Equal(t, "componentFirstValue", variableName)
 }
+
+func TestSimplifyingObjectTypesForTraversal(t *testing.T) {
+	t.Parallel()
+	source := `
+accounts = {
+  "us-east-1" = {
+    awsRegion = "us-east-1"
+    something = 10
+  }
+  "us-west-2" = {
+    awsRegion = "us-west-2"
+    something = 20
+  }
+  "eu-west-1" = {
+    awsRegion = "eu-west-1"
+    something = 30
+  }
+}
+
+resource "name" "random:index/randomString:RandomString" {
+  options {
+    range = accounts
+  }
+  length = range.value["aws_region"]
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "There are no error or warning diagnostics")
+	require.NotNil(t, program)
+}
