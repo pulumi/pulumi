@@ -708,8 +708,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				// This mutates depGraph but this in a goroutine so might race other Alias calls so we need to lock around this.
 				sg.refreshAliasLock.Lock()
 				sg.deployment.depGraph.Alias(state, old)
-				sg.refreshAliasLock.Unlock()
 				sg.refreshStates[old] = state
+				sg.refreshAliasLock.Unlock()
 			}
 			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
