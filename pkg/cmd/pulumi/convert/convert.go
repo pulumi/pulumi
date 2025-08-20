@@ -549,10 +549,10 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
+		pkgSchema, _, err := packagecmd.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
-			pkg.Parameterization.Value,
+			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
 			registry,
 		)
 		if err != nil {

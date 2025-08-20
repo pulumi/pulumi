@@ -29,6 +29,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/go-test/deep"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -97,9 +99,14 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 		return errors.New("journal and manager pending operations differ")
 	}
 
+	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+
+	for _, mop := range manager.PendingOperations {
+		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
+	}
 	for _, jop := range journal.PendingOperations {
 		found := false
-		for _, mop := range manager.PendingOperations {
+		for _, mop := range pendingOpsMap[jop.Resource.URN] {
 			if reflect.DeepEqual(jop, mop) {
 				found = true
 				break
@@ -123,10 +130,16 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 			len(journal.Resources), journalResources, len(manager.Resources), managerResources)
 	}
 
+	resourcesMap := make(map[resource.URN][]*resource.State)
+
+	for _, mr := range manager.Resources {
+		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
+	}
+
 	for _, jr := range journal.Resources {
 		found := false
 		var diffStr string
-		for _, mr := range manager.Resources {
+		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
 					diffStr += fmt.Sprintf("%s\n", diff)
@@ -151,6 +164,51 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 		}
 	}
 
+	return nil
+}
+
+// The nopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
+type nopPluginManager struct{}
+
+func (nopPluginManager) GetPluginPath(
+	ctx context.Context,
+	d diag.Sink,
+	spec workspace.PluginSpec,
+	projectPlugins []workspace.ProjectPlugin,
+) (string, error) {
+	return "installed", nil
+}
+
+func (nopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+	return true
+}
+
+func (nopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+	return true, nil
+}
+
+func (nopPluginManager) GetLatestPluginVersion(
+	ctx context.Context,
+	spec workspace.PluginSpec,
+) (*semver.Version, error) {
+	return semver.New("1.0.0")
+}
+
+func (nopPluginManager) DownloadPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (io.ReadCloser, int64, error) {
+	return io.NopCloser(bytes.NewReader(nil)), 0, nil
+}
+
+func (nopPluginManager) InstallPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	content workspace.PluginContent,
+	reinstall bool,
+) error {
 	return nil
 }
 
@@ -258,6 +316,7 @@ func (op TestOp) runWithContext(
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
+		PluginManager:   nopPluginManager{},
 	}
 
 	updateOpts := opts.Options()

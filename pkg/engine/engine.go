@@ -43,4 +43,5 @@ type Context struct {
 	SnapshotManager SnapshotManager
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
+	PluginManager   PluginManager
 }

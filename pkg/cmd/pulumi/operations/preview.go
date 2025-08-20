@@ -635,7 +635,8 @@ func NewPreviewCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
-		"Serialize the preview diffs, operations, and overall output as JSON")
+		"Serialize the preview diffs, operations, and overall output as JSON."+
+			" Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")

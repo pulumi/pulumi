@@ -67,6 +67,7 @@ func Destroy(
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }
 
@@ -206,5 +207,6 @@ func DestroyV2(
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }

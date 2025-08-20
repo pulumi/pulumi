@@ -68,6 +68,7 @@ func Refresh(
 		StatusDiag:    newEventSink(emitter, true),
 		isRefresh:     true,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }
 
@@ -169,5 +170,6 @@ func RefreshV2(
 		StatusDiag:    newEventSink(emitter, true),
 		isRefresh:     true,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }

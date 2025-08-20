@@ -87,6 +87,9 @@ type ProviderHandshakeResponse struct {
 // a provider from either the command line or from within a Pulumi program, respectively.
 type ParameterizeParameters interface {
 	isParameterizeParameters()
+
+	// Empty returns true if the parameterization is empty or nil.
+	Empty() bool
 }
 
 type (
@@ -112,8 +115,18 @@ type (
 // isParameterizeParameters is a no-op method that marks ParameterizeArgs as implementing ParameterizeParameters.
 func (*ParameterizeArgs) isParameterizeParameters() {}
 
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeArgs) Empty() bool {
+	return p == nil || len(p.Args) == 0
+}
+
 // isParameterizeParameters is a no-op method that marks ParameterizeValue as implementing ParameterizeParameters.
 func (*ParameterizeValue) isParameterizeParameters() {}
+
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeValue) Empty() bool {
+	return p == nil || len(p.Value) == 0
+}
 
 // The type of requests sent as part of a Parameterize call.
 type ParameterizeRequest struct {

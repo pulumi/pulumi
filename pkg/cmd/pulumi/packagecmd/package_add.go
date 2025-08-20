@@ -37,7 +37,7 @@ import (
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
 func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
-	schemaSource string, parameters []string,
+	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, error) {
 	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
@@ -182,17 +182,17 @@ from the parameters, as in:
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			plugin := args[0]
-			parameters := args[1:]
+			pluginSource := args[0]
+			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
-			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, plugin, parameters,
+			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, pluginSource, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), ws, proj, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}
 
 			// Build and add the package spec to the project
-			pluginSplit := strings.Split(plugin, "@")
+			pluginSplit := strings.Split(pluginSource, "@")
 			source := pluginSplit[0]
 			version := ""
 			if pkg.Version != nil {
@@ -204,13 +204,13 @@ from the parameters, as in:
 				source = pkg.Parameterization.BaseProvider.Name
 				version = pkg.Parameterization.BaseProvider.Version.String()
 			}
-			if len(parameters) > 0 && packageSpec != nil {
-				packageSpec.Parameters = parameters
+			if len(parameters.Args) > 0 && packageSpec != nil {
+				packageSpec.Parameters = parameters.Args
 			} else if packageSpec == nil {
 				packageSpec = &workspace.PackageSpec{
 					Source:     source,
 					Version:    version,
-					Parameters: parameters,
+					Parameters: parameters.Args,
 				}
 			}
 			proj.AddPackage(pkg.Name, *packageSpec)
