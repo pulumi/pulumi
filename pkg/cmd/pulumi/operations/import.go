@@ -393,9 +393,23 @@ func parseImportFile(
 			}
 			urnMapping[spec.Name] = urn
 			takenURNs[urn] = struct{}{}
-			// This might clash with earlier entries in the name table (unique urn, but duplicate name) that's
-			// fine and the code generators should deal with it.
-			names[urn] = spec.Name
+
+			nameExists := false
+			for _, n := range names {
+				if n == spec.Name {
+					nameExists = true
+					break
+				}
+			}
+
+			if nameExists {
+				// disambiguate the name by resource type
+				resourceType := urn.Type().Name().String()
+				names[urn] = fmt.Sprintf("%s_%s", spec.Name, resourceType)
+			} else {
+				names[urn] = spec.Name
+			}
+
 			// Mark this resource as done
 			dones[i] = true
 		}

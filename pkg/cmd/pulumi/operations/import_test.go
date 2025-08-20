@@ -492,3 +492,40 @@ func TestImportFileMarshal(t *testing.T) {
 		assert.NotContains(t, buffer.String(), "resources")
 	})
 }
+
+func TestParseImportFileDisambiguatesDuplicateNamesByResourceType(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "thing",
+				ID:   "thing",
+				Type: "pkg:module/Baz:First",
+			},
+			{
+				Name: "thing",
+				ID:   "thing",
+				Type: "pkg:module/Quux:Second",
+			},
+		},
+	}
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	require.NoError(t, err)
+	assert.Equal(t, []deploy.Import{
+		{
+			Type: "pkg:module/Baz:First",
+			Name: "thing",
+			ID:   "thing",
+		},
+		{
+			Type: "pkg:module/Quux:Second",
+			Name: "thing",
+			ID:   "thing",
+		},
+	}, imports)
+	assert.Equal(t, importer.NameTable{
+		"urn:pulumi:stack::proj::pkg:module/Baz:First::thing":   "thing",
+		"urn:pulumi:stack::proj::pkg:module/Quux:Second::thing": "thing_Second",
+	}, names)
+}
