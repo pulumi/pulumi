@@ -16,6 +16,7 @@ package model
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -60,6 +61,43 @@ func wrapIterableResultType(sourceType, iterableType Type) Type {
 	}
 }
 
+func unifyObjects(objects ...*ObjectType) *ObjectType {
+	unifiedProperties := make(map[string]Type)
+	propertyKeys := codegen.NewStringSet()
+	for _, obj := range objects {
+		for name := range obj.Properties {
+			propertyKeys.Add(name)
+		}
+	}
+
+	// returns whether a property is partial, meaning that it is not present in all objects.
+	// the unified type will be an optional type if any of the objects is missing the property.
+	isPartial := func(propertyName string) bool {
+		for _, obj := range objects {
+			if _, ok := obj.Properties[propertyName]; !ok {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, name := range propertyKeys.SortedValues() {
+		totalPropertyType := make([]Type, 0, len(objects))
+		for _, obj := range objects {
+			if propType, ok := obj.Properties[name]; ok {
+				totalPropertyType = append(totalPropertyType, propType)
+			}
+		}
+		valueT, _ := UnifyTypes(totalPropertyType...)
+		if isPartial(name) {
+			valueT = NewOptionalType(valueT)
+		}
+		unifiedProperties[name] = valueT
+	}
+
+	return NewObjectType(unifiedProperties)
+}
+
 // GetCollectionTypes returns the key and value types of the given type if it is a collection.
 func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, Type, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
@@ -73,7 +111,26 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 		keyType, valueType = StringType, collectionType.ElementType
 	case *TupleType:
 		keyType = NumberType
-		valueType, _ = UnifyTypes(collectionType.ElementTypes...)
+		valueTypesAreObjects := true
+		for _, t := range collectionType.ElementTypes {
+			if _, ok := t.(*ObjectType); !ok {
+				valueTypesAreObjects = false
+				break
+			}
+		}
+
+		if valueTypesAreObjects {
+			objectTypes := make([]*ObjectType, 0, len(collectionType.ElementTypes))
+			for _, t := range collectionType.ElementTypes {
+				if objType, ok := t.(*ObjectType); ok {
+					objectTypes = append(objectTypes, objType)
+				}
+			}
+			valueType = unifyObjects(objectTypes...)
+		} else {
+			// If the collection is a tuple, we unify the element types.
+			valueType, _ = UnifyTypes(collectionType.ElementTypes...)
+		}
 	case *ObjectType:
 		keyType = StringType
 
@@ -81,7 +138,31 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 		for _, t := range collectionType.Properties {
 			types = append(types, t)
 		}
-		valueType, _ = UnifyTypes(types...)
+		// before unifying, we check if the types are objects themselves, if that is the case
+		// we simplify the type into a single object type
+		// so that instead of having a union of objects, we have a single object type
+		// with the properties of all the objects unified.
+		valueTypesAreObjects := true
+		for _, t := range types {
+			if _, ok := t.(*ObjectType); !ok {
+				valueTypesAreObjects = false
+				break
+			}
+		}
+
+		if valueTypesAreObjects {
+			objectTypes := make([]*ObjectType, 0, len(types))
+			for _, t := range types {
+				if objType, ok := t.(*ObjectType); ok {
+					objectTypes = append(objectTypes, objType)
+				}
+			}
+
+			valueType = unifyObjects(objectTypes...)
+		} else {
+			valueType, _ = UnifyTypes(types...)
+		}
+
 	default:
 		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic).
 		// Otherwise, if we are in strict-mode, issue an error.

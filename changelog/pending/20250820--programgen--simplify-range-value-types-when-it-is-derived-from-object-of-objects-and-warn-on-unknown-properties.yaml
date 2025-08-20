@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Simplify range value types when it is derived from object of objects and warn on unknown properties

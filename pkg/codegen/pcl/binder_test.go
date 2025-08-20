@@ -1076,7 +1076,7 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 	assert.Equal(t, "componentFirstValue", variableName)
 }
 
-func TestSimplifyingObjectTypesForTraversal(t *testing.T) {
+func TestRangeTraversalFromObjectOfObjectsDoesNotError(t *testing.T) {
 	t.Parallel()
 	source := `
 accounts = {
@@ -1103,6 +1103,10 @@ resource "name" "random:index/randomString:RandomString" {
 
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
-	assert.False(t, diags.HasErrors(), "There are no error or warning diagnostics")
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
 	require.NotNil(t, program)
+	require.Equal(t, 1, len(diags), "There is one diagnostic")
+	require.Equal(t, diags[0].Severity, hcl.DiagWarning, "The diagnostic is a warning")
+	require.Contains(t, diags[0].Summary, "unknown property 'aws_region' among [awsRegion something]",
+		"The diagnostic contains the correct message about the unknown property")
 }
