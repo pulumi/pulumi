@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Warn instead of erroring out when traversing a NoneType in PCL
