@@ -283,6 +283,15 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			loggingWriter := &loggingWriter{}
 			log.SetOutput(loggingWriter)
 
+			ver, err := semver.ParseTolerant(version.Version)
+			if err != nil {
+				logging.V(3).Infof("error parsing current version: %s", err)
+			} else {
+				logging.V(3).Info("Pulumi " + ver.String())
+			}
+			metadata := getCLIMetadata(cmd, os.Environ())
+			logging.V(9).Infof("CLI Metadata: %v", metadata)
+
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
 					logging.Warningf("could not initialize profiling: %v", err)
@@ -295,7 +304,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
-				metadata := getCLIMetadata(cmd, os.Environ())
 				go func() {
 					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
