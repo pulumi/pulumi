@@ -1088,10 +1088,9 @@ resource "name" "random:index/randomString:RandomString" {
 }`
 
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
-	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
-	assert.NoError(t, err, "no error")
-	assert.NotNil(t, program)
-	assert.Equal(t, 1, len(diags), "There is one node")
-	warning := diags[0]
-	assert.Equal(t, hcl.DiagWarning, warning.Severity, "The diagnostic is a warning")
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NoError(t, err, "no error")
+	require.NotNil(t, program)
+	require.Equal(t, 1, len(diags), "There is one node")
+	require.Equal(t, hcl.DiagWarning, diags[0].Severity, "The diagnostic is a warning")
 }
