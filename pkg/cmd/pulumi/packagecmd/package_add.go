@@ -182,17 +182,17 @@ from the parameters, as in:
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			plug := args[0]
+			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
-			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, plug, parameters,
+			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, pluginSource, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), ws, proj, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}
 
 			// Build and add the package spec to the project
-			pluginSplit := strings.Split(plug, "@")
+			pluginSplit := strings.Split(pluginSource, "@")
 			source := pluginSplit[0]
 			version := ""
 			if pkg.Version != nil {
