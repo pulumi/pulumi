@@ -27,6 +27,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/spf13/cobra"
 
@@ -402,11 +404,26 @@ func parseImportFile(
 				}
 			}
 
+			namesTaken := map[string]int{}
+
+			uniqueName := func(name string, typ tokens.Type) string {
+				caser := cases.Title(language.English, cases.NoLower)
+				typeSuffix := caser.String(string(typ.Name()))
+				baseName := fmt.Sprintf("%s%s", name, typeSuffix)
+				name = baseName
+
+				counter := 2
+				for _, has := namesTaken[name]; has; _, has = namesTaken[name] {
+					name = fmt.Sprintf("%s%d", baseName, counter)
+					counter++
+				}
+				return name
+			}
+
 			if nameExists {
-				// disambiguate the name by resource type
-				resourceType := urn.Type().Name().String()
-				names[urn] = fmt.Sprintf("%s_%s", spec.Name, resourceType)
+				names[urn] = uniqueName(spec.Name, spec.Type)
 			} else {
+				// If the name is not taken, we can just use it as is.
 				names[urn] = spec.Name
 			}
 

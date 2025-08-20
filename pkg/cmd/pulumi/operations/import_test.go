@@ -337,6 +337,7 @@ func TestParseImportFileSameName(t *testing.T) {
 		"resource 'thing' of type 'foo:bar:bar' has an ambiguous URN, set name (or logical name) to be unique")
 }
 
+// shows that we disambiguate duplicate resource names by their resource type
 func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	t.Parallel()
 	f := importFile{
@@ -369,7 +370,7 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	}, imports)
 	assert.Equal(t, importer.NameTable{
 		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
-		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thing_baz",
+		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thingBaz",
 	}, names)
 }
 
@@ -491,41 +492,4 @@ func TestImportFileMarshal(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, buffer.String(), "resources")
 	})
-}
-
-func TestParseImportFileDisambiguatesDuplicateNamesByResourceType(t *testing.T) {
-	t.Parallel()
-
-	f := importFile{
-		Resources: []importSpec{
-			{
-				Name: "thing",
-				ID:   "thing",
-				Type: "pkg:module/Baz:First",
-			},
-			{
-				Name: "thing",
-				ID:   "thing",
-				Type: "pkg:module/Quux:Second",
-			},
-		},
-	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	require.NoError(t, err)
-	assert.Equal(t, []deploy.Import{
-		{
-			Type: "pkg:module/Baz:First",
-			Name: "thing",
-			ID:   "thing",
-		},
-		{
-			Type: "pkg:module/Quux:Second",
-			Name: "thing",
-			ID:   "thing",
-		},
-	}, imports)
-	assert.Equal(t, importer.NameTable{
-		"urn:pulumi:stack::proj::pkg:module/Baz:First::thing":   "thing",
-		"urn:pulumi:stack::proj::pkg:module/Quux:Second::thing": "thing_Second",
-	}, names)
 }
