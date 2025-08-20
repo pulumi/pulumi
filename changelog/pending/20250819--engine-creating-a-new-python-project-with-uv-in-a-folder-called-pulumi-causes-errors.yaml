@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Creating a new python project with uv in a folder called pulumi causes errors

@@ -66,10 +66,6 @@ func getPwdMain(root, main string) (string, string, error) {
 			pwd = filepath.Dir(main)
 			main = filepath.Base(main)
 		}
-		// Main project can not be named as pulumi
-		if main == "pulumi" {
-			return "", "", fmt.Errorf("project 'main' cannot be named 'pulumi': %s", main)
-		}
 	}
 
 	return pwd, main, nil
