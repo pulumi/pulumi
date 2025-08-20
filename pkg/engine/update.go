@@ -557,7 +557,7 @@ func update(
 		snapErr := ctx.SnapshotCompareFunc()
 		if snapErr != nil {
 			ctx.Events <- NewEvent(ErrorEventPayload{
-				Error: fmt.Errorf("snapshot mismatch: %w", err),
+				Error: fmt.Sprintf("snapshot mismatch: %s", snapErr),
 			})
 		}
 	}
