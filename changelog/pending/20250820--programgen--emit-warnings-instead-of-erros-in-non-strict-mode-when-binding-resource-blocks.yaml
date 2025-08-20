@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Emit warnings instead of erros in non-strict mode when binding resource blocks
