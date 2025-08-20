@@ -38,7 +38,7 @@ func (noneType) Pretty() pretty.Formatter {
 }
 
 func (noneType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
-	return NoneType, hcl.Diagnostics{unsupportedReceiverType(NoneType, traverser.SourceRange())}
+	return NoneType, hcl.Diagnostics{unsupportedReceiverTypeWarning(NoneType, traverser.SourceRange())}
 }
 
 func (n noneType) Equals(other Type) bool {

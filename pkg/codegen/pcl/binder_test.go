@@ -1110,3 +1110,22 @@ resource "name" "random:index/randomString:RandomString" {
 	require.Contains(t, diags[0].Summary, "unknown property 'aws_region' among [awsRegion something]",
 		"The diagnostic contains the correct message about the unknown property")
 }
+
+func TestTraversingNoneTypeEmitsWarning(t *testing.T) {
+	t.Parallel()
+	source := `data = {}
+
+resource "name" "random:index/randomString:RandomString" {
+  options {
+    range = data
+  }
+  length = range.value.something
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NoError(t, err, "no error")
+	require.NotNil(t, program)
+	require.Equal(t, 1, len(diags), "There is one node")
+	require.Equal(t, hcl.DiagWarning, diags[0].Severity, "The diagnostic is a warning")
+}
