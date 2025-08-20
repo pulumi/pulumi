@@ -369,7 +369,7 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	}, imports)
 	assert.Equal(t, importer.NameTable{
 		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
-		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thing",
+		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thing_baz",
 	}, names)
 }
 
