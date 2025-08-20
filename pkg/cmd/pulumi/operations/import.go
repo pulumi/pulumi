@@ -415,6 +415,7 @@ func parseImportFile(
 					name = fmt.Sprintf("%s%d", baseName, counter)
 					counter++
 				}
+				takenNames[name] = true
 				return name
 			}
 

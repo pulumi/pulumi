@@ -352,6 +352,11 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 				ID:   "thing",
 				Type: "foo:bar:baz",
 			},
+			{
+				Name: "thing",
+				ID:   "thing",
+				Type: "foo:moo:baz",
+			},
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
@@ -367,10 +372,16 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 			Name: "thing",
 			ID:   "thing",
 		},
+		{
+			Type: "foo:moo:baz",
+			Name: "thing",
+			ID:   "thing",
+		},
 	}, imports)
 	assert.Equal(t, importer.NameTable{
 		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
 		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thingBaz",
+		"urn:pulumi:stack::proj::foo:moo:baz::thing": "thingBaz2",
 	}, names)
 }
 
