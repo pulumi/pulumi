@@ -54,7 +54,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			pkg, _, err := SchemaFromSchemaSource(pctx, source, args[1:],
+			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			pkg, _, err := SchemaFromSchemaSource(pctx, source, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err

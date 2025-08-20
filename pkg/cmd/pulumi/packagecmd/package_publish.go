@@ -58,7 +58,7 @@ type publishPackageArgs struct {
 type packagePublishCmd struct {
 	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(
-		pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	) (*schema.Package, *workspace.PackageSpec, error)
 	pluginDir string
 }
@@ -92,7 +92,8 @@ func newPackagePublishCmd() *cobra.Command {
 			ctx := cmd.Context()
 			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
 			pkgPublishCmd.extractSchema = SchemaFromSchemaSource
-			return pkgPublishCmd.Run(ctx, args, cliArgs[0], cliArgs[1:])
+			parameters := &plugin.ParameterizeArgs{Args: cliArgs[1:]}
+			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},
 	}
 
@@ -125,7 +126,7 @@ func (cmd *packagePublishCmd) Run(
 	ctx context.Context,
 	args publishPackageArgs,
 	packageSrc string,
-	packageParams []string,
+	packageParams plugin.ParameterizeParameters,
 ) error {
 	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
