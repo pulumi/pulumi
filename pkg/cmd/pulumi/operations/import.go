@@ -404,8 +404,6 @@ func parseImportFile(
 				}
 			}
 
-			namesTaken := map[string]int{}
-
 			uniqueName := func(name string, typ tokens.Type) string {
 				caser := cases.Title(language.English, cases.NoLower)
 				typeSuffix := caser.String(string(typ.Name()))
@@ -413,7 +411,7 @@ func parseImportFile(
 				name = baseName
 
 				counter := 2
-				for _, has := namesTaken[name]; has; _, has = namesTaken[name] {
+				for _, has := takenNames[name]; has; _, has = takenNames[name] {
 					name = fmt.Sprintf("%s%d", baseName, counter)
 					counter++
 				}
