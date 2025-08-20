@@ -1075,3 +1075,23 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 	variableName := pcl.InferVariableName(traversal)
 	assert.Equal(t, "componentFirstValue", variableName)
 }
+
+func TestTraversingNoneTypeEmitsWarning(t *testing.T) {
+	t.Parallel()
+	source := `data = {}
+
+resource "name" "random:index/randomString:RandomString" {
+  options {
+    range = data
+  }
+  length = range.value.something
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
+	assert.NoError(t, err, "no error")
+	assert.NotNil(t, program)
+	assert.Equal(t, 1, len(diags), "There is one node")
+	warning := diags[0]
+	assert.Equal(t, hcl.DiagWarning, warning.Severity, "The diagnostic is a warning")
+}
