@@ -1486,8 +1486,6 @@ func (host *goLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
 	// Find the go.mod in the program directory, and add a replace statement to point to the given local dependency.
-	// Currently this _only_ supports "pulumi" for the core SDK.
-
 	path := filepath.Join(req.Info.ProgramDirectory, "go.mod")
 	stat, err := os.Stat(path)
 	if err != nil {
@@ -1503,15 +1501,15 @@ func (host *goLanguageHost) Link(
 		return nil, fmt.Errorf("parse go.mod: %w", err)
 	}
 
-	core, ok := req.LocalDependencies["pulumi"]
-	if !ok {
-		// TODO: support other local dependencies.
-		return nil, status.Errorf(codes.InvalidArgument, "no local dependency for 'pulumi' found")
-	}
-
-	err = mod.AddReplace("github.com/pulumi/pulumi/sdk/v3", "", core, "")
-	if err != nil {
-		return nil, fmt.Errorf("add replace: %w", err)
+	for packageName, packagePath := range req.LocalDependencies {
+		if packageName == "pulumi" {
+			// The Core SDK is called "pulumi" in the dependencies, rename it to the proper Go name.
+			packageName = "github.com/pulumi/pulumi/sdk/v3"
+		}
+		err = mod.AddReplace(packageName, "", packagePath, "")
+		if err != nil {
+			return nil, fmt.Errorf("add replace: %w", err)
+		}
 	}
 
 	// Write the modified go.mod back to disk.

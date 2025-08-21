@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"golang.org/x/mod/modfile"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
@@ -355,17 +354,6 @@ func linkGoPackage(ctx *LinkPackageContext) error {
 		return errors.New("failed to import go language info")
 	}
 
-	gomodFilepath := filepath.Join(ctx.Root, "go.mod")
-	gomodFileContent, err := os.ReadFile(gomodFilepath)
-	if err != nil {
-		return fmt.Errorf("cannot read mod file: %w", err)
-	}
-
-	gomod, err := modfile.Parse("go.mod", gomodFileContent, nil)
-	if err != nil {
-		return fmt.Errorf("mod parse: %w", err)
-	}
-
 	modulePath := goInfo.ModulePath
 	if modulePath == "" {
 		if goInfo.ImportBasePath != "" {
@@ -377,19 +365,12 @@ func linkGoPackage(ctx *LinkPackageContext) error {
 		}
 	}
 
-	err = gomod.AddReplace(modulePath, "", relOut, "")
-	if err != nil {
-		return fmt.Errorf("could not add replace statement: %w", err)
+	deps := map[string]string{
+		modulePath: relOut,
 	}
 
-	b, err := gomod.Format()
-	if err != nil {
-		return fmt.Errorf("error formatting gomod: %w", err)
-	}
-
-	err = os.WriteFile(gomodFilepath, b, 0o600)
-	if err != nil {
-		return fmt.Errorf("error writing go.mod: %w", err)
+	if err := linkPackage(ctx, deps); err != nil {
+		return fmt.Errorf("linking package: %w", err)
 	}
 
 	fmt.Printf("Go mod file updated to use local sdk for %s\n", ctx.Pkg.Name)
