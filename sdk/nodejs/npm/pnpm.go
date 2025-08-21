@@ -24,6 +24,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // pnpm is an alternative package manager for Node.js.
@@ -117,4 +119,15 @@ func checkPnpmLock(pwd string) bool {
 	pnpmFile := filepath.Join(pwd, "pnpm-lock.yaml")
 	_, err := os.Stat(pnpmFile)
 	return err == nil
+}
+
+func (pnpm *pnpmManager) LinkPackages(ctx context.Context, packages map[string]string) error {
+	for packageName, packagePath := range packages {
+		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
+		cmd := exec.Command(pnpm.executable, "pkg", "set", packageSpecifier)
+		if err := cmd.Run(); err != nil {
+			return errutil.ErrorWithStderr(err, "linking packages")
+		}
+	}
+	return nil
 }

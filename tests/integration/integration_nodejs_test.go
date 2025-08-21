@@ -2402,16 +2402,25 @@ func TestParameterizedNode(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment
 func TestPackageAddNode(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
+	t.Parallel()
 
-	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+	for _, packageManager := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(packageManager, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+
 			var err error
-			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
+			templatePath, err := filepath.Abs("nodejs/packageadd")
 			require.NoError(t, err)
 			err = fsutil.CopyFile(e.CWD, templatePath, nil)
+			require.NoError(t, err)
+
+			pulumiYamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
+			pulumiYamlContent, err := os.ReadFile(pulumiYamlPath)
+			require.NoError(t, err)
+			modifiedContent := strings.ReplaceAll(string(pulumiYamlContent), "${PACKAGE_MANAGER}", packageManager)
+			err = os.WriteFile(pulumiYamlPath, []byte(modifiedContent), 0644)
 			require.NoError(t, err)
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")

@@ -1969,7 +1969,22 @@ func (o *oomSniffer) Scan(r io.Reader) {
 func (host *nodeLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The NodeJS language host does not support linking, so we return an empty response.
+	logging.V(5).Infof("Linking %v in %s", req.LocalDependencies, req.Info.RootDirectory)
+
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse options: %w", err)
+	}
+
+	pkgManager, err := npm.ResolvePackageManager(opts.packagemanager, req.Info.ProgramDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := pkgManager.LinkPackages(ctx, req.LocalDependencies); err != nil {
+		return nil, fmt.Errorf("linking packages: %w", err)
+	}
+
 	return &pulumirpc.LinkResponse{}, nil
 }
 

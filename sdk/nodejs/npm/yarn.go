@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -137,4 +138,18 @@ func checkYarnLock(pwd string) bool {
 	yarnFile := filepath.Join(pwd, "yarn.lock")
 	_, err := os.Stat(yarnFile)
 	return err == nil
+}
+
+func (yarn *yarnClassic) LinkPackages(ctx context.Context, packages map[string]string) error {
+	for packageName, packagePath := range packages {
+		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
+		// Yarn doesn't have a `pkg` command. Currently, however, we only support Yarn Classic, for which the
+		// recommended install method is through `npm`. Consequently, we can use `npm pkg set` for Yarn as well, since
+		// this will only modify the package.json file and not actually perform any dependency management.
+		cmd := exec.Command("npm", "pkg", "set", packageSpecifier)
+		if err := cmd.Run(); err != nil {
+			return errutil.ErrorWithStderr(err, "linking packages")
+		}
+	}
+	return nil
 }

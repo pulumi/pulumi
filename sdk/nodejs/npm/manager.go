@@ -49,6 +49,10 @@ type PackageManager interface {
 	// Name is the name of the binary executable used to invoke this package manager.
 	// e.g. yarn or npm
 	Name() string
+	// LinkPackages adds packages as dependencies to the Node.js program,
+	// updating the relevant project or dependency files. The virtual
+	// environment is not updated with the new dependencies.
+	LinkPackages(ctx context.Context, packages map[string]string) error
 }
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a

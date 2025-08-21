@@ -24,6 +24,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 type bunManager struct {
@@ -138,4 +140,15 @@ func checkBunLock(pwd string) bool {
 	_, err = os.Stat(bunLockBinaryFile)
 
 	return err == nil
+}
+
+func (bun *bunManager) LinkPackages(ctx context.Context, packages map[string]string) error {
+	for packageName, packagePath := range packages {
+		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
+		cmd := exec.Command(bun.executable, "pm", "pkg", "set", packageSpecifier)
+		if err := cmd.Run(); err != nil {
+			return errutil.ErrorWithStderr(err, "linking packages")
+		}
+	}
+	return nil
 }
