@@ -218,7 +218,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ErrorEvent = &apitype.ErrorEvent{
-			Error: p.Error.Error(),
+			Error: p.Error,
 		}
 
 	default:
