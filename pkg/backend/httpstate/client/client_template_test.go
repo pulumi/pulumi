@@ -62,7 +62,7 @@ func TestStartTemplatePublish(t *testing.T) {
 			name: "SuccessfulStartPublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/templates/private/test-publisher/test-template/versions" {
+					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions" {
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -153,7 +153,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			name: "SuccessfulCompletePublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete" {
+					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete" {
 						w.WriteHeader(http.StatusCreated)
 						response := PublishTemplateVersionCompleteResponse{}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
@@ -236,7 +236,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -246,7 +246,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
 
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
+					case "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusCreated)
 					}
 				}))
@@ -266,7 +266,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			},
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/templates/private/test-publisher/test-template/versions" {
+					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions" {
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err := w.Write([]byte("Internal Server Error"))
 						require.NoError(t, err)
@@ -294,7 +294,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -323,7 +323,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -332,7 +332,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 							},
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
+					case "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err := w.Write([]byte("Failed to complete"))
 						require.NoError(t, err)
@@ -363,7 +363,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -679,7 +679,7 @@ func TestListTemplates(t *testing.T) {
 
 		// Set up mock server
 		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
-			assert.Contains(t, req.URL.String(), "/api/preview/registry/templates?limit=499")
+			assert.Contains(t, req.URL.String(), "/api/registry/templates?limit=499")
 			assert.Equal(t, "GET", req.Method)
 
 			data, err := json.Marshal(mockResponse)
@@ -752,7 +752,7 @@ func TestListTemplates(t *testing.T) {
 
 			switch requestCount {
 			case 0:
-				assert.Equal(t, "/api/preview/registry/templates?limit=499&name=my-template", req.URL.String())
+				assert.Equal(t, "/api/registry/templates?limit=499&name=my-template", req.URL.String())
 				assert.NotContains(t, "continuationToken", req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -762,7 +762,7 @@ func TestListTemplates(t *testing.T) {
 				require.NoError(t, err)
 			case 1:
 				assert.Equal(t,
-					"/api/preview/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
+					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -772,7 +772,7 @@ func TestListTemplates(t *testing.T) {
 				require.NoError(t, err)
 			case 2:
 				assert.Equal(t,
-					"/api/preview/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
+					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{

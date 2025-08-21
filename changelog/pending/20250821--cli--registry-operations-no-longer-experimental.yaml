@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Registry operations (`pulumi template publish`, `pulumi package publish`, registry-based template resolution in `pulumi new`) no longer require `PULUMI_EXPERIMENTAL` flag and use stable endpoints, while registry-backed template resolution in `pulumi new` may still be disabled using `PULUMI_DISABLE_REGISTRY_RESOLVE=true pulumi new`
