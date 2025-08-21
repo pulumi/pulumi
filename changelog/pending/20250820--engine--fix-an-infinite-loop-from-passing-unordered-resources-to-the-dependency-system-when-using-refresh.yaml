@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix an infinite loop from passing unordered resources to the dependency system when using --refresh

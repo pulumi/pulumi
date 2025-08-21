@@ -402,7 +402,9 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		parent := res.Parent
 		for parent != "" {
 			childrenOf[parent] = append(childrenOf[parent], idx)
-			parent = resources[urnIndex[parent]].Parent
+			idx, has := urnIndex[parent]
+			contract.Assertf(has, "parent %q not found in urnIndex", parent)
+			parent = resources[idx].Parent
 		}
 	}
 
