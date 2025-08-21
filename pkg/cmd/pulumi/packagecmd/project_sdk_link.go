@@ -236,8 +236,15 @@ func linkPackage(ctx *LinkPackageContext, packages map[string]string) error {
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ctx *LinkPackageContext) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-
-	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return err
+	}
+	out, err := filepath.Abs(ctx.Out)
+	if err != nil {
+		return err
+	}
+	relOut, err := filepath.Rel(root, out)
 	if err != nil {
 		return err
 	}

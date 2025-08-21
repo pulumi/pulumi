@@ -142,7 +142,7 @@ func (pnpm *pnpmManager) LinkPackages(ctx context.Context, packages map[string]s
 		if strings.TrimSpace(string(out)) != "{}" { // `pkg get` returns an empty object if the key does not exist.
 			err = json.Unmarshal(out, &buildDeps)
 			if err != nil {
-				return errutil.ErrorWithStderr(err, "unmarshalling pnpm.onlyBuiltDependencies"+fmt.Sprintf("%q", out))
+				return errutil.ErrorWithStderr(err, "unmarshalling pnpm.onlyBuiltDependencies")
 			}
 		}
 		if !slices.Contains(buildDeps, packageName) {

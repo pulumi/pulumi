@@ -24,6 +24,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
@@ -69,19 +71,6 @@ func (bun *bunManager) Install(ctx context.Context, dir string, production bool,
 	command.Stdout = stdout
 	command.Stderr = stderr
 	err := command.Run()
-	if err != nil {
-		return errutil.ErrorWithStderr(err, "bun install")
-	}
-
-	// Bun doesn't run postinstall scripts by default, but we need these for local SDKs.
-	// A workaround could be to modify package.json during `Link`, like we do for pnpm,
-	// but unfortunately bun's pkg command does not support arrays.
-	// https://github.com/oven-sh/bun/issues/22035
-	command = exec.CommandContext(ctx, bun.executable, "pm", "trust", "--all")
-	command.Dir = dir
-	command.Stdout = stdout
-	command.Stderr = stderr
-	err = command.Run()
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "bun install")
 	}
@@ -161,6 +150,30 @@ func (bun *bunManager) LinkPackages(ctx context.Context, packages map[string]str
 		cmd := exec.Command(bun.executable, "pm", "pkg", "set", packageSpecifier) //nolint:gosec
 		if err := cmd.Run(); err != nil {
 			return errutil.ErrorWithStderr(err, "bun pm pkg set")
+		}
+		// bun does not run postinstall scripts by default. We can allow this by adding
+		// the package to `onlyBuiltDependencies`.
+		cmd = exec.Command(bun.executable, "pm", "pkg", "get", "trustedDependencies") //nolint:gosec
+		out, err := cmd.Output()
+		if err != nil {
+			return errutil.ErrorWithStderr(err, "bun pm pkg get")
+		}
+		buildDeps := []string{}
+		if strings.TrimSpace(string(out)) != "{}" { // `pkg get` returns an empty object if the key does not exist.
+			err = json.Unmarshal(out, &buildDeps)
+			if err != nil {
+				return errutil.ErrorWithStderr(err, "trustedDependencies")
+			}
+		}
+		if !slices.Contains(buildDeps, packageName) {
+			allow := fmt.Sprintf("trustedDependencies[]=%s", packageName)
+			// Bun's pkg command does not support arrays. Since we use Node.js
+			// as runtime, we can assume `npm` is available. Use that instead.
+			// https://github.com/oven-sh/bun/issues/22035
+			cmd = exec.Command("npm", "pkg", "set", allow) //nolint:gosec
+			if err := cmd.Run(); err != nil {
+				return errutil.ErrorWithStderr(err, "npm pkg set trustedDependencies")
+			}
 		}
 	}
 	return nil
