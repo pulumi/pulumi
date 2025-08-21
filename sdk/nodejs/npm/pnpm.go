@@ -146,7 +146,7 @@ func (pnpm *pnpmManager) LinkPackages(ctx context.Context, packages map[string]s
 			}
 		}
 		if !slices.Contains(buildDeps, packageName) {
-			allow := fmt.Sprintf("pnpm.onlyBuiltDependencies[]=%s", packageName)
+			allow := "pnpm.onlyBuiltDependencies[]=" + packageName
 			cmd = exec.Command(pnpm.executable, "pkg", "set", allow) //nolint:gosec
 			if err := cmd.Run(); err != nil {
 				return errutil.ErrorWithStderr(err, "pnpm pkg set pnpm.onlyBuiltDependencies")
