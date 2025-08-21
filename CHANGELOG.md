@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.191.0 (2025-08-21)
+
+
+### Features
+
+- [cli] Document the `PULUMI_ENABLE_STREAMING_JSON_PREVIEW` envvar.
+  [#20328](https://github.com/pulumi/pulumi/pull/20328)
+
+
+### Bug Fixes
+
+- [engine] Check providers returning 'version' or '__internal' in their inputs
+  [#20313](https://github.com/pulumi/pulumi/pull/20313)
+
+- [engine] Fix a panic with `refresh --run-program`
+  [#20337](https://github.com/pulumi/pulumi/pull/20337)
+
+- [engine] Fix an infinite loop from passing unordered resources to the dependency system when using --refresh
+
+- [programgen] Emit warnings instead of errors in non-strict mode when binding resource blocks
+  [#20347](https://github.com/pulumi/pulumi/pull/20347)
+
+- [programgen] Simplify range value types when it is derived from object of objects and warn on unknown properties
+  [#20345](https://github.com/pulumi/pulumi/pull/20345)
+
+- [programgen] Warn instead of erroring out when traversing a NoneType in PCL
+  [#20342](https://github.com/pulumi/pulumi/pull/20342)
+
+- [cli/display] Escape non-graphic characters in URNs
+  [#20295](https://github.com/pulumi/pulumi/pull/20295)
+
+- [cli/import] Disambiguate duplicate resource names by their types when importing
+  [#20348](https://github.com/pulumi/pulumi/pull/20348)
+
+- [cli/new] Don't prompt for ai or template when passing --yes
+  [#20256](https://github.com/pulumi/pulumi/pull/20256)
+
+
+### Miscellaneous
+
+- [cli] Log version and CLI metadata
+  [#20334](https://github.com/pulumi/pulumi/pull/20334)
+
+- [cli/package] Pass ParameterizeParameters to SchemaFromSchemaSource
+  [#20324](https://github.com/pulumi/pulumi/pull/20324)
+
 ## 3.190.0 (2025-08-15)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Disambiguate duplicate resource names by their types when importing

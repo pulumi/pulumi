@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Document the `PULUMI_ENABLE_STREAMING_JSON_PREVIEW` envvar.
