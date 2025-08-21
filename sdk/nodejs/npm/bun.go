@@ -54,14 +54,6 @@ func (bun *bunManager) Name() string {
 }
 
 func (bun *bunManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
-	command := bun.installCmd(ctx, production)
-	command.Dir = dir
-	command.Stdout = stdout
-	command.Stderr = stderr
-	return command.Run()
-}
-
-func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cmd {
 	args := []string{"install"}
 
 	/*
@@ -71,9 +63,30 @@ func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cm
 	// if production {
 	// 	args = append(args, "--production")
 	// }
-
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
-	return exec.CommandContext(ctx, bun.executable, args...)
+	command := exec.CommandContext(ctx, bun.executable, args...)
+	command.Dir = dir
+	command.Stdout = stdout
+	command.Stderr = stderr
+	err := command.Run()
+	if err != nil {
+		return errutil.ErrorWithStderr(err, "bun install")
+	}
+
+	// Bun doesn't run postinstall scripts by default, but we need these for local SDKs.
+	// A workaround could be to modify package.json during `Link`, like we do for pnpm,
+	// but unfortunately bun's pkg command does not support arrays.
+	// https://github.com/oven-sh/bun/issues/22035
+	command = exec.CommandContext(ctx, bun.executable, "pm", "trust", "--all")
+	command.Dir = dir
+	command.Stdout = stdout
+	command.Stderr = stderr
+	err = command.Run()
+	if err != nil {
+		return errutil.ErrorWithStderr(err, "bun install")
+	}
+
+	return nil
 }
 
 type packageDotJSON struct {
@@ -147,7 +160,7 @@ func (bun *bunManager) LinkPackages(ctx context.Context, packages map[string]str
 		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
 		cmd := exec.Command(bun.executable, "pm", "pkg", "set", packageSpecifier) //nolint:gosec
 		if err := cmd.Run(); err != nil {
-			return errutil.ErrorWithStderr(err, "linking packages")
+			return errutil.ErrorWithStderr(err, "bun pm pkg set")
 		}
 	}
 	return nil
