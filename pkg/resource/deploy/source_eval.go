@@ -1467,6 +1467,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			name, typ, custom, parent, props, opts)
 
 		mopts := plugin.MarshalOptions{
+			Label:              fmt.Sprintf("ResourceMonitor.Transform(%s, %s, %s)", token, typ, name),
 			KeepUnknowns:       true,
 			KeepSecrets:        true,
 			KeepResources:      true,
@@ -1543,6 +1544,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			invokeToken, args, opts)
 
 		margs := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.InvokeTransform(%s, %s)", token, invokeToken),
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
@@ -1666,6 +1668,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
 		mOpts := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.ResourceHook(%s, %s)", name, urn),
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
