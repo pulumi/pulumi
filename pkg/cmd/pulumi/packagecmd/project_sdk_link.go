@@ -286,7 +286,7 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Println()
 
-	packageSpecifier, err := filepath.Rel(ctx.Out, ctx.Root)
+	packageSpecifier, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
 	}
