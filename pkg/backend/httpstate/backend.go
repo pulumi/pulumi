@@ -1603,7 +1603,9 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun, updateMeta.useJournal)
+	return b.runEngineAction(
+		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
+		permalink, events, opts.DryRun, updateMeta.useJournal)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1667,7 +1669,10 @@ func (b *cloudBackend) runEngineAction(
 	persister = b.newSnapshotPersister(ctx, update, tokenSource)
 	if kind != apitype.PreviewUpdate && !dryRun {
 		if useJournal {
-			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			if err != nil {
+				return nil, nil, fmt.Errorf("creating journaler: %w", err)
+			}
 			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
 			combinedManager = &engine.CombinedManager{
 				Managers: []engine.SnapshotManager{journalManager},

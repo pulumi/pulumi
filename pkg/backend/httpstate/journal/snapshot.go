@@ -40,7 +40,9 @@ type cloudJournaler struct {
 	wg          sync.WaitGroup          // Wait group to ensure all operations are completed before closing.
 }
 
-func SerializeJournalEntry(ctx context.Context, je engine.JournalEntry, enc config.Encrypter) (apitype.JournalEntry, error) {
+func SerializeJournalEntry(
+	ctx context.Context, je engine.JournalEntry, enc config.Encrypter,
+) (apitype.JournalEntry, error) {
 	var state *apitype.ResourceV3
 
 	if je.State != nil {
@@ -85,6 +87,7 @@ func SerializeJournalEntry(ctx context.Context, je engine.JournalEntry, enc conf
 		Operation:          operation,
 		SecretsProvider:    secretsManager,
 		PendingReplacement: je.PendingReplacement,
+		IsRefresh:          je.IsRefresh,
 		NewSnapshot:        snapshot,
 	}
 
@@ -132,7 +135,7 @@ func NewJournaler(
 	update client.UpdateIdentifier,
 	tokenSource tokenSourceCapability,
 	sm secrets.Manager,
-) engine.Journal {
+) (engine.Journal, error) {
 	journal := &cloudJournaler{
 		context:     ctx,
 		tokenSource: tokenSource,
@@ -141,10 +144,10 @@ func NewJournaler(
 		sm:          sm,
 	}
 
-	journal.BeginOperation(engine.JournalEntry{
+	err := journal.BeginOperation(engine.JournalEntry{
 		Kind:           engine.JournalEntrySecretsManager,
 		SecretsManager: sm,
 	})
 
-	return journal
+	return journal, err
 }

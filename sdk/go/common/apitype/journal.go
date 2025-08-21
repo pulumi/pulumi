@@ -34,14 +34,17 @@ type JournalEntry struct {
 	DeleteOld int `json:"deleteOld"`
 	// ID for the delete Operation that this journal entry is associated with.
 	DeleteNew uint64 `json:"deleteNew"`
+	// PendingReplacement is the index of the resource that's to be marked aspending replacement
+	PendingReplacement int `json:"pendingReplacement,omitempty"`
 	// The resource state associated with this journal entry.
 	State *ResourceV3 `json:"state,omitempty"`
 	// The operation associated with this journal entry, if any.
 	Operation *OperationV2 `json:"operation,omitempty"`
+	// If true, this journal entry is part of a refresh operation.
+	IsRefresh bool `json:"isRefresh,omitempty"`
 	// The secrets manager associated with this journal entry, if any.
 	SecretsProvider *SecretsProvidersV1 `json:"secretsProvider,omitempty"`
-	// PendingReplacement is the index of the resource that's to be marked aspending replacement.
-	PendingReplacement int `json:"pendingReplacement,omitempty"`
+
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
 }
