@@ -176,7 +176,6 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     const result = <ParsedFunction>functionCode;
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
-
     if (result.capturedVariables.required.has("this")) {
         return [
             "arrow function captured 'this'. Assign 'this' to another name outside function and capture that.",
@@ -224,7 +223,6 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     //
     //      i.e. a normal function (maybe async, maybe a get/set function, but def not an arrow
     //      function)
-
     if (tryParseAsArrowFunction(funcString)) {
         return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
     }
@@ -583,7 +581,6 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
         if (!node) {
             return;
         }
-
         switch (node.kind) {
             case ts.SyntaxKind.Identifier:
                 return visitIdentifier(<typescript.Identifier>node);
@@ -609,7 +606,11 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
                 return visitPropertyAccessExpression(<typescript.PropertyAccessExpression>node);
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
+            case ts.SyntaxKind.Constructor:
                 return visitFunctionDeclarationOrExpression(<typescript.FunctionDeclaration>node);
+            case ts.SyntaxKind.ClassDeclaration:
+            case ts.SyntaxKind.ClassExpression:
+                return visitClassDeclarationOrExpression(<typescript.ClassDeclaration>node);
             case ts.SyntaxKind.ArrowFunction:
                 return visitBaseFunction(
                     <typescript.ArrowFunction>node,
@@ -732,6 +733,52 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
         }
 
         visitBaseFunction(node, /*isArrowFunction:*/ false, node.name);
+    }
+
+    function visitClassDeclarationOrExpression(node: typescript.ClassDeclaration | typescript.ClassExpression): void {
+        // First, push new free vars list, scope, and class vars
+        const savedRequired = required;
+        const savedOptional = optional;
+        const savedFunctionVars = functionVars;
+        const className = node.name;
+
+        required = new Map();
+        optional = new Map();
+        functionVars = new Set();
+        scopes.push(new Set());
+
+        // If this is a named class, it should be in the parent scope.
+        if (className) {
+            savedFunctionVars.add(className.text);
+        }
+        // Next, visit each member
+        node.members.forEach((m) => {
+            // make all property assignments or declarations scoped to the class
+            if (
+                (m.kind === ts.SyntaxKind.PropertyAssignment || m.kind === ts.SyntaxKind.PropertyDeclaration) &&
+                typeof m.name !== "undefined" &&
+                m.name.kind === ts.SyntaxKind.Identifier
+            ) {
+                functionVars.add(m.name.text);
+            }
+            walk(m);
+        });
+
+        // Remove any function-scoped variables that we encountered during the walk.
+        for (const v of functionVars) {
+            required.delete(v);
+            optional.delete(v);
+        }
+
+        // Restore the prior context and merge our free list with the previous one.
+        scopes.pop();
+
+        mergeMaps(savedRequired, required);
+        mergeMaps(savedOptional, optional);
+
+        functionVars = savedFunctionVars;
+        required = savedRequired;
+        optional = savedOptional;
     }
 
     function visitBaseFunction(
