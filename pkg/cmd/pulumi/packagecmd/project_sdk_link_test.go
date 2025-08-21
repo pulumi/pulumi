@@ -31,7 +31,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 	tests := []struct {
 		name           string
 		pkg            *schema.Package
-		options        map[string]interface{}
+		useTypeScript  bool
 		wantImportLine string
 	}{
 		{
@@ -44,7 +44,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 					},
 				},
 			},
-			options:        map[string]interface{}{},
+			useTypeScript:  true,
 			wantImportLine: "import * as awsNative from \"@pulumi/aws-native-renamed\";\n",
 		},
 		{
@@ -52,7 +52,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 			pkg: &schema.Package{
 				Name: "aws-native",
 			},
-			options:        map[string]interface{}{},
+			useTypeScript:  true,
 			wantImportLine: "import * as awsNative from \"@pulumi/aws-native\";\n",
 		},
 		{
@@ -60,9 +60,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 			pkg: &schema.Package{
 				Name: "aws-native",
 			},
-			options: map[string]interface{}{
-				"typescript": false,
-			},
+			useTypeScript:  false,
 			wantImportLine: "  const awsNative = require(\"@pulumi/aws-native\");\n",
 		},
 	}
@@ -73,7 +71,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
-			err := printNodeJsImportInstructions(&buf, tt.pkg, tt.options)
+			err := printNodeJsImportInstructions(&buf, tt.pkg, tt.useTypeScript)
 			require.NoError(t, err)
 
 			output := buf.String()
