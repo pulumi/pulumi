@@ -602,7 +602,6 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					strictCollectionType := !b.options.skipRangeTypecheck
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
-
 					iterationExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
 							Name:         "_",
