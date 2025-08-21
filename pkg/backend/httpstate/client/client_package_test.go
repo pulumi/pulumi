@@ -68,7 +68,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -83,7 +83,7 @@ func TestPublishPackage(t *testing.T) {
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
 
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions/1.0.0/complete":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusCreated)
 					}
 				}))
@@ -98,7 +98,7 @@ func TestPublishPackage(t *testing.T) {
 			},
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions" {
+					if r.URL.Path == "/api/registry/packages/pulumi/test-publisher/test-package/versions" {
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err := w.Write([]byte("Internal Server Error"))
 						require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -154,7 +154,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -187,7 +187,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -216,7 +216,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -230,7 +230,7 @@ func TestPublishPackage(t *testing.T) {
 							},
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions/1.0.0/complete":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err := w.Write([]byte("Failed to complete"))
 						require.NoError(t, err)
@@ -254,7 +254,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -269,7 +269,7 @@ func TestPublishPackage(t *testing.T) {
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
 
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions/1.0.0/complete":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusCreated)
 					}
 				}))
@@ -302,7 +302,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
@@ -343,7 +343,7 @@ func TestPublishPackage(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+					case "/api/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
