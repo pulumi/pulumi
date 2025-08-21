@@ -188,6 +188,62 @@ func getNodeJSPkgName(pkg *schema.Package) string {
 	return "@pulumi/" + pkg.Name
 }
 
+func linkPackage(ctx *LinkPackageContext) error {
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return err
+	}
+	proj, _, err := ctx.Workspace.ReadProject()
+	if err != nil {
+		return err
+	}
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, main, pCtx, err := engine.ProjectInfoContext(
+		projinfo,
+		nil, /* host */
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		nil,   /* debugging */
+		false, /* disableProviderPreview */
+		nil,   /* tracingSpan */
+		nil,   /* config */
+	)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(pCtx.Host)
+	programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
+	languagePlugin, err := pCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	if err != nil {
+		return err
+	}
+
+	out, err := filepath.Abs(ctx.Out)
+	if err != nil {
+		return err
+	}
+	packageSpecifier, err := filepath.Rel(root, out)
+	if err != nil {
+		return err
+	}
+	deps := map[string]string{
+		ctx.Pkg.Name: packageSpecifier,
+	}
+	if err := languagePlugin.Link(programInfo, deps); err != nil {
+		return err
+	}
+
+	if ctx.Install {
+		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
+			Info: programInfo,
+		}); err != nil {
+			return fmt.Errorf("installing dependencies: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ctx *LinkPackageContext) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
@@ -309,56 +365,8 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Println()
 
-	root, err := filepath.Abs(ctx.Root)
-	if err != nil {
-		return err
-	}
-	proj, _, err := ctx.Workspace.ReadProject()
-	if err != nil {
-		return err
-	}
-	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, pCtx, err := engine.ProjectInfoContext(
-		projinfo,
-		nil, /* host */
-		cmdutil.Diag(),
-		cmdutil.Diag(),
-		nil,   /* debugging */
-		false, /* disableProviderPreview */
-		nil,   /* tracingSpan */
-		nil,   /* config */
-	)
-	if err != nil {
-		return err
-	}
-	defer contract.IgnoreClose(pCtx.Host)
-	programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
-	languagePlugin, err := pCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
-	if err != nil {
-		return err
-	}
-
-	out, err := filepath.Abs(ctx.Out)
-	if err != nil {
-		return err
-	}
-	packageSpecifier, err := filepath.Rel(root, out)
-	if err != nil {
-		return err
-	}
-	deps := map[string]string{
-		ctx.Pkg.Name: packageSpecifier,
-	}
-	if err := languagePlugin.Link(programInfo, deps); err != nil {
-		return err
-	}
-
-	if ctx.Install {
-		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
-			Info: programInfo,
-		}); err != nil {
-			return fmt.Errorf("installing dependencies: %w", err)
-		}
+	if err := linkPackage(ctx); err != nil {
+		return fmt.Errorf("linking package: %w", err)
 	}
 
 	pyInfo, ok := ctx.Pkg.Language["python"].(python.PackageInfo)
