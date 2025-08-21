@@ -124,7 +124,7 @@ func (s *Source) getCloudTemplates(
 	ctx context.Context, templateName string,
 	wg *sync.WaitGroup, e env.Env,
 ) {
-	if !e.GetBool(env.DisableRegistryResolve) && e.GetBool(env.Experimental) {
+	if !e.GetBool(env.DisableRegistryResolve) {
 		s.getRegistryTemplates(ctx, e, templateName)
 		return
 	}
