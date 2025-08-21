@@ -145,7 +145,7 @@ func checkBunLock(pwd string) bool {
 func (bun *bunManager) LinkPackages(ctx context.Context, packages map[string]string) error {
 	for packageName, packagePath := range packages {
 		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
-		cmd := exec.Command(bun.executable, "pm", "pkg", "set", packageSpecifier)
+		cmd := exec.Command(bun.executable, "pm", "pkg", "set", packageSpecifier) //nolint:gosec
 		if err := cmd.Run(); err != nil {
 			return errutil.ErrorWithStderr(err, "linking packages")
 		}

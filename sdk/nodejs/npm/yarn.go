@@ -146,7 +146,7 @@ func (yarn *yarnClassic) LinkPackages(ctx context.Context, packages map[string]s
 		// Yarn doesn't have a `pkg` command. Currently, however, we only support Yarn Classic, for which the
 		// recommended install method is through `npm`. Consequently, we can use `npm pkg set` for Yarn as well, since
 		// this will only modify the package.json file and not actually perform any dependency management.
-		cmd := exec.Command("npm", "pkg", "set", packageSpecifier)
+		cmd := exec.Command("npm", "pkg", "set", packageSpecifier) //nolint:gosec
 		if err := cmd.Run(); err != nil {
 			return errutil.ErrorWithStderr(err, "linking packages")
 		}

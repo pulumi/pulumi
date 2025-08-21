@@ -2420,7 +2420,7 @@ func TestPackageAddNode(t *testing.T) {
 			pulumiYamlContent, err := os.ReadFile(pulumiYamlPath)
 			require.NoError(t, err)
 			modifiedContent := strings.ReplaceAll(string(pulumiYamlContent), "${PACKAGE_MANAGER}", packageManager)
-			err = os.WriteFile(pulumiYamlPath, []byte(modifiedContent), 0644)
+			err = os.WriteFile(pulumiYamlPath, []byte(modifiedContent), 0o600)
 			require.NoError(t, err)
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")

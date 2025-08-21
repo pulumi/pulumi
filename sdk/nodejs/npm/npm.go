@@ -104,10 +104,10 @@ func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) 
 	return packTarball, nil
 }
 
-func (nm *npmManager) LinkPackages(ctx context.Context, packages map[string]string) error {
+func (node *npmManager) LinkPackages(ctx context.Context, packages map[string]string) error {
 	for packageName, packagePath := range packages {
 		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
-		cmd := exec.Command(nm.executable, "pkg", "set", packageSpecifier)
+		cmd := exec.Command(node.executable, "pkg", "set", packageSpecifier) //nolint:gosec
 		if err := cmd.Run(); err != nil {
 			return errutil.ErrorWithStderr(err, "linking packages")
 		}

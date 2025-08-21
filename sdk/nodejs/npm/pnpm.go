@@ -124,7 +124,7 @@ func checkPnpmLock(pwd string) bool {
 func (pnpm *pnpmManager) LinkPackages(ctx context.Context, packages map[string]string) error {
 	for packageName, packagePath := range packages {
 		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
-		cmd := exec.Command(pnpm.executable, "pkg", "set", packageSpecifier)
+		cmd := exec.Command(pnpm.executable, "pkg", "set", packageSpecifier) //nolint:gosec
 		if err := cmd.Run(); err != nil {
 			return errutil.ErrorWithStderr(err, "linking packages")
 		}
