@@ -18,12 +18,17 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // pnpm is an alternative package manager for Node.js.
@@ -117,4 +122,36 @@ func checkPnpmLock(pwd string) bool {
 	pnpmFile := filepath.Join(pwd, "pnpm-lock.yaml")
 	_, err := os.Stat(pnpmFile)
 	return err == nil
+}
+
+func (pnpm *pnpmManager) LinkPackages(ctx context.Context, packages map[string]string) error {
+	for packageName, packagePath := range packages {
+		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
+		cmd := exec.Command(pnpm.executable, "pkg", "set", packageSpecifier) //nolint:gosec
+		if err := cmd.Run(); err != nil {
+			return errutil.ErrorWithStderr(err, "pnpm pkg set")
+		}
+		// pnpm does not run postinstall scripts by default. We can allow this by adding
+		// the package to `onlyBuiltDependencies`.
+		cmd = exec.Command(pnpm.executable, "pkg", "get", "pnpm.onlyBuiltDependencies") //nolint:gosec
+		out, err := cmd.Output()
+		if err != nil {
+			return errutil.ErrorWithStderr(err, "pnpm pkg get")
+		}
+		buildDeps := []string{}
+		if strings.TrimSpace(string(out)) != "{}" { // `pkg get` returns an empty object if the key does not exist.
+			err = json.Unmarshal(out, &buildDeps)
+			if err != nil {
+				return errutil.ErrorWithStderr(err, "unmarshalling pnpm.onlyBuiltDependencies")
+			}
+		}
+		if !slices.Contains(buildDeps, packageName) {
+			allow := "pnpm.onlyBuiltDependencies[]=" + packageName
+			cmd = exec.Command(pnpm.executable, "pkg", "set", allow) //nolint:gosec
+			if err := cmd.Run(); err != nil {
+				return errutil.ErrorWithStderr(err, "pnpm pkg set pnpm.onlyBuiltDependencies")
+			}
+		}
+	}
+	return nil
 }

@@ -1,0 +1,5 @@
+name: packageadd
+runtime:
+  name: nodejs
+  options:
+    packagemanager: ${PACKAGE_MANAGER}

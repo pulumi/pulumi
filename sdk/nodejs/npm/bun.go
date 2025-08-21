@@ -24,6 +24,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 type bunManager struct {
@@ -52,14 +56,6 @@ func (bun *bunManager) Name() string {
 }
 
 func (bun *bunManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
-	command := bun.installCmd(ctx, production)
-	command.Dir = dir
-	command.Stdout = stdout
-	command.Stderr = stderr
-	return command.Run()
-}
-
-func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cmd {
 	args := []string{"install"}
 
 	/*
@@ -69,9 +65,17 @@ func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cm
 	// if production {
 	// 	args = append(args, "--production")
 	// }
-
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
-	return exec.CommandContext(ctx, bun.executable, args...)
+	command := exec.CommandContext(ctx, bun.executable, args...)
+	command.Dir = dir
+	command.Stdout = stdout
+	command.Stderr = stderr
+	err := command.Run()
+	if err != nil {
+		return errutil.ErrorWithStderr(err, "bun install")
+	}
+
+	return nil
 }
 
 type packageDotJSON struct {
@@ -138,4 +142,39 @@ func checkBunLock(pwd string) bool {
 	_, err = os.Stat(bunLockBinaryFile)
 
 	return err == nil
+}
+
+func (bun *bunManager) LinkPackages(ctx context.Context, packages map[string]string) error {
+	for packageName, packagePath := range packages {
+		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", packageName, packagePath)
+		cmd := exec.Command(bun.executable, "pm", "pkg", "set", packageSpecifier) //nolint:gosec
+		if err := cmd.Run(); err != nil {
+			return errutil.ErrorWithStderr(err, "bun pm pkg set")
+		}
+		// bun does not run postinstall scripts by default. We can allow this by adding
+		// the package to `onlyBuiltDependencies`.
+		cmd = exec.Command(bun.executable, "pm", "pkg", "get", "trustedDependencies") //nolint:gosec
+		out, err := cmd.Output()
+		if err != nil {
+			return errutil.ErrorWithStderr(err, "bun pm pkg get")
+		}
+		buildDeps := []string{}
+		if strings.TrimSpace(string(out)) != "{}" { // `pkg get` returns an empty object if the key does not exist.
+			err = json.Unmarshal(out, &buildDeps)
+			if err != nil {
+				return errutil.ErrorWithStderr(err, "trustedDependencies")
+			}
+		}
+		if !slices.Contains(buildDeps, packageName) {
+			allow := fmt.Sprintf("trustedDependencies[]=%s", packageName)
+			// Bun's pkg command does not support arrays. Since we use Node.js
+			// as runtime, we can assume `npm` is available. Use that instead.
+			// https://github.com/oven-sh/bun/issues/22035
+			cmd = exec.Command("npm", "pkg", "set", allow) //nolint:gosec
+			if err := cmd.Run(); err != nil {
+				return errutil.ErrorWithStderr(err, "npm pkg set trustedDependencies")
+			}
+		}
+	}
+	return nil
 }
