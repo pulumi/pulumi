@@ -17,13 +17,13 @@ package apitype
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin          JournalEntryKind = 0
-	JournalEntrySuccess        JournalEntryKind = 1
-	JournalEntryFailure        JournalEntryKind = 2
-	JournalEntryRefreshSuccess JournalEntryKind = 3
-	JournalEntryOutputs        JournalEntryKind = 4
-	JournalEntryRebase         JournalEntryKind = 5
-	JournalEntrySecretsManager JournalEntryKind = 6
+	JournalEntryKindBegin          JournalEntryKind = 0
+	JournalEntryKindSuccess        JournalEntryKind = 1
+	JournalEntryKindFailure        JournalEntryKind = 2
+	JournalEntryKindRefreshSuccess JournalEntryKind = 3
+	JournalEntryKindOutputs        JournalEntryKind = 4
+	JournalEntryKindRebase         JournalEntryKind = 5
+	JournalEntryKindSecretsManager JournalEntryKind = 6
 )
 
 type JournalEntry struct {
