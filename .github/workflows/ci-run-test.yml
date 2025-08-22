@@ -89,6 +89,13 @@ env:
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
 
 jobs:
+  workflow-telemetry-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v2
+        with:
+          comment_on_pr: false
   test:
     name: ${{ inputs.test-name }}
     env:
