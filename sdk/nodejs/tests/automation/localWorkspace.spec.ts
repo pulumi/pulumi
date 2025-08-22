@@ -684,9 +684,14 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.kind, "update");
         assert.strictEqual(upRes.summary.result, "succeeded");
 
+        // pulumi destroy --preview-only
+        const previewDestroyRes = await stack.previewDestroy({ userAgent });
+        assert.deepStrictEqual(previewDestroyRes.changeSummary, { delete: 1 });
+
         // pulumi destroy
-        const destroyRes = await stack.destroy({ userAgent, previewOnly: true });
-        assert.strictEqual(destroyRes.summary.kind, "update");
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.deepStrictEqual(destroyRes.summary.resourceChanges, { delete: 1 });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
