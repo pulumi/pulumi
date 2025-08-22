@@ -1679,8 +1679,6 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
-// GetTemplate is a preview API, and should not be used without an approved EOL plan for
-// deprecation.
 func (pc *Client) GetTemplate(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {
@@ -1780,8 +1778,6 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
-// ListTemplates is a preview API, and should not be used without an approved EOL plan for
-// deprecation.
 func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 	url := "/api/registry/templates?limit=499"
 	if name != nil {
