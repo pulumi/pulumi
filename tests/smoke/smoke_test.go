@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -1156,4 +1157,29 @@ func TestDestroyProtectedEmpty(t *testing.T) {
 	// It should be removed
 	stdout, _ := e.RunCommand("pulumi", "stack", "ls")
 	assert.NotContains(t, stdout, "empty-test-stack")
+}
+
+func TestPrintLogfilePath(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stdout, _ := e.RunCommand("pulumi", "about", "-v", "10")
+	var logFilePath string
+	message := "The log file for this run is at "
+	scanner := bufio.NewScanner(strings.NewReader(stdout))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, message) {
+			parts := strings.Split(line, message)
+			if len(parts) > 1 {
+				logFilePath = strings.TrimSpace(parts[1])
+				break
+			}
+		}
+	}
+	require.NotEmpty(t, logFilePath, "log file path should be found in output")
+	_, err := os.Stat(logFilePath)
+	require.NoError(t, err, "log file should exist at %s", logFilePath)
 }
