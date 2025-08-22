@@ -1386,6 +1386,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 }
 
 // regression test for https://github.com/pulumi/pulumi/issues/11092
+// and https://github.com/pulumi/pulumi/issues/20367
 func TestPolicyPluginExtraArguments(t *testing.T) {
 	t.Parallel()
 
@@ -1424,7 +1425,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 
 	// Run with extra arguments
 	_, _, err = e.GetCommandResults("pulumi", "--logflow", "preview", "--logtostderr",
-		"--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
+		"-v9", "--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
 	require.NoError(t, err)
 }
 
