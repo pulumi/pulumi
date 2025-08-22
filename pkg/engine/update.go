@@ -553,8 +553,8 @@ func update(
 	// Execute the deployment.
 	plan, changes, err := deployment.run(ctx)
 
-	if ctx.SnapshotCompareFunc != nil {
-		snapErr := ctx.SnapshotCompareFunc()
+	if ctx.RecordErrorFunc != nil {
+		snapErr := ctx.RecordErrorFunc()
 		if snapErr != nil {
 			ctx.Events <- NewEvent(ErrorEventPayload{
 				Error: fmt.Sprintf("snapshot mismatch: %s", snapErr),
