@@ -1651,7 +1651,15 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
-	journalPersister := &backend.InMemoryPersister{}
+	var validationErrs []error
+	journalPersister := &backend.ValidatingPersister{
+		ErrorFunc: func(err error) {
+			if err != nil {
+				validationErrs = append(validationErrs,
+					fmt.Errorf("journal snapshot validation error: %w", err))
+			}
+		},
+	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
 		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
@@ -1670,11 +1678,13 @@ func (b *cloudBackend) runEngineAction(
 		Events:          engineEvents,
 		SnapshotManager: combinedManager,
 		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
-		SnapshotCompareFunc: func() error {
+		RecordErrorFunc: func() error {
 			if snapshotManager == nil || journalPersister == nil {
 				return nil
 			}
-			return engine.SnapshotEqual(snapshotManager.Snap(), journalPersister.Snap)
+			errs := errors.Join(validationErrs...)
+			errs = errors.Join(errs, engine.SnapshotEqual(snapshotManager.Snap(), journalPersister.Snap))
+			return errs
 		},
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {

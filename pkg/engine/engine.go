@@ -38,11 +38,11 @@ type UpdateInfo struct {
 // Context provides cancellation, termination, and eventing options for an engine operation. It also provides
 // a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
-	Cancel              *cancel.Context
-	Events              chan<- Event
-	SnapshotManager     SnapshotManager
-	BackendClient       deploy.BackendClient
-	ParentSpan          opentracing.SpanContext
-	PluginManager       PluginManager
-	SnapshotCompareFunc func() error
+	Cancel          *cancel.Context
+	Events          chan<- Event
+	SnapshotManager SnapshotManager
+	BackendClient   deploy.BackendClient
+	ParentSpan      opentracing.SpanContext
+	PluginManager   PluginManager
+	RecordErrorFunc func() error
 }
