@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,13 +19,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-var _ = SnapshotPersister((*InMemoryPersister)(nil))
+var _ = SnapshotPersister((*ValidatingPersister)(nil))
 
-type InMemoryPersister struct {
-	Snap *deploy.Snapshot
+type ValidatingPersister struct {
+	Snap      *deploy.Snapshot
+	ErrorFunc func(error)
 }
 
-func (p *InMemoryPersister) Save(snap *deploy.Snapshot) error {
+func (p *ValidatingPersister) Save(snap *deploy.Snapshot) error {
 	result := &deploy.Snapshot{
 		Manifest:          snap.Manifest,
 		SecretsManager:    snap.SecretsManager,
@@ -46,6 +47,10 @@ func (p *InMemoryPersister) Save(snap *deploy.Snapshot) error {
 			Resource: op.Resource.Copy(),
 		}
 		op.Resource.Lock.Unlock()
+	}
+
+	if p.ErrorFunc != nil {
+		p.ErrorFunc(result.VerifyIntegrity())
 	}
 
 	p.Snap = result
