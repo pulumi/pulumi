@@ -301,9 +301,14 @@ func (op TestOp) runWithContext(
 		}
 	}()
 
+	errs := []error{}
 	events := make(chan engine.Event)
 	journal := engine.NewTestJournal()
-	persister := &backend.InMemoryPersister{}
+	persister := &backend.ValidatingPersister{
+		ErrorFunc: func(err error) {
+			errs = append(errs, err)
+		},
+	}
 	secretsManager := b64.NewBase64SecretsManager()
 	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
 
@@ -377,7 +382,7 @@ func (op TestOp) runWithContext(
 		AssertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
 	}
 
-	errs := []error{opErr, closeErr}
+	errs = append(errs, opErr, closeErr)
 	if dryRun {
 		return plan, nil, errors.Join(errs...)
 	}

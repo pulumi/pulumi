@@ -1719,7 +1719,7 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)

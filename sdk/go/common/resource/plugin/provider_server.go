@@ -834,6 +834,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
 		ResourceHooks:        hooks,
+		DeletedWith:          resource.URN(req.DeletedWith),
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{

@@ -24,6 +24,7 @@ package logging
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"strconv"
@@ -130,6 +131,17 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	if verbose > 0 {
 		maybeSetFlag("v", strconv.Itoa(verbose))
 	}
+}
+
+func GetLogfilePath() (string, error) {
+	logFiles, err := glog.Names("INFO")
+	if err != nil {
+		return "", err
+	}
+	if len(logFiles) == 0 {
+		return "", errors.New("no log files found")
+	}
+	return logFiles[0], nil
 }
 
 func assertNoError(err error) {

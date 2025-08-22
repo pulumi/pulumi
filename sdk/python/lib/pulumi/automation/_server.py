@@ -79,7 +79,7 @@ class LanguageServer(LanguageRuntimeServicer):
             result = language_pb2.RunResponse()
             loop = asyncio.new_event_loop()
             if request.parallel is not None:
-                request.parallel = max(request.parallel, 1)
+                request.parallel = max(request.parallel, 1) * 4
                 loop.set_default_executor(
                     ThreadPoolExecutor(max_workers=request.parallel)
                 )

@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -181,17 +182,25 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
-					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
+				DiffConfigF: func(ctx context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					return plugin.DiffConfigResponse{}, status.New(codes.Unimplemented, "DiffConfig not implemented").Err()
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	inputs := resource.PropertyMap{}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
+		})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
 		})
 		require.NoError(t, err)
 		return nil
@@ -209,6 +218,9 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
+	inputs = resource.PropertyMap{
+		"input": resource.MakeComputed(resource.NewStringProperty("")),
+	}
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, err error,
@@ -217,13 +229,15 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			for _, e := range events {
 				if e.Type == DiagEvent {
 					p := e.Payload().(DiagEventPayload)
-					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "<{%reset%}>diff unavailable<{%reset%}>\n" {
+					if p.URN == resURN &&
+						p.Severity == diag.Warning &&
+						strings.Contains(p.Message, "The provider for this resource has inputs that are not known during preview.") {
 						found = true
 						break
 					}
 				}
 			}
-			assert.True(t, found)
+			assert.True(t, found, "Expected warning for resource %q saw %q", resURN, events)
 			return err
 		}, "1")
 	require.NoError(t, err)

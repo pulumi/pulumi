@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Print the location of the log file when running with the verbose flag

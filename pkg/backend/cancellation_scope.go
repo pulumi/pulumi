@@ -15,14 +15,18 @@
 package backend
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type cancellationScope struct {
@@ -60,6 +64,25 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 			// If we haven't yet received a SIGINT or SIGTERM, call the cancellation func. Otherwise call the
 			// termination func.
 			if cancelContext.CancelErr() == nil {
+				// Grab the stack traces for all goroutines and log them.
+				if logging.Verbose >= 9 {
+					var b bytes.Buffer
+					f := bufio.NewWriter(&b)
+					if err := pprof.Lookup("goroutine").WriteTo(f, 2); err != nil {
+						logging.V(9).Infof("failed to get goroutine stack traces: %s", err)
+					} else {
+						if err := f.Flush(); err != nil {
+							logging.V(9).Infof("failed to flush buffer: %s", err)
+						}
+						// We still write out the information we got, even if the flush failed.
+						logging.V(9).Infoln("goroutines at time of cancellation:")
+						r := bytes.NewReader(b.Bytes())
+						scan := bufio.NewScanner(r)
+						for scan.Scan() {
+							logging.V(9).Info(scan.Text())
+						}
+					}
+				}
 				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
 				if sig == syscall.SIGTERM {
 					message = "SIGTERM received; cancelling. If you would like to terminate immediately, send SIGTERM again.\n"
