@@ -107,7 +107,7 @@ func untaintAllResources(
 			}
 
 			for _, res := range snap.Resources {
-				res.Protect = false
+				res.Taint = false
 			}
 
 			return nil
