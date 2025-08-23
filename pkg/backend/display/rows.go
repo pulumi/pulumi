@@ -464,6 +464,8 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 			resource.NewStringProperty(step.Old.Provider), resource.NewStringProperty(step.New.Provider))
 		recordMetadataDiff("protect",
 			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
+		recordMetadataDiff(colors.Red+"taint"+colors.Reset,
+			resource.NewBoolProperty(step.Old.Taint), resource.NewBoolProperty(step.New.Taint))
 
 		writeShortDiff(changesBuf, diff, step.Diffs)
 	}

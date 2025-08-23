@@ -329,6 +329,8 @@ type StepEventStateMetadata struct {
 	Parent resource.URN
 	// true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool
+	// true to force replacement of this resource on the next update.
+	Taint bool
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete"`
 	// the resource's input properties (as specified by the program). Note: because this will cross
@@ -482,6 +484,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets b
 		ID:             state.ID,
 		Parent:         state.Parent,
 		Protect:        state.Protect,
+		Taint:          state.Taint,
 		RetainOnDelete: state.RetainOnDelete,
 		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
 		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
