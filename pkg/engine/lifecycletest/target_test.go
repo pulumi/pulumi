@@ -1823,7 +1823,7 @@ func destroySpecificTargetsWithChildren(
 					return plugin.DiffResult{}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1876,6 +1876,9 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 	inputs := resource.PropertyMap{}
 	for k := range propertyDeps {
 		inputs[k] = resource.NewStringProperty("foo")
+	}
+	if outputs == nil {
+		outputs = resource.PropertyMap{}
 	}
 
 	return &resource.State{
