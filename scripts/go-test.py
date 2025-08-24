@@ -52,8 +52,8 @@ if integration_test_subset:
     print(f"Using test subset: {integration_test_subset}")
     args += ['-run', INTEGRATION_TESTS[integration_test_subset]]
 
-if os.environ.get("CI") != "true":
-    args += ['-v']
+# if os.environ.get("CI") != "true":
+args += ['-v']
 
 class RepeatTimer(threading.Timer):
     def run(self):
@@ -99,7 +99,13 @@ else:
 
 if not dryrun:
     try:
-        print("Running: " + ' '.join(args))
+        command_str = " ".join(args)
+        if len(command_str) > 200:
+            print("Running:")
+            for i in range(0, len(command_str), 200):
+                print("  " + command_str[i : i + 200])
+        else:
+            print("Running: " + command_str)
         sp.check_call(args, shell=False)
         print("Completed: " + ' '.join(args))
     except sp.CalledProcessError as e:
