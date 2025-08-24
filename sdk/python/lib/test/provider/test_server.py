@@ -34,10 +34,10 @@ from pulumi.provider.server import ProviderServicer
 from pulumi.resource import CustomResource, ResourceOptions
 from pulumi.runtime import Mocks, ResourceModule, proto, rpc
 from pulumi.runtime.proto.provider_pb2 import ConstructRequest
-from pulumi.runtime.proto import provider_pb2, provider_pb2_grpc, status_pb2, errors_pb2
+from pulumi.runtime.proto import status_pb2, errors_pb2
 from pulumi.runtime.settings import Settings, configure
 from semver import VersionInfo as Version
-from test.provider.grpc_tester import GrpcTestHelper
+from ..grpc_stubs import provider_servicer_stub
 
 
 def pulumi_test(coro):
@@ -666,7 +666,7 @@ async def test_construct_success():
     provider = MockProvider()
     servicer = ProviderServicer(provider, [], "")
 
-    async with GrpcTestHelper(servicer) as stub:
+    async with provider_servicer_stub(servicer) as stub:
         request = proto.ConstructRequest()
         response = await stub.Construct(request)
 
@@ -679,7 +679,7 @@ async def test_construct_run_error():
     provider = MockProvider(error_type="run_error", error_message="monitor shut down")
     servicer = ProviderServicer(provider, [], "")
 
-    async with GrpcTestHelper(servicer) as stub:
+    async with provider_servicer_stub(servicer) as stub:
         request = proto.ConstructRequest()
 
         try:
@@ -699,7 +699,7 @@ async def test_construct_input_property_error():
     )
     servicer = ProviderServicer(provider, [], "")
 
-    async with GrpcTestHelper(servicer) as stub:
+    async with provider_servicer_stub(servicer) as stub:
         request = proto.ConstructRequest()
 
         try:
@@ -724,7 +724,7 @@ async def test_construct_input_properties_error():
     )
     servicer = ProviderServicer(provider, [], "")
 
-    async with GrpcTestHelper(servicer) as stub:
+    async with provider_servicer_stub(servicer) as stub:
         request = proto.ConstructRequest()
 
         try:
@@ -754,7 +754,7 @@ async def test_construct_component_init_error():
     )
     servicer = ProviderServicer(provider, [], "")
 
-    async with GrpcTestHelper(servicer) as stub:
+    async with provider_servicer_stub(servicer) as stub:
         request = proto.ConstructRequest()
 
         try:
