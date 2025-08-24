@@ -90,17 +90,16 @@ class ProviderServicer(ResourceProviderServicer):
     def create_grpc_invalid_properties_status(
         self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
     ):
-        status = grpc.Status()  # type: ignore[attr-defined]
+        status = grpc.Status()
         # We don't care about the exact status code here, since they are pretty web centric, and don't
         # necessarily make sense in this context.  Pick one that's close enough.
-        # type: ignore
-        status.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+        status.code = grpc.StatusCode.INVALID_ARGUMENT
         status.details = message
 
         if errors is not None:
-            s = status_pb2.Status()  # type: ignore[attr-defined]
+            s = status_pb2.Status()
             # This code needs to match the code above.
-            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]
             s.message = message
 
             error_details = errors_pb2.InputPropertiesError()
