@@ -59,7 +59,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          cache-dependency-path: pkg/go.sum
+          go-version-file: pkg/go.mod
       - name: Run go mod tidy
         run: make tidy
 
@@ -74,7 +75,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          cache-dependency-path: sdk/go.sum
+          go-version-file: sdk/go.mod
       - name: Run make gen
         run: cd sdk/go && make gen
       - name: Fail if there are changes
@@ -107,7 +109,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          cache-dependency-path: sdk/go.sum
+          go-version-file: sdk/go.mod
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
