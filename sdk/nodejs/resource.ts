@@ -153,12 +153,6 @@ export function allAliases(
  */
 export abstract class Resource {
     /**
-     * A regexp for use with {@link sourcePosition}.
-     */
-    private static sourcePositionRegExp =
-        /Error:\s*\n\s*at new Resource \(.*\)\n\s*at new \S*Resource \(.*\)\n(\s*at new \S* \(.*\)\n)?[^(]*\((?<file>.*):(?<line>[0-9]+):(?<col>[0-9]+)\)\n/;
-
-    /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * @internal
@@ -325,6 +319,23 @@ export abstract class Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
+    private static callsites(): any[] {
+        const _prepareStackTrace = Error.prepareStackTrace;
+        try {
+            let callsites: any[] = [];
+            Error.prepareStackTrace = (_, stack) => {
+                callsites = stack.slice(1);
+                return callsites;
+            };
+            const _stack = new Error().stack;
+            return callsites;
+        } catch (e) {
+            return [];
+        } finally {
+            Error.prepareStackTrace = _prepareStackTrace;
+        }
+    }
+
     /**
      * Returns the source position of the user code that instantiated this
      * resource.
@@ -348,33 +359,25 @@ export abstract class Resource {
      *     new Bucket (/path/to/bucket.ts:987:65)
      *     <user code> (/path/to/index.ts:4:3)
      *
-     * Because Node can only give us the stack trace as text, we parse out the
-     * source position using a regex that matches traces of this form (see
-     * the {@link sourcePositionRegExp} above).
      */
     private static sourcePosition(): SourcePosition | undefined {
-        const stackObj: any = {};
-        Error.captureStackTrace(stackObj, Resource.sourcePosition);
-
-        // Parse out the source position of the user code. If any part of the match is missing, return undefined.
-        const { file, line, col } = Resource.sourcePositionRegExp.exec(stackObj.stack)?.groups || {};
-        if (!file || !line || !col) {
+        // Skip the first four frames: sourcePosition(), new Resource, new CustomResource, new Bucket
+        const stack = Resource.callsites();
+        if (stack.length < 5) {
             return undefined;
         }
+        const userFrame = stack[4];
 
-        // Parse the line and column numbers. If either fails to parse, return undefined.
-        //
-        // Note: this really shouldn't happen given the regex; this is just a bit of defensive coding.
-        const lineNum = parseInt(line, 10);
-        const colNum = parseInt(col, 10);
-        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+        // If any part of the position is missing, return undefined.
+        const [file, line, column] = [userFrame.getFileName(), userFrame.getLineNumber(), userFrame.getColumnNumber()];
+        if (!file || !line || !column) {
             return undefined;
         }
 
         return {
             uri: url.pathToFileURL(file).toString(),
-            line: lineNum,
-            column: colNum,
+            line,
+            column,
         };
     }
 
