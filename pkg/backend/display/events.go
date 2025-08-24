@@ -80,6 +80,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Color:     string(p.Color),
 			Severity:  string(p.Severity),
 			Ephemeral: p.Ephemeral,
+			Timestamp: p.Timestamp,
 		}
 
 	case engine.StartDebuggingEvent:
@@ -348,6 +349,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Color:     colors.Colorization(p.Color),
 			Severity:  diag.Severity(p.Severity),
 			Ephemeral: p.Ephemeral,
+			Timestamp: p.Timestamp,
 		})
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{}
 
