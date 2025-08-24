@@ -453,6 +453,16 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def install_plugin_from_file(self, name: str, version: str, file: str) -> None:
+        """
+        Installs a plugin in the Workspace from a file, for example a third party plugin.
+
+        :param name: The name of the plugin to install.
+        :param version: The version to install.
+        :param file: The file to install from.
+        """
+
+    @abstractmethod
     def remove_plugin(
         self,
         name: Optional[str] = None,
