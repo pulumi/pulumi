@@ -23,7 +23,7 @@ import os
 import threading
 from collections import deque
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
 
@@ -320,7 +320,7 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     return Exception(details)
 
 
-def handle_grpc_error(exn: grpc.RpcError) -> None:
+def handle_grpc_error(exn: grpc.RpcError) -> NoReturn:
     raise grpc_error_to_exception(exn)
 
 
