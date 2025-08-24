@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/esc/eval"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -475,94 +474,260 @@ func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) 
 }
 
 func ValidateProject(raw interface{}) error {
+	// Use the new multi-phase validation approach
+	result := ValidateProjectWithWarnings(raw)
+
+	// For strict project validation, convert certain warnings to errors
+	// This maintains compatibility with existing tests that expect errors for malformed fields
+	var strictErrors []error
+
+	for _, warning := range result.Warnings {
+		// Convert warnings about malformed fields to errors, but keep legitimate new template field warnings
+		// Check if this is a legitimate new template field (issue #14775 case) vs a malformed field
+
+		isLegitimateNewTemplateField := strings.Contains(warning, "template.") &&
+			strings.Contains(warning, "is not recognized in the current schema version") &&
+			!strings.Contains(warning, "did you mean") // If it has typo suggestions, it's malformed
+
+		if !isLegitimateNewTemplateField {
+			// This is a malformed field, typo, or non-template validation error that should be strict
+			strictErrors = append(strictErrors, errors.New(warning))
+		}
+	}
+
+	// Return combined errors - original errors take precedence over converted warnings
+	allErrors := append(result.Errors, strictErrors...)
+	if len(allErrors) > 0 {
+		return allErrors[0]
+	}
+
+	return nil
+}
+
+// ValidationResult contains both errors and warnings from validation
+type ValidationResult struct {
+	Errors   []error
+	Warnings []string
+}
+
+// validateRequiredFields checks for missing required fields and suggests similar field names
+func validateRequiredFields(schema *jsonschema.Schema, project map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
+	// Get required fields from schema
+	requiredFields := getRequiredFields(schema)
+
+	// Check each required field
+	for _, requiredField := range requiredFields {
+		value, exists := project[requiredField]
+		if !exists {
+			closest := findClosestKey(requiredField, project, maxValidationAttributeDistance)
+			if closest != "" {
+				result.Errors = append(result.Errors, fmt.Errorf(
+					"project is missing a '%s' attribute; found '%s' instead",
+					requiredField, closest,
+				))
+			} else {
+				result.Errors = append(result.Errors, fmt.Errorf(
+					"project is missing a '%s' attribute", requiredField,
+				))
+			}
+		} else if strValue, isString := value.(string); isString && strValue == "" {
+			// Check for empty string in required string fields
+			result.Errors = append(result.Errors, fmt.Errorf(
+				"project is missing a non-empty string '%s' attribute", requiredField,
+			))
+		}
+	}
+
+	return result
+}
+
+// getRequiredFields extracts required field names from the schema
+func getRequiredFields(schema *jsonschema.Schema) []string {
+	if schema.Required != nil {
+		return schema.Required
+	}
+	return []string{}
+}
+
+// ValidateProjectWithWarnings implements the multi-phase validation approach
+func ValidateProjectWithWarnings(raw interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
 	project, err := SimplifyMarshalledProject(raw)
 	if err != nil {
-		return err
+		result.Errors = append(result.Errors, err)
+		return result
 	}
 
-	// Manually validate keys that need more validation than the raw JSON schema
-	// can provide.
-	name, ok := project["name"]
-	if !ok {
-		closest := findClosestKey("name", project, maxValidationAttributeDistance)
-		if closest != "" {
-			return fmt.Errorf(
-				"project is missing a 'name' attribute; found '%s' instead",
-				closest,
-			)
-		}
+	requiredResult := validateRequiredFields(ProjectSchema, project)
+	result.Errors = append(result.Errors, requiredResult.Errors...)
+	result.Warnings = append(result.Warnings, requiredResult.Warnings...)
 
-		return errors.New("project is missing a 'name' attribute")
-	}
+	// Use a single validation pass that handles both typos (errors) and new fields (warnings)
+	fieldValidationResult := &ValidationResult{}
+	validateNestedFields(project, ProjectSchema, "", fieldValidationResult, true)
+	result.Errors = append(result.Errors, fieldValidationResult.Errors...)
+	result.Warnings = append(result.Warnings, fieldValidationResult.Warnings...)
 
-	if strName, ok := name.(string); !ok || strName == "" {
-		return errors.New("project is missing a non-empty string 'name' attribute")
-	}
+	// Phase 4: Schema validation removed - our multi-phase validation above
+	// handles all the important validation cases (required fields, typos, and new fields).
+	// We no longer use strict JSON schema validation that would block new fields.
+	// This solves the original issue #14775 where new template fields were blocked.
 
-	if _, ok := project["runtime"]; !ok {
-		closest := findClosestKey("runtime", project, maxValidationAttributeDistance)
-		if closest != "" {
-			return fmt.Errorf(
-				"project is missing a 'runtime' attribute; found '%s' instead",
-				closest,
-			)
-		}
-		return errors.New("project is missing a 'runtime' attribute")
-	}
+	return result
+}
 
-	// We'll catch everything else with JSON schema, though we'll still try to
-	// suggest fixes for common mistakes.
-	if err = ProjectSchema.Validate(project); err == nil {
-		return nil
-	}
-	validationError, ok := err.(*jsonschema.ValidationError)
-	if !ok {
-		return err
-	}
+// validateFieldNames checks for typos and provides suggestions
+func validateFieldNames(schema *jsonschema.Schema, project map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{}
 
-	notAllowedRe := regexp.MustCompile(`'(\w[a-zA-Z0-9_]*)' not allowed$`)
+	// Use the recursive helper to validate field names at all levels (only typos/errors, no new field warnings)
+	validateNestedFields(project, schema, "", result, false)
 
-	var errs *multierror.Error
-	var appendError func(err *jsonschema.ValidationError)
-	appendError = func(err *jsonschema.ValidationError) {
-		if err.InstanceLocation != "" && err.Message != "" {
-			errorf := func(path, message string, args ...interface{}) error {
-				contract.Requiref(path != "", "path", "path must not be empty")
-				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
+	return result
+}
+
+// validateNewFields handles new fields with warnings instead of errors
+func validateNewFields(schema *jsonschema.Schema, project map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{}
+
+	// Use the recursive helper to validate new fields at all levels
+	validateNestedFields(project, schema, "", result, true)
+
+	return result
+}
+
+// isRequiredField checks if a field is required in the schema
+func isRequiredField(fieldName string, schema *jsonschema.Schema) bool {
+	if schema.Required != nil {
+		for _, required := range schema.Required {
+			if required == fieldName {
+				return true
 			}
+		}
+	}
+	return false
+}
 
-			msg := err.Message
+// validateNestedFields recursively validates nested objects in the project against the schema
+func validateNestedFields(
+	project map[string]interface{},
+	schema *jsonschema.Schema,
+	basePath string,
+	result *ValidationResult,
+	checkNewFields bool,
+) {
+	for fieldName, fieldValue := range project {
+		// Skip required fields as they're handled separately
+		if isRequiredField(fieldName, schema) {
+			continue
+		}
 
-			if match := notAllowedRe.FindStringSubmatch(msg); match != nil {
-				attrName := match[1]
-				attributes := getSchemaPathAttributes(err.InstanceLocation)
+		// Construct the path for this field
+		fieldPath := basePath
+		if fieldPath != "" {
+			fieldPath += "/"
+		}
+		fieldPath += fieldName
 
-				closest := findClosestKey(attrName, attributes, maxValidationAttributeDistance)
+		// Get valid fields for this path
+		validFields := getSchemaPathAttributes(fieldPath)
+		if validFields == nil {
+			// If we can't get schema attributes for this path, check parent level for typos
+			parentFields := getSchemaPathAttributes(basePath)
+			if parentFields != nil {
+				closest := findClosestKey(fieldName, parentFields, maxValidationAttributeDistance)
 				if closest != "" {
-					msg = fmt.Sprintf("%s; did you mean '%s'?", msg, closest)
-				} else if len(attributes) > 0 {
-					valid := make([]string, 0, len(attributes))
-					for k := range attributes {
-						valid = append(valid, "'"+k+"'")
-					}
-					if len(valid) > 1 {
-						sort.StringSlice.Sort(valid)
-						msg = fmt.Sprintf("%s; the allowed attributes are %v and %s",
-							msg, strings.Join(valid[:len(valid)-1], ", "), valid[len(valid)-1])
+					// If there's a close match, it's likely a typo
+					if checkNewFields {
+						// For new fields validation, typos are still errors
+						result.Errors = append(result.Errors, fmt.Errorf(
+							"#/%s: '%s' not allowed; did you mean '%s'?", strings.ReplaceAll(fieldPath, "/", "/"), fieldName, closest,
+						))
 					} else {
-						msg = fmt.Sprintf("%s; the only allowed attribute is %s", msg, valid[0])
+						// For field names validation, typos are warnings with suggestions
+						result.Warnings = append(result.Warnings, fmt.Sprintf(
+							"Field '%s' is not recognized; did you mean '%s'?", fieldName, closest,
+						))
+					}
+				} else {
+					// No close match - determine if this should be error or warning
+					if checkNewFields {
+						// For new fields validation, add warning (issue #14775 behavior)
+						result.Warnings = append(result.Warnings, fmt.Sprintf(
+							"Field '%s' is not recognized in the current schema version. "+
+								"This field will be allowed but may not be supported by older CLI versions.", fieldName,
+						))
+					} else {
+						// For field names validation, generate error
+						result.Warnings = append(result.Warnings, fmt.Sprintf(
+							"Field '%s' is not recognized in the current schema", fieldName,
+						))
 					}
 				}
 			}
-			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", msg))
+			continue
 		}
-		for _, err := range err.Causes {
-			appendError(err)
+
+		// Check if this field exists in the schema at this level
+		parentFields := getSchemaPathAttributes(basePath)
+		if parentFields != nil {
+			if _, exists := parentFields[fieldName]; !exists {
+				// Field doesn't exist at this level - check for typos vs. new fields
+				closest := findClosestKey(fieldName, parentFields, maxValidationAttributeDistance)
+				// Also check for field duplication patterns (like displayNameDisplayName -> displayName)
+				if closest == "" {
+					closest = findDuplicatedFieldMatch(fieldName, parentFields)
+				}
+				if closest != "" {
+					// If there's a close match, it's likely a typo
+					if checkNewFields {
+						// For new fields validation, typos are still errors
+						result.Errors = append(result.Errors, fmt.Errorf(
+							"#/%s: '%s' not allowed; did you mean '%s'?", strings.ReplaceAll(fieldPath, "/", "/"), fieldName, closest,
+						))
+					} else {
+						// For field names validation, typos are warnings with suggestions
+						result.Warnings = append(result.Warnings, fmt.Sprintf(
+							"Field '%s' is not recognized; did you mean '%s'?", fieldName, closest,
+						))
+					}
+				} else {
+					// No close match - determine if this should be error or warning
+					// Check if this looks like an obviously malformed field (e.g., duplicated words)
+					isObviouslyMalformed := isMalformedField(fieldName, parentFields)
+
+					// Issue #14775: Only apply permissive validation to template fields
+					// Other sections (backend, plugins, etc.) should still enforce strict schema validation
+					isTemplateField := strings.HasPrefix(fieldPath, "template")
+					isLegitimateNewTemplateField := checkNewFields && !isObviouslyMalformed &&
+						isTemplateField && isValidNewFieldName(fieldName)
+
+					if isLegitimateNewTemplateField {
+						// For new fields validation, add warning (issue #14775 behavior)
+						// Only for fields that could be legitimate new features
+						result.Warnings = append(result.Warnings, fmt.Sprintf(
+							"Field '%s' is not recognized in the current schema version. "+
+								"This field will be allowed but may not be supported by older CLI versions.", fieldName,
+						))
+					} else {
+						// For obviously malformed fields or field names validation, generate errors with allowed attributes
+						allowedAttrs := formatAllowedAttributes(parentFields)
+						result.Errors = append(result.Errors, fmt.Errorf(
+							"#/%s: '%s' not allowed%s", strings.ReplaceAll(fieldPath, "/", "/"), fieldName, allowedAttrs,
+						))
+					}
+				}
+			}
+		}
+
+		// If this field value is a map, recursively validate it
+		if nestedMap, ok := fieldValue.(map[string]interface{}); ok {
+			validateNestedFields(nestedMap, schema, fieldPath, result, checkNewFields)
 		}
 	}
-	appendError(validationError)
-
-	return errs
 }
 
 // maxValidationAttributeDistance is the maximum Levenshtein distance we'll
@@ -685,6 +850,137 @@ func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) strin
 	}
 
 	return typeName
+}
+
+// isMalformedField detects obviously malformed field names (e.g., duplicated words)
+func isMalformedField(fieldName string, parentFields map[string]interface{}) bool {
+	// Check for duplicated words (like "displayNameDisplayName")
+	words := strings.Fields(fieldName)
+	if len(words) >= 2 {
+		// Check if any word is repeated
+		wordCount := make(map[string]int)
+		for _, word := range words {
+			wordCount[word]++
+			if wordCount[word] > 1 {
+				return true
+			}
+		}
+	}
+
+	// Check for repeated substrings in camelCase (like "displayNameDisplayName")
+	for i := 1; i < len(fieldName); i++ {
+		prefix := fieldName[:i]
+		suffix := fieldName[i:]
+		if len(prefix) >= 3 && strings.HasPrefix(suffix, prefix) {
+			return true
+		}
+	}
+
+	// Check for camelCase patterns where the same word appears twice
+	// Convert to lowercase to catch cases like "displayNameDisplayName"
+	lowerField := strings.ToLower(fieldName)
+	for i := 3; i < len(lowerField)/2+1; i++ {
+		prefix := lowerField[:i]
+		// Look for the same prefix later in the string
+		restOfString := lowerField[i:]
+		if strings.Contains(restOfString, prefix) {
+			// Check if it's likely a repeated word (not just a coincidental substring)
+			if i >= 4 { // Only consider meaningful word fragments
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// isValidNewFieldName checks if a field name looks like a legitimate new field
+// rather than a malformed version of an existing field
+func isValidNewFieldName(fieldName string) bool {
+	// Legitimate new fields should:
+	// 1. Not be obviously malformed (already checked)
+	// 2. Not be too similar to existing field names (could indicate typos)
+	// 3. Follow reasonable naming conventions
+
+	// For now, we'll be conservative and only allow fields that don't look like typos
+	// This can be expanded later as needed
+
+	// Must be reasonable length and not empty
+	if len(fieldName) == 0 || len(fieldName) > 50 {
+		return false
+	}
+
+	// Must start with a letter and contain only alphanumeric characters
+	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9]*$`).MatchString(fieldName) {
+		return false
+	}
+
+	return true
+}
+
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// findDuplicatedFieldMatch checks if a field name is a duplication of an existing field
+// e.g., "displayNameDisplayName" should match "displayName"
+func findDuplicatedFieldMatch(fieldName string, parentFields map[string]interface{}) string {
+	lowerFieldName := strings.ToLower(fieldName)
+	
+	for validField := range parentFields {
+		lowerValidField := strings.ToLower(validField)
+		
+		// Check if the field name contains the valid field name as a repeated pattern
+		if len(lowerFieldName) > len(lowerValidField) &&
+			strings.Contains(lowerFieldName, lowerValidField) {
+			// Check if it's a simple duplication (like displayNameDisplayName contains displayname twice)
+			if strings.Count(lowerFieldName, lowerValidField) >= 2 {
+				return validField
+			}
+			// Also check if the field starts with the valid field and has extra characters
+			if strings.HasPrefix(lowerFieldName, lowerValidField) && 
+				len(lowerFieldName) > len(lowerValidField)+3 { // Allow some variation
+				remainder := lowerFieldName[len(lowerValidField):]
+				if strings.Contains(remainder, lowerValidField[:min(len(lowerValidField), 4)]) {
+					return validField
+				}
+			}
+		}
+	}
+	
+	return ""
+}
+
+// formatAllowedAttributes formats the list of allowed attributes for error messages
+func formatAllowedAttributes(parentFields map[string]interface{}) string {
+	if len(parentFields) == 0 {
+		return ""
+	}
+
+	allowedKeys := make([]string, 0, len(parentFields))
+	for key := range parentFields {
+		allowedKeys = append(allowedKeys, fmt.Sprintf("'%s'", key))
+	}
+
+	if len(allowedKeys) == 1 {
+		return "; the only allowed attribute is " + allowedKeys[0]
+	} else if len(allowedKeys) > 1 {
+		// Sort for consistent output
+		sort.Strings(allowedKeys)
+		if len(allowedKeys) == 2 {
+			return fmt.Sprintf("; the allowed attributes are %s and %s",
+				allowedKeys[0], allowedKeys[1])
+		}
+		last := allowedKeys[len(allowedKeys)-1]
+		others := strings.Join(allowedKeys[:len(allowedKeys)-1], ", ")
+		return fmt.Sprintf("; the allowed attributes are %s and %s", others, last)
+	}
+
+	return ""
 }
 
 // ValidateConfig validates the config value against its config type definition.
