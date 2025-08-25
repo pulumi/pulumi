@@ -192,6 +192,16 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		logging.Flush()
 		cmdutil.CloseTracing()
 
+		if logging.Verbose > 0 && !logging.LogToStderr {
+			logFile, err := logging.GetLogfilePath()
+			if err != nil {
+				logging.Warningf("could not find the log file: %s", err)
+				logging.Flush()
+			} else {
+				fmt.Printf("The log file for this run is at %s\n", logFile)
+			}
+		}
+
 		if profiling != "" {
 			if err := cmdutil.CloseProfiling(profiling); err != nil {
 				logging.Warningf("could not close profiling: %v", err)

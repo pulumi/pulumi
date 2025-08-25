@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,4 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export const version = "3.192.0";
+exports.description = "Serialize minified class statement";
+
+// This case tests the serialization of class expressions and e.g. that spaces are not required after the class keyword.
+
+exports.func = () => {
+    let z = [];
+    let y=5,h=class{_fns;constructor(i=[]){this._fns=i;}clear(){this._fns=[];}exists(r){return this._fns.indexOf(r)!==-1}eject(r){let e=this._fns.indexOf(r);e!==-1&&(this._fns=[...this._fns.slice(0,e),...this._fns.slice(e+1)]);}use(r){this._fns=[...this._fns,r];}}
+    new h(z).clear();
+}

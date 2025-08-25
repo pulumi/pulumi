@@ -19,7 +19,6 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -2129,8 +2128,7 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 
 	// Produce a dependency graph of resources, we need to graph over the new "toDelete" resources and the old
 	// resources.
-	allResources := sg.collectAllResourcesForScheduling()
-	dg := graph.NewDependencyGraph(allResources)
+	dg := sg.getDepgraphForScheduling()
 
 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
 	targets := make(map[resource.URN]bool)
@@ -2160,8 +2158,7 @@ func (sg *stepGenerator) getExcludeDependencies(excludesOpt UrnTargets) map[reso
 		}
 	}
 
-	allResources := sg.collectAllResourcesForScheduling()
-	dg := graph.NewDependencyGraph(allResources)
+	dg := sg.getDepgraphForScheduling()
 
 	excludes := make(map[resource.URN]bool)
 	for len(frontier) > 0 {
@@ -2280,14 +2277,16 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	return resourcesToKeep, nil
 }
 
-// collectAllResourcesForScheduling collects all resources that are relevant for scheduling steps. This
-// includes the new resource states to be deleted (if running in destroy mode), the new resource states that
-// have been refreshed (if running in refresh mode), and then all the old resources from the previous
-// snapshot.
-func (sg *stepGenerator) collectAllResourcesForScheduling() []*resource.State {
-	allResources := append(sg.toDelete, slices.Collect(maps.Values(sg.refreshStates))...)
-	allResources = append(allResources, sg.deployment.prev.Resources...)
-	return allResources
+// getDepgraphForScheduling returns a `*graph.DependencyGraph` based on all resources relevant for scheduling
+// step. This includes the new resource states to be deleted (if running in destroy mode), and all the old resource
+// states from the previous snapshot. It also handles filling in aliases for all refreshed resources.
+func (sg *stepGenerator) getDepgraphForScheduling() *graph.DependencyGraph {
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)
+	for old, new := range sg.refreshStates {
+		dg.Alias(new, old)
+	}
+	return dg
 }
 
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
@@ -2317,9 +2316,7 @@ func (sg *stepGenerator) collectAllResourcesForScheduling() []*resource.State {
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	var antichains []antichain // the list of parallelizable steps we intend to return.
 
-	allResources := sg.collectAllResourcesForScheduling()
-
-	dg := graph.NewDependencyGraph(allResources)  // the current deployment's dependency graph.
+	dg := sg.getDepgraphForScheduling()           // the current deployment's dependency graph.
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
 	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 

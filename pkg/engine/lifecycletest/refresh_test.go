@@ -238,6 +238,7 @@ func TestRefreshInitFailure(t *testing.T) {
 						}
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Outputs: resource.PropertyMap{},
 							},
 							Status: resource.StatusPartialFailure,
@@ -245,6 +246,7 @@ func TestRefreshInitFailure(t *testing.T) {
 					} else if req.URN == res2URN {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Outputs: res2Outputs,
 							},
 							Status: resource.StatusOK,
@@ -252,6 +254,7 @@ func TestRefreshInitFailure(t *testing.T) {
 					}
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Outputs: resource.PropertyMap{},
 						},
 						Status: resource.StatusOK,
@@ -301,18 +304,23 @@ func TestRefreshInitFailure(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap := p.Run(t, old)
 
-	for _, resource := range snap.Resources {
-		switch urn := resource.URN; urn {
+	seen := []resource.URN{}
+	for _, res := range snap.Resources {
+		seen = append(seen, res.URN)
+		switch urn := res.URN; urn {
 		case provURN:
 			// break
 		case resURN:
-			assert.Empty(t, resource.InitErrors)
+			assert.Empty(t, res.InitErrors)
+			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, resource.Outputs)
+			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+	assert.Equal(t, []resource.URN{provURN, resURN, res2URN}, seen)
 
 	//
 	// Refresh again, see the resource is in a partial state of failure, but the refresh operation
@@ -321,18 +329,24 @@ func TestRefreshInitFailure(t *testing.T) {
 	refreshShouldFail = true
 	p.Steps = []lt.TestStep{{Op: Refresh, SkipPreview: true}}
 	snap = p.Run(t, old)
-	for _, resource := range snap.Resources {
-		switch urn := resource.URN; urn {
+
+	seen = []resource.URN{}
+	for _, res := range snap.Resources {
+		seen = append(seen, res.URN)
+		switch urn := res.URN; urn {
 		case provURN:
 			// break
 		case resURN:
-			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, resource.InitErrors)
+			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, res.InitErrors)
+			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, resource.Outputs)
+			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+	assert.Equal(t, []resource.URN{provURN, resURN, res2URN}, seen)
 }
 
 // Test that tests that Refresh can detect that resources have been deleted and removes them

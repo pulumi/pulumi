@@ -111,6 +111,10 @@ func unsupportedReceiverType(receiver Type, indexRange hcl.Range) *hcl.Diagnosti
 	return errorf(indexRange, "cannot traverse value of type %v", receiver)
 }
 
+func unsupportedReceiverTypeWarning(receiver Type, indexRange hcl.Range) *hcl.Diagnostic {
+	return warnf(indexRange, "cannot traverse value of type %v", receiver)
+}
+
 func unsupportedCollectionType(collectionType Type, iteratorRange hcl.Range) *hcl.Diagnostic {
 	return errorf(iteratorRange, "cannot iterate over a value of type %v", collectionType)
 }

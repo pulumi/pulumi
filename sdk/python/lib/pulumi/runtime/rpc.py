@@ -42,7 +42,7 @@ from typing import (
 )
 
 from google.protobuf import struct_pb2
-from semver import VersionInfo as Version
+from semver import Version
 
 from .. import _types, log
 from .. import urn as urn_util
@@ -1578,7 +1578,13 @@ def get_resource_package(pkg: str, version: str) -> Optional[ResourcePackage]:
     for package in _RESOURCE_PACKAGES.get(pkg, []):
         if not check_version(ver, package.version()):
             continue
-        if best_package is None or package.version() > best_package.version():
+        best_package_version = best_package.version() if best_package else None
+        package_version = package.version()
+        if best_package is None or (
+            package_version
+            and best_package_version
+            and package_version > best_package_version
+        ):
             best_package = package
 
     return best_package
@@ -1628,7 +1634,14 @@ def get_resource_module(pkg: str, mod: str, version: str) -> Optional[ResourceMo
     for module in _RESOURCE_MODULES.get(key, []):
         if not check_version(ver, module.version()):
             continue
-        if best_module is None or module.version() > best_module.version():
+
+        module_version = module.version()
+        best_module_version = best_module.version() if best_module else None
+        if best_module is None or (
+            module_version
+            and best_module_version
+            and module_version > best_module_version
+        ):
             best_module = module
 
     return best_module

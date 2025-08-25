@@ -1,0 +1,15 @@
+exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return () => {
+    let z = [];
+    let y=5,h=class{_fns;constructor(i=[]){this._fns=i;}clear(){this._fns=[];}exists(r){return this._fns.indexOf(r)!==-1}eject(r){let e=this._fns.indexOf(r);e!==-1&&(this._fns=[...this._fns.slice(0,e),...this._fns.slice(e+1)]);}use(r){this._fns=[...this._fns,r];}}
+    new h(z).clear();
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

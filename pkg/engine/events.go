@@ -274,7 +274,7 @@ type ResourcePreEventPayload struct {
 }
 
 type ErrorEventPayload struct {
-	Error error
+	Error string
 }
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.

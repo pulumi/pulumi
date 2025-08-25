@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,4 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export const version = "3.192.0";
+exports.description = "Serialize minified class declaration";
+
+// This case tests the serialization of class declarations and e.g. that spaces are not required after the class keyword.
+
+exports.func = () => {
+    let y = 5;
+    class foo{constructor(baz) {this.bar = baz;}get() {return this.bar}set(bing){this.bar = bing}}
+    let x=new foo(1)
+    x.set(y)
+}
