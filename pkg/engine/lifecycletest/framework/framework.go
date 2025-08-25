@@ -219,12 +219,16 @@ func (op TestOp) runWithContext(
 	journal := engine.NewTestJournal()
 	persister := &backend.ValidatingPersister{
 		ErrorFunc: func(err error) {
-			errs = append(errs, fmt.Errorf("manager validation error: %w", err))
+			if err != nil {
+				errs = append(errs, fmt.Errorf("manager validation error: %w", err))
+			}
 		},
 	}
 	journalPersister := &backend.ValidatingPersister{
 		ErrorFunc: func(err error) {
-			errs = append(errs, fmt.Errorf("journal validation error: %w", err))
+			if err != nil {
+				errs = append(errs, fmt.Errorf("journal validation error: %w", err))
+			}
 		},
 	}
 	secretsManager := b64.NewBase64SecretsManager()
