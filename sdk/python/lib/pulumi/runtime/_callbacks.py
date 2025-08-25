@@ -111,7 +111,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             return callback_pb2.CallbackInvokeResponse(
                 response=response.SerializeToString()
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 catch blind exception
             log.debug(
                 f"Invoke callback {request.token} error: {traceback.format_exc()}"
             )
