@@ -247,6 +247,10 @@ func (j *TestJournal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 
+func (j *TestJournal) Write(base *deploy.Snapshot) error {
+	return nil
+}
+
 // NewTestJournal creates a new TestJournal that is used in tests to record journal entries for
 // deployment steps. These journal entries are used to reconstruct the snapshot at the end of
 // the test. This is used in lifecycletests to check that the snapshot manager and the testjournal

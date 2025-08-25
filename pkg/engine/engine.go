@@ -44,4 +44,5 @@ type Context struct {
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
 	PluginManager   PluginManager
+	RecordErrorFunc func() error
 }
