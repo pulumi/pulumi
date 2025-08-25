@@ -104,6 +104,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                 grpc.StatusCode.INVALID_ARGUMENT,
                 f"Callback with token {request.token} not found!",
             )
+            raise Exception("Unreachable, abort never returns")
 
         try:
             response = await callback(request.request)
