@@ -107,7 +107,10 @@ func untaintAllResources(
 			}
 
 			for _, res := range snap.Resources {
-				res.Taint = false
+				// Skip resources that are pending deletion
+				if !res.Delete {
+					res.Taint = false
+				}
 			}
 
 			return nil
@@ -128,10 +131,12 @@ func untaintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 	var errs []error
 	resourceCount := 0
 
-	// Map URNs to resources for efficient lookup
+	// Build a map of URNs to resources, excluding those pending deletion.
 	urnToResource := make(map[resource.URN]*resource.State)
 	for _, res := range snap.Resources {
-		urnToResource[res.URN] = res
+		if !res.Delete {
+			urnToResource[res.URN] = res
+		}
 	}
 
 	for _, urnStr := range urns {

@@ -465,3 +465,133 @@ func TestTaintWithDependencies(t *testing.T) {
 	assert.Equal(t, []resource.URN{resource1URN}, initialSnap.Resources[2].Dependencies)
 }
 
+func TestTaintResourceWithDeleteTrue(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+
+	resourceURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "myresource")
+
+	// Create a snapshot with both a resource marked for deletion and a normal resource with the same URN
+	// This simulates a replacement scenario
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+		{
+			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:    resourceURN,
+			Type:   "a:b:c",
+			ID:     "old_id",
+			Delete: true, // This resource is marked for deletion
+			Taint:  false,
+		},
+		{
+			URN:    resourceURN,
+			Type:   "a:b:c",
+			ID:     "new_id",
+			Delete: false, // This is the replacement resource
+			Taint:  false,
+		},
+	}, nil, deploy.SnapshotMetadata{})
+
+	// Try to taint the resource
+	urns := []string{string(resourceURN)}
+	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+
+	// Should only taint the non-deleted resource
+	assert.Equal(t, 1, resourceCount)
+	assert.Empty(t, errs)
+	assert.False(t, snap.Resources[1].Taint) // Resource marked for deletion should not be tainted
+	assert.True(t, snap.Resources[2].Taint)  // Replacement resource should be tainted
+}
+
+func TestTaintAllResourcesWithDeleteTrue(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+
+	// Create a snapshot with some resources marked for deletion
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+		{
+			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:    resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "resource1"),
+			Type:   "a:b:c",
+			ID:     "id1",
+			Delete: false,
+			Taint:  false,
+		},
+		{
+			URN:    resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "resource2"),
+			Type:   "a:b:c",
+			ID:     "id2",
+			Delete: true, // Marked for deletion
+			Taint:  false,
+		},
+		{
+			URN:    resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "resource3"),
+			Type:   "a:b:c",
+			ID:     "id3",
+			Delete: false,
+			Taint:  false,
+		},
+	}, nil, deploy.SnapshotMetadata{})
+
+	// Try to taint all resources
+	urns := []string{
+		string(snap.Resources[1].URN),
+		string(snap.Resources[2].URN),
+		string(snap.Resources[3].URN),
+	}
+	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+
+	// Should only taint the non-deleted resources
+	assert.Equal(t, 2, resourceCount)
+	assert.Len(t, errs, 1)                                  // Should have an error for the deleted resource
+	assert.Contains(t, errs[0].Error(), "No such resource") // The deleted resource won't be found in our map
+	assert.True(t, snap.Resources[1].Taint)                 // resource1 should be tainted
+	assert.False(t, snap.Resources[2].Taint)                // resource2 marked for deletion should not be tainted
+	assert.True(t, snap.Resources[3].Taint)                 // resource3 should be tainted
+}
+
+func TestTaintOnlyDeletedResource(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+
+	deletedURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "deleted")
+
+	// Create a snapshot with only a deleted resource
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+		{
+			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:    deletedURN,
+			Type:   "a:b:c",
+			ID:     "id",
+			Delete: true, // Resource is marked for deletion
+			Taint:  false,
+		},
+	}, nil, deploy.SnapshotMetadata{})
+
+	// Try to taint the deleted resource
+	urns := []string{string(deletedURN)}
+	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+
+	// Should not taint the deleted resource and report it as not found
+	assert.Equal(t, 0, resourceCount)
+	assert.Len(t, errs, 1)
+	assert.Contains(t, errs[0].Error(), "No such resource")
+	assert.False(t, snap.Resources[1].Taint) // Resource should remain untainted
+}
