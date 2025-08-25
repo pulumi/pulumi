@@ -200,7 +200,7 @@ func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.
 				Outputs: state,
 				Inputs:  inputs,
 			},
-			Status: resource.StatusUnknown,
+			Status: resource.StatusOK,
 		}, nil
 	}
 
