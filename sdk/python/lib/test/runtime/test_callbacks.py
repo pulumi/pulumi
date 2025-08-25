@@ -47,6 +47,9 @@ async def test_callback_servicer_transform_errors():
 
     async with monitor_servicer_stub(ResourceMonitorServicer()) as monitor_stub:
         servicer = _CallbackServicer(monitor_stub)
+        servicer._servicers.remove(
+            servicer
+        )  # Remove this servicer from the global list, we manage the shutdown ourselves
         cb_exception = servicer.register_transform(transform_exception)
         cb_cancelled = servicer.register_transform(transform_cancelled_error)
 
@@ -70,3 +73,5 @@ async def test_callback_servicer_transform_errors():
                 assert "lib/test/runtime/test_callbacks.py" in str(e)
                 assert "in transform_cancelled_error" in str(e)
                 assert 'CancelledError("noes")' in str(e)
+
+            await servicer.shutdown()
