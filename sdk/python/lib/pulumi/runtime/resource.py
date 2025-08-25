@@ -1064,7 +1064,7 @@ def register_resource(
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
             log.debug(
-                f"exception when preparing or executing rpc: {traceback.format_exc()}"
+                f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
             )
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn(None, True, False, exn)
@@ -1121,7 +1121,9 @@ def register_resource(
             resolve_outputs_called = True
 
         except Exception as exn:
-            log.debug(f"exception after executing rpc: {traceback.format_exc()}")
+            log.debug(
+                f"exception after executing rpc for {ty=} {name=}: {traceback.format_exc()}"
+            )
 
             if not resolve_outputs_called:
                 rpc.resolve_outputs_due_to_exception(resolvers, exn)
