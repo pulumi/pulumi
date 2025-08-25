@@ -579,15 +579,25 @@ func TestSourcePosition(t *testing.T) {
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			var sourcePosition *pulumirpc.SourcePosition
+			var stackTrace *pulumirpc.StackTrace
 			switch {
 			case args.RegisterRPC != nil:
-				sourcePosition = args.RegisterRPC.SourcePosition
+				sourcePosition, stackTrace = args.RegisterRPC.SourcePosition, args.RegisterRPC.StackTrace
 			case args.ReadRPC != nil:
-				sourcePosition = args.ReadRPC.SourcePosition
+				sourcePosition, stackTrace = args.ReadRPC.SourcePosition, args.ReadRPC.StackTrace
 			}
 
 			require.NotNil(t, sourcePosition)
+			assert.True(t, strings.HasPrefix(sourcePosition.Uri, "file:///"))
 			assert.True(t, strings.HasSuffix(sourcePosition.Uri, "context_test.go"))
+
+			require.NotNil(t, stackTrace)
+			require.True(t, len(stackTrace.Frames) > 1)
+			require.Equal(t, stackTrace.Frames[0].Pc, sourcePosition)
+
+			t.Log(strings.Join(slice.Map(stackTrace.Frames, func(f *pulumirpc.StackFrame) string {
+				return fmt.Sprintf("%v:%v", f.Pc.Uri, f.Pc.Line)
+			}), "\n"))
 
 			return "myID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
