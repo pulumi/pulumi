@@ -32,6 +32,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -140,6 +141,17 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter
 	return poetryCmd.Run()
+}
+
+func (p *poetry) LinkPackages(ctx context.Context, packages []string) error {
+	logging.V(9).Infof("poetry linking %s", packages)
+	args := []string{"add", "--lock"} // Add package to lockfile only
+	args = append(args, packages...)
+	cmd := exec.Command("poetry", args...)
+	if err := cmd.Run(); err != nil {
+		return errutil.ErrorWithStderr(err, "linking packages")
+	}
+	return nil
 }
 
 func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {

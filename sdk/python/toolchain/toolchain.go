@@ -94,6 +94,10 @@ type Toolchain interface {
 	About(ctx context.Context) (Info, error)
 	// VirtualEnvPath returns the path of the virtual env used by the toolchain.
 	VirtualEnvPath(ctx context.Context) (string, error)
+	// LinkPackages adds packages as dependencies to the Python program,
+	// updating the relevant project or dependency files. The virtual
+	// environment is not updated with the new dependencies.
+	LinkPackages(ctx context.Context, packages []string) error
 }
 
 func Name(tc toolchain) string {

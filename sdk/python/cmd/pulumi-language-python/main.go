@@ -31,6 +31,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -1699,7 +1700,19 @@ func removeReleaseCandidateSuffix(version string) string {
 func (host *pythonLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The Python language host does not support linking, so we return an empty response.
+	logging.V(5).Infof("Linking %v in %s", req.LocalDependencies, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+	deps := slices.Collect(maps.Values(req.LocalDependencies))
+	if err := tc.LinkPackages(ctx, deps); err != nil {
+		return nil, fmt.Errorf("linking packages: %w", err)
+	}
 	return &pulumirpc.LinkResponse{}, nil
 }
 

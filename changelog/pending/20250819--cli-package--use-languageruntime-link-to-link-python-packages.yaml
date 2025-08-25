@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/package
+  description: Use LanguageRuntime.Link to link Python packages

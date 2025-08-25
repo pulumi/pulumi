@@ -191,6 +191,37 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	return nil
 }
 
+func (u *uv) LinkPackages(ctx context.Context, packages []string) error {
+	logging.V(9).Infof("uv linking %s", packages)
+	args := []string{"add", "--no-sync"} // Don't update the venv
+
+	// Starting with version 0.8.0, uv will automatically add
+	// packages in subdirectories as workspace members. However the
+	// generated SDK might not have a `pyproject.toml`, which is
+	// required for uv workspace members. To add the generated SDK
+	// as a normal dependency, we can run `uv add --no-workspace`,
+	// but this flag is only available on version 0.8.0 and up.
+	versionCheckCmd := exec.Command("uv", "--version")
+	versionString, err := versionCheckCmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get uv version: %w", err)
+	}
+	version, err := ParseUvVersion(string(versionString))
+	if err != nil {
+		return err
+	}
+	if version.GE(semver.MustParse("0.8.0")) {
+		args = append(args, "--no-workspace")
+	}
+
+	args = append(args, packages...)
+	cmd := exec.Command("uv", args...)
+	if err := cmd.Run(); err != nil {
+		return errutil.ErrorWithStderr(err, "linking packages")
+	}
+	return nil
+}
+
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
