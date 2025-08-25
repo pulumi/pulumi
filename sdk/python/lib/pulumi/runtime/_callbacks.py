@@ -14,6 +14,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import traceback
+import uuid
 from typing import (
     TYPE_CHECKING,
     Awaitable,
@@ -21,18 +24,17 @@ from typing import (
     Dict,
     List,
     Mapping,
+    Optional,
     Union,
     cast,
-    Optional,
 )
-import uuid
 
 import grpc
+from google.protobuf.message import Message
 from grpc import aio
 
-from google.protobuf.message import Message
-
 from .. import log
+from ..invoke import InvokeOptions, InvokeTransform
 from .proto import (
     alias_pb2,
     callback_pb2,
@@ -41,7 +43,6 @@ from .proto import (
     resource_pb2_grpc,
 )
 from .rpc import deserialize_properties, serialize_properties
-from ..invoke import InvokeOptions, InvokeTransform
 
 if TYPE_CHECKING:
     from ..resource import (
@@ -89,23 +90,59 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         for servicer in cls._servicers:
             await servicer._server.wait_for_termination(timeout=0)
 
-    # aio handles this being async but the pyi typings don't expect it.
     async def Invoke(
-        self, request: callback_pb2.CallbackInvokeRequest, context
+        self,
+        request: callback_pb2.CallbackInvokeRequest,
+        context: aio.ServicerContext[
+            callback_pb2.CallbackInvokeRequest, callback_pb2.CallbackInvokeResponse
+        ],
     ) -> callback_pb2.CallbackInvokeResponse:
         log.debug(f"Invoke callback {request.token}")
         callback = self._callbacks.get(request.token)
         if callback is None:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 f"Callback with token {request.token} not found!",
             )
-            raise Exception("Callback not found!")
+            raise Exception("Unreachable, abort never returns")
 
-        response = await callback(request.request)
-        return callback_pb2.CallbackInvokeResponse(
-            response=response.SerializeToString()
-        )
+        try:
+            response = await callback(request.request)
+            return callback_pb2.CallbackInvokeResponse(
+                response=response.SerializeToString()
+            )
+        except Exception as e:  # noqa: BLE001 catch blind exception
+            log.debug(
+                f"Invoke callback {request.token} error: {traceback.format_exc()}"
+            )
+            details = self.pretty_error(e)
+            await context.abort(
+                grpc.StatusCode.UNKNOWN,
+                f"Invoke callback {request.token} error: {details}",
+            )
+        except asyncio.CancelledError as e:
+            log.debug(
+                f"Invoke callback {request.token} was cancelled: {traceback.format_exc()}"
+            )
+            details = self.pretty_error(e)
+            await context.abort(
+                grpc.StatusCode.CANCELLED,
+                f"Callback with token {request.token} was cancelled: {details}",
+            )
+
+    def pretty_error(self, e: BaseException) -> str:
+        """
+        pretty_error filters a stack trace down to user code and formats it for display
+        """
+        stack = traceback.extract_tb(e.__traceback__)
+        # Drop internal stack frames
+        filtered_stack = [f for f in stack if f.filename != __file__]
+        # If there are no stack frames left after dropping internal frames,
+        # use the original stack, this is likely an internal error.
+        filtered_stack = filtered_stack if len(filtered_stack) > 0 else stack
+        pretty_stack = "".join(traceback.format_list(filtered_stack))
+        details = f"{str(e)}:\n{pretty_stack}"
+        return details
 
     def register_transform(self, transform: ResourceTransform) -> callback_pb2.Callback:
         # If this transform function has already been registered, return it.
