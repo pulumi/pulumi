@@ -494,7 +494,6 @@ def call(
                     return monitor.Call(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
             if resp is None:

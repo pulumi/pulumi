@@ -568,7 +568,6 @@ def get_resource(
                     return monitor.Invoke(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
 
@@ -820,7 +819,6 @@ def read_resource(
                     return monitor.ReadResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
@@ -1059,7 +1057,6 @@ def register_resource(
                     return monitor.RegisterResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
@@ -1162,7 +1159,6 @@ def register_resource_outputs(
                 return monitor.RegisterResourceOutputs(req)
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
-                return None
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(
