@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
@@ -2786,6 +2785,23 @@ func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(&ctx.state.join)
 }
 
+// getSourcePositionForFrame converts a runtime.Frame to an RPC source position. Returns nil if the frame is not valid.
+func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.SourcePosition {
+	if frame.File == "" || frame.Line == 0 {
+		return nil
+	}
+
+	line := int32(-1)
+	if frame.Line <= math.MaxInt32 {
+		//nolint:gosec
+		line = int32(frame.Line)
+	}
+	return &pulumirpc.SourcePosition{
+		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
+		Line: line,
+	}
+}
+
 // Returns the source position of the Nth stack frame, where N is skip+1.
 //
 // This is used to compute the source position of the user code that instantiated a resource. The number of frames to
@@ -2797,23 +2813,5 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	}
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
-	if frame.File == "" || frame.Line == 0 {
-		return nil
-	}
-	elems := filepath.SplitList(frame.File)
-	for i := range elems {
-		elems[i] = url.PathEscape(elems[i])
-	}
-	var line int32
-	if frame.Line <= math.MaxInt32 {
-		//nolint:gosec
-		line = int32(frame.Line)
-	} else {
-		// line is out of range for int32, that's a long sourcefile!
-		line = -1
-	}
-	return &pulumirpc.SourcePosition{
-		Uri:  "project://" + path.Join(elems...),
-		Line: line,
-	}
+	return ctx.getSourcePositionForFrame(frame)
 }
