@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,17 +32,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newStateUnprotectCommand() *cobra.Command {
-	var unprotectAll bool
+func newStateTaintCommand() *cobra.Command {
 	var stack string
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "unprotect [resource URN...]",
-		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resources in a stack's state
+		Use:   "taint [resource URN...]",
+		Short: "Taint one or more resources in the stack's state",
+		Long: `Taint one or more resources in the stack's state.
 
-This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
+This has the effect of ensuring the resources are destroyed and recreated upon the next ` + "`pulumi up`" + `.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cobra.ArbitraryArgs,
@@ -51,19 +50,16 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			yes = yes || env.SkipConfirmations.Value()
+
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			if unprotectAll {
-				return unprotectAllResources(ctx, sink, ws, stack, showPrompt)
-			}
-
-			// If URN arguments were provided, use those
+			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return unprotectMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return taintMultipleResources(ctx, sink, ws, stack, args, showPrompt)
 			}
 
-			// Otherwise, use interactive selection
+			// Otherwise, use interactive selection:
 			if !cmdutil.Interactive() {
 				return missingNonInteractiveArg("resource URN")
 			}
@@ -75,56 +71,28 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				backend.DefaultLoginManager,
 				stack,
 				nil,
-				"Select a resource to unprotect:",
+				"Select a resource to taint:",
 			)
 			if err != nil {
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return unprotectResource(ctx, sink, ws, stack, urn, showPrompt)
+			return taintResource(ctx, sink, ws, stack, urn, showPrompt)
 		},
 	}
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 
 	return cmd
 }
 
-func unprotectAllResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
-) error {
-	err := runTotalStateEdit(
-		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
-		func(_ display.Options, snap *deploy.Snapshot) error {
-			// Protects against Panic when a user tries to unprotect non-existing resources
-			if snap == nil {
-				return errors.New("no resources found to unprotect")
-			}
-
-			for _, res := range snap.Resources {
-				// Skip resources that are pending deletion
-				if !res.Delete {
-					res.Protect = false
-				}
-			}
-
-			return nil
-		})
-	if err != nil {
-		return err
-	}
-	fmt.Println("All resources unprotected")
-	return nil
-}
-
-// unprotectResourcesInSnapshot handles the logic for unprotecting resources in a snapshot.
-func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+// taintResourcesInSnapshot handles the logic for tainting resources in a snapshot.
+func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
 	if snap == nil {
-		return 0, []error{errors.New("no resources found to unprotect")}
+		return 0, []error{errors.New("no resources found to taint")}
 	}
 
 	var errs []error
@@ -143,7 +111,7 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 		res, found := urnToResource[urn]
 
 		if found {
-			res.Protect = false
+			res.Taint = true
 			resourceCount++
 		} else {
 			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
@@ -153,17 +121,17 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 	return resourceCount, errs
 }
 
-// unprotectMultipleResources unprotects multiple resources specified by their URNs.
-func unprotectMultipleResources(
+// taintMultipleResources taints multiple resources specified by their URNs.
+func taintMultipleResources(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
 		func(_ display.Options, snap *deploy.Snapshot) error {
-			resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
+			resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
 			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources unprotected\n", resourceCount)
+				fmt.Printf("%d resources tainted\n", resourceCount)
 			}
 
 			if len(errs) > 0 {
@@ -178,8 +146,8 @@ func unprotectMultipleResources(
 		})
 }
 
-func unprotectResource(
+func taintResource(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	return unprotectMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return taintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
 }
