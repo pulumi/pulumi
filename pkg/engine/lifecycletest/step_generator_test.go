@@ -328,11 +328,13 @@ func TestInitErrorsStep(t *testing.T) {
 	lt.NewTestBuilder(t, &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:   "pulumi:providers:pkgA",
-				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::default",
-				Custom: true,
-				Delete: false,
-				ID:     "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Type:    "pulumi:providers:pkgA",
+				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",
+				Custom:  true,
+				Delete:  false,
+				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
 			},
 			{
 				Type:     "pkgA:m:typA",
@@ -343,6 +345,8 @@ func TestInitErrorsStep(t *testing.T) {
 				InitErrors: []string{
 					`errors should yield an empty update to "continue" awaiting initialization.`,
 				},
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
 			},
 		},
 	}).
