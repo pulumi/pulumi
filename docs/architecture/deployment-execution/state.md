@@ -97,15 +97,31 @@ in different places in the resource list.
 #### Journal entry details
 
 There's various types of Journal entries, all with slightly different semantics.
-This section describes them. All journal entries are associated with increasong
-IDs. This allows us to both correlate the start and end of an operation, as well
-as order the journal entries for replaying.
+This section describes them. All journal entries are associated with increasing
+IDs. These IDs are used for the following:
+- Correlating begin and end entries, so we can remove pending operations from
+  the list.
+- Ordering the journal entries on the backend side. We could do this by
+  timestamps, but since we have IDs, those are definitely unambiguous, and
+  easier to deal with.
+- Removing any journal entries that came up again later. The `DeleteNew` field
+  in particular contains the ID of previous journal entries that are no longer
+  relevant as they were superseeded.
 
 Note that journal entries can arrive out of order at the backend. However the
 engine guarantees a partial order, as operations for dependents of a resource
 will never start being processed before the dependency has finished its
 operation. It's always safe to replay all the journal entries that have arrived
 at the backend, in increasing order of their IDs, even if some IDs are missing.
+
+Spelled out as a number of rules, this looks like:
+- The client must not start an operation until its "begin" entry has been
+  persisted on the backend.
+- The client must not consider an operation complete until its "end" entry has
+  been persisted on the backend.
+- The client must not send journal entries for operations that depend on
+  previous operations, until those previous operations are complete.
+- The client may send journal entries for independent operations concurrently.
 
 ##### JournalEntryBegin
 
@@ -133,7 +149,8 @@ entry. This Journal Entry contains the following information:
 - IsRefresh: True if the journal entry is part of a refresh operation. If there
   are any refresh operations, we need to rebuild the base state. Refreshes can
   delete resources, without updating their dependants. So we need to rebuild the
-  base state, removing no longer existing resources from dependency lists.
+  base state, removing no longer existing resources from dependency lists. This
+  rebuild happens at the end of building the snapshot.
 
 ##### JournalEntryFailure
 
@@ -263,7 +280,7 @@ the server), in order of their operation IDs.
 ### REST API
 
 The service will get a now api `createjournalentry`, that will get the serialized
-journal entry and store it in MySQL for later replaying. The service is expected
+journal entry and persist it for later replay. The service is expected
 to reconstruct the snapshot itself after the operation finished, and the API for
 getting the snapshot stays the same as it is currently.
 
