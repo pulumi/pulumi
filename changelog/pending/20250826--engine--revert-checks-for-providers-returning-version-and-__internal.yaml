@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Revert checks for providers returning version and __internal
