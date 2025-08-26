@@ -18,7 +18,7 @@ Support for automatic stack components.
 
 import asyncio
 from inspect import isawaitable
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 from collections.abc import Awaitable
 from google.protobuf import empty_pb2
 import grpc

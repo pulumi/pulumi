@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from asyncio import ensure_future
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any
 
 from .output import Output, Input
 from .resource import CustomResource, ResourceOptions

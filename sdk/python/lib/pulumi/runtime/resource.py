@@ -19,12 +19,9 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     List,
     NamedTuple,
     Optional,
-    Set,
-    Tuple,
     Union,
 )
 from collections.abc import Awaitable, Mapping, Sequence
@@ -184,7 +181,7 @@ async def prepare_resource(
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-    property_dependencies_resources: dict[str, list["Resource"]] = {}
+    property_dependencies_resources: dict[str, list[Resource]] = {}
 
     # If we have type information, we'll use it for translations rather than the resource's translate_input_property.
     translate: Optional[Callable[[str], str]] = res.translate_input_property
@@ -383,7 +380,7 @@ def all_aliases(
     If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
     or, as calculated in the logic below, N+(M*(1+N)).
     """
-    aliases: "List[Input[str]]" = []
+    aliases: List[Input[str]] = []
 
     for child_alias in child_aliases or []:
         aliases.append(
@@ -441,10 +438,10 @@ def collapse_alias_to_urn(
         name: str = inner.name if inner.name is not ... else defaultName  # type: ignore
         type_: str = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
         parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: "Input[str]" = settings.get_project()
+        project: Input[str] = settings.get_project()
         if inner.project is not ... and inner.project is not None:
             project = inner.project
-        stack: "Input[str]" = settings.get_stack()
+        stack: Input[str] = settings.get_stack()
         if inner.stack is not ... and inner.stack is not None:
             stack = inner.stack
 
@@ -459,7 +456,7 @@ def collapse_alias_to_urn(
             lambda args: create_urn(name, type_, parent, args[0], args[1])
         )
 
-    inputAlias: "Output[Union[Alias, str]]" = Output.from_input(alias)
+    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
@@ -1254,7 +1251,7 @@ async def _prepare_resource_hooks(
         "before_delete",
         "after_delete",
     ]:
-        hooks_for_type: list[Union["ResourceHook", "ResourceHookFunction"]] = getattr(
+        hooks_for_type: list[Union[ResourceHook, ResourceHookFunction]] = getattr(
             hooks, hook_type, []
         )
         for i, _hook in enumerate(hooks_for_type or []):

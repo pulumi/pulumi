@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING
 from collections.abc import Iterable
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ def _add_dep(from_resource: "Resource", to_resource: "Resource") -> None:
 
 
 def _reachable(from_resource: "Resource", to_resource: "Resource") -> bool:
-    visited: set["Resource"] = set()
+    visited: set[Resource] = set()
 
     for x in _with_transitive_deps(from_resource, visited):
         if x == to_resource:

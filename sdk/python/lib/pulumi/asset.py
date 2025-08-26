@@ -17,7 +17,7 @@ Assets are the Pulumi notion of data blobs that can be passed to resources.
 """
 
 from os import PathLike, fspath
-from typing import Dict, Union
+from typing import Union
 
 
 class Asset:

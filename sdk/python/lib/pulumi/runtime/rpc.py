@@ -27,11 +27,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    List,
     Optional,
     Set,
-    Tuple,
     Union,
     cast,
     get_args,
@@ -221,7 +218,7 @@ async def serialize_properties(
     # We're deliberately not using `inputs.items()` here in case inputs is a subclass of `dict` that redefines items.
     for k in inputs:
         v = inputs[k]
-        deps: list["Resource"] = []
+        deps: list[Resource] = []
         try:
             result = await serialize_property(
                 v,
@@ -345,7 +342,7 @@ async def _expand_dependencies(
     _expand_dependencies expands the given iterable of Resources into a map of URN -> Resource
     """
 
-    expanded_deps: dict[str, "Resource"] = {}
+    expanded_deps: dict[str, Resource] = {}
     for d in deps:
         await _add_dependency(expanded_deps, d, from_resource)
 
@@ -584,7 +581,7 @@ async def serialize_property(
 
     if known_types.is_output(value):
         output = cast("Output", value)
-        value_resources: set["Resource"] = await output.resources()
+        value_resources: set[Resource] = await output.resources()
         if deps is not None:
             deps.extend(value_resources)
 
@@ -594,7 +591,7 @@ async def serialize_property(
         # resolved with known values.
         is_known = await output._is_known
         is_secret = await output._is_secret
-        promise_deps: list["Resource"] = []
+        promise_deps: list[Resource] = []
         value = await serialize_property(
             output.future(),
             promise_deps,
@@ -609,7 +606,7 @@ async def serialize_property(
         value_resources.update(promise_deps)
 
         if keep_output_values and await settings.monitor_supports_output_values():
-            urn_deps: list["Resource"] = []
+            urn_deps: list[Resource] = []
             for resource in value_resources:
                 await serialize_property(
                     resource.urn,
@@ -952,22 +949,22 @@ def deserialize_resource(
 
 def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
     is_known = "value" in ref_struct
-    is_known_future: "asyncio.Future" = asyncio.Future()
+    is_known_future: asyncio.Future = asyncio.Future()
     is_known_future.set_result(is_known)
 
     value = None
     if is_known:
         value = deserialize_property(ref_struct["value"])
-    value_future: "asyncio.Future" = asyncio.Future()
+    value_future: asyncio.Future = asyncio.Future()
     value_future.set_result(value)
 
     is_secret = False
     if "secret" in ref_struct:
         is_secret = deserialize_property(ref_struct["secret"]) is True
-    is_secret_future: "asyncio.Future" = asyncio.Future()
+    is_secret_future: asyncio.Future = asyncio.Future()
     is_secret_future.set_result(is_secret)
 
-    resources: set["Resource"] = set()
+    resources: set[Resource] = set()
     if "dependencies" in ref_struct:
         from ..resource import (
             DependencyResource,
@@ -1103,10 +1100,10 @@ def transfer_properties(
             # these properties are handled specially elsewhere.
             continue
 
-        resolve_value: "asyncio.Future" = asyncio.Future()
-        resolve_is_known: "asyncio.Future" = asyncio.Future()
-        resolve_is_secret: "asyncio.Future" = asyncio.Future()
-        resolve_deps: "asyncio.Future" = asyncio.Future()
+        resolve_value: asyncio.Future = asyncio.Future()
+        resolve_is_known: asyncio.Future = asyncio.Future()
+        resolve_is_secret: asyncio.Future = asyncio.Future()
+        resolve_deps: asyncio.Future = asyncio.Future()
 
         def do_resolve(
             r: "Resource",

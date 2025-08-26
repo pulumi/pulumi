@@ -101,6 +101,7 @@ select = [
     "ASYNC", # flake8-async
     "BLE",   # flake8-blind-except
     "S102",  # use of exec builtin
+    "UP",    # pyupgrade
 ]
 ignore = [
     "PLR",     # pylint refactor rules
@@ -108,6 +109,8 @@ ignore = [
     "E731",    # lambda-assignment
     "E741",    # ambiguous-variable-name
     "PLC0415", # `import` should be at the top-level of a file
+    "UP045",   # non-pep604-annotation-optional
+    "UP007",   # non-pep604-annotation-union
 ]
 
 [tool.ruff.lint.per-file-ignores]

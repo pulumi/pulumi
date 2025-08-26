@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional
+from typing import Optional
 
 from pulumi.automation._cmd import OnOutput
 from pulumi.automation._output import OutputMap

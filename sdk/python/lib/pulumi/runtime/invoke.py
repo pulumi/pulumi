@@ -17,11 +17,8 @@ import traceback
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    List,
     Optional,
     Set,
-    Tuple,
     Union,
 )
 from collections.abc import Awaitable
@@ -155,10 +152,10 @@ def invoke_output(
     """
 
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
+    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
+    resolve_deps: asyncio.Future[Set[Resource]] = asyncio.Future()
 
     from .. import Output
 
@@ -261,7 +258,7 @@ def _invoke(
 
         monitor = get_monitor()
         # keep track of the dependencies of the inputs
-        property_dependencies: dict[str, list["Resource"]] = {}
+        property_dependencies: dict[str, list[Resource]] = {}
         inputs = await rpc.serialize_properties(props, property_dependencies)
         if rpc.struct_contains_unknowns(inputs):
             return (InvokeResult(None, is_secret=False, is_known=False), None)
@@ -274,7 +271,7 @@ def _invoke(
         )
 
         # The direct dependencies of the invoke.
-        depends_on_dependencies: set["Resource"] = set()
+        depends_on_dependencies: set[Resource] = set()
         # Only check the resource dependencies for output form invokes. For
         # plain invokes, we do not want to check the dependencies. Technically,
         # these should only receive plain arguments, but this is not strictly
@@ -287,7 +284,7 @@ def _invoke(
             # If we depend on any CustomResources, we need to ensure that their
             # ID is known before proceeding. If it is not known, we will return
             # an unknown result.
-            resources_to_wait_for: set["Resource"] = set(depends_on_dependencies)
+            resources_to_wait_for: set[Resource] = set(depends_on_dependencies)
             # Add the dependencies from the inputs to the set of resources to wait for.
             for deps in property_dependencies.values():
                 resources_to_wait_for = resources_to_wait_for.union(deps)
@@ -363,7 +360,7 @@ def _invoke(
             )
 
         invoke_output_secret = is_secret or inputs_contain_secrets
-        dependencies: set["Resource"] = depends_on_dependencies
+        dependencies: set[Resource] = depends_on_dependencies
         for _, property_deps in property_dependencies.items():
             for dep in property_deps:
                 dependencies.add(dep)
@@ -416,10 +413,10 @@ def call(
         raise TypeError("Expected typ to be decorated with @output_type")
 
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
+    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
+    resolve_deps: asyncio.Future[Set[Resource]] = asyncio.Future()
 
     from .. import Output
 
@@ -442,7 +439,7 @@ def call(
 
             # Serialize out all props to their final values. In doing so, we'll also collect all the Resources pointed to
             # by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-            property_dependencies_resources: dict[str, list["Resource"]] = {}
+            property_dependencies_resources: dict[str, list[Resource]] = {}
 
             inputs = await rpc.serialize_properties(
                 props,
@@ -509,7 +506,7 @@ def call(
             value = None
             is_known = True
             is_secret = False
-            deps: set["Resource"] = set()
+            deps: set[Resource] = set()
             ret_obj = getattr(resp, "return")
             if ret_obj:
                 deserialized = rpc.deserialize_properties(ret_obj)

@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 import threading
 import urllib.request
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 from collections.abc import Mapping
 
 from semver import VersionInfo

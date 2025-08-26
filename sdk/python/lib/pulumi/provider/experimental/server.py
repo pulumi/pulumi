@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Dict, List, Set, Optional, TypeVar, Any, cast
+from typing import Optional, TypeVar, Any, cast
 import argparse
 import asyncio
 import sys
@@ -677,7 +677,7 @@ T = TypeVar("T")
 
 
 def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: "asyncio.Future[T]" = asyncio.Future()
+    fut: asyncio.Future[T] = asyncio.Future()
     fut.set_result(value)
     return fut
 

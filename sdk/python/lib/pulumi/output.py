@@ -26,8 +26,6 @@ from typing import (
     List,
     Optional,
     Set,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -245,13 +243,13 @@ class Output(Generic[T_co]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
-        result_resources: asyncio.Future[set["Resource"]] = asyncio.Future()
+        result_resources: asyncio.Future[set[Resource]] = asyncio.Future()
         result_is_known: asyncio.Future[bool] = asyncio.Future()
         result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
-            resources: set["Resource"] = set()
+            resources: set[Resource] = set()
             try:
                 # Await this output's details.
                 resources = await self._resources
@@ -699,12 +697,12 @@ class Output(Generic[T_co]):
             cls = json.JSONEncoder
 
         output = Output.from_input(obj)
-        result_resources: asyncio.Future[set["Resource"]] = asyncio.Future()
+        result_resources: asyncio.Future[set[Resource]] = asyncio.Future()
         result_is_known: asyncio.Future[bool] = asyncio.Future()
         result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         async def run() -> str:
-            resources: set["Resource"] = set()
+            resources: set[Resource] = set()
             try:
                 seen_unknown = False
                 seen_secret = False
@@ -1003,10 +1001,10 @@ def deferred_output() -> tuple[Output[T], Callable[[Output[T]], None]]:
     Creates an Output[T] whose value can be later resolved from another Output[T] instance.
     """
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
+    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
+    resolve_deps: asyncio.Future[Set[Resource]] = asyncio.Future()
     already_resolved = False
 
     def resolve(o: Output[T]) -> None:

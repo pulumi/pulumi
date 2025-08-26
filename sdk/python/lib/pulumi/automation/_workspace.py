@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Optional
 from collections.abc import Mapping, Awaitable
 from dataclasses import dataclass
 

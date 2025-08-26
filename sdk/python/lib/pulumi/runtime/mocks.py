@@ -19,7 +19,7 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 from google.protobuf import empty_pb2
 

@@ -14,7 +14,7 @@
 import asyncio
 import sys
 import traceback
-from typing import Any, Callable, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 from collections.abc import Awaitable
 
 from .. import log

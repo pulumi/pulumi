@@ -18,7 +18,7 @@ import json
 import os
 import tempfile
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 from collections.abc import Mapping
 
 import yaml

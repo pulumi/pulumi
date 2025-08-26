@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Union
+from typing import Optional, Union
 from collections.abc import Mapping
 
 from pulumi.automation._local_workspace import ExecutorImage, LocalWorkspace, Secret
