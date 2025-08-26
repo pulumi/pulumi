@@ -1659,6 +1659,7 @@ func (b *cloudBackend) runEngineAction(
 	// return error conditions, because we will do so below after waiting for the display channels to close.
 	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
 	engineCtx := &engine.Context{
+		BaseCtx:         ctx,
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
