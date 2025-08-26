@@ -1624,10 +1624,10 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 				return rst, nil, err
 			}
 		}
-		if read.Outputs == nil {
+		if len(read.Outputs) == 0 {
 			return rst, nil, fmt.Errorf("resource '%v' does not exist", s.new.ID)
 		}
-		if read.Inputs == nil {
+		if len(read.Inputs) == 0 {
 			return resource.StatusOK, nil,
 				fmt.Errorf("provider does not support importing resources; please try updating the '%v' plugin",
 					s.new.URN.Type().Package())

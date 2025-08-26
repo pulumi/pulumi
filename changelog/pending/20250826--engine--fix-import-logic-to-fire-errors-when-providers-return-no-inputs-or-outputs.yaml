@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix import logic to fire errors when providers return no inputs or outputs

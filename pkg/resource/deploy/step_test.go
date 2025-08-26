@@ -1090,7 +1090,9 @@ func TestImportStep(t *testing.T) {
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 							return plugin.ReadResponse{
 								ReadResult: plugin.ReadResult{
-									Outputs: resource.PropertyMap{},
+									Outputs: resource.PropertyMap{
+										"property": resource.NewStringProperty("value"),
+									},
 								},
 								Status: resource.StatusOK,
 							}, nil
