@@ -48,6 +48,7 @@ class LargeResourceTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual(ty, "test:index:MyLargeStringResource")
         self.assertEqual(name, "testResource1")

@@ -42,6 +42,7 @@ class TestTypes(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name in ["testres", "testres2", "testres3", "testres4"]:
             self.assertIn("additional", _resource)

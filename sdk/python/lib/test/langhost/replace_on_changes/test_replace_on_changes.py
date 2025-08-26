@@ -46,6 +46,7 @@ class TestReplaceOnChanges(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         print(f"register_resource args: {locals()}")
         self.assertEqual("testResource", name)
