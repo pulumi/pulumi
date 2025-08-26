@@ -41,7 +41,7 @@ import (
 const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
+func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, debugging plugin.DebugContext, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
@@ -54,7 +54,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(context.TODO(), diag, statusDiag, host, pwd, projinfo.Root,
+	pctx, err := plugin.NewContextWithRoot(ctx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
 		projinfo.Proj.GetPackageSpecs(), config, debugging)
 	if err != nil {
@@ -64,12 +64,12 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
 			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
+			Mutex:   pctx.DebugTraceMutex,
 		})
 		if err != nil {
 			return "", "", nil, err
 		}
-		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
+		pctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
 			return di.DialOptions(interceptors.LogOptions{
 				Metadata: metadata,
 			})
@@ -86,14 +86,14 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		if !ok {
 			return "", "", nil, errors.New("address of language runtime service must be a string")
 		}
-		host, err := connectToLanguageRuntime(ctx, address)
+		host, err := connectToLanguageRuntime(pctx, address)
 		if err != nil {
 			return "", "", nil, err
 		}
-		ctx.Host = host
+		pctx.Host = host
 	}
 
-	return pwd, main, ctx, nil
+	return pwd, main, pctx, nil
 }
 
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
@@ -190,7 +190,7 @@ func newDeployment(
 
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
+	pwd, main, plugctx, err := ProjectInfoContext(ctx.BaseCtx, projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err

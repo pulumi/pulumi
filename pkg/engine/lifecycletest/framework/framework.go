@@ -317,6 +317,7 @@ func (op TestOp) runWithContext(
 	}
 
 	ctx := &engine.Context{
+		BaseCtx:         callerCtx,
 		Cancel:          cancelCtx,
 		Events:          events,
 		SnapshotManager: combined,
