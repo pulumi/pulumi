@@ -18,12 +18,9 @@ import asyncio
 import copy
 import warnings
 from typing import (
-    Awaitable,
     Optional,
     List,
     Any,
-    Mapping,
-    Sequence,
     Union,
     Set,
     Callable,
@@ -31,6 +28,7 @@ from typing import (
     TYPE_CHECKING,
     cast,
 )
+from collections.abc import Awaitable, Mapping, Sequence
 from . import _types
 from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
@@ -377,7 +375,7 @@ class ResourceOptions:
     Note: Only a list should be used. Mapping keys are not respected.
     """
 
-    ignore_changes: Optional[List[str]]
+    ignore_changes: Optional[list[str]]
     """
     If provided, ignore changes to any of the specified properties.
     """
@@ -401,7 +399,7 @@ class ResourceOptions:
     An optional list of aliases to treat this resource as matching.
     """
 
-    additional_secret_outputs: Optional[List[str]]
+    additional_secret_outputs: Optional[list[str]]
     """
     The names of outputs for this resource that should be treated as secrets. This augments the list
     that the resource provider and pulumi engine already determine based on inputs to your resource.
@@ -413,14 +411,14 @@ class ResourceOptions:
     An optional customTimeouts config block.
     """
 
-    transformations: Optional[List[ResourceTransformation]]
+    transformations: Optional[list[ResourceTransformation]]
     """
     Optional list of transformations to apply to this resource during construction. The
     transformations are applied in order, and are applied prior to transformation applied to
     parents walking from the resource up to the stack.
     """
 
-    transforms: Optional[List[ResourceTransform]]
+    transforms: Optional[list[ResourceTransform]]
     """
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
@@ -453,7 +451,7 @@ class ResourceOptions:
     The URN of a previously-registered resource of this type to read from the engine.
     """
 
-    replace_on_changes: Optional[List[str]]
+    replace_on_changes: Optional[list[str]]
     """
     Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes
     to any properties will force a replacement.  Initialization errors from previous deployments will
@@ -480,21 +478,21 @@ class ResourceOptions:
         protect: Optional[bool] = None,
         provider: Optional["ProviderResource"] = None,
         providers: Optional[
-            Union[Mapping[str, "ProviderResource"], List["ProviderResource"]]
+            Union[Mapping[str, "ProviderResource"], list["ProviderResource"]]
         ] = None,
         delete_before_replace: Optional[bool] = None,
-        ignore_changes: Optional[List[str]] = None,
+        ignore_changes: Optional[list[str]] = None,
         version: Optional[str] = None,
         aliases: Optional[Sequence["Input[Union[str, Alias]]"]] = None,
-        additional_secret_outputs: Optional[List[str]] = None,
+        additional_secret_outputs: Optional[list[str]] = None,
         id: Optional["Input[str]"] = None,
         import_: Optional[str] = None,
         custom_timeouts: Optional["CustomTimeouts"] = None,
-        transformations: Optional[List[ResourceTransformation]] = None,
-        transforms: Optional[List[ResourceTransform]] = None,
+        transformations: Optional[list[ResourceTransformation]] = None,
+        transforms: Optional[list[ResourceTransform]] = None,
         hooks: Optional[ResourceHookBinding] = None,
         urn: Optional[str] = None,
-        replace_on_changes: Optional[List[str]] = None,
+        replace_on_changes: Optional[list[str]] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
@@ -820,7 +818,7 @@ class Resource:
     The specified download URL associated with the provider or None.
     """
 
-    _childResources: Set["Resource"]
+    _childResources: set["Resource"]
 
     # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that ResourceOptions.merge
     # works properly for it.
@@ -988,7 +986,7 @@ class Resource:
 
     def _get_providers(
         self, t: str, pkg: Optional[str], opts: ResourceOptions
-    ) -> Tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
+    ) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
         """
         Fetches the correct provider and providers for this resource.
 
@@ -1323,7 +1321,7 @@ def create_urn(
     return create_urn_internal(name, type_, parent, project, stack)
 
 
-def _parse_resource_reference(ref: str) -> Tuple[str, str]:
+def _parse_resource_reference(ref: str) -> tuple[str, str]:
     """
     Parses the URN and ID out of the provider reference.
     """

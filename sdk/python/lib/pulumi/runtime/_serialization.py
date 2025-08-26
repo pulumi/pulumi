@@ -40,7 +40,7 @@ _var_serialization_contained_secrets = ContextVar(
 
 def _serialize(
     allow_secrets: bool, f: Callable[..., _T], *args, **kwargs
-) -> Tuple[_T, bool]:
+) -> tuple[_T, bool]:
     """
     Run the given function with serialization enabled.
     """

@@ -84,11 +84,11 @@ class ProviderServicer(ResourceProviderServicer):
 
     engine_address: str
     provider: Provider
-    args: List[str]
+    args: list[str]
     lock: asyncio.Lock
 
     def create_grpc_invalid_properties_status(
-        self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
+        self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
     ):
         status = grpc.Status()
         # We don't care about the exact status code here, since they are pretty web centric, and don't
@@ -199,14 +199,14 @@ class ProviderServicer(ResourceProviderServicer):
     @staticmethod
     async def _construct_inputs(
         inputs: struct_pb2.Struct, input_dependencies: Any
-    ) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    ) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in input_dependencies.get(
                     key, proto.ConstructRequest.PropertyDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -216,7 +216,7 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     @staticmethod
-    async def _select_value(the_input: Any, deps: Set[str]) -> Any:
+    async def _select_value(the_input: Any, deps: set[str]) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
 
         # If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
@@ -234,7 +234,7 @@ class ProviderServicer(ResourceProviderServicer):
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
         return pulumi.Output(
-            resources=set(DependencyResource(urn) for urn in deps),
+            resources={DependencyResource(urn) for urn in deps},
             future=_as_future(rpc.unwrap_rpc_secret(the_input)),
             is_known=_as_future(True),
             is_secret=_as_future(is_secret),
@@ -284,13 +284,13 @@ class ProviderServicer(ResourceProviderServicer):
         assert urn is not None
 
         # Note: property_deps is populated by rpc.serialize_properties.
-        property_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        property_deps: dict[str, list[pulumi.resource.Resource]] = {}
         state = await rpc.serialize_properties(
             inputs={k: v for k, v in result.state.items() if k not in ["id", "urn"]},
             property_deps=property_deps,
         )
 
-        deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
+        deps: dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, resources in property_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             # filter out any unknowns
@@ -358,14 +358,14 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _call_args(request: proto.CallRequest) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    async def _call_args(request: proto.CallRequest) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in request.argDependencies.get(
                     key, proto.CallRequest.ArgumentDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -379,12 +379,12 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _call_response(self, result: CallResult) -> proto.CallResponse:
         # Note: ret_deps is populated by rpc.serialize_properties.
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret_deps: dict[str, list[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
             inputs=result.outputs, property_deps=ret_deps
         )
 
-        deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
+        deps: dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, resources in ret_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             # filter out any unknowns
@@ -404,12 +404,12 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
         # Note: ret_deps is populated by rpc.serialize_properties but unused
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret_deps: dict[str, list[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
             inputs=result.outputs, property_deps=ret_deps
         )
         # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
-        resp: Dict[str, Any] = {
+        resp: dict[str, Any] = {
             "return": ret,
         }
         if result.failures:
@@ -448,7 +448,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.GetSchemaResponse(schema=schema)
 
     def __init__(
-        self, provider: Provider, args: List[str], engine_address: str
+        self, provider: Provider, args: list[str], engine_address: str
     ) -> None:
         super().__init__()
         self.provider = provider
@@ -457,7 +457,7 @@ class ProviderServicer(ResourceProviderServicer):
         self.lock = asyncio.Lock()
 
 
-def main(provider: Provider, args: List[str]) -> None:  # args not in use?
+def main(provider: Provider, args: list[str]) -> None:  # args not in use?
     """For use as the `main` in programs that wrap a custom Provider
     implementation into a Pulumi-compatible gRPC server.
 
@@ -512,7 +512,7 @@ def _zero_as_none(value: int) -> Optional[int]:
     return None if value == 0 else value
 
 
-async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
+async def _is_resource_reference(the_input: Any, deps: set[str]) -> bool:
     """
     Returns True if `the_input` is a Resource and only depends on itself.
     """

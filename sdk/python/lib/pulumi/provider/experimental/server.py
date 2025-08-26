@@ -84,14 +84,14 @@ class ProviderServicer(ResourceProviderServicer):
     """
 
     _version: str
-    _args: List[str]
+    _args: list[str]
     _provider: provider.Provider
     _engine_address: str
     _lock: asyncio.Lock
 
     def __init__(
         self,
-        args: List[str],
+        args: list[str],
         version: str,
         provider: provider.Provider,
         engine_address: str,
@@ -107,7 +107,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.PluginInfo(version=self._version)
 
     def create_grpc_invalid_properties_status(
-        self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
+        self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
     ) -> grpc.Status:
         status = grpc.Status()
         # We don't care about the exact status code here, since they are pretty web centric, and don't
@@ -221,7 +221,7 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _select_value(the_input: Any, deps: Set[str]) -> Any:
+    async def _select_value(the_input: Any, deps: set[str]) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
 
         # If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
@@ -239,7 +239,7 @@ class ProviderServicer(ResourceProviderServicer):
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
         return pulumi.Output(
-            resources=set(DependencyResource(urn) for urn in deps),
+            resources={DependencyResource(urn) for urn in deps},
             future=_as_future(rpc.unwrap_rpc_secret(the_input)),
             is_known=_as_future(True),
             is_secret=_as_future(is_secret),
@@ -264,7 +264,7 @@ class ProviderServicer(ResourceProviderServicer):
     def _construct_response(
         self, result: provider.ConstructResponse
     ) -> proto.ConstructResponse:
-        property_deps: Dict[str, Set[str]] = {}
+        property_deps: dict[str, set[str]] = {}
         # Get the property dependencies from the result
         for k, v in result.state.items():
             if k in ["id", "urn"]:
@@ -275,7 +275,7 @@ class ProviderServicer(ResourceProviderServicer):
             {k: v for k, v in result.state.items() if k not in ["id", "urn"]}
         )
 
-        deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
+        deps: dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, urns in property_deps.items():
             deps[k] = proto.ConstructResponse.PropertyDependencies(urns=urns)
 
@@ -349,14 +349,14 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _call_args(request: proto.CallRequest) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    async def _call_args(request: proto.CallRequest) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in request.argDependencies.get(
                     key, proto.CallRequest.ArgumentDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -369,14 +369,14 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     async def _call_response(self, result: provider.CallResponse) -> proto.CallResponse:
-        property_deps: Dict[str, Set[str]] = {}
+        property_deps: dict[str, set[str]] = {}
         # Get the property dependencies from the result
         for k, v in result.return_value.items():
             property_deps[k] = v.all_dependencies()
 
         return_value = PropertyValue.marshal_map(result.return_value)
 
-        deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
+        deps: dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, urns in property_deps.items():
             deps[k] = proto.CallResponse.ReturnDependencies(urns=urns)
 
@@ -426,7 +426,7 @@ class ProviderServicer(ResourceProviderServicer):
             )
         )
         # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
-        ret: Dict[str, Any] = {
+        ret: dict[str, Any] = {
             "return": PropertyValue.marshal_map(resp.return_value)
             if resp.return_value
             else None,
@@ -633,7 +633,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
 
-def main(args: List[str], version: str, provider: provider.Provider) -> None:
+def main(args: list[str], version: str, provider: provider.Provider) -> None:
     """For use as the `main` in programs that wrap a custom Provider
     implementation into a Pulumi-compatible gRPC server.
 
@@ -690,7 +690,7 @@ def _zero_as_none(value: int) -> Optional[int]:
     return None if value == 0 else value
 
 
-async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
+async def _is_resource_reference(the_input: Any, deps: set[str]) -> bool:
     """
     Returns True if `the_input` is a Resource and only depends on itself.
     """

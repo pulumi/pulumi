@@ -46,7 +46,7 @@ class Parameters:
 class ParametersArgs(Parameters):
     """A parameter value represented as an array of strings."""
 
-    def __init__(self, args: List[str]) -> None:
+    def __init__(self, args: list[str]) -> None:
         self.args = args
 
 
@@ -82,8 +82,8 @@ class CheckRequest:
     def __init__(
         self,
         urn: str,
-        old_inputs: Dict[str, PropertyValue],
-        new_inputs: Dict[str, PropertyValue],
+        old_inputs: dict[str, PropertyValue],
+        new_inputs: dict[str, PropertyValue],
         random_seed: bytes,
     ) -> None:
         """
@@ -125,8 +125,8 @@ class CheckResponse:
 
     def __init__(
         self,
-        inputs: Optional[Dict[str, PropertyValue]] = None,
-        failures: Optional[List[CheckFailure]] = None,
+        inputs: Optional[dict[str, PropertyValue]] = None,
+        failures: Optional[list[CheckFailure]] = None,
     ) -> None:
         self.inputs = inputs
         self.failures = failures
@@ -141,9 +141,9 @@ class DiffRequest:
         self,
         urn: str,
         resource_id: str,
-        old_state: Dict[str, PropertyValue],
-        new_inputs: Dict[str, PropertyValue],
-        ignore_changes: List[str],
+        old_state: dict[str, PropertyValue],
+        new_inputs: dict[str, PropertyValue],
+        ignore_changes: list[str],
     ) -> None:
         """
         :param urn: The unique resource name (URN) of the resource.
@@ -208,11 +208,11 @@ class DiffResponse:
     def __init__(
         self,
         changes: Optional[bool] = None,
-        replaces: Optional[List[str]] = None,
-        stables: Optional[List[str]] = None,
+        replaces: Optional[list[str]] = None,
+        stables: Optional[list[str]] = None,
         delete_before_replace: bool = False,
-        diffs: Optional[List[str]] = None,
-        detailed_diff: Optional[Dict[str, PropertyDiff]] = None,
+        diffs: Optional[list[str]] = None,
+        detailed_diff: Optional[dict[str, PropertyDiff]] = None,
     ) -> None:
         """
         :param changes: Whether there are changes.
@@ -235,7 +235,7 @@ class InvokeRequest:
     Represents a request to invoke a provider function.
     """
 
-    def __init__(self, tok: str, args: Dict[str, PropertyValue]) -> None:
+    def __init__(self, tok: str, args: dict[str, PropertyValue]) -> None:
         """
         :param tok: The token identifying the function to invoke.
         :param args: The arguments for the function.
@@ -251,8 +251,8 @@ class InvokeResponse:
 
     def __init__(
         self,
-        return_value: Optional[Dict[str, PropertyValue]] = None,
-        failures: Optional[List[CheckFailure]] = None,
+        return_value: Optional[dict[str, PropertyValue]] = None,
+        failures: Optional[list[CheckFailure]] = None,
     ) -> None:
         """
         :param return_value: The return value of the function, if any.
@@ -302,8 +302,8 @@ class ConfigureRequest:
 
     def __init__(
         self,
-        variables: Dict[str, str],
-        args: Dict[str, PropertyValue],
+        variables: dict[str, str],
+        args: dict[str, PropertyValue],
         accept_secrets: bool,
         accept_resources: bool,
     ) -> None:
@@ -351,7 +351,7 @@ class CreateRequest:
     def __init__(
         self,
         urn: str,
-        properties: Dict[str, PropertyValue],
+        properties: dict[str, PropertyValue],
         timeout: float,
         preview: bool,
     ) -> None:
@@ -389,7 +389,7 @@ class CreateResponse:
     def __init__(
         self,
         resource_id: Optional[str] = None,
-        properties: Optional[Dict[str, PropertyValue]] = None,
+        properties: Optional[dict[str, PropertyValue]] = None,
     ) -> None:
         """
         :param resource_id: The ID of the created resource.
@@ -408,8 +408,8 @@ class ReadRequest:
         self,
         urn: str,
         resource_id: str,
-        properties: Dict[str, PropertyValue],
-        inputs: Dict[str, PropertyValue],
+        properties: dict[str, PropertyValue],
+        inputs: dict[str, PropertyValue],
     ) -> None:
         """
         :param urn: The unique resource name (URN) of the resource.
@@ -445,8 +445,8 @@ class ReadResponse:
     def __init__(
         self,
         resource_id: Optional[str] = None,
-        properties: Optional[Dict[str, PropertyValue]] = None,
-        inputs: Optional[Dict[str, PropertyValue]] = None,
+        properties: Optional[dict[str, PropertyValue]] = None,
+        inputs: Optional[dict[str, PropertyValue]] = None,
     ) -> None:
         """
         :param resource_id: The ID of the resource.
@@ -467,10 +467,10 @@ class UpdateRequest:
         self,
         urn: str,
         resource_id: str,
-        olds: Dict[str, PropertyValue],
-        news: Dict[str, PropertyValue],
+        olds: dict[str, PropertyValue],
+        news: dict[str, PropertyValue],
         timeout: float,
-        ignore_changes: List[str],
+        ignore_changes: list[str],
         preview: bool,
     ) -> None:
         """
@@ -510,7 +510,7 @@ class UpdateResponse:
     Represents the response to an update request.
     """
 
-    def __init__(self, properties: Optional[Dict[str, PropertyValue]] = None) -> None:
+    def __init__(self, properties: Optional[dict[str, PropertyValue]] = None) -> None:
         """
         :param properties: The updated properties of the resource.
         """
@@ -526,7 +526,7 @@ class DeleteRequest:
         self,
         urn: str,
         resource_id: str,
-        properties: Dict[str, PropertyValue],
+        properties: dict[str, PropertyValue],
         timeout: float,
     ) -> None:
         """
@@ -564,7 +564,7 @@ class ConstructRequest:
         self,
         resource_type: str,
         name: str,
-        inputs: Dict[str, PropertyValue],
+        inputs: dict[str, PropertyValue],
         options: pulumi.ResourceOptions,
     ) -> None:
         """
@@ -587,8 +587,8 @@ class ConstructResponse:
     def __init__(
         self,
         urn: str,
-        state: Dict[str, PropertyValue],
-        state_dependencies: Dict[str, Set[str]],
+        state: dict[str, PropertyValue],
+        state_dependencies: dict[str, set[str]],
     ) -> None:
         """
         :param urn: The URN of the constructed resource.
@@ -608,7 +608,7 @@ class CallRequest:
     def __init__(
         self,
         tok: str,
-        args: Dict[str, PropertyValue],
+        args: dict[str, PropertyValue],
     ) -> None:
         """
         :param tok: The token identifying the function to call.
@@ -625,9 +625,9 @@ class CallResponse:
 
     def __init__(
         self,
-        return_value: Optional[Dict[str, PropertyValue]] = None,
-        return_dependencies: Optional[Dict[str, Set[str]]] = None,
-        failures: Optional[List[CheckFailure]] = None,
+        return_value: Optional[dict[str, PropertyValue]] = None,
+        return_dependencies: Optional[dict[str, set[str]]] = None,
+        failures: Optional[list[CheckFailure]] = None,
     ) -> None:
         """
         :param return_value: The return value of the function, if any.

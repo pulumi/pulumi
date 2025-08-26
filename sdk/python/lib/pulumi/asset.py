@@ -81,9 +81,9 @@ class AssetArchive(Archive):
     An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
     """
 
-    assets: Dict[str, Union[Asset, Archive]]
+    assets: dict[str, Union[Asset, Archive]]
 
-    def __init__(self, assets: Dict[str, Union[Asset, Archive]]) -> None:
+    def __init__(self, assets: dict[str, Union[Asset, Archive]]) -> None:
         if not isinstance(assets, dict):
             raise TypeError("AssetArchive assets must be a dictionary")
         for k, v in assets.items():

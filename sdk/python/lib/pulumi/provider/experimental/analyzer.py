@@ -923,7 +923,7 @@ def is_list(typ: type) -> bool:
         abc.Sequence,
         abc.MutableSequence,
         collections.UserList,
-        typing.List,
+        list,
         typing.Sequence,
         typing.MutableSequence,
     )
@@ -940,7 +940,7 @@ def is_dict(typ: type) -> bool:
         collections.defaultdict,
         collections.OrderedDict,
         collections.UserDict,
-        typing.Dict,
+        dict,
         typing.Mapping,
         typing.MutableMapping,
         typing.DefaultDict,

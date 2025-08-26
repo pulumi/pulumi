@@ -114,7 +114,7 @@ class RemoteStack:
         self,
         page_size: Optional[int] = None,
         page: Optional[int] = None,
-    ) -> List[UpdateSummary]:
+    ) -> list[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).

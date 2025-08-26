@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 async def _resolve_depends_on(
     depends_on: "Input[List[Input[Resource]]]",
-) -> Set["Resource"]:
+) -> set["Resource"]:
     """
     Resolves the set of all dependent resources implied by `depends_on`.
     """
@@ -49,7 +49,7 @@ async def _resolve_depends_on(
 async def _resolve_depends_on_urns(
     depends_on: "Input[List[Input[Resource]]]",
     from_resource: Optional["Resource"] = None,
-) -> Set[str]:
+) -> set[str]:
     """
     Resolves the set of all dependent resources implied by
     `depends_on`, either directly listed or implied in the Input

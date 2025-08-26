@@ -22,10 +22,8 @@ from typing import (
     Set,
     Union,
     cast,
-    Iterable,
-    Sequence,
-    Mapping,
 )
+from collections.abc import Iterable, Sequence, Mapping
 from dataclasses import dataclass
 
 from google.protobuf import struct_pb2
@@ -228,7 +226,7 @@ class PropertyValue:
             v = f"{v} (dependencies: {deps})"
         return v
 
-    def all_dependencies(self) -> Set[str]:
+    def all_dependencies(self) -> set[str]:
         """
         Returns all dependencies of the property value, including dependencies of nested values.
         """
@@ -522,7 +520,7 @@ class PropertyValue:
     @staticmethod
     def unmarshal_map(
         value: struct_pb2.Struct,
-    ) -> Dict[str, "PropertyValue"]:
+    ) -> dict[str, "PropertyValue"]:
         """
         Unmarshals a protobuf struct value into a dictionary of PropertyValues.
 
@@ -532,14 +530,14 @@ class PropertyValue:
         if not isinstance(value, struct_pb2.Struct):
             raise ValueError("Expected a protobuf struct.")
 
-        result: Dict[str, PropertyValue] = {}
+        result: dict[str, PropertyValue] = {}
         for key, item in value.fields.items():
             result[key] = PropertyValue.unmarshal(item)
         return result
 
     @staticmethod
     def marshal_map(
-        value: Dict[str, "PropertyValue"],
+        value: dict[str, "PropertyValue"],
     ) -> struct_pb2.Struct:
         """
         Marshals a dictionary of PropertyValues into a protobuf struct value.

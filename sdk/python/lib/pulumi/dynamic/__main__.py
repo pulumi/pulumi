@@ -36,7 +36,7 @@ _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
-_PROVIDER_CACHE: Dict[str, ResourceProvider] = {}
+_PROVIDER_CACHE: dict[str, ResourceProvider] = {}
 _PROVIDER_LOCK = Lock()
 
 
@@ -45,7 +45,7 @@ _PROVIDER_LOCK = Lock()
 # deserialized and configured provider is stored in `_PROVIDER_CACHE`. This
 # guarantees that the provider is only deserialized and configured once per
 # process.
-def get_provider(props: Dict[str, Any], config: Dict[str, Any]) -> ResourceProvider:
+def get_provider(props: dict[str, Any], config: dict[str, Any]) -> ResourceProvider:
     # Ensure Settings are configured in the thread that calls get_provider
     configure(
         Settings(
@@ -81,7 +81,7 @@ def get_provider(props: Dict[str, Any], config: Dict[str, Any]) -> ResourceProvi
 
 
 class DynamicResourceProviderServicer(ResourceProviderServicer):
-    _config: Dict[str, Any] = {}
+    _config: dict[str, Any] = {}
 
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)

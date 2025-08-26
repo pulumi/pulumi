@@ -16,7 +16,8 @@
 # JSON types defined and versioned in sdk/go/common/apitype/events.go
 
 from enum import Enum
-from typing import Optional, List, Mapping, Any, MutableMapping
+from typing import Optional, Any
+from collections.abc import Mapping, MutableMapping
 from ._representable import _Representable
 
 
@@ -354,7 +355,7 @@ class StepEventStateMetadata(BaseEvent):
         retain_on_delete: Optional[bool] = None,
         inputs: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
-        init_errors: Optional[List[str]] = None,
+        init_errors: Optional[list[str]] = None,
         taint: Optional[bool] = None,
     ):
         self.type = type
@@ -427,8 +428,8 @@ class StepEventMetadata(BaseEvent):
         provider: str,
         old: Optional[StepEventStateMetadata] = None,
         new: Optional[StepEventStateMetadata] = None,
-        keys: Optional[List[str]] = None,
-        diffs: Optional[List[str]] = None,
+        keys: Optional[list[str]] = None,
+        diffs: Optional[list[str]] = None,
         detailed_diff: Optional[Mapping[str, PropertyDiff]] = None,
         logical: Optional[bool] = None,
     ):

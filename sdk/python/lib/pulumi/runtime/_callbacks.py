@@ -19,15 +19,14 @@ import traceback
 import uuid
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
     Callable,
     Dict,
     List,
-    Mapping,
     Optional,
     Union,
     cast,
 )
+from collections.abc import Awaitable, Mapping
 
 import grpc
 from google.protobuf.message import Message
@@ -62,14 +61,14 @@ _CallbackFunction = Callable[[bytes], Awaitable[Message]]
 
 
 class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
-    _servicers: List[_CallbackServicer] = []
+    _servicers: list[_CallbackServicer] = []
 
-    _callbacks: Dict[str, _CallbackFunction]
+    _callbacks: dict[str, _CallbackFunction]
     _monitor: resource_pb2_grpc.ResourceMonitorStub
     _server: aio.Server
     _target: str
 
-    _transforms: Dict[Union[ResourceTransform, InvokeTransform], str]
+    _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
 
     def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
         log.debug("Creating CallbackServicer")
@@ -493,7 +492,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         )
         from ..output import Output
 
-        aliases: List[alias_pb2.Alias] = []
+        aliases: list[alias_pb2.Alias] = []
         if opts.aliases:
             for alias in opts.aliases:
                 resolved = await Output.from_input(alias).future()

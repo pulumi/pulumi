@@ -10,10 +10,10 @@ class Config:
     Use the Config.get and Config.require methods to retrieve a configuration value by key.
     """
 
-    _props: Dict[str, Any]
+    _props: dict[str, Any]
     _project_name: str
 
-    def __init__(self, raw_config: Dict[str, Any], project_name: str) -> None:
+    def __init__(self, raw_config: dict[str, Any], project_name: str) -> None:
         self._props = raw_config
         self._project_name = project_name
 

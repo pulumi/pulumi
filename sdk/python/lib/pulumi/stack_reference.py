@@ -62,12 +62,12 @@ class StackReference(CustomResource):
     The name of the referenced stack.
     """
 
-    outputs: Output[Dict[str, Any]]
+    outputs: Output[dict[str, Any]]
     """
     The outputs of the referenced stack.
     """
 
-    secret_output_names: Output[List[str]]
+    secret_output_names: Output[list[str]]
     """
     The names of any stack outputs which contain secrets.
     """
