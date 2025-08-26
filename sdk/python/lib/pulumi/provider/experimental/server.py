@@ -173,9 +173,9 @@ class ProviderServicer(ResourceProviderServicer):
     async def _construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        assert isinstance(
-            request, proto.ConstructRequest
-        ), f"request is not ConstructRequest but is {type(request)} instead"
+        assert isinstance(request, proto.ConstructRequest), (
+            f"request is not ConstructRequest but is {type(request)} instead"
+        )
 
         organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
@@ -305,9 +305,9 @@ class ProviderServicer(ResourceProviderServicer):
             self._lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
-        assert isinstance(
-            request, proto.CallRequest
-        ), f"request is not CallRequest but is {type(request)} instead"
+        assert isinstance(request, proto.CallRequest), (
+            f"request is not CallRequest but is {type(request)} instead"
+        )
 
         organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
