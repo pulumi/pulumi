@@ -1257,9 +1257,9 @@ def translate_output_properties(
                 return None
             else:
                 raise AssertionError(
-                        f"Unexpected type; expected a value of type `{typ}`"
-                        f" but got a value of type `{dict}`{_Path.format(path)}:"
-                        f" {output}"
+                    f"Unexpected type; expected a value of type `{typ}`"
+                    f" but got a value of type `{dict}`{_Path.format(path)}:"
+                    f" {output}"
                 )
 
         return {

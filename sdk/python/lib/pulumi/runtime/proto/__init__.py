@@ -16,7 +16,6 @@
 The Pulumi SDK runtime's Protobufs and gRPC stubs.  These are meant for internal use only.
 """
 
-
 from .analyzer_pb2 import *
 from .analyzer_pb2_grpc import *
 from .engine_pb2 import *
