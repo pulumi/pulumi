@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a bug causing hooks to never pass correctly to remote Go components
