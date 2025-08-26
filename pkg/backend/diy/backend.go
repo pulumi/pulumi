@@ -1203,6 +1203,7 @@ func (b *diyBackend) apply(
 		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
 	}
 	engineCtx := &engine.Context{
+		BaseCtx:         ctx,
 		Cancel:          scope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: manager,
