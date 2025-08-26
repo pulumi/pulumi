@@ -26,6 +26,9 @@ import (
 )
 
 func init() {
+	// Test that both the project root directory (rootDirectory), and working directory (cwd) are correctly set when
+	// using the 'main' option in the Pulumi.yaml. Root should be where the Pulumi.yaml file is, working directory
+	// should be the subdir.
 	LanguageTests["l1-builtin-project-root-main"] = LanguageTest{
 		Runs: []TestRun{
 			{
