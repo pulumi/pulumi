@@ -18,7 +18,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Optional,
-    Set,
     Union,
 )
 from collections.abc import Awaitable
@@ -155,7 +154,7 @@ def invoke_output(
     resolve_value: asyncio.Future = asyncio.Future()
     resolve_is_known: asyncio.Future[bool] = asyncio.Future()
     resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[Set[Resource]] = asyncio.Future()
+    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
 
     from .. import Output
 
@@ -416,7 +415,7 @@ def call(
     resolve_value: asyncio.Future = asyncio.Future()
     resolve_is_known: asyncio.Future[bool] = asyncio.Future()
     resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[Set[Resource]] = asyncio.Future()
+    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
 
     from .. import Output
 

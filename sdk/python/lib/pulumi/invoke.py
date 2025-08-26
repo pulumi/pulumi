@@ -15,7 +15,6 @@ import copy
 from typing import (
     Any,
     Callable,
-    List,
     Optional,
     TYPE_CHECKING,
     Union,
@@ -237,7 +236,7 @@ class InvokeOutputOptions(InvokeOptions):
 
         return dest
 
-    def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
+    def _depends_on_list(self) -> "Input[list[Input[Resource]]]":
         if self.depends_on is None:
             return []
 

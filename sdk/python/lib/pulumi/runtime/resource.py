@@ -19,7 +19,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    List,
     NamedTuple,
     Optional,
     Union,
@@ -374,13 +373,13 @@ def all_aliases(
     child_name: str,
     child_type: str,
     parent: Optional["Resource"],
-) -> "List[Input[str]]":
+) -> list[Input[str]]:
     """
     Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
     If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
     or, as calculated in the logic below, N+(M*(1+N)).
     """
-    aliases: List[Input[str]] = []
+    aliases: list[Input[str]] = []
 
     for child_alias in child_aliases or []:
         aliases.append(

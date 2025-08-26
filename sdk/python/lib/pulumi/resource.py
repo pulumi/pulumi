@@ -19,7 +19,6 @@ import copy
 import warnings
 from typing import (
     Optional,
-    List,
     Any,
     Union,
     Callable,
@@ -575,7 +574,7 @@ class ResourceOptions:
                         f"'depends_on' was passed a value {dep} that was not a Resource."
                     )
 
-    def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
+    def _depends_on_list(self) -> "Input[list[Input[Resource]]]":
         if self.depends_on is None:
             return []
 
@@ -791,12 +790,12 @@ class Resource:
     When set to true, protect ensures this resource cannot be deleted.
     """
 
-    _transformations: "List[ResourceTransformation]"
+    _transformations: list["ResourceTransformation"]
     """
     A collection of transformations to apply as part of resource registration.
     """
 
-    _aliases: "List[Input[str]]"
+    _aliases: "list[Input[str]]"
     """
     A list of aliases applied to this resource.
     """

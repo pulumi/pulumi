@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from ..output import Output
 from .rpc import _expand_dependencies
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 async def _resolve_depends_on(
-    depends_on: "Input[List[Input[Resource]]]",
+    depends_on: "Input[list[Input[Resource]]]",
 ) -> set["Resource"]:
     """
     Resolves the set of all dependent resources implied by `depends_on`.
@@ -47,7 +47,7 @@ async def _resolve_depends_on(
 
 
 async def _resolve_depends_on_urns(
-    depends_on: "Input[List[Input[Resource]]]",
+    depends_on: "Input[list[Input[Resource]]]",
     from_resource: Optional["Resource"] = None,
 ) -> set[str]:
     """

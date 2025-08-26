@@ -940,10 +940,10 @@ def is_dict(typ: type) -> bool:
         collections.defaultdict,
         collections.OrderedDict,
         collections.UserDict,
-        dict,
+        typing.Dict,  # noqa - normally you'd use dict, but we want to check for this too
         typing.Mapping,
         typing.MutableMapping,
-        typing.DefaultDict,
+        typing.DefaultDict,  # noqa - normally you'd use collections.defaultdict, but we want to check for this too
         typing.OrderedDict,
     )
 

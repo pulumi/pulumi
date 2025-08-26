@@ -21,11 +21,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Generic,
-    List,
     Optional,
-    Set,
     TypeVar,
     Union,
     cast,
@@ -521,24 +518,24 @@ class Output(Generic[T_co]):
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
     @overload
     @staticmethod
-    def all(*args: "Output[Any]") -> "Output[List[Any]]": ...  # type: ignore
+    def all(*args: "Output[Any]") -> "Output[list[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: "Output[Any]") -> "Output[Dict[str, Any]]": ...  # type: ignore
+    def all(**kwargs: "Output[Any]") -> "Output[dict[str, Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(*args: Input[Any]) -> "Output[List[Any]]": ...  # type: ignore
+    def all(*args: Input[Any]) -> "Output[list[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[Any]) -> "Output[Dict[str, Any]]": ...  # type: ignore
+    def all(**kwargs: Input[Any]) -> "Output[dict[str, Any]]": ...  # type: ignore
 
     @staticmethod
     def all(
         *args: Input[Any], **kwargs: Input[Any]
-    ) -> "Output[List[Any] | Dict[str, Any]]":
+    ) -> "Output[list[Any] | dict[str, Any]]":
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
@@ -1004,7 +1001,7 @@ def deferred_output() -> tuple[Output[T], Callable[[Output[T]], None]]:
     resolve_value: asyncio.Future = asyncio.Future()
     resolve_is_known: asyncio.Future[bool] = asyncio.Future()
     resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[Set[Resource]] = asyncio.Future()
+    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
     already_resolved = False
 
     def resolve(o: Output[T]) -> None:
@@ -1041,7 +1038,7 @@ def deferred_output() -> tuple[Output[T], Callable[[Output[T]], None]]:
 
         asyncio.ensure_future(o.is_secret()).add_done_callback(is_secret_callback)
 
-        def deps_callback(fut: "asyncio.Future[Set[Resource]]") -> None:
+        def deps_callback(fut: asyncio.Future[set["Resource"]]) -> None:
             if fut.exception() is not None:
                 resolve_deps.set_exception(fut.exception())  # type: ignore
             else:
