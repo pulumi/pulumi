@@ -561,34 +561,14 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
+
+	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it
+	// the checked properties returned from the plugin.
 	if resp.Properties == nil {
 		resp.Properties = resource.PropertyMap{}
 	}
-
-	// If the provider tries to drop the versions field reset it back to the original value.
-	if _, ok := resp.Properties[versionKey]; !ok {
-		// Only set it if we had it originally
-		if _, ok := req.News[versionKey]; ok {
-			resp.Properties[versionKey] = req.News[versionKey]
-		}
-	}
-	// If the provider tries to change the version field return an error
-	if newV, ok := resp.Properties[versionKey]; ok {
-		if oldV, ok := req.News[versionKey]; ok {
-			if !oldV.DeepEquals(newV) {
-				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
-					req.URN, oldV.StringValue(), newV.StringValue())
-			}
-		}
-	}
-
-	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
-	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
+	// Only add __internal back if it was originally in the inputs.
 	if _, has := req.News[internalKey]; has {
-		// Before we reset it warn the user that the providers data is being discarded
-		if _, has := resp.Properties[internalKey]; has {
-			r.host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
-		}
 		resp.Properties[internalKey] = req.News[internalKey]
 	}
 
