@@ -1683,7 +1683,7 @@ func (b *cloudBackend) runEngineAction(
 				return nil
 			}
 			errs := errors.Join(validationErrs...)
-			errs = errors.Join(errs, engine.SnapshotEqual(snapshotManager.Snap(), journalPersister.Snap))
+			errs = errors.Join(errs, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
 			return errs
 		},
 	}
