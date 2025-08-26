@@ -1349,10 +1349,10 @@ class _Path:
             coordinates.append(f"resource `{resource}`")
 
         if chain:
-            coordinates.append(f'property `{".".join(chain)}`')
+            coordinates.append(f"property `{'.'.join(chain)}`")
 
         if coordinates:
-            return f' at {", ".join(coordinates)}'
+            return f" at {', '.join(coordinates)}"
 
         return ""
 

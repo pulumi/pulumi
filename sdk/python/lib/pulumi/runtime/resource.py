@@ -1043,9 +1043,9 @@ def register_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call() -> (
-                Optional[Union[RegisterResponse, resource_pb2.RegisterResourceResponse]]
-            ):
+            def do_rpc_call() -> Optional[
+                Union[RegisterResponse, resource_pb2.RegisterResourceResponse]
+            ]:
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
