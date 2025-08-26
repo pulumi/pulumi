@@ -23,6 +23,7 @@ from abc import ABC, abstractmethod
 from collections import abc
 from enum import Enum
 import os
+import typing
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,7 +34,7 @@ from typing import (
     get_args,
     get_origin,
 )
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 
 from google.protobuf import struct_pb2
 from semver import Version
@@ -145,13 +146,13 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
     # Annotations not specifying the element type are assumed by mypy
     # to signify Any element type. Follow suit here.
-    if typ in [list, list, Sequence, abc.Sequence]:
+    if typ in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         return cast(type, Any)
 
     # If typ is a list, get the type for its values, to pass
     # along for each item.
     origin = get_origin(typ)
-    if typ is list or origin in [list, list, Sequence, abc.Sequence]:
+    if typ is list or origin in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         args = get_args(typ)
         if len(args) == 1:
             return args[0]
