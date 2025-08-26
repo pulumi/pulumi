@@ -42,6 +42,7 @@ class OutputNestedTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         nested_numbers = None
         if name == "testResource1":

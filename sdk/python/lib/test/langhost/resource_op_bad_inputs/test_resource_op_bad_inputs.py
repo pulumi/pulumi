@@ -44,5 +44,6 @@ class UnhandledExceptionTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         raise Exception("oh no")
