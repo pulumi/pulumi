@@ -1422,6 +1422,20 @@ func TestViewsImport(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
+				ReadF: func(ctx context.Context, rr plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: rr.ID,
+							Outputs: resource.PropertyMap{
+								"output": resource.NewStringProperty("value"),
+							},
+							Inputs: resource.PropertyMap{
+								"input": resource.NewStringProperty("value"),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
 			}, nil
 		}, deploytest.WithoutGrpc),
 	}
