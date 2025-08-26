@@ -333,8 +333,8 @@ func (op TestOp) runWithContext(
 	}
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
-	errs = append(errs, engine.SnapshotEqual(snap, persister.Snap))
-	errs = append(errs, engine.SnapshotEqual(snap, journalPersister.Snap))
+	errs = append(errs, snap.AssertEqual(persister.Snap))
+	errs = append(errs, snap.AssertEqual(journalPersister.Snap))
 
 	return nil, snap, errors.Join(errs...)
 }
