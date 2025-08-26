@@ -284,6 +284,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			cmd.SetContext(ctx)
 
+			cmdutil.InitPprofServer(ctx)
+
 			if logging.Verbose >= 11 {
 				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
 			}

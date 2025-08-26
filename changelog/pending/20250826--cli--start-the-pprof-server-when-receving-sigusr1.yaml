@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Start the pprof server when receving SIGUSR1
