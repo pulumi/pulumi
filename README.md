@@ -197,3 +197,24 @@ Visit the [Registry](https://www.pulumi.com/registry/) for the full list of supp
 ## Contributing
 
 Visit [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md) for information on building Pulumi from source or contributing improvements.
+
+
+<!-- GitHub Frontend Bot Testing Improvement Contribution -->
+
+This comment was added by GitHub Frontend Bot as part of a testing infrastructure improvement initiative.
+
+**Suggested Testing Improvements:**
+
+**Recommended Testing Stack:**
+- **Built-in testing package** - Go's native testing
+- **testify** - Assertion library for better readability
+- **GoConvey** - BDD-style testing framework
+- **golangci-lint** - Comprehensive linting
+
+**Example setup:**
+```bash
+go get github.com/stretchr/testify
+```
+
+---
+*Generated on 2025-08-27T17:43:47.018Z*
