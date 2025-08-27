@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
@@ -50,7 +51,7 @@ const resource1 = new MyResource("myresource", {
 exports.resource1Id = resource1.id;
 `
 
-	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0600)
+	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0o600)
 	require.NoError(t, err)
 
 	// Write package.json
@@ -62,7 +63,7 @@ exports.resource1Id = resource1.id;
   }
 }
 `
-	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0600)
+	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0o600)
 	require.NoError(t, err)
 
 	// Write Pulumi.yaml
@@ -70,16 +71,16 @@ exports.resource1Id = resource1.id;
 runtime: nodejs
 description: Test taint functionality
 `
-	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0600)
+	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0o600)
 	require.NoError(t, err)
 
 	e := &integration.ProgramTestOptions{
-		Dir:             dir,
-		Dependencies:    []string{"@pulumi/pulumi"},
-		Quick:           true,
-		SkipRefresh:     true,
-		NoParallel:      true,
-		PrepareProject:  func(*engine.Projinfo) error { return nil },
+		Dir:            dir,
+		Dependencies:   []string{"@pulumi/pulumi"},
+		Quick:          true,
+		SkipRefresh:    true,
+		NoParallel:     true,
+		PrepareProject: func(*engine.Projinfo) error { return nil },
 
 		// Run the workflow
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -145,7 +146,7 @@ exports.resource2Id = resource2.id;
 exports.resource3Id = resource3.id;
 `
 
-	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0600)
+	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0o600)
 	require.NoError(t, err)
 
 	// Write package.json
@@ -157,7 +158,7 @@ exports.resource3Id = resource3.id;
   }
 }
 `
-	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0600)
+	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0o600)
 	require.NoError(t, err)
 
 	// Write Pulumi.yaml
@@ -165,15 +166,15 @@ exports.resource3Id = resource3.id;
 runtime: nodejs
 description: Test taint multiple resources
 `
-	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0600)
+	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0o600)
 	require.NoError(t, err)
 
 	e := &integration.ProgramTestOptions{
-		Dir:             dir,
-		Dependencies:    []string{"@pulumi/pulumi"},
-		Quick:           true,
-		SkipRefresh:     true,
-		NoParallel:      true,
+		Dir:          dir,
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		SkipRefresh:  true,
+		NoParallel:   true,
 
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			// Get URNs of resources
@@ -229,7 +230,7 @@ const resource1 = new MyResource("myresource", {
 exports.resource1Id = resource1.id;
 `
 
-	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0600)
+	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0o600)
 	require.NoError(t, err)
 
 	// Write package.json
@@ -241,7 +242,7 @@ exports.resource1Id = resource1.id;
   }
 }
 `
-	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0600)
+	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0o600)
 	require.NoError(t, err)
 
 	// Write Pulumi.yaml
@@ -249,15 +250,15 @@ exports.resource1Id = resource1.id;
 runtime: nodejs
 description: Test untaint functionality
 `
-	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0600)
+	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0o600)
 	require.NoError(t, err)
 
 	e := &integration.ProgramTestOptions{
-		Dir:             dir,
-		Dependencies:    []string{"@pulumi/pulumi"},
-		Quick:           true,
-		SkipRefresh:     true,
-		NoParallel:      true,
+		Dir:          dir,
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		SkipRefresh:  true,
+		NoParallel:   true,
 
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			// Get the URN of the resource
@@ -319,7 +320,7 @@ exports.resource2Id = resource2.id;
 exports.resource3Id = resource3.id;
 `
 
-	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0600)
+	err := os.WriteFile(filepath.Join(dir, "index.js"), []byte(program), 0o600)
 	require.NoError(t, err)
 
 	// Write package.json
@@ -331,7 +332,7 @@ exports.resource3Id = resource3.id;
   }
 }
 `
-	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0600)
+	err = os.WriteFile(filepath.Join(dir, "package.json"), []byte(packageJSON), 0o600)
 	require.NoError(t, err)
 
 	// Write Pulumi.yaml
@@ -339,15 +340,15 @@ exports.resource3Id = resource3.id;
 runtime: nodejs
 description: Test untaint all functionality
 `
-	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0600)
+	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(pulumiYAML), 0o600)
 	require.NoError(t, err)
 
 	e := &integration.ProgramTestOptions{
-		Dir:             dir,
-		Dependencies:    []string{"@pulumi/pulumi"},
-		Quick:           true,
-		SkipRefresh:     true,
-		NoParallel:      true,
+		Dir:          dir,
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		SkipRefresh:  true,
+		NoParallel:   true,
 
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			// Get URNs of all resources

@@ -252,9 +252,9 @@ func TestDiffWithTaintedResource(t *testing.T) {
 	urn := resource.NewURN("test", "test", "", "test:test:Test", "myresource")
 
 	tests := []struct {
-		name           string
-		tainted        bool
-		expectReplace  bool
+		name          string
+		tainted       bool
+		expectReplace bool
 	}{
 		{
 			name:          "non-tainted resource",
