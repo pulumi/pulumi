@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/blang/semver"
@@ -34,17 +35,22 @@ import (
 func TestTaintReplacement(t *testing.T) {
 	t.Parallel()
 
+	var id int
+	var deleteCalls int
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id++
 					return plugin.CreateResponse{
-						ID:         "new-id",
+						ID:         resource.ID(strconv.Itoa(id)),
 						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleteCalls++
+					assert.Equal(t, resource.ID("1"), req.ID, "should be deleting the original resource")
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 				},
 			}, nil
@@ -55,7 +61,7 @@ func TestTaintReplacement(t *testing.T) {
 		// Register the resource
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 		return err
@@ -82,11 +88,13 @@ func TestTaintReplacement(t *testing.T) {
 		}
 	}
 	require.NotNil(t, resA)
+	assert.Equal(t, resource.ID("1"), resA.ID)
 	resA.Taint = true
 
 	// Run update with the tainted resource
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2) // stack + replaced resA
 
 	// Verify the resource was replaced
 	var newResA *resource.State
@@ -97,8 +105,9 @@ func TestTaintReplacement(t *testing.T) {
 		}
 	}
 	require.NotNil(t, newResA)
-	assert.Equal(t, resource.ID("new-id"), newResA.ID)
+	assert.Equal(t, resource.ID("2"), newResA.ID)
 	assert.False(t, newResA.Taint, "taint should be cleared after replacement")
+	assert.Equal(t, 1, deleteCalls, "delete should have been called for the tainted resource")
 }
 
 // TestTaintMultipleResources tests that multiple tainted resources are all replaced.
@@ -106,6 +115,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	t.Parallel()
 
 	createIDs := make(map[string]int)
+	var deleteCalls int
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -119,6 +129,9 @@ func TestTaintMultipleResources(t *testing.T) {
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleteCalls++
+					assert.Contains(t, []resource.ID{"resA-v1", "resC-v1"}, req.ID,
+						"should be deleting a tainted resource")
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 				},
 			}, nil
@@ -130,7 +143,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		for _, name := range []string{"resA", "resB", "resC"} {
 			_, err := monitor.RegisterResource("pkgA:m:typA", name, true, deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"name": resource.NewStringProperty(name),
+					"name": resource.NewProperty(name),
 				},
 			})
 			if err != nil {
@@ -162,6 +175,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	// Run update with tainted resources
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4) // stack + 3 resources
 
 	// Check that taint is cleared and IDs are updated for replaced resources
 	replacedCount := 0
@@ -179,6 +193,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 2, replacedCount, "should have replaced 2 resources")
+	assert.Equal(t, 2, deleteCalls, "should have deleted 2 resources")
 }
 
 // TestTaintWithPendingDelete tests that resources marked for deletion are not affected by taint.
@@ -206,7 +221,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 		// Register the current resource
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 		return err
@@ -231,10 +246,10 @@ func TestTaintWithPendingDelete(t *testing.T) {
 				Custom: true,
 				ID:     "current-id",
 				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+					"foo": resource.NewProperty("bar"),
 				},
 				Outputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+					"foo": resource.NewProperty("bar"),
 				},
 				Taint: true, // This resource is tainted and should be replaced
 			},
@@ -244,10 +259,10 @@ func TestTaintWithPendingDelete(t *testing.T) {
 				Custom: true,
 				ID:     "old-id",
 				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("old"),
+					"foo": resource.NewProperty("old"),
 				},
 				Outputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("old"),
+					"foo": resource.NewProperty("old"),
 				},
 				Delete: true, // This resource is marked for deletion
 				Taint:  true, // Taint on deleted resource should be ignored
@@ -283,19 +298,21 @@ func TestTaintWithPendingDelete(t *testing.T) {
 func TestTaintNoChanges(t *testing.T) {
 	t.Parallel()
 
-	replaceCount := 0
+	var id int
+	var deleteCalls int
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id++
 					return plugin.CreateResponse{
-						ID:         resource.ID("id-" + string(rune('0'+replaceCount))),
+						ID:         resource.ID("id-" + string(rune('0'+id))),
 						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					replaceCount++
+					deleteCalls++
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
@@ -312,7 +329,7 @@ func TestTaintNoChanges(t *testing.T) {
 		// Register the same resource with same properties
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 		return err
@@ -332,27 +349,34 @@ func TestTaintNoChanges(t *testing.T) {
 	// Run update without taint - should be no-op
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	assert.Equal(t, 0, replaceCount, "no replacement should occur without taint")
+	assert.Equal(t, 0, deleteCalls, "no replacement should occur without taint")
 
-	// Taint the resource
+	// Find resA and taint it
+	var resA *resource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
-			r.Taint = true
+			resA = r
 			break
 		}
 	}
+	require.NotNil(t, resA)
+	assert.Equal(t, resource.ID("id-1"), resA.ID)
+	resA.Taint = true
 
 	// Run update with taint - should force replacement
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	assert.Equal(t, 1, replaceCount, "replacement should occur due to taint")
+	assert.Equal(t, 1, deleteCalls, "replacement should occur due to taint")
 
 	// Verify taint is cleared
+	var newResA *resource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
-			assert.False(t, r.Taint, "taint should be cleared after replacement")
-			assert.Equal(t, resource.ID("id-0"), r.ID, "resource should have new ID")
+			newResA = r
 			break
 		}
 	}
+	require.NotNil(t, newResA)
+	assert.False(t, newResA.Taint, "taint should be cleared after replacement")
+	assert.Equal(t, resource.ID("id-2"), newResA.ID, "resource should have new ID")
 }
