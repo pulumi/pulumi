@@ -317,47 +317,6 @@ func TestUntaintEmptySnapshot(t *testing.T) {
 	assert.Contains(t, errs[0].Error(), "no resources found to untaint")
 }
 
-func TestUntaintAllResources(t *testing.T) {
-	t.Parallel()
-
-	sm := b64.NewBase64SecretsManager()
-
-	// Create a snapshot directly with resources
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
-		{
-			URN:   resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
-			Type:  "pulumi:providers:a::default_1_0_0",
-			ID:    "provider_id",
-			Taint: true,
-		},
-		{
-			URN:   resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "name1"),
-			Type:  "a:b:c",
-			Taint: true,
-		},
-		{
-			URN:   resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:  "a:b:c",
-			Taint: false,
-		},
-		{
-			URN:   resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "name3"),
-			Type:  "a:b:c",
-			Taint: true,
-		},
-	}, nil, deploy.SnapshotMetadata{})
-
-	// Untaint all resources
-	for _, res := range snap.Resources {
-		res.Taint = false
-	}
-
-	// Verify all resources were untainted
-	for _, res := range snap.Resources {
-		assert.False(t, res.Taint)
-	}
-}
-
 func TestUntaintWithParentChildRelationship(t *testing.T) {
 	t.Parallel()
 
