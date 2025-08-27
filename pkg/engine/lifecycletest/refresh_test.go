@@ -28,6 +28,7 @@ import (
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -39,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -233,16 +235,11 @@ func TestRefreshInitFailure(t *testing.T) {
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					if refreshShouldFail && req.URN == resURN {
-						err := &plugin.InitError{
+						detail := pulumirpc.ErrorResourceInitFailed{
+							Id:      string(req.ID),
 							Reasons: []string{"Refresh reports continued to fail to initialize"},
 						}
-						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Outputs: resource.PropertyMap{},
-							},
-							Status: resource.StatusPartialFailure,
-						}, err
+						return plugin.ReadResponse{}, rpcerror.WithDetails(rpcerror.New(codes.Unknown, detail.Reasons[0]), &detail)
 					} else if req.URN == res2URN {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
@@ -261,7 +258,7 @@ func TestRefreshInitFailure(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
