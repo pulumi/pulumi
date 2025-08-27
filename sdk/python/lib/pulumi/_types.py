@@ -1068,7 +1068,7 @@ def _init_fn(props: Dict[str, _Property], globals, is_dict: bool, has_translate:
             seen_default = True
         elif seen_default:
             raise TypeError(
-                f"non-default argument {python_name!r} " "follows default argument"
+                f"non-default argument {python_name!r} follows default argument"
             )
 
     locals = {f"_type_{python_name}": prop.type for python_name, prop in props.items()}

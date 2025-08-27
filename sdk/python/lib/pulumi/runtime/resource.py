@@ -568,7 +568,6 @@ def get_resource(
                     return monitor.Invoke(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
 
@@ -820,7 +819,6 @@ def read_resource(
                     return monitor.ReadResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
@@ -1045,9 +1043,9 @@ def register_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call() -> (
-                Optional[Union[RegisterResponse, resource_pb2.RegisterResourceResponse]]
-            ):
+            def do_rpc_call() -> Optional[
+                Union[RegisterResponse, resource_pb2.RegisterResourceResponse]
+            ]:
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
@@ -1059,12 +1057,11 @@ def register_resource(
                     return monitor.RegisterResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
             log.debug(
-                f"exception when preparing or executing rpc: {traceback.format_exc()}"
+                f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
             )
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn(None, True, False, exn)
@@ -1121,7 +1118,9 @@ def register_resource(
             resolve_outputs_called = True
 
         except Exception as exn:
-            log.debug(f"exception after executing rpc: {traceback.format_exc()}")
+            log.debug(
+                f"exception after executing rpc for {ty=} {name=}: {traceback.format_exc()}"
+            )
 
             if not resolve_outputs_called:
                 rpc.resolve_outputs_due_to_exception(resolvers, exn)
@@ -1162,7 +1161,6 @@ def register_resource_outputs(
                 return monitor.RegisterResourceOutputs(req)
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
-                return None
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(

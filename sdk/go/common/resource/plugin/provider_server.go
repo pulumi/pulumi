@@ -818,7 +818,7 @@ func (p *providerServer) Construct(ctx context.Context,
 	var hooks map[resource.HookType][]string
 	binding := req.GetResourceHooks()
 	if binding != nil {
-		hooks := make(map[resource.HookType][]string)
+		hooks = make(map[resource.HookType][]string)
 		hooks[resource.BeforeCreate] = binding.GetBeforeCreate()
 		hooks[resource.AfterCreate] = binding.GetAfterCreate()
 		hooks[resource.BeforeUpdate] = binding.GetBeforeUpdate()

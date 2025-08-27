@@ -452,11 +452,12 @@ func TestStackRenameAfterCreate(t *testing.T) {
 
 // TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
 // stacks owned by organizations in the service backend.
+//
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
-	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -487,8 +488,8 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
 }
 
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestStackRemoteConfig(t *testing.T) {
-	t.Parallel()
 	// This test requires the service, as only the service supports orgs.
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
@@ -513,9 +514,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		return e, stackName, stdOut, stdErr
 	}
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("stack init creates env", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, stdOut, _ := createRemoteConfigStack(t)
 		assert.Contains(t, stdOut, "Created environment pulumi-test/"+stackName+" for stack configuration")
 		openOut, openErr := e.RunCommand("pulumi", "env", "open", "pulumi-test/"+stackName)
@@ -523,9 +523,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Equal(t, "{}\n", openOut, "creates empty env")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("set config warning", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		configSetOut, configSetErr := e.RunCommandExpectError(
 			"pulumi", "config", "set", "provider-name:key.subkey", "value")
@@ -537,9 +536,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Contains(t, configSetErr, expectedConfigSetErr, "directs user to use 'env set'")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("set secret warning", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		configSetOut, configSetErr := e.RunCommandExpectError(
 			"pulumi", "config", "set", "--secret", "secretKey", "password")
@@ -551,9 +549,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Contains(t, configSetErr, newVar, "should hide secret values")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("get", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		envSetOut, envSetErr := e.RunCommand(
 			"pulumi", "env", "set", "pulumi-test/"+stackName, "pulumiConfig.pulumi-test:key", "value")
@@ -565,9 +562,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Equal(t, "value\n", getOut)
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("get secret", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		envSetOut, envSetErr := e.RunCommand(
 			"pulumi", "env", "set", "pulumi-test/"+stackName, "pulumiConfig.pulumi-test:key", "--secret", "password")
@@ -584,9 +580,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.NotContains(t, configOut, "password", "hides secret value")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("rm warning", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		configRmOut, configRmErr := e.RunCommandExpectError("pulumi", "config", "rm", "key")
 		assert.Empty(t, configRmOut)
@@ -816,9 +811,8 @@ func addRandomSuffix(s string) string {
 	return s + "-" + hex.EncodeToString(b)
 }
 
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestStackTags(t *testing.T) {
-	t.Parallel()
-
 	// This test requires the service, as only the service supports stack tags.
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")

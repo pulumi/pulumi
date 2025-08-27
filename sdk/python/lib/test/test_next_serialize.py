@@ -1734,6 +1734,6 @@ async def test_serialize_resource_references_dependencies():
         await rpc.serialize_properties(
             inputs, property_deps, exclude_resource_refs_from_deps=exclude
         )
-        assert (
-            set(property_deps["resources"]) == expected
-        ), f"Failed with supports={supports}, exclude={exclude}"
+        assert set(property_deps["resources"]) == expected, (
+            f"Failed with supports={supports}, exclude={exclude}"
+        )
