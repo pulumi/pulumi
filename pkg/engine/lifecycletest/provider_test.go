@@ -2341,7 +2341,7 @@ func TestVersionDiff(t *testing.T) {
 	project := p.GetProject()
 
 	// Build the initial state, because of the engine this _will_ save "version" to state
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 	// So we now remove "version" from the provider, as if it was run on an older version of the engine
@@ -2363,7 +2363,7 @@ func TestVersionDiff(t *testing.T) {
 		}
 		return nil
 	}
-	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 }
