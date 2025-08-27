@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,11 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -2297,4 +2300,70 @@ func TestInternalKey(t *testing.T) {
 		resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com"),
 		warns[0].Diag.URN)
 	assert.Equal(t, "provider attempted to use __internal key that is reserved by the engine", warns[0].Diag.Message)
+}
+
+// TestVersionDiff tests that if a provider _used_ to not store "version" we fixup it's old state so the default diff
+// doesn't think version has now diff'd due to the engine now always forcing it to be set in news.
+func TestVersionDiff(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					assert.Contains(t, req.OldInputs, resource.PropertyKey("version"))
+					assert.Contains(t, req.OldOutputs, resource.PropertyKey("version"))
+					assert.Contains(t, req.NewInputs, resource.PropertyKey("version"))
+					return plugin.DiffConfigResponse{}, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Version: "1.0.0",
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	sink := &diag.MockSink{}
+	hostF := deploytest.NewPluginHostF(sink, sink, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	// Build the initial state, because of the engine this _will_ save "version" to state
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	// So we now remove "version" from the provider, as if it was run on an older version of the engine
+	prov := snap.Resources[0]
+	delete(prov.Inputs, "version")
+	delete(prov.Outputs, "version")
+
+	// Now run an update and assert no diffs
+	validate := func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+		events []engine.Event, err error,
+	) error {
+		require.NoError(t, err)
+		for _, evt := range events {
+			if evt.Type == engine.ResourcePreEvent {
+				payload := evt.Payload().(engine.ResourcePreEventPayload)
+				assert.Equal(t, deploy.OpSame, payload.Metadata.Op,
+					"Unexpected %s for %s", payload.Metadata.Op, payload.Metadata.URN)
+			}
+		}
+		return nil
+	}
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
 }

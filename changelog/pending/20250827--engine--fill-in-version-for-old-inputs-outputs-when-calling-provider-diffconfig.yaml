@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fill in "version" for old inputs/outputs when calling provider `DiffConfig`

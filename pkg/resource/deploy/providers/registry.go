@@ -628,10 +628,24 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	// Diff the properties.
 	filteredNewInputs := FilterProviderConfig(req.NewInputs)
+	// Fixup the old inputs and outputs to contain "version", old versions of the CLI wouldn't have force saved it to
+	// state even though we know guarantee it's always in new inputs. This isn't _technically_ correct, we're just
+	// assuming the old state is the same version as the current state it might genuinely be different but there's no
+	// way for us to tell. But not restoring version can cause diffs even for the same version (see
+	// https://github.com/pulumi/pulumi-docker-build/issues/581).
+	fixup := func(pm resource.PropertyMap) resource.PropertyMap {
+		new := pm.Copy()
+		if _, has := new["version"]; !has {
+			new["version"] = req.NewInputs["version"]
+		}
+		return new
+	}
+	oldOutputs := fixup(req.OldOutputs)
+
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
-		OldInputs:     FilterProviderConfig(req.OldInputs),
-		OldOutputs:    req.OldOutputs, // OldOutputs is already filtered
+		OldInputs:     FilterProviderConfig(fixup(req.OldInputs)),
+		OldOutputs:    fixup(oldOutputs), // OldOutputs is already filtered
 		NewInputs:     filteredNewInputs,
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
@@ -640,7 +654,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if req.OldOutputs.DeepEquals(filteredNewInputs) {
+		if oldOutputs.DeepEquals(filteredNewInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
 			diff.Changes = plugin.DiffSome
