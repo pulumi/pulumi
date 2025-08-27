@@ -184,7 +184,7 @@ func TestUntaintNonExistentResource(t *testing.T) {
 	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 0, resourceCount)
-	assert.Len(t, errs, 1)
+	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
 	assert.Contains(t, errs[0].Error(), "nonexistent")
 	// Ensure the existing resource remains tainted
@@ -243,7 +243,7 @@ func TestUntaintMixedExistingAndNonExistent(t *testing.T) {
 	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 2, resourceCount)
-	assert.Len(t, errs, 1)
+	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
 	assert.Contains(t, errs[0].Error(), "nonexistent")
 	// Verify the existing resources were untainted
@@ -306,7 +306,7 @@ func TestUntaintEmptySnapshot(t *testing.T) {
 	resourceCount, errs := untaintResourcesInSnapshot(nil, urns)
 
 	assert.Equal(t, 0, resourceCount)
-	assert.Len(t, errs, 1)
+	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "no resources found to untaint")
 }
 
@@ -439,7 +439,7 @@ func TestUntaintMultipleResourcesWithErrors(t *testing.T) {
 	resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
 	assert.Equal(t, 1, resourceCount)
-	assert.Len(t, errs, 2)
+	require.Len(t, errs, 2)
 	assert.False(t, snap.Resources[1].Taint)
 	// Verify both error messages are present
 	for _, err := range errs {
@@ -648,7 +648,7 @@ func TestUntaintAllResourcesWithDeleteTrue(t *testing.T) {
 
 	// Should only untaint the non-deleted resources
 	assert.Equal(t, 2, resourceCount)
-	assert.Len(t, errs, 1)                                  // Should have an error for the deleted resource
+	require.Len(t, errs, 1)                                 // Should have an error for the deleted resource
 	assert.Contains(t, errs[0].Error(), "No such resource") // The deleted resource won't be found in our map
 	assert.False(t, snap.Resources[1].Taint)                // resource1 should be untainted
 	assert.True(t, snap.Resources[2].Taint)                 // resource2 marked for deletion should remain tainted
@@ -685,7 +685,7 @@ func TestUntaintOnlyDeletedResource(t *testing.T) {
 
 	// Should not untaint the deleted resource and report it as not found
 	assert.Equal(t, 0, resourceCount)
-	assert.Len(t, errs, 1)
+	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
 	assert.True(t, snap.Resources[1].Taint) // Resource should remain tainted
 }

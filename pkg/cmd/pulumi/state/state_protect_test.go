@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProtectResourceWithDeleteTrue(t *testing.T) {
@@ -112,7 +113,7 @@ func TestProtectAllResourcesWithDeleteTrue(t *testing.T) {
 
 	// Should only protect the non-deleted resources
 	assert.Equal(t, 2, resourceCount)
-	assert.Len(t, errs, 1)                                  // Should have an error for the deleted resource
+	require.Len(t, errs, 1)                                 // Should have an error for the deleted resource
 	assert.Contains(t, errs[0].Error(), "No such resource") // The deleted resource won't be found in our map
 	assert.True(t, snap.Resources[1].Protect)               // resource1 should be protected
 	assert.False(t, snap.Resources[2].Protect)              // resource2 marked for deletion should not be protected
@@ -149,7 +150,7 @@ func TestProtectOnlyDeletedResource(t *testing.T) {
 
 	// Should not protect the deleted resource and report it as not found
 	assert.Equal(t, 0, resourceCount)
-	assert.Len(t, errs, 1)
+	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
 	assert.False(t, snap.Resources[1].Protect) // Resource should remain unprotected
 }

@@ -110,7 +110,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					name := string(req.URN.Name())
+					name := req.URN.Name()
 					createIDs[name]++
 					return plugin.CreateResponse{
 						ID:         resource.ID(name + "-v" + string(rune('0'+createIDs[name]))),
@@ -273,7 +273,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 1, resourceCount, "should have exactly one resource with this URN")
-	assert.NotNil(t, finalResource)
+	require.NotNil(t, finalResource)
 	assert.Equal(t, resource.ID("new-id"), finalResource.ID, "resource should be replaced")
 	assert.False(t, finalResource.Taint, "taint should be cleared after replacement")
 	assert.False(t, finalResource.Delete, "resource should not be marked for deletion")
