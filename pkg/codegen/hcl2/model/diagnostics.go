@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -104,6 +105,7 @@ func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
 }
 
 func unknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
+	slices.Sort(props)
 	return errorf(indexRange, "unknown property '%s' among %v", name, props)
 }
 
