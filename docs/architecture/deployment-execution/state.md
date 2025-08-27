@@ -98,7 +98,8 @@ in different places in the resource list.
 
 There's various types of Journal entries, all with slightly different semantics.
 This section describes them. All journal entries are associated with increasing
-IDs. These IDs are used for the following:
+IDs. IDs start at 1 for regular journal entries. If a "write" journal entry is
+present it always has ID 0. These IDs are used for the following:
 - Correlating begin and end entries, so we can remove pending operations from
   the list.
 - Ordering the journal entries on the backend side. We could do this by

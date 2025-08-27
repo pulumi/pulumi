@@ -1195,18 +1195,17 @@ func (b *diyBackend) apply(
 		close(eventsDone)
 	}()
 
+	engineCtx := &engine.Context{
+		Cancel:        scope.Context(),
+		Events:        engineEvents,
+		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
-	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
-	}
-	engineCtx := &engine.Context{
-		Cancel:          scope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
+		manager := backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
+		engineCtx.SnapshotManager = manager
 	}
 
 	// Perform the update
@@ -1244,18 +1243,6 @@ func (b *diyBackend) apply(
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	if manager != nil {
-		err = manager.Close()
-		// If the snapshot manager failed to close, we should return that error.
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
-		}
-	}
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
 	<-eventsDone
