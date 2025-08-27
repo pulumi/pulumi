@@ -22,7 +22,7 @@ const (
 	JournalEntryKindFailure        JournalEntryKind = 2
 	JournalEntryKindRefreshSuccess JournalEntryKind = 3
 	JournalEntryKindOutputs        JournalEntryKind = 4
-	JournalEntryKindRebase         JournalEntryKind = 5
+	JournalEntryKindWrite          JournalEntryKind = 5
 	JournalEntryKindSecretsManager JournalEntryKind = 6
 )
 
