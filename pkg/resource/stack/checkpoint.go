@@ -183,9 +183,6 @@ func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *resource.State {
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, name)
-	return &resource.State{
-		Type:   typ,
-		URN:    urn,
-		Inputs: resource.PropertyMap{},
-	}
+	return resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, false, nil,
+		nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
 }
