@@ -59,6 +59,7 @@ const (
 	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
 	viewsFeature               = "views"
 	hooksFeature               = "hooks"
+	taintFeature               = "taint"
 )
 
 var (
@@ -113,6 +114,7 @@ var supportedFeatures = map[string]bool{
 	refreshBeforeUpdateFeature: true,
 	viewsFeature:               true,
 	hooksFeature:               true,
+	taintFeature:               true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -139,6 +141,9 @@ func applyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if len(res.ResourceHooks) > 0 {
 		features[hooksFeature] = true
+	}
+	if res.Taint {
+		features[taintFeature] = true
 	}
 }
 
