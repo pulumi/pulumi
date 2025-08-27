@@ -15,7 +15,6 @@
 package deploy
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -109,29 +108,32 @@ func TestTaintedResourceDiff(t *testing.T) {
 	}
 
 	urn := resource.NewURN("test", "test", "", "test:test:Test", "myresource")
-
-	// Create a tainted resource
-	oldState := &resource.State{
-		URN:   urn,
-		Type:  "test:test:Test",
-		Taint: true,
-		Inputs: resource.PropertyMap{
-			"prop1": resource.NewStringProperty("value1"),
-		},
+	inputs := resource.PropertyMap{
+		"prop1": resource.NewProperty("value1"),
+	}
+	outputs := resource.PropertyMap{
+		"prop1": resource.NewProperty("value1"),
 	}
 
-	// Same inputs, but the resource is tainted
-	newInputs := resource.PropertyMap{
-		"prop1": resource.NewStringProperty("value1"),
+	// Create a tainted resource
+	oldState := resource.NewState(urn.Type(), urn, false, false, "", inputs, outputs, "", false, true,
+		false, nil, nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
+
+	done := make(chan *RegisterResult)
+	event := &registerResourceEvent{
+		goal: resource.NewGoal(urn.Type(), urn.Name(), true, inputs, "", nil,
+			nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+		done: done,
 	}
 
 	// Call diff - it should return a replace diff due to taint
-	result, _, err := sg.diff(context.Background(), urn, resource.ID("myid"), oldState, oldState, newInputs, nil)
+	result, _, err := sg.diff(event, event.Goal(), nil, []byte{}, urn, oldState, oldState, inputs, inputs, nil)
 	require.NoError(t, err)
 
 	// Should indicate changes and have replacement keys
 	assert.Equal(t, plugin.DiffSome, result.Changes, "Tainted resource should show changes")
-	assert.Contains(t, result.ReplaceKeys, resource.PropertyKey("id"), "Tainted resource should have 'id' in replace keys")
+	assert.Contains(t, result.ReplaceKeys, resource.PropertyKey("id"),
+		"Tainted resource should have 'id' in replace keys")
 }
 
 // TestTaintedProviderResource verifies that provider resources can be tainted
@@ -197,6 +199,8 @@ func TestTaintInteractionWithReplaceTargets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			urn := resource.NewURN("test", "test", "", "test:test:Test", "myresource")
 
 			var replaceTargets UrnTargets
@@ -270,6 +274,8 @@ func TestDiffWithTaintedResource(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			deployment := &Deployment{
 				opts: &Options{},
 			}
@@ -278,29 +284,36 @@ func TestDiffWithTaintedResource(t *testing.T) {
 				deployment: deployment,
 			}
 
-			oldState := &resource.State{
-				URN:   urn,
-				Type:  "test:test:Test",
-				Taint: tt.tainted,
-				Inputs: resource.PropertyMap{
-					"prop1": resource.NewStringProperty("value1"),
-				},
+			inputs := resource.PropertyMap{
+				"prop1": resource.NewProperty("value1"),
+			}
+			outputs := resource.PropertyMap{
+				"prop1": resource.NewProperty("value1"),
 			}
 
-			newInputs := resource.PropertyMap{
-				"prop1": resource.NewStringProperty("value1"),
+			// Create a tainted resource
+			oldState := resource.NewState(urn.Type(), urn, false, false, "", inputs, outputs, "", false, tt.tainted,
+				false, nil, nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
+
+			done := make(chan *RegisterResult)
+			event := &registerResourceEvent{
+				goal: resource.NewGoal(urn.Type(), urn.Name(), true, inputs, "", nil,
+					nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+				done: done,
 			}
 
 			// When no provider is specified, diff should still handle tainted resources
-			result, _, err := sg.diff(context.Background(), urn, resource.ID("myid"), oldState, oldState, newInputs, nil)
+			result, _, err := sg.diff(event, event.Goal(), nil, []byte{}, urn, oldState, oldState, inputs, inputs, nil)
 			require.NoError(t, err)
 
 			if tt.expectReplace {
 				assert.Equal(t, plugin.DiffSome, result.Changes, "Tainted resource should show changes")
-				assert.Contains(t, result.ReplaceKeys, resource.PropertyKey("id"), "Tainted resource should have 'id' in replace keys")
+				assert.Contains(t, result.ReplaceKeys, resource.PropertyKey("id"),
+					"Tainted resource should have 'id' in replace keys")
 			} else {
 				// When not tainted and no provider, diff returns no changes
-				assert.Equal(t, plugin.DiffNone, result.Changes, "Non-tainted resource with no changes should show no diff")
+				assert.Equal(t, plugin.DiffNone, result.Changes,
+					"Non-tainted resource with no changes should show no diff")
 			}
 		})
 	}
