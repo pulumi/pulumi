@@ -90,6 +90,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		"",
 		false,
 		false,
+		false,
 		[]resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
