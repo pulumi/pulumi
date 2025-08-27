@@ -546,6 +546,12 @@ func update(
 	// Initialize our deployment object with the context and options.
 	deployment, err := newDeployment(ctx, info, actions, opts)
 	if err != nil {
+		if ctx.SnapshotManager != nil {
+			closeErr := ctx.SnapshotManager.Close()
+			if closeErr != nil {
+				logging.V(7).Infof("failed to close snapshot manager: %v", closeErr)
+			}
+		}
 		return nil, nil, err
 	}
 	defer contract.IgnoreClose(deployment)
@@ -555,8 +561,8 @@ func update(
 
 	if ctx.SnapshotManager != nil {
 		closeErr := ctx.SnapshotManager.Close()
-		if err != nil {
-			logging.V(7).Infof("failed to close snapshot manager: %v", err)
+		if closeErr != nil {
+			logging.V(7).Infof("failed to close snapshot manager: %v", closeErr)
 		}
 		// If the snapshot manager failed to close, we should return that error in addition
 		// to any error from the deployment.
