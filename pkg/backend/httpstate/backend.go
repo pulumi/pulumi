@@ -1674,10 +1674,9 @@ func (b *cloudBackend) runEngineAction(
 	// return error conditions, because we will do so below after waiting for the display channels to close.
 	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
 	engineCtx := &engine.Context{
-		Cancel:          cancellationScope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: combinedManager,
-		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Cancel:        cancellationScope.Context(),
+		Events:        engineEvents,
+		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 		RecordErrorFunc: func() error {
 			if snapshotManager == nil || journalPersister == nil {
 				return nil
@@ -1686,6 +1685,9 @@ func (b *cloudBackend) runEngineAction(
 			errs = errors.Join(errs, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
 			return errs
 		},
+	}
+	if combinedManager != nil {
+		engineCtx.SnapshotManager = combinedManager
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -1723,18 +1725,6 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	if snapshotManager != nil {
-		err = snapshotManager.Close()
-		// If the snapshot manager failed to close, we should return that error.
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
-		}
-	}
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding

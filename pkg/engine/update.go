@@ -553,6 +553,22 @@ func update(
 	// Execute the deployment.
 	plan, changes, err := deployment.run(ctx)
 
+	if ctx.SnapshotManager != nil {
+		closeErr := ctx.SnapshotManager.Close()
+		if err != nil {
+			logging.V(7).Infof("failed to close snapshot manager: %v", err)
+		}
+		// If the snapshot manager failed to close, we should return that error in addition
+		// to any error from the deployment.
+		//
+		// Even though all the parts of the operation have potentially succeeded, a
+		// snapshotting failure is likely to rear its head on the next
+		// operation/invocation (e.g. an invalid snapshot that fails integrity
+		// checks, or a failure to write that means the snapshot is incomplete).
+		// Reporting now should make debugging and reporting easier.
+		err = errors.Join(err, closeErr)
+	}
+
 	if ctx.RecordErrorFunc != nil {
 		snapErr := ctx.RecordErrorFunc()
 		if snapErr != nil {
