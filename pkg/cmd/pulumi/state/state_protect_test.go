@@ -63,6 +63,7 @@ func TestProtectResourceWithDeleteTrue(t *testing.T) {
 	// Should only protect the non-deleted resource
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
+	require.Len(t, snap.Resources, 3)
 	assert.False(t, snap.Resources[1].Protect) // Resource marked for deletion should not be protected
 	assert.True(t, snap.Resources[2].Protect)  // Replacement resource should be protected
 }
@@ -115,9 +116,10 @@ func TestProtectAllResourcesWithDeleteTrue(t *testing.T) {
 	assert.Equal(t, 2, resourceCount)
 	require.Len(t, errs, 1)                                 // Should have an error for the deleted resource
 	assert.Contains(t, errs[0].Error(), "No such resource") // The deleted resource won't be found in our map
-	assert.True(t, snap.Resources[1].Protect)               // resource1 should be protected
-	assert.False(t, snap.Resources[2].Protect)              // resource2 marked for deletion should not be protected
-	assert.True(t, snap.Resources[3].Protect)               // resource3 should be protected
+	require.Len(t, snap.Resources, 4)
+	assert.True(t, snap.Resources[1].Protect)  // resource1 should be protected
+	assert.False(t, snap.Resources[2].Protect) // resource2 marked for deletion should not be protected
+	assert.True(t, snap.Resources[3].Protect)  // resource3 should be protected
 }
 
 func TestProtectOnlyDeletedResource(t *testing.T) {
@@ -152,6 +154,7 @@ func TestProtectOnlyDeletedResource(t *testing.T) {
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
+	require.Len(t, snap.Resources, 2)
 	assert.False(t, snap.Resources[1].Protect) // Resource should remain unprotected
 }
 
@@ -201,6 +204,7 @@ func TestProtectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 	// Should only protect the active (non-deleted) resource
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
+	require.Len(t, snap.Resources, 4)
 	assert.False(t, snap.Resources[1].Protect) // First deleted resource should remain unprotected
 	assert.False(t, snap.Resources[2].Protect) // Second deleted resource should remain unprotected
 	assert.True(t, snap.Resources[3].Protect)  // Active resource should be protected
