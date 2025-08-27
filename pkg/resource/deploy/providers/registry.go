@@ -645,7 +645,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
 		OldInputs:     FilterProviderConfig(fixup(req.OldInputs)),
-		OldOutputs:    fixup(oldOutputs), // OldOutputs is already filtered
+		OldOutputs:    oldOutputs, // OldOutputs is already filtered
 		NewInputs:     filteredNewInputs,
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,

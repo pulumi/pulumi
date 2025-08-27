@@ -2302,7 +2302,7 @@ func TestInternalKey(t *testing.T) {
 	assert.Equal(t, "provider attempted to use __internal key that is reserved by the engine", warns[0].Diag.Message)
 }
 
-// TestVersionDiff tests that if a provider _used_ to not store "version" we fixup it's old state so the default diff
+// TestVersionDiff tests that if a provider _used_ to not store "version" we fixup its old state so the default diff
 // doesn't think version has now diff'd due to the engine now always forcing it to be set in news.
 func TestVersionDiff(t *testing.T) {
 	t.Parallel()
