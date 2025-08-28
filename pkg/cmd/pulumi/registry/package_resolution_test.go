@@ -26,11 +26,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTryResolvePackageWithFallback(t *testing.T) {
+func TestResolvePackage(t *testing.T) {
 	t.Parallel()
 
 	createTestProject := func(t *testing.T) string {
@@ -48,16 +49,16 @@ packages:
 
 	tests := []struct {
 		name             string
-		packageName      string
+		env              *PackageResolutionEnv
+		pluginSpec       workspace.PluginSpec
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
-		expectedFound    bool
-		expectedFallback PackageFallbackType
+		expectedStrategy PackageResolutionStrategy
 		expectError      bool
 	}{
 		{
-			name:        "found in IDP registry",
-			packageName: "found-pkg",
+			name:       "found in IDP registry",
+			pluginSpec: workspace.PluginSpec{Name: "found-pkg"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -73,13 +74,12 @@ packages:
 					},
 				}, nil
 			},
-			expectedFound:    true,
-			expectedFallback: NoFallback,
+			expectedStrategy: RegistryResolution,
 			expectError:      false,
 		},
 		{
-			name:        "not found + pre-GitHub registry package",
-			packageName: "aws", // aws is in the pre-registry whitelist
+			name:       "not found + pre-registry package",
+			pluginSpec: workspace.PluginSpec{Name: "aws"}, // aws is in the pre-registry allowlist
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -87,13 +87,12 @@ packages:
 					},
 				}, nil
 			},
-			expectedFound:    false,
-			expectedFallback: PreGitHubRegistryFallback,
+			expectedStrategy: LegacyResolution,
 			expectError:      false,
 		},
 		{
-			name:        "not found + local project package",
-			packageName: "my-local-pkg",
+			name:       "local project package resolves to local path",
+			pluginSpec: workspace.PluginSpec{Name: "my-local-pkg"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -102,13 +101,12 @@ packages:
 				}, nil
 			},
 			setupProject:     true,
-			expectedFound:    false,
-			expectedFallback: LocalProjectFallback,
+			expectedStrategy: LocalPluginPathResolution,
 			expectError:      false,
 		},
 		{
-			name:        "not found + no fallback available",
-			packageName: "unknown-pkg",
+			name:       "local project package resolves to Git URL",
+			pluginSpec: workspace.PluginSpec{Name: "another-local"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -116,13 +114,39 @@ packages:
 					},
 				}, nil
 			},
-			expectedFound:    false,
-			expectedFallback: NoFallback,
+			setupProject:     true,
+			expectedStrategy: LegacyResolution,
+			expectError:      false,
+		},
+		{
+			name:       "Git URL plugin",
+			pluginSpec: workspace.PluginSpec{Name: "example-plugin", PluginDownloadURL: "git://github.com/example/plugin"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty - not found
+					},
+				}, nil
+			},
+			expectedStrategy: LegacyResolution,
+			expectError:      false,
+		},
+		{
+			name:       "not found + no fallback available",
+			pluginSpec: workspace.PluginSpec{Name: "unknown-pkg"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty - not found
+					},
+				}, nil
+			},
+			expectedStrategy: UnknownPackage,
 			expectError:      true,
 		},
 		{
-			name:        "registry error (non-NotFound)",
-			packageName: "any-pkg",
+			name:       "registry error (non-NotFound)",
+			pluginSpec: workspace.PluginSpec{Name: "any-pkg"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -132,9 +156,68 @@ packages:
 					},
 				}, nil
 			},
-			expectedFound:    false,
-			expectedFallback: NoFallback,
+			expectedStrategy: UnknownPackage,
 			expectError:      true,
+		},
+
+		// Environment combination tests for pre-registry packages
+		{
+			name:       "pre-registry package with registry disabled",
+			env:        &PackageResolutionEnv{DisableRegistryResolve: true, Experimental: false},
+			pluginSpec: workspace.PluginSpec{Name: "aws"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						panic("Registry should not be queried when disabled")
+					},
+				}, nil
+			},
+			expectedStrategy: LegacyResolution,
+			expectError:      false,
+		},
+		{
+			name:       "registry disabled ignores available registry package",
+			env:        &PackageResolutionEnv{DisableRegistryResolve: true, Experimental: true},
+			pluginSpec: workspace.PluginSpec{Name: "aws"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						panic("Registry should not be queried when disabled")
+					},
+				}, nil
+			},
+			expectedStrategy: LegacyResolution,
+			expectError:      false,
+		},
+
+		// Environment combination tests for unknown packages
+		{
+			name:       "unknown package with registry disabled",
+			env:        &PackageResolutionEnv{DisableRegistryResolve: true, Experimental: false},
+			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						panic("Registry should not be queried when disabled")
+					},
+				}, nil
+			},
+			expectedStrategy: UnknownPackage,
+			expectError:      false,
+		},
+		{
+			name:       "unknown package with experimental off",
+			env:        &PackageResolutionEnv{DisableRegistryResolve: false, Experimental: false},
+			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty
+					},
+				}, nil
+			},
+			expectedStrategy: UnknownPackage,
+			expectError:      false,
 		},
 	}
 
@@ -153,17 +236,24 @@ packages:
 			reg, expectedErr := tt.registryResponse()
 			require.NoError(t, expectedErr)
 
-			result := TryResolvePackageWithFallback(
+			env := PackageResolutionEnv{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			}
+			if tt.env != nil {
+				env = *tt.env
+			}
+
+			result := ResolvePackage(
 				context.Background(),
 				reg,
-				tt.packageName,
-				nil,
+				tt.pluginSpec,
 				projectRoot,
 				diagtest.LogSink(t),
+				env,
 			)
 
-			assert.Equal(t, tt.expectedFound, result.Found)
-			assert.Equal(t, tt.expectedFallback, result.FallbackType)
+			assert.Equal(t, tt.expectedStrategy, result.Strategy)
 
 			if tt.expectError {
 				assert.Error(t, result.Error)
@@ -171,9 +261,9 @@ packages:
 				require.NoError(t, result.Error)
 			}
 
-			if result.Found {
+			if result.Strategy == RegistryResolution {
 				require.NotNil(t, result.Metadata)
-				assert.Equal(t, tt.packageName, result.Metadata.Name)
+				assert.Equal(t, tt.pluginSpec.Name, result.Metadata.Name)
 			} else {
 				assert.Nil(t, result.Metadata)
 			}
@@ -181,10 +271,11 @@ packages:
 	}
 }
 
-func TestTryResolvePackageWithFallback_WithVersion(t *testing.T) {
+func TestResolvePackage_WithVersion(t *testing.T) {
 	t.Parallel()
 
 	version := semver.Version{Major: 2, Minor: 1, Patch: 0}
+	pluginSpec := workspace.PluginSpec{Name: "versioned-pkg", Version: &version}
 	reg := &backend.MockCloudRegistry{
 		GetPackageF: func(
 			ctx context.Context, source, publisher, name string, version *semver.Version,
@@ -208,69 +299,28 @@ func TestTryResolvePackageWithFallback_WithVersion(t *testing.T) {
 		},
 	}
 
-	result := TryResolvePackageWithFallback(
+	result := ResolvePackage(
 		context.Background(),
 		reg,
-		"versioned-pkg",
-		&version,
+		pluginSpec,
 		t.TempDir(),
 		diagtest.LogSink(t),
+		PackageResolutionEnv{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
 	)
 
-	assert.True(t, result.Found)
-	assert.Equal(t, NoFallback, result.FallbackType)
+	assert.Equal(t, RegistryResolution, result.Strategy)
 	require.NoError(t, result.Error)
 	require.NotNil(t, result.Metadata)
 	assert.Equal(t, version, result.Metadata.Version)
 }
 
-func TestIsLocalProjectPackage(t *testing.T) {
+func TestResolutionStrategyPrecedence(t *testing.T) {
 	t.Parallel()
 
-	createTestProject := func(t *testing.T) string {
-		tmpDir := t.TempDir()
-		pulumiYaml := `name: test-project
-runtime: go
-packages:
-  local-pkg: https://github.com/example/local-pkg
-  another-pkg: ./local-path`
-
-		pulumiYamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
-		err := os.WriteFile(pulumiYamlPath, []byte(pulumiYaml), 0o600)
-		require.NoError(t, err)
-
-		return tmpDir
-	}
-
-	testCases := []struct {
-		name        string
-		setupFunc   func(t *testing.T) string
-		packageName string
-		expected    bool
-	}{
-		{"package exists in project", createTestProject, "local-pkg", true},
-		{"another package exists", createTestProject, "another-pkg", true},
-		{"package does not exist", createTestProject, "nonexistent-pkg", false},
-		{"invalid project root", func(t *testing.T) string { return "/nonexistent/path" }, "local-pkg", false},
-		{"empty package name", createTestProject, "", false},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			projectRoot := tc.setupFunc(t)
-			result := IsLocalProjectPackage(projectRoot, tc.packageName, nil)
-			assert.Equal(t, tc.expected, result)
-		})
-	}
-}
-
-func TestFallbackTypePrecedence(t *testing.T) {
-	t.Parallel()
-
-	// Test that pre-GitHub registry packages take precedence over local packages
-	// when both conditions are true
+	// Test that local packages take precedence over pre-registry packages
 	tmpDir := t.TempDir()
 	pulumiYaml := `name: test-project
 runtime: nodejs
@@ -288,17 +338,20 @@ packages:
 		},
 	}
 
-	result := TryResolvePackageWithFallback(
+	pluginSpec := workspace.PluginSpec{Name: "aws"}
+	result := ResolvePackage(
 		context.Background(),
 		reg,
-		"aws", // This is both pre-GitHub AND defined locally
-		nil,
+		pluginSpec, // This is both pre-registry AND defined locally
 		tmpDir,
 		diagtest.LogSink(t),
+		PackageResolutionEnv{
+			DisableRegistryResolve: true,
+			Experimental:           false,
+		},
 	)
 
-	// Should prefer pre-GitHub registry fallback over local project fallback
-	assert.False(t, result.Found)
-	assert.Equal(t, PreGitHubRegistryFallback, result.FallbackType)
+	// Should prefer local project (local path) resolution over pre-registry resolution
+	assert.Equal(t, LocalPluginPathResolution, result.Strategy)
 	require.NoError(t, result.Error)
 }

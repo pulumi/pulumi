@@ -17,8 +17,10 @@ package plugin
 import (
 	"github.com/spf13/cobra"
 
+	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,7 +48,11 @@ func NewPluginCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPluginInstallCmd())
+	packageResolutionEnv := cmdRegistry.PackageResolutionEnv{
+		DisableRegistryResolve: env.DisableRegistryResolve.Value(),
+		Experimental:           env.Experimental.Value(),
+	}
+	cmd.AddCommand(newPluginInstallCmd(packageResolutionEnv))
 	cmd.AddCommand(newPluginLsCmd())
 	cmd.AddCommand(newPluginRmCmd())
 	cmd.AddCommand(newPluginRunCmd())

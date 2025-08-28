@@ -915,15 +915,39 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
-	if plugin.IsLocalPluginPath(pctx.Base(), packageSource) {
+	result := cmdRegistry.ResolvePackage(
+		pctx.Base(),
+		reg,
+		pluginSpec,
+		pctx.Root,
+		pctx.Diag,
+		cmdRegistry.PackageResolutionEnv{
+			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
+			Experimental:           env.Experimental.Value(),
+		},
+	)
+
+	switch result.Strategy {
+	case cmdRegistry.LocalPluginPathResolution:
 		return setupProviderFromPath(packageSource, pctx)
-	}
-
-	if env.DisableRegistryResolve.Value() || !env.Experimental.Value() {
+	case cmdRegistry.LegacyResolution:
 		return setupProvider(descriptor, nil)
+	case cmdRegistry.RegistryResolution:
+		if result.Metadata == nil {
+			return Provider{}, nil, errors.New("Registry resolution should have metadata")
+		}
+		return setupProviderFromRegistryMeta(*result.Metadata, setupProvider)
+	case cmdRegistry.UnknownPackage:
+		if result.Error != nil && errors.Is(result.Error, registry.ErrNotFound) {
+			for _, suggested := range registry.GetSuggestedPackages(result.Error) {
+				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
+			}
+		}
+		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", result.Error)
+	default:
+		return Provider{}, nil, fmt.Errorf("Unknown resolution strategy: %v", result.Strategy)
 	}
-
-	return tryRegistryResolution(pctx, reg, pluginSpec, descriptor, setupProvider)
 }
 
 func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider, *workspace.PackageSpec, error) {
@@ -944,36 +968,6 @@ func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider
 		return Provider{}, nil, err
 	}
 	return Provider{Provider: p}, nil, nil
-}
-
-func tryRegistryResolution(
-	pctx *plugin.Context,
-	reg registry.Registry,
-	pluginSpec workspace.PluginSpec,
-	descriptor workspace.PackageDescriptor,
-	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
-) (Provider, *workspace.PackageSpec, error) {
-	result := cmdRegistry.TryResolvePackageWithFallback(
-		pctx.Base(), reg, pluginSpec.Name, pluginSpec.Version, pctx.Root, pctx.Diag)
-
-	if result.Found {
-		return setupProviderFromRegistryMeta(*result.Metadata, setupProvider)
-	}
-
-	switch result.FallbackType {
-	case cmdRegistry.PreGitHubRegistryFallback, cmdRegistry.LocalProjectFallback:
-		return setupProvider(descriptor, nil)
-	case cmdRegistry.NoFallback:
-		if result.Error != nil && errors.Is(result.Error, registry.ErrNotFound) {
-			for _, suggested := range registry.GetSuggestedPackages(result.Error) {
-				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
-			}
-		}
-		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", result.Error)
-	default:
-		return Provider{}, nil, fmt.Errorf("Unknown fallback type: %v", result.FallbackType)
-	}
 }
 
 func isExecutable(info fs.FileInfo) bool {

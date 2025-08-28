@@ -16,18 +16,10 @@ package packagecmd
 
 import (
 	"bytes"
-	"context"
-	"iter"
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -136,45 +128,4 @@ func TestSetSpecNamespace(t *testing.T) {
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
 		})
 	}
-}
-
-func TestTryRegistryResolution(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	pulumiYaml := `name: test-project
-runtime: nodejs
-packages:
-  my-local-pkg: ./local-path`
-
-	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
-	require.NoError(t, err)
-
-	sink := diagtest.LogSink(t)
-	pctx := &plugin.Context{
-		Diag: sink,
-		Root: tmpDir,
-	}
-
-	pluginSpec := workspace.PluginSpec{Name: "my-local-pkg", Kind: apitype.ResourcePlugin}
-	descriptor := workspace.PackageDescriptor{PluginSpec: pluginSpec}
-
-	setupCalled := false
-	setupProviderFunc := func(
-		desc workspace.PackageDescriptor, spec *workspace.PackageSpec,
-	) (Provider, *workspace.PackageSpec, error) {
-		setupCalled = true
-		return Provider{}, spec, nil
-	}
-
-	reg := &backend.MockCloudRegistry{
-		ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-			return func(yield func(apitype.PackageMetadata, error) bool) {}
-		},
-	}
-
-	_, _, err = tryRegistryResolution(pctx, reg, pluginSpec, descriptor, setupProviderFunc)
-
-	require.NoError(t, err)
-	assert.True(t, setupCalled)
 }
