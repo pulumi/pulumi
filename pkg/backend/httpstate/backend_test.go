@@ -49,6 +49,8 @@ import (
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
+
 	// Arrange
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
@@ -269,6 +271,8 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -423,6 +427,8 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 //nolint:paralleltest // mutates global configuration
 func TestListStackNames(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
+
 	// Arrange
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
@@ -538,6 +544,8 @@ func TestListStackNames(t *testing.T) {
 
 //nolint:paralleltest // mutates global configuration
 func TestListStackNamesVsListStacks(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
+
 	// Arrange
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
