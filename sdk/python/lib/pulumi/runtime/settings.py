@@ -275,14 +275,14 @@ async def _shutdown_callbacks():
     await _CallbackServicer.shutdown()
 
 
-def get_root_resource() -> Optional["Resource"]:
+def get_root_resource() -> Optional[Resource]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
     return ROOT.get()
 
 
-def set_root_resource(root: "Resource"):
+def set_root_resource(root: Resource):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """

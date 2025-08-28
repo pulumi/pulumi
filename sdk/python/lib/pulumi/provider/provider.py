@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Sequence, Mapping, Any
+from typing import Optional, Any
+from collections.abc import Sequence, Mapping
 
 from pulumi import ResourceOptions, Input, Inputs
 
