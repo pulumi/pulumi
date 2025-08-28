@@ -608,6 +608,38 @@ func TestDynamicProviderConfig(t *testing.T) {
 	}
 }
 
+// Test logging from dynamic providers.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicProviderOutputPython(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-output"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Stdout: stdout,
+		Stderr: stderr,
+		Quick:  true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			message := "message from provider"
+			found := false
+			for _, event := range stackInfo.Events {
+				if event.DiagnosticEvent != nil &&
+					event.DiagnosticEvent.Severity == "info" &&
+					strings.Contains(event.DiagnosticEvent.Message, message) {
+					found = true
+				}
+			}
+			b, err := json.Marshal(stackInfo.Events)
+			require.NoError(t, err)
+			require.True(t, found, "expected a diagnostic event with the message %s, got: %s", message, b)
+		},
+	})
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialValuesPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
