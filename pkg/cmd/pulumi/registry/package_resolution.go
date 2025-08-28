@@ -70,32 +70,28 @@ func ResolvePackage(
 	env PackageResolutionEnv,
 	proj *PackageResolutionProjectContext,
 ) PackageResolutionResult {
-	if plugin.IsLocalPluginPath(ctx, pluginSpec.Name) {
+	var sourceToCheck string
+
+	if proj != nil {
+		localSource := getLocalProjectPackageSource(proj, pluginSpec.Name, diagSink)
+		if localSource != "" {
+			sourceToCheck = localSource
+		}
+	}
+
+	if sourceToCheck == "" {
+		sourceToCheck = pluginSpec.Name
+	}
+
+	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
 		return PackageResolutionResult{
 			Strategy: LocalPluginPathResolution,
 		}
 	}
 
-	if pluginSpec.IsGitPlugin() {
+	if isGitURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
 		return PackageResolutionResult{
 			Strategy: LegacyResolution,
-		}
-	}
-
-	if proj != nil {
-		localSource := getLocalProjectPackageSource(proj, pluginSpec.Name, diagSink)
-		if localSource != "" {
-			if plugin.IsLocalPluginPath(ctx, localSource) {
-				return PackageResolutionResult{
-					Strategy: LocalPluginPathResolution,
-				}
-			}
-
-			if isGitURL(localSource) {
-				return PackageResolutionResult{
-					Strategy: LegacyResolution,
-				}
-			}
 		}
 	}
 
