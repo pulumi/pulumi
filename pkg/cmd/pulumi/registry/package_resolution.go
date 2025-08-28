@@ -17,7 +17,6 @@ package registry
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 
 	"github.com/blang/semver"
@@ -116,16 +115,4 @@ func IsLocalProjectPackage(projectRoot, packageName string, diagSink diag.Sink) 
 
 	_, exists := packages[packageName]
 	return exists
-}
-
-func IsLocalProjectPackageForInstall(packageName string, diagSink diag.Sink) bool {
-	cwd, err := os.Getwd()
-	if err != nil {
-		if diagSink != nil {
-			diagSink.Warningf(
-				diag.Message("", "Unable to determine current directory while checking for local packages: %v"), err)
-		}
-		return false
-	}
-	return IsLocalProjectPackage(cwd, packageName, diagSink)
 }
