@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -135,50 +134,6 @@ func TestSetSpecNamespace(t *testing.T) {
 			schemaSpec := &schema.PackageSpec{}
 			setSpecNamespace(schemaSpec, pluginSpec)
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
-		})
-	}
-}
-
-func TestIsLocalProjectPackage(t *testing.T) {
-	t.Parallel()
-
-	// Helper to create a test project
-	createTestProject := func(t *testing.T) string {
-		tmpDir := t.TempDir()
-
-		pulumiYaml := `name: test-project
-runtime: go
-packages:
-  local-pkg: https://github.com/example/local-pkg
-  another-pkg: ./local-path`
-
-		pulumiYamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
-		err := os.WriteFile(pulumiYamlPath, []byte(pulumiYaml), 0o600)
-		require.NoError(t, err)
-
-		return tmpDir
-	}
-
-	testCases := []struct {
-		name        string
-		setupFunc   func(t *testing.T) string
-		packageName string
-		expected    bool
-	}{
-		{"package exists in project", createTestProject, "local-pkg", true},
-		{"another package exists", createTestProject, "another-pkg", true},
-		{"package does not exist", createTestProject, "nonexistent-pkg", false},
-		{"invalid project root", func(t *testing.T) string { return "/nonexistent/path" }, "local-pkg", false},
-		{"empty package name", createTestProject, "", false},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			projectRoot := tc.setupFunc(t)
-			result := cmdRegistry.IsLocalProjectPackage(projectRoot, tc.packageName, nil)
-			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
