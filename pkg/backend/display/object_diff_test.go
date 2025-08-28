@@ -307,12 +307,22 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+					"secretObj": resource.MakeSecret(
+						resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"a": resource.NewStringProperty("1"),
+						}))),
 				}),
 			},
 			showSecrets: false,
-			expected: "<{%fg 3%}>    secret: <{%reset%}>" +
-				"<{%fg 3%}>[secret]<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>",
+			expected: "<{%reset%}>" +
+				"    secret   : <{%reset%}>" +
+				"<{%reset%}>" +
+				"[secret]<{%reset%}>" +
+				"<{%reset%}>" +
+				"\n<{%reset%}>" +
+				"<{%fg 2%}>  + secretObj: <{%reset%}>" +
+				"<{%fg 2%}>[secret]<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>",
 		},
 		{
 			name: "stack output secret with showSecrets = true",
@@ -328,14 +338,31 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+					"secretObj": resource.MakeSecret(
+						resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"a": resource.NewStringProperty("1"),
+						}))),
 				}),
 			},
 			showSecrets: true,
-			expected: "<{%fg 3%}>    secret: <{%reset%}>" +
-				"<{%fg 3%}>\"shhhh\"<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>" +
+			expected: "<{%reset%}>" +
+				"    secret   : <{%reset%}>" +
+				"<{%reset%}>" +
+				"\"shhhh\"<{%reset%}>" +
+				"<{%reset%}>" +
+				"\n<{%reset%}>" +
+				"<{%reset%}>" +
 				// TODO https://github.com/pulumi/pulumi/issues/20416 - there is a double newline here
-				"<{%fg 3%}>\n<{%reset%}>",
+				"\n<{%reset%}>" +
+				"<{%fg 2%}>  + secretObj: <{%reset%}>" +
+				"<{%fg 2%}>{\n<{%reset%}" +
+				"><{%fg 2%}>      + a: <{%reset%}" +
+				"><{%fg 2%}>\"1\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
+				"<{%fg 2%}>    }<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
+				// TODO https://github.com/pulumi/pulumi/issues/20416 - there is a double newline here
+				"<{%fg 2%}>\n<{%reset%}>",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
