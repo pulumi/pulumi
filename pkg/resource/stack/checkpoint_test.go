@@ -155,6 +155,17 @@ func TestSerializeCheckpoint(t *testing.T) {
 			expectedVersion:  4,
 			expectedFeatures: []string{"hooks"},
 		},
+		{
+			name: "v4 deployment with taint",
+			resources: []*resource.State{
+				{
+					URN:   "urn1",
+					Taint: true,
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"taint"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

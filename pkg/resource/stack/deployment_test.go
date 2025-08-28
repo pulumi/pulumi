@@ -90,6 +90,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		"",
 		false,
 		false,
+		false,
 		[]resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
@@ -270,6 +271,17 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			expectedVersion:  4,
 			expectedFeatures: []string{"hooks"},
 		},
+		{
+			name: "v4 deployment with taint",
+			resources: []*resource.State{
+				{
+					URN:   "urn1",
+					Taint: true,
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"taint"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -359,6 +371,7 @@ func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 		"refreshBeforeUpdate",
 		"views",
 		"hooks",
+		"taint",
 	}) {
 		t.Run(strings.Join(features, ","), func(t *testing.T) {
 			t.Parallel()

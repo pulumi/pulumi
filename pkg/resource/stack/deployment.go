@@ -59,6 +59,7 @@ const (
 	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
 	viewsFeature               = "views"
 	hooksFeature               = "hooks"
+	taintFeature               = "taint"
 )
 
 var (
@@ -113,6 +114,7 @@ var supportedFeatures = map[string]bool{
 	refreshBeforeUpdateFeature: true,
 	viewsFeature:               true,
 	hooksFeature:               true,
+	taintFeature:               true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -139,6 +141,9 @@ func applyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if len(res.ResourceHooks) > 0 {
 		features[hooksFeature] = true
+	}
+	if res.Taint {
+		features[taintFeature] = true
 	}
 }
 
@@ -467,6 +472,7 @@ func SerializeResource(
 		Inputs:                  inputs,
 		Outputs:                 outputs,
 		Protect:                 res.Protect,
+		Taint:                   res.Taint,
 		External:                res.External,
 		Dependencies:            res.Dependencies,
 		InitErrors:              res.InitErrors,
@@ -649,7 +655,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
+		inputs, outputs, res.Parent, res.Protect, res.Taint, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
 		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified, res.SourcePosition, res.IgnoreChanges,
 		res.ReplaceOnChanges,

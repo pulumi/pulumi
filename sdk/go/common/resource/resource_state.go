@@ -42,6 +42,7 @@ type State struct {
 	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
 	Parent                  URN                   // an optional parent URN that this resource belongs to.
 	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
+	Taint                   bool                  // true to force replacement of this resource during the next update.
 	External                bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle.
 	Dependencies            []URN                 // the resource's dependencies.
 	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
@@ -76,6 +77,7 @@ func (s *State) Copy() *State {
 		Outputs:                 s.Outputs,
 		Parent:                  s.Parent,
 		Protect:                 s.Protect,
+		Taint:                   s.Taint,
 		External:                s.External,
 		Dependencies:            s.Dependencies,
 		InitErrors:              s.InitErrors,
@@ -113,7 +115,7 @@ func (s *State) GetAliases() []Alias {
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
+	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool, taint bool,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
@@ -134,6 +136,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Outputs:                 outputs,
 		Parent:                  parent,
 		Protect:                 protect,
+		Taint:                   taint,
 		External:                external,
 		Dependencies:            dependencies,
 		InitErrors:              initErrors,
