@@ -90,6 +90,7 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
