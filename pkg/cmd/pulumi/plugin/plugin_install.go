@@ -25,7 +25,8 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdPkg "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -118,7 +119,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.installPluginSpec = installPluginSpec
 	}
 	if cmd.registry == nil {
-		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
+		cmd.registry = cmdPkg.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -183,26 +184,11 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			!cmd.env.GetBool(env.DisableRegistryResolve) &&
 			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
 			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
-			pkgMetadata, err := registry.ResolvePackageFromName(ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version)
-			if err == nil {
-				pluginSpec.Name = pkgMetadata.Name
-				pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
-			} else if errors.Is(err, registry.ErrNotFound) &&
-				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
-				// If the error is [registry.ErrNotFound], then this could
-				// be a Pulumi plugin that isn't in the registry.
-				//
-				// We just ignore the failure in the hope that the
-				// download against GitHub will succeed.
-			} else {
-				for _, suggested := range registry.GetSuggestedPackages(err) {
-					cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-						suggested.Source, suggested.Publisher, suggested.Name,
-						suggested.Version,
-					)
-				}
-				return fmt.Errorf("Unable to resolve package from name: %w", err)
+			updatedSpec, err := cmd.tryPluginRegistryResolution(ctx, pluginSpec)
+			if err != nil {
+				return err
 			}
+			pluginSpec = updatedSpec
 		}
 
 		// If we don't have a version try to look one up
@@ -339,4 +325,48 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 		return workspace.SingleFilePlugin(f, spec), nil
 	}
 	return workspace.TarPlugin(f), nil
+}
+
+// tryPluginRegistryResolution attempts to resolve plugin information from the IDP Registry,
+// with fallback logic for pre-GitHub registry packages and local project packages.
+func (cmd *pluginInstallCmd) tryPluginRegistryResolution(
+	ctx context.Context, pluginSpec workspace.PluginSpec,
+) (workspace.PluginSpec, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return pluginSpec, fmt.Errorf("unable to determine current directory: %w", err)
+	}
+
+	result := cmdRegistry.TryResolvePackageWithFallback(
+		ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version, cwd, cmd.diag)
+
+	if result.Found {
+		return cmd.applyRegistryMetadata(pluginSpec, *result.Metadata), nil
+	}
+
+	switch result.FallbackType {
+	case cmdRegistry.PreGitHubRegistryFallback, cmdRegistry.LocalProjectFallback:
+		return pluginSpec, nil
+	case cmdRegistry.NoFallback:
+		if result.Error != nil && errors.Is(result.Error, registry.ErrNotFound) {
+			for _, suggested := range registry.GetSuggestedPackages(result.Error) {
+				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name,
+					suggested.Version,
+				)
+			}
+		}
+		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", result.Error)
+	default:
+		return pluginSpec, fmt.Errorf("Unknown fallback type: %v", result.FallbackType)
+	}
+}
+
+// applyRegistryMetadata applies package metadata from the registry to the plugin spec.
+func (cmd *pluginInstallCmd) applyRegistryMetadata(
+	pluginSpec workspace.PluginSpec, pkgMetadata apitype.PackageMetadata,
+) workspace.PluginSpec {
+	pluginSpec.Name = pkgMetadata.Name
+	pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
+	return pluginSpec
 }

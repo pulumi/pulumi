@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -311,4 +313,107 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	}
 
 	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+}
+
+func TestRegistryFallbackWithLocalPackages(t *testing.T) {
+	t.Parallel()
+
+	// Create temporary directory with Pulumi.yaml containing local packages
+	tmpDir := t.TempDir()
+
+	pulumiYaml := `name: test-project
+runtime: nodejs
+packages:
+  my-local-provider: ./my-provider
+  remote-package: https://github.com/example/remote-package`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	// Change to the test directory so isLocalProjectPackageForInstall finds the Pulumi.yaml
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
+
+	tests := []struct {
+		name           string
+		packageName    string
+		registryError  error
+		shouldInstall  bool
+		shouldFallback bool
+	}{
+		{
+			name:           "registry not found + local package - should fallback",
+			packageName:    "my-local-provider",
+			registryError:  registry.ErrNotFound,
+			shouldInstall:  true,
+			shouldFallback: true,
+		},
+		{
+			name:           "registry not found + pre-GitHub package - should fallback",
+			packageName:    "aws",
+			registryError:  registry.ErrNotFound,
+			shouldInstall:  true,
+			shouldFallback: true,
+		},
+		{
+			name:           "registry not found + unknown package - should fail",
+			packageName:    "totally-unknown-package",
+			registryError:  registry.ErrNotFound,
+			shouldInstall:  false,
+			shouldFallback: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Change to temp dir for this specific test
+			_ = os.Chdir(tmpDir)
+
+			var installedPlugin workspace.PluginSpec
+			installCalled := false
+
+			cmd := &pluginInstallCmd{
+				diag: diagtest.LogSink(t),
+				env: env.NewEnv(
+					env.MapStore{"PULUMI_EXPERIMENTAL": "true"},
+				),
+				pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+					if tt.shouldFallback {
+						return &semver.Version{Major: 1}, nil
+					}
+					return nil, errors.New("plugin not found")
+				},
+				registry: &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {
+							// Return empty to simulate not found in registry
+						}
+					},
+				},
+				installPluginSpec: func(
+					_ context.Context, _ string,
+					install workspace.PluginSpec, _ string,
+					_ diag.Sink, _ colors.Colorization, _ bool,
+				) error {
+					installCalled = true
+					installedPlugin = install
+					return nil
+				},
+			}
+
+			err := cmd.Run(context.Background(), []string{"resource", tt.packageName})
+
+			if tt.shouldInstall {
+				require.NoError(t, err)
+				assert.True(t, installCalled, "plugin should have been installed")
+				assert.Equal(t, tt.packageName, installedPlugin.Name)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "Unable to resolve package from name")
+			}
+		})
+	}
 }

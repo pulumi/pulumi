@@ -16,10 +16,19 @@ package packagecmd
 
 import (
 	"bytes"
+	"context"
+	"iter"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,4 +137,89 @@ func TestSetSpecNamespace(t *testing.T) {
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
 		})
 	}
+}
+
+func TestIsLocalProjectPackage(t *testing.T) {
+	t.Parallel()
+
+	// Helper to create a test project
+	createTestProject := func(t *testing.T) string {
+		tmpDir := t.TempDir()
+
+		pulumiYaml := `name: test-project
+runtime: go
+packages:
+  local-pkg: https://github.com/example/local-pkg
+  another-pkg: ./local-path`
+
+		pulumiYamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
+		err := os.WriteFile(pulumiYamlPath, []byte(pulumiYaml), 0o600)
+		require.NoError(t, err)
+
+		return tmpDir
+	}
+
+	testCases := []struct {
+		name        string
+		setupFunc   func(t *testing.T) string
+		packageName string
+		expected    bool
+	}{
+		{"package exists in project", createTestProject, "local-pkg", true},
+		{"another package exists", createTestProject, "another-pkg", true},
+		{"package does not exist", createTestProject, "nonexistent-pkg", false},
+		{"invalid project root", func(t *testing.T) string { return "/nonexistent/path" }, "local-pkg", false},
+		{"empty package name", createTestProject, "", false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			projectRoot := tc.setupFunc(t)
+			result := cmdRegistry.IsLocalProjectPackage(projectRoot, tc.packageName, nil)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestTryRegistryResolution(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs
+packages:
+  my-local-pkg: ./local-path`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	sink := diagtest.LogSink(t)
+	pctx := &plugin.Context{
+		Diag: sink,
+		Root: tmpDir,
+	}
+
+	pluginSpec := workspace.PluginSpec{Name: "my-local-pkg", Kind: apitype.ResourcePlugin}
+	descriptor := workspace.PackageDescriptor{PluginSpec: pluginSpec}
+
+	setupCalled := false
+	setupProviderFunc := func(
+		desc workspace.PackageDescriptor, spec *workspace.PackageSpec,
+	) (Provider, *workspace.PackageSpec, error) {
+		setupCalled = true
+		return Provider{}, spec, nil
+	}
+
+	reg := &backend.MockCloudRegistry{
+		ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			return func(yield func(apitype.PackageMetadata, error) bool) {}
+		},
+	}
+
+	_, _, err = tryRegistryResolution(pctx, reg, pluginSpec, descriptor, setupProviderFunc)
+
+	require.NoError(t, err)
+	assert.True(t, setupCalled)
 }
