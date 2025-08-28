@@ -48,19 +48,3 @@ type JournalEntry struct {
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
 }
-
-// CreateJournalEntryRequest defines the request body for creating a new journal entry.
-type CreateJournalEntryRequest struct {
-	// Data is the JSON blob representing the journal entry.
-	Data JournalEntry `json:"data"`
-	// UpdateID is an identifier for the update this journal entry is associated with.
-	UpdateID string `json:"updateID"`
-	// StackID is the identifier for the stack this journal entry is associated with.
-	StackID string `json:"stackID"`
-}
-
-// CreateJournalEntryResponse defines the response for creating a new journal entry.
-type CreateJournalEntryResponse struct {
-	// ID is the unique identifier for the created journal entry.
-	ID string `json:"id"`
-}
