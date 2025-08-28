@@ -219,6 +219,20 @@ packages:
 			expectedStrategy: UnknownPackage,
 			expectError:      false,
 		},
+		{
+			name:       "project source takes precedence over plugin name",
+			pluginSpec: workspace.PluginSpec{Name: "my-local-pkg", PluginDownloadURL: "git://github.com/should-not-use/this"},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty
+					},
+				}, nil
+			},
+			setupProject:     true,
+			expectedStrategy: LocalPluginPathResolution,
+			expectError:      false,
+		},
 	}
 
 	for _, tt := range tests {
