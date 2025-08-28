@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -174,6 +175,189 @@ func Test_PrintObject(t *testing.T) {
 			var buf bytes.Buffer
 			PrintObject(&buf, c.object, false, 0, deploy.OpSame, false, false, false, c.showSecret)
 			assert.Equal(t, c.expected, buf.String())
+		})
+	}
+}
+
+func TestGetResourceOutputsPropertiesString(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name        string
+		oldState    engine.StepEventStateMetadata
+		newState    engine.StepEventStateMetadata
+		showSames   bool
+		showSecrets bool
+		expected    string
+	}{
+		{
+			name: "stack outputs are with showSames = true",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"banana": "yummy",
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"banana": "yummy",
+				}),
+			},
+			showSames: true,
+			expected: "<{%fg 3%}>    banana: <{%reset%}>" +
+				"<{%fg 3%}>\"yummy\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>",
+		},
+		{
+			name: "stack outputs are shown with showSames = false",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"banana": "yummy",
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"banana": "yummy",
+				}),
+			},
+			showSames: false,
+			expected: "<{%fg 3%}>    banana: <{%reset%}>" +
+				"<{%fg 3%}>\"yummy\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>",
+		},
+		{
+			name: "stack output added",
+			oldState: engine.StepEventStateMetadata{
+				URN:     "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type:    "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"someProp": "added",
+				}),
+			},
+			expected: "<{%fg 2%}>  + someProp: <{%reset%}>" +
+				"<{%fg 2%}>\"added\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>",
+		},
+		{
+			name: "stack output removed",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"someProp": "removed",
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:     "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type:    "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{}),
+			},
+			expected: "<{%fg 1%}>  - someProp: <{%reset%}>" +
+				"<{%fg 1%}>\"removed\"<{%reset%}>" +
+				"<{%fg 1%}>\n<{%reset%}>",
+		},
+		{
+			name: "stack output changed",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"someProp": "initial",
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"someProp": "changed",
+				}),
+			},
+			expected: "<{%fg 3%}>  ~ someProp: <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 1%}>initial<{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 3%}> => <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 2%}>changed<{%reset%}>" +
+				"<{%fg 3%}>\"\n<{%reset%}>",
+		},
+		{
+			name: "stack output secret with showSecrets = false",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+				}),
+			},
+			showSecrets: false,
+			expected: "<{%fg 3%}>    secret: <{%reset%}>" +
+				"<{%fg 3%}>[secret]<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>",
+		},
+		{
+			name: "stack output secret with showSecrets = true",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+				}),
+			},
+			showSecrets: true,
+			expected: "<{%fg 3%}>    secret: <{%reset%}>" +
+				"<{%fg 3%}>\"shhhh\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>" +
+				// TODO https://github.com/pulumi/pulumi/issues/20416 - there is a double newline here
+				"<{%fg 3%}>\n<{%reset%}>",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			step := engine.StepEventMetadata{
+				Op:   "update",
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Old:  &tt.oldState,
+				New:  &tt.newState,
+			}
+			s := getResourceOutputsPropertiesString(
+				step,
+				1,              /*indent */
+				false,          /* planning */
+				false,          /* debug */
+				false,          /* refresh */
+				tt.showSames,   /* showSames */
+				tt.showSecrets, /* showSecrets */
+			)
+			require.Equal(t, tt.expected, s)
 		})
 	}
 }
