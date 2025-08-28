@@ -244,13 +244,17 @@ packages:
 				env = *tt.env
 			}
 
+			var proj *PackageResolutionProjectContext
+			if tt.setupProject {
+				proj = &PackageResolutionProjectContext{Root: projectRoot}
+			}
 			result := ResolvePackage(
 				context.Background(),
 				reg,
 				tt.pluginSpec,
-				projectRoot,
 				diagtest.LogSink(t),
 				env,
+				proj,
 			)
 
 			assert.Equal(t, tt.expectedStrategy, result.Strategy)
@@ -303,12 +307,12 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		context.Background(),
 		reg,
 		pluginSpec,
-		t.TempDir(),
 		diagtest.LogSink(t),
 		PackageResolutionEnv{
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
+		&PackageResolutionProjectContext{Root: t.TempDir()},
 	)
 
 	assert.Equal(t, RegistryResolution, result.Strategy)
@@ -343,12 +347,12 @@ packages:
 		context.Background(),
 		reg,
 		pluginSpec, // This is both pre-registry AND defined locally
-		tmpDir,
 		diagtest.LogSink(t),
 		PackageResolutionEnv{
 			DisableRegistryResolve: true,
 			Experimental:           false,
 		},
+		&PackageResolutionProjectContext{Root: tmpDir},
 	)
 
 	// Should prefer local project (local path) resolution over pre-registry resolution

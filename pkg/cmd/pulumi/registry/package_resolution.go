@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -40,6 +41,19 @@ type PackageResolutionEnv struct {
 	Experimental           bool
 }
 
+type PackageResolutionProjectContext struct {
+	Root string
+}
+
+// DetectProjectContext tries to detect the current project context.
+// Returns nil if no project is found (e.g., when not in a project directory).
+func DetectProjectContext() *PackageResolutionProjectContext {
+	if _, root, err := pkgWorkspace.Instance.ReadProject(); err == nil {
+		return &PackageResolutionProjectContext{Root: root}
+	}
+	return nil
+}
+
 type PackageResolutionResult struct {
 	// Metadata is only set for RegistryResolution strategy
 	// This avoids needing to call registry resolution again if the package is found
@@ -52,9 +66,9 @@ func ResolvePackage(
 	ctx context.Context,
 	reg registry.Registry,
 	pluginSpec workspace.PluginSpec,
-	projectRoot string,
 	diagSink diag.Sink,
 	env PackageResolutionEnv,
+	proj *PackageResolutionProjectContext,
 ) PackageResolutionResult {
 	if plugin.IsLocalPluginPath(ctx, pluginSpec.Name) {
 		return PackageResolutionResult{
@@ -68,17 +82,19 @@ func ResolvePackage(
 		}
 	}
 
-	localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name, diagSink)
-	if localSource != "" {
-		if plugin.IsLocalPluginPath(ctx, localSource) {
-			return PackageResolutionResult{
-				Strategy: LocalPluginPathResolution,
+	if proj != nil {
+		localSource := getLocalProjectPackageSource(proj, pluginSpec.Name, diagSink)
+		if localSource != "" {
+			if plugin.IsLocalPluginPath(ctx, localSource) {
+				return PackageResolutionResult{
+					Strategy: LocalPluginPathResolution,
+				}
 			}
-		}
 
-		if isGitURL(localSource) {
-			return PackageResolutionResult{
-				Strategy: LegacyResolution,
+			if isGitURL(localSource) {
+				return PackageResolutionResult{
+					Strategy: LegacyResolution,
+				}
 			}
 		}
 	}
@@ -107,9 +123,13 @@ func ResolvePackage(
 	}
 }
 
-func getLocalProjectPackageSource(projectRoot, packageName string, diagSink diag.Sink) string {
-	projPath := filepath.Join(projectRoot, "Pulumi.yaml")
-	proj, err := workspace.LoadProject(projPath)
+func getLocalProjectPackageSource(
+	proj *PackageResolutionProjectContext,
+	packageName string,
+	diagSink diag.Sink,
+) string {
+	projPath := filepath.Join(proj.Root, "Pulumi.yaml")
+	project, err := workspace.LoadProject(projPath)
 	if err != nil {
 		if diagSink != nil {
 			diagSink.Infof(
@@ -119,7 +139,7 @@ func getLocalProjectPackageSource(projectRoot, packageName string, diagSink diag
 		return ""
 	}
 
-	packages := proj.GetPackageSpecs()
+	packages := project.GetPackageSpecs()
 	if packages == nil {
 		return ""
 	}
