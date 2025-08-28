@@ -738,7 +738,6 @@ func SchemaFromSchemaSource(
 		}
 		return pkg, specOverride, nil
 	}
-
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
@@ -952,7 +951,8 @@ func ProviderFromSource(
 					Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
 					Version: meta.Version.String(),
 				})
-			} else if errors.Is(err, registry.ErrNotFound) {
+			} else if errors.Is(err, registry.ErrNotFound) &&
+				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
 				// Let's try installing it without the registry.
 				return setupProvider(descriptor, nil)
 			}
