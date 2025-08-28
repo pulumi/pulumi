@@ -66,6 +66,7 @@ func TestUntaintSingleResource(t *testing.T) {
 	// Get initial snapshot to verify taint state
 	initialSnap, err := stack.Snapshot(ctx, mp)
 	require.NoError(t, err)
+	require.Len(t, initialSnap.Resources, 2)
 	assert.True(t, initialSnap.Resources[1].Taint)
 
 	// Untaint the resource
@@ -293,6 +294,7 @@ func TestUntaintAlreadyUntaintedResource(t *testing.T) {
 	// Get initial snapshot
 	initialSnap, err := stack.Snapshot(ctx, mp)
 	require.NoError(t, err)
+	require.Len(t, initialSnap.Resources, 2)
 	assert.False(t, initialSnap.Resources[1].Taint)
 
 	// Untaint the already untainted resource
