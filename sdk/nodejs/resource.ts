@@ -148,6 +148,15 @@ export function allAliases(
 }
 
 /**
+ * {@link CallSite} describes a single stack frame, including optional position information.
+ */
+interface CallSite {
+    file?: string;
+    line?: number;
+    column?: number;
+}
+
+/**
  * {@link Resource} represents a class whose CRUD operations are implemented by
  * a provider plugin.
  */
@@ -155,8 +164,7 @@ export abstract class Resource {
     /**
      * A regexp for use with {@link sourcePosition}.
      */
-    private static sourcePositionRegExp =
-        /Error:\s*\n\s*at new Resource \(.*\)\n\s*at new \S*Resource \(.*\)\n(\s*at new \S* \(.*\)\n)?[^(]*\((?<file>.*):(?<line>[0-9]+):(?<col>[0-9]+)\)\n/;
+    private static framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
 
     /**
      * A private field to help with RTTI that works in SxS scenarios.
@@ -326,6 +334,51 @@ export abstract class Resource {
     }
 
     /**
+     * Returns the list of callsites for the current stack. The top of the stack is at index 0.
+     *
+     * Some callsites may not contain position information. It is up to the caller to detect this situation.
+     */
+    private static callsites(): CallSite[] {
+        // NOTE: it would be lovely to implement this using prepareStackTrace and actual V8 callsite information.
+        // Unfortunately, the V8 source locations are not mapped from transpiled locations to user locations, and
+        // Node 20.x does not expose an easy way to access source map information. Furthermore, ts-node may inject
+        // hooks that perform this mapping as part of prepareStackTrace. Instead of using prepareStackTrace, then,
+        // we parse its output as returned via `new Error().stack`. The stack trace will look like:
+        //
+        //     Error
+        //         at foo (file:line:column)
+        //         at bar (file:line:column)
+        //         at baz (file:line:column)
+        //
+        // We process this by splitting it into lines and parsing the position information out of each line.
+        const stackTraceLimit = Error.stackTraceLimit;
+        try {
+            Error.stackTraceLimit = Number.POSITIVE_INFINITY;
+
+            const stackTrace = new Error().stack;
+            return (
+                stackTrace
+                    ?.split("\n")
+                    ?.slice(1)
+                    ?.map((frame) => {
+                        const { file, line, column } = Resource.framePositionRegExp.exec(frame)?.groups || {};
+                        if (!file || !line || !column || file.startsWith("node:")) {
+                            return {};
+                        }
+                        const lineNum = parseInt(line, 10);
+                        const colNum = parseInt(column, 10);
+                        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+                            return {};
+                        }
+                        return { file, line: lineNum, column: colNum };
+                    }) || []
+            );
+        } finally {
+            Error.stackTraceLimit = stackTraceLimit;
+        }
+    }
+
+    /**
      * Returns the source position of the user code that instantiated this
      * resource.
      *
@@ -348,33 +401,25 @@ export abstract class Resource {
      *     new Bucket (/path/to/bucket.ts:987:65)
      *     <user code> (/path/to/index.ts:4:3)
      *
-     * Because Node can only give us the stack trace as text, we parse out the
-     * source position using a regex that matches traces of this form (see
-     * the {@link sourcePositionRegExp} above).
      */
     private static sourcePosition(): SourcePosition | undefined {
-        const stackObj: any = {};
-        Error.captureStackTrace(stackObj, Resource.sourcePosition);
-
-        // Parse out the source position of the user code. If any part of the match is missing, return undefined.
-        const { file, line, col } = Resource.sourcePositionRegExp.exec(stackObj.stack)?.groups || {};
-        if (!file || !line || !col) {
+        // Skip the first four frames: sourcePosition(), new Resource, new CustomResource, new Bucket
+        const stack = Resource.callsites();
+        if (stack.length < 5) {
             return undefined;
         }
+        const userFrame = stack[4];
 
-        // Parse the line and column numbers. If either fails to parse, return undefined.
-        //
-        // Note: this really shouldn't happen given the regex; this is just a bit of defensive coding.
-        const lineNum = parseInt(line, 10);
-        const colNum = parseInt(col, 10);
-        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+        // If any part of the position is missing, return undefined.
+        const { file, line, column } = userFrame;
+        if (!file || !line || !column) {
             return undefined;
         }
 
         return {
             uri: url.pathToFileURL(file).toString(),
-            line: lineNum,
-            column: colNum,
+            line,
+            column,
         };
     }
 
