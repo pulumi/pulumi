@@ -821,11 +821,13 @@ type Provider struct {
 }
 
 // ProviderFromSource takes a plugin name or path.
+// Automatically detects project context when available for local package resolution.
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 ) (Provider, *workspace.PackageSpec, error) {
+	projCtx := cmdRegistry.DetectProjectContext()
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return Provider{}, nil, err
@@ -919,12 +921,12 @@ func ProviderFromSource(
 		pctx.Base(),
 		reg,
 		pluginSpec,
-		pctx.Root,
 		pctx.Diag,
 		cmdRegistry.PackageResolutionEnv{
 			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
 			Experimental:           env.Experimental.Value(),
 		},
+		projCtx,
 	)
 
 	switch result.Strategy {

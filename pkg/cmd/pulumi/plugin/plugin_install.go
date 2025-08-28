@@ -333,14 +333,10 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PluginSpec,
 ) (workspace.PluginSpec, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return pluginSpec, fmt.Errorf("unable to determine current directory: %w", err)
-	}
-
 	resolutionEnv := cmd.packageResolutionEnv
 
-	result := cmdRegistry.ResolvePackage(ctx, cmd.registry, pluginSpec, cwd, cmd.diag, resolutionEnv)
+	projCtx := cmdRegistry.DetectProjectContext()
+	result := cmdRegistry.ResolvePackage(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, projCtx)
 
 	switch result.Strategy {
 	case cmdRegistry.LocalPluginPathResolution, cmdRegistry.LegacyResolution:
