@@ -1177,6 +1177,7 @@ func TestProjectRename_LocalProject(t *testing.T) {
 
 //nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestProjectRename_Cloud(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}

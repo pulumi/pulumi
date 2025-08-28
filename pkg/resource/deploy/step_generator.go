@@ -174,8 +174,13 @@ func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
 	return false
 }
 
-func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
-	return sg.deployment.opts.ReplaceTargets.IsConstrained() && sg.deployment.opts.ReplaceTargets.Contains(urn)
+func (sg *stepGenerator) isTargetedReplace(urn resource.URN, old *resource.State) bool {
+	// If this was specified by a replace target explicitly by URN, it will be replaced.
+	if sg.deployment.opts.ReplaceTargets.IsConstrained() && sg.deployment.opts.ReplaceTargets.Contains(urn) {
+		return true
+	}
+	// If the resource was marked tainted in the old state, we will replace (and implicitly untaint) it.
+	return old != nil && old.Taint
 }
 
 func (sg *stepGenerator) Errored() bool {
@@ -266,6 +271,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		make(resource.PropertyMap), /* outputs */
 		parent,
 		false, /*protect*/
+		false, /*taint*/
 		true,  /*external*/
 		event.Dependencies(),
 		nil, /* initErrors */
@@ -675,7 +681,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	}
 
 	new := resource.NewState(
-		goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false,
+		goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
@@ -905,7 +911,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			var newnew *resource.State
 			if err == nil {
 				newnew = resource.NewState(
-					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, new.Protect, false,
+					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, new.Protect, false, false,
 					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 					goal.AdditionalSecretOutputs, new.Aliases, &goal.CustomTimeouts, "", new.RetainOnDelete, goal.DeletedWith,
 					new.Created, new.Modified, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
@@ -1055,7 +1061,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || old == nil {
+		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
 				News:          goal.Properties,
@@ -1085,7 +1091,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	// If the resource is valid and we're generating plans then generate a plan
 	if !invalid && sg.deployment.opts.GeneratePlan {
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || old == nil {
+		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			oldInputs = nil
 		}
 		inputDiff := oldInputs.Diff(inputs)
@@ -1673,7 +1679,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			// had assumed that we were going to carry them over from the old resource, which is no longer true.
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
-			if prov != nil && !sg.isTargetedReplace(urn) {
+			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
 					News:          goal.Properties,
@@ -2454,7 +2460,7 @@ func (sg *stepGenerator) diff(
 	newInputs resource.PropertyMap, prov plugin.Provider,
 ) (plugin.DiffResult, *promise.CompletionSource[plugin.DiffResult], error) {
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
-	if sg.isTargetedReplace(urn) {
+	if sg.isTargetedReplace(urn, old) {
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil, nil
 	}
 

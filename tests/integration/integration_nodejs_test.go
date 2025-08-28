@@ -3098,6 +3098,21 @@ func TestNodePackageAddTSC(t *testing.T) {
 	}
 }
 
+// Test that `tsc` does not pick up the project's @types packages when compiling the local SDK
+func TestNodePackageAddTypes(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("packageadd-types")
+	provider := filepath.Join(e.RootPath, "provider")
+	program := filepath.Join(e.RootPath, "program")
+	e.CWD = provider
+	installNodejsProviderDependencies(t, provider)
+	e.CWD = program
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "package", "add", provider)
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/20068
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
