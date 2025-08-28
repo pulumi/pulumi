@@ -16,14 +16,14 @@ package registry
 
 import "testing"
 
-func TestIsPreGitHubRegistryPackage(t *testing.T) {
+func TestIsPreRegistryPackage(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
 		name     string
 		expected bool
 	}{
-		// Pre-GitHub registry packages
+		// Pre-registry packages
 		{"aws", true},
 		{"azure", true},
 		{"kubernetes", true},
@@ -46,9 +46,9 @@ func TestIsPreGitHubRegistryPackage(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result := IsPreGitHubRegistryPackage(tc.name)
+			result := IsPreRegistryPackage(tc.name)
 			if result != tc.expected {
-				t.Errorf("IsPreGitHubRegistryPackage(%q) = %v, expected %v", tc.name, result, tc.expected)
+				t.Errorf("IsPreRegistryPackage(%q) = %v, expected %v", tc.name, result, tc.expected)
 			}
 		})
 	}

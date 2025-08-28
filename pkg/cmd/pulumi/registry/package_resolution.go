@@ -16,87 +16,98 @@ package registry
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
+	"strings"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type PackageFallbackType int
+type PackageResolutionStrategy int
 
 const (
-	NoFallback                PackageFallbackType = iota
-	PreGitHubRegistryFallback                     // Use GitHub releases for pre-IDP Registry packages
-	LocalProjectFallback                          // Use local Pulumi.yaml package definition
+	RegistryResolution PackageResolutionStrategy = iota
+	LocalPluginPathResolution
+	LegacyResolution
+	UnknownPackage
 )
 
-type PackageResolutionResult struct {
-	Found        bool
-	Metadata     *apitype.PackageMetadata
-	FallbackType PackageFallbackType
-	Error        error
+type PackageResolutionEnv struct {
+	DisableRegistryResolve bool
+	Experimental           bool
 }
 
-// TryResolvePackageWithFallback attempts IDP Registry resolution first,
-// then determines appropriate fallback strategy if not found.
-func TryResolvePackageWithFallback(
+type PackageResolutionResult struct {
+	// Metadata is only set for RegistryResolution strategy
+	// This avoids needing to call registry resolution again if the package is found
+	Metadata *apitype.PackageMetadata
+	Strategy PackageResolutionStrategy
+	Error    error
+}
+
+func ResolvePackage(
 	ctx context.Context,
 	reg registry.Registry,
-	packageName string,
-	version *semver.Version,
+	pluginSpec workspace.PluginSpec,
 	projectRoot string,
 	diagSink diag.Sink,
+	env PackageResolutionEnv,
 ) PackageResolutionResult {
-	metadata, err := registry.ResolvePackageFromName(ctx, reg, packageName, version)
-	if err == nil {
+	if plugin.IsLocalPluginPath(ctx, pluginSpec.Name) {
 		return PackageResolutionResult{
-			Found:        true,
-			Metadata:     &metadata,
-			FallbackType: NoFallback,
-			Error:        nil,
+			Strategy: LocalPluginPathResolution,
 		}
 	}
 
-	if errors.Is(err, registry.ErrNotFound) {
-		if registry.IsPreGitHubRegistryPackage(packageName) {
-			return PackageResolutionResult{
-				Found:        false,
-				Metadata:     nil,
-				FallbackType: PreGitHubRegistryFallback,
-				Error:        nil,
-			}
-		}
-
-		if IsLocalProjectPackage(projectRoot, packageName, diagSink) {
-			return PackageResolutionResult{
-				Found:        false,
-				Metadata:     nil,
-				FallbackType: LocalProjectFallback,
-				Error:        nil,
-			}
-		}
-
+	if pluginSpec.IsGitPlugin() {
 		return PackageResolutionResult{
-			Found:        false,
-			Metadata:     nil,
-			FallbackType: NoFallback,
-			Error:        err,
+			Strategy: LegacyResolution,
+		}
+	}
+
+	localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name, diagSink)
+	if localSource != "" {
+		if plugin.IsLocalPluginPath(ctx, localSource) {
+			return PackageResolutionResult{
+				Strategy: LocalPluginPathResolution,
+			}
+		}
+
+		if isGitURL(localSource) {
+			return PackageResolutionResult{
+				Strategy: LegacyResolution,
+			}
+		}
+	}
+
+	var registryErr error
+	if !env.DisableRegistryResolve && env.Experimental {
+		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
+		if err == nil {
+			return PackageResolutionResult{
+				Metadata: &metadata,
+				Strategy: RegistryResolution,
+			}
+		}
+		registryErr = err
+	}
+
+	if registry.IsPreRegistryPackage(pluginSpec.Name) {
+		return PackageResolutionResult{
+			Strategy: LegacyResolution,
 		}
 	}
 
 	return PackageResolutionResult{
-		Found:        false,
-		Metadata:     nil,
-		FallbackType: NoFallback,
-		Error:        err,
+		Strategy: UnknownPackage,
+		Error:    registryErr,
 	}
 }
 
-func IsLocalProjectPackage(projectRoot, packageName string, diagSink diag.Sink) bool {
+func getLocalProjectPackageSource(projectRoot, packageName string, diagSink diag.Sink) string {
 	projPath := filepath.Join(projectRoot, "Pulumi.yaml")
 	proj, err := workspace.LoadProject(projPath)
 	if err != nil {
@@ -105,14 +116,22 @@ func IsLocalProjectPackage(projectRoot, packageName string, diagSink diag.Sink) 
 				diag.Message("", "Could not read project file %s when checking for local package %s: %v"),
 				projPath, packageName, err)
 		}
-		return false
+		return ""
 	}
 
 	packages := proj.GetPackageSpecs()
 	if packages == nil {
-		return false
+		return ""
 	}
 
-	_, exists := packages[packageName]
-	return exists
+	if packageSpec, exists := packages[packageName]; exists {
+		return packageSpec.Source
+	}
+	return ""
+}
+
+func isGitURL(source string) bool {
+	return strings.HasPrefix(source, "https://github.com/") ||
+		strings.HasPrefix(source, "git://") ||
+		strings.HasPrefix(source, "ssh://git@")
 }

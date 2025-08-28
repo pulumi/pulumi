@@ -42,8 +42,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPluginInstallCmd() *cobra.Command {
+func newPluginInstallCmd(packageResolutionEnv cmdRegistry.PackageResolutionEnv) *cobra.Command {
 	var picmd pluginInstallCmd
+	picmd.packageResolutionEnv = packageResolutionEnv
 	cmd := &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -90,6 +91,8 @@ type pluginInstallCmd struct {
 	env      env.Env
 	color    colors.Colorization
 	registry registry.Registry
+
+	packageResolutionEnv cmdRegistry.PackageResolutionEnv
 
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
@@ -181,10 +184,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
-			!cmd.env.GetBool(env.DisableRegistryResolve) &&
 			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
 			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
-			updatedSpec, err := cmd.tryPluginRegistryResolution(ctx, pluginSpec)
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec)
 			if err != nil {
 				return err
 			}
@@ -327,9 +329,8 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 	return workspace.TarPlugin(f), nil
 }
 
-// tryPluginRegistryResolution attempts to resolve plugin information from the IDP Registry,
-// with fallback logic for pre-GitHub registry packages and local project packages.
-func (cmd *pluginInstallCmd) tryPluginRegistryResolution(
+// resolvePluginSpec resolves plugin specifications using various resolution strategies.
+func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PluginSpec,
 ) (workspace.PluginSpec, error) {
 	cwd, err := os.Getwd()
@@ -337,17 +338,19 @@ func (cmd *pluginInstallCmd) tryPluginRegistryResolution(
 		return pluginSpec, fmt.Errorf("unable to determine current directory: %w", err)
 	}
 
-	result := cmdRegistry.TryResolvePackageWithFallback(
-		ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version, cwd, cmd.diag)
+	resolutionEnv := cmd.packageResolutionEnv
 
-	if result.Found {
-		return cmd.applyRegistryMetadata(pluginSpec, *result.Metadata), nil
-	}
+	result := cmdRegistry.ResolvePackage(ctx, cmd.registry, pluginSpec, cwd, cmd.diag, resolutionEnv)
 
-	switch result.FallbackType {
-	case cmdRegistry.PreGitHubRegistryFallback, cmdRegistry.LocalProjectFallback:
+	switch result.Strategy {
+	case cmdRegistry.LocalPluginPathResolution, cmdRegistry.LegacyResolution:
 		return pluginSpec, nil
-	case cmdRegistry.NoFallback:
+	case cmdRegistry.RegistryResolution:
+		if result.Metadata == nil {
+			return pluginSpec, errors.New("Registry resolution should have metadata")
+		}
+		return cmd.applyRegistryMetadata(pluginSpec, *result.Metadata), nil
+	case cmdRegistry.UnknownPackage:
 		if result.Error != nil && errors.Is(result.Error, registry.ErrNotFound) {
 			for _, suggested := range registry.GetSuggestedPackages(result.Error) {
 				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
@@ -358,7 +361,7 @@ func (cmd *pluginInstallCmd) tryPluginRegistryResolution(
 		}
 		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", result.Error)
 	default:
-		return pluginSpec, fmt.Errorf("Unknown fallback type: %v", result.FallbackType)
+		return pluginSpec, fmt.Errorf("Unknown resolution strategy: %v", result.Strategy)
 	}
 }
 

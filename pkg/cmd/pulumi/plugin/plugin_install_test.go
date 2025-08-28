@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -128,6 +129,10 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
+		packageResolutionEnv: cmdRegistry.PackageResolutionEnv{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
@@ -239,6 +244,10 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
+			packageResolutionEnv: cmdRegistry.PackageResolutionEnv{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -262,6 +271,10 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
+			packageResolutionEnv: cmdRegistry.PackageResolutionEnv{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
