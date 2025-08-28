@@ -37,7 +37,7 @@ func InitPprofServer(ctx context.Context) {
 
 		<-sigusr
 
-		listener, err := net.Listen("tcp", ":0")
+		listener, err := net.Listen("tcp", "localhost:0")
 		if err != nil {
 			logging.Errorf("could not start listener for pprof server: %s", err)
 			return
@@ -51,7 +51,7 @@ func InitPprofServer(ctx context.Context) {
 
 		serverErr := make(chan error, 1)
 		go func() {
-			serverErr <- http.Serve(listener, mux)
+			serverErr <- http.Serve(listener, mux) //nolint:gosec // G114
 		}()
 
 		u := fmt.Sprintf("http://localhost:%d/debug/pprof/", listener.Addr().(*net.TCPAddr).Port)
