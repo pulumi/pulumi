@@ -1355,7 +1355,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	yamlString := string(yamlContent)
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString, "netapp-cloudmanager:")
-	require.Contains(t, yamlString, "source: pulumi/pulumi/terraform-provider")
+	require.Contains(t, yamlString, "source: terraform-provider")
 	require.Contains(t, yamlString, "version: "+terraformProviderVersion)
 	require.Contains(t, yamlString, "parameters:")
 	require.Contains(t, yamlString, "- NetApp/netapp-cloudmanager")
