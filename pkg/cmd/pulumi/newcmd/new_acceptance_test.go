@@ -282,6 +282,31 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	require.Equal(t, "yaml", proj.Runtime.Name())
 }
 
+// pulumi new --language yaml --yes --non-interactive
+//
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithAILanguage(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:                   true,
+		interactive:           false,
+		aiLanguage:            "yaml",
+		aiPrompt:              "", // emtpy
+		prompt:                ui.PromptForValue,
+		chooseTemplate:        ChooseTemplate,
+		secretsProvider:       "default",
+		stack:                 stackName,
+		generateOnly:          true,
+		promptForAIProjectURL: promptForAIProjectURL,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err,
+		"The --ai <prompt> flag is required when running in non-interactive mode with the --language flag.")
+}
+
 const (
 	projectName = "test_project"
 	stackName   = "test_stack"
