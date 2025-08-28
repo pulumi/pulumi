@@ -138,7 +138,9 @@ lint_golang:: lint_deps
 		echo "[golangci-lint] Linting $(pkg)..." && \
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
-			--timeout 5m) \
+			--timeout 5m && \
+		echo "[requiredfield] Linting $(pkg)..." && \
+		go vet -tags all -vettool=$$(which requiredfield) ./...) \
 		&&) true
 
 lint_golang_fix::
@@ -153,6 +155,7 @@ lint_golang_fix::
 
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
+	@echo "Check for requiredfield"; [ -e "$(shell which requiredfield)" ]
 lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
