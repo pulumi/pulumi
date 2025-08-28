@@ -266,31 +266,6 @@ packages:
 	}
 }
 
-func TestIsLocalProjectPackageForInstall(t *testing.T) {
-	t.Parallel()
-
-	origDir, err := os.Getwd()
-	require.NoError(t, err)
-
-	tmpDir := t.TempDir()
-	defer func() { _ = os.Chdir(origDir) }()
-	_ = os.Chdir(tmpDir)
-
-	pulumiYaml := `name: test-project
-runtime: nodejs
-packages:
-  install-pkg: ./local-path`
-
-	err = os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
-	require.NoError(t, err)
-
-	result := IsLocalProjectPackageForInstall("install-pkg", nil)
-	assert.True(t, result)
-
-	result = IsLocalProjectPackageForInstall("nonexistent", nil)
-	assert.False(t, result)
-}
-
 func TestFallbackTypePrecedence(t *testing.T) {
 	t.Parallel()
 
