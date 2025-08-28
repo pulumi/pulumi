@@ -293,7 +293,7 @@ func TestRunNewYesWithAILanguage(t *testing.T) {
 		yes:                   true,
 		interactive:           false,
 		aiLanguage:            "yaml",
-		aiPrompt:              "", // emtpy
+		aiPrompt:              "", // empty
 		prompt:                ui.PromptForValue,
 		chooseTemplate:        ChooseTemplate,
 		secretsProvider:       "default",
@@ -304,7 +304,7 @@ func TestRunNewYesWithAILanguage(t *testing.T) {
 
 	err := runNew(context.Background(), args)
 	require.ErrorContains(t, err,
-		"The --ai <prompt> flag is required when running in non-interactive mode with the --language flag.")
+		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
 }
 
 const (
