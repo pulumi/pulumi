@@ -270,6 +270,7 @@ func (op TestOp) runWithContext(
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
+	errs = append(errs, combined.Close())
 
 	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
 	// the deployment context, not expecting it to have any effect on the test code here. See

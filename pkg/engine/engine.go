@@ -44,7 +44,7 @@ type Context struct {
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
 	PluginManager   PluginManager
-	// RecordErroFunc is an optional function that is called at the end of an update. If it returns a non-nil error
-	// the error will be recorded as an EngineEvent and sent to the backend..
-	RecordErrorFunc func() error
+	// FinalizeUpdateFunc is an optional function that is called at the end of an update. It can be used to
+	// perform any finalization steps, including sending engine events.
+	FinalizeUpdateFunc func()
 }
