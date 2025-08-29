@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ packages:
 		pluginSpec       workspace.PluginSpec
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
-		expectedType     Result
+		expectedType     any
 		expectError      bool
 	}{
 		{
@@ -273,9 +273,13 @@ packages:
 			assert.IsType(t, tt.expectedType, result)
 
 			if tt.expectError {
-				assert.Error(t, result.Err())
+				unknownRes, ok := result.(UnknownResult)
+				require.True(t, ok, "Expected UnknownResult for error case")
+				assert.Error(t, unknownRes.Error)
 			} else {
-				require.NoError(t, result.Err())
+				if unknownRes, ok := result.(UnknownResult); ok {
+					require.NoError(t, unknownRes.Error)
+				}
 			}
 
 			switch res := result.(type) {
@@ -327,7 +331,9 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 	)
 
 	assert.IsType(t, RegistryResult{}, result)
-	require.NoError(t, result.Err())
+	if unknownRes, ok := result.(UnknownResult); ok {
+		require.NoError(t, unknownRes.Error)
+	}
 
 	switch res := result.(type) {
 	case RegistryResult:
@@ -373,7 +379,9 @@ packages:
 
 	// Should prefer local project (local path) resolution over pre-registry resolution
 	assert.IsType(t, LocalPathResult{}, result)
-	require.NoError(t, result.Err())
+	if unknownRes, ok := result.(UnknownResult); ok {
+		require.NoError(t, unknownRes.Error)
+	}
 }
 
 func TestGetLocalProjectPackageSource_NilPackages(t *testing.T) {
