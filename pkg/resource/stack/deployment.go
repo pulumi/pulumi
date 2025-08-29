@@ -652,17 +652,39 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	if !res.Custom && res.ID != "" {
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
-
-	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.Taint, res.External, res.Dependencies, res.InitErrors, res.Provider,
-		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
-		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified, res.SourcePosition, res.IgnoreChanges,
-		res.ReplaceOnChanges,
-		res.RefreshBeforeUpdate,
-		res.ViewOf,
-		res.ResourceHooks,
-	), nil
+	return resource.NewState{
+			Type:                    res.Type,
+			URN:                     res.URN,
+			Custom:                  res.Custom,
+			Delete:                  res.Delete,
+			ID:                      res.ID,
+			Inputs:                  inputs,
+			Outputs:                 outputs,
+			Parent:                  res.Parent,
+			Protect:                 res.Protect,
+			Taint:                   res.Taint,
+			External:                res.External,
+			Dependencies:            res.Dependencies,
+			InitErrors:              res.InitErrors,
+			Provider:                res.Provider,
+			PropertyDependencies:    res.PropertyDependencies,
+			PendingReplacement:      res.PendingReplacement,
+			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
+			Aliases:                 res.Aliases,
+			CustomTimeouts:          res.CustomTimeouts,
+			ImportID:                res.ImportID,
+			RetainOnDelete:          res.RetainOnDelete,
+			DeletedWith:             res.DeletedWith,
+			Created:                 res.Created,
+			Modified:                res.Modified,
+			SourcePosition:          res.SourcePosition,
+			IgnoreChanges:           res.IgnoreChanges,
+			ReplaceOnChanges:        res.ReplaceOnChanges,
+			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
+			ViewOf:                  res.ViewOf,
+			ResourceHooks:           res.ResourceHooks,
+		}.Make(),
+		nil
 }
 
 // DeserializeOperation hydrates a pending resource/operation pair.

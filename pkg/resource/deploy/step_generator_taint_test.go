@@ -116,9 +116,38 @@ func TestTaintedResourceDiff(t *testing.T) {
 	}
 
 	// Create a tainted resource
-	oldState := resource.NewState(urn.Type(), urn, false, false, "", inputs, outputs, "", false, true,
-		false, nil, nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
-
+	oldState := resource.NewState{
+		Type:                    urn.Type(),
+		URN:                     urn,
+		Custom:                  false,
+		Delete:                  false,
+		ID:                      "",
+		Inputs:                  inputs,
+		Outputs:                 outputs,
+		Parent:                  "",
+		Protect:                 false,
+		Taint:                   true,
+		External:                false,
+		Dependencies:            nil,
+		InitErrors:              nil,
+		Provider:                "",
+		PropertyDependencies:    nil,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: nil,
+		Aliases:                 nil,
+		CustomTimeouts:          nil,
+		ImportID:                "",
+		RetainOnDelete:          false,
+		DeletedWith:             "",
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          "",
+		IgnoreChanges:           nil,
+		ReplaceOnChanges:        nil,
+		RefreshBeforeUpdate:     false,
+		ViewOf:                  "",
+		ResourceHooks:           nil,
+	}.Make()
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(urn.Type(), urn.Name(), true, inputs, "", nil,
@@ -292,9 +321,38 @@ func TestDiffWithTaintedResource(t *testing.T) {
 			}
 
 			// Create a tainted resource
-			oldState := resource.NewState(urn.Type(), urn, false, false, "", inputs, outputs, "", false, tt.tainted,
-				false, nil, nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
-
+			oldState := resource.NewState{
+				Type:                    urn.Type(),
+				URN:                     urn,
+				Custom:                  false,
+				Delete:                  false,
+				ID:                      "",
+				Inputs:                  inputs,
+				Outputs:                 outputs,
+				Parent:                  "",
+				Protect:                 false,
+				Taint:                   tt.tainted,
+				External:                false,
+				Dependencies:            nil,
+				InitErrors:              nil,
+				Provider:                "",
+				PropertyDependencies:    nil,
+				PendingReplacement:      false,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				CustomTimeouts:          nil,
+				ImportID:                "",
+				RetainOnDelete:          false,
+				DeletedWith:             "",
+				Created:                 nil,
+				Modified:                nil,
+				SourcePosition:          "",
+				IgnoreChanges:           nil,
+				ReplaceOnChanges:        nil,
+				RefreshBeforeUpdate:     false,
+				ViewOf:                  "",
+				ResourceHooks:           nil,
+			}.Make()
 			done := make(chan *RegisterResult)
 			event := &registerResourceEvent{
 				goal: resource.NewGoal(urn.Type(), urn.Name(), true, inputs, "", nil,

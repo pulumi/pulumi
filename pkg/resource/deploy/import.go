@@ -219,8 +219,38 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
-	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, false, nil,
-		nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
+	state := resource.NewState{
+		Type:                    typ,
+		URN:                     urn,
+		Custom:                  false,
+		Delete:                  false,
+		ID:                      "",
+		Inputs:                  resource.PropertyMap{},
+		Outputs:                 nil,
+		Parent:                  "",
+		Protect:                 false,
+		Taint:                   false,
+		External:                false,
+		Dependencies:            nil,
+		InitErrors:              nil,
+		Provider:                "",
+		PropertyDependencies:    nil,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: nil,
+		Aliases:                 nil,
+		CustomTimeouts:          nil,
+		ImportID:                "",
+		RetainOnDelete:          false,
+		DeletedWith:             "",
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          "",
+		IgnoreChanges:           nil,
+		ReplaceOnChanges:        nil,
+		RefreshBeforeUpdate:     false,
+		ViewOf:                  "",
+		ResourceHooks:           nil,
+	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
@@ -327,9 +357,38 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
 		}
-
-		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, false,
-			nil, nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
+		state := resource.NewState{
+			Type:                    typ,
+			URN:                     urn,
+			Custom:                  true,
+			Delete:                  false,
+			ID:                      "",
+			Inputs:                  inputs,
+			Outputs:                 nil,
+			Parent:                  "",
+			Protect:                 false,
+			Taint:                   false,
+			External:                false,
+			Dependencies:            nil,
+			InitErrors:              nil,
+			Provider:                "",
+			PropertyDependencies:    nil,
+			PendingReplacement:      false,
+			AdditionalSecretOutputs: nil,
+			Aliases:                 nil,
+			CustomTimeouts:          nil,
+			ImportID:                "",
+			RetainOnDelete:          false,
+			DeletedWith:             "",
+			Created:                 nil,
+			Modified:                nil,
+			SourcePosition:          "",
+			IgnoreChanges:           nil,
+			ReplaceOnChanges:        nil,
+			RefreshBeforeUpdate:     false,
+			ViewOf:                  "",
+			ResourceHooks:           nil,
+		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
 			return nil, false, nil
@@ -425,10 +484,38 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
-		new := resource.NewState(
-			urn.Type(), urn, !imp.Component, false, "", resource.PropertyMap{}, nil, parent, imp.Protect, false,
-			false, nil, nil, provider, nil, false, nil, nil, nil, imp.ID, false, "", nil, nil, "", nil,
-			nil, false, "", nil)
+		new := resource.NewState{
+			Type:                    urn.Type(),
+			URN:                     urn,
+			Custom:                  !imp.Component,
+			Delete:                  false,
+			ID:                      "",
+			Inputs:                  resource.PropertyMap{},
+			Outputs:                 nil,
+			Parent:                  parent,
+			Protect:                 imp.Protect,
+			Taint:                   false,
+			External:                false,
+			Dependencies:            nil,
+			InitErrors:              nil,
+			Provider:                provider,
+			PropertyDependencies:    nil,
+			PendingReplacement:      false,
+			AdditionalSecretOutputs: nil,
+			Aliases:                 nil,
+			CustomTimeouts:          nil,
+			ImportID:                imp.ID,
+			RetainOnDelete:          false,
+			DeletedWith:             "",
+			Created:                 nil,
+			Modified:                nil,
+			SourcePosition:          "",
+			IgnoreChanges:           nil,
+			ReplaceOnChanges:        nil,
+			RefreshBeforeUpdate:     false,
+			ViewOf:                  "",
+			ResourceHooks:           nil,
+		}.Make()
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &resource.Goal{})
 
