@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.192.0 (2025-08-29)
+
+
+### Features
+
+- [cli/state] Add pulumi state taint/untaint commands to force replacement of resources upon next update
+  [#20380](https://github.com/pulumi/pulumi/pull/20380)
+
+- [sdk/nodejs] Add `previewDestroy` to allow dry-runs of `destroy` commands
+  [#20371](https://github.com/pulumi/pulumi/pull/20371)
+
+
+### Bug Fixes
+
+- [engine] Fix a bug causing hooks to never pass correctly to remote Go components
+  [#20390](https://github.com/pulumi/pulumi/pull/20390)
+
+- [sdk/go] Fix source position information
+  [#20351](https://github.com/pulumi/pulumi/pull/20351)
+
+- [sdk/nodejs] Fix function serialisation that contains minified classes
+  [#19345](https://github.com/pulumi/pulumi/pull/19345)
+
+- [sdkgen/nodejs] Limit @types packages used during local SDK generation
+  [#20387](https://github.com/pulumi/pulumi/pull/20387)
+
+- [sdk/python] Set ThreadPoolExecutor max_workers to parallelism * 4
+  [#20362](https://github.com/pulumi/pulumi/pull/20362)
+
+- [sdk/python] Handle `-v` flag passed to policy packs
+  [#20373](https://github.com/pulumi/pulumi/pull/20373)
+
+- [sdk/python] Forward errors raised in callbacks to the caller
+  [#20381](https://github.com/pulumi/pulumi/pull/20381)
+
+
+### Miscellaneous
+
+- [cli] Log stack trace when interrupted when using verbose logging
+  [#20364](https://github.com/pulumi/pulumi/pull/20364)
+
+- [cli] Print the location of the log file when running with the verbose flag
+  [#20365](https://github.com/pulumi/pulumi/pull/20365)
+
+- [sdk/python] Remove custom typing stubs
+  [#20384](https://github.com/pulumi/pulumi/pull/20384)
+
 ## 3.191.0 (2025-08-21)
 
 

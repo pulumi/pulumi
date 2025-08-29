@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/nodejs
-  description: Limit @types packages used during local SDK generation

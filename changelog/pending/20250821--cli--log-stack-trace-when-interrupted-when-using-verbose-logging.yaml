@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli
-  description: Log stack trace when interrupted when using verbose logging
