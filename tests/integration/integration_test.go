@@ -1615,7 +1615,6 @@ func TestPulumiInstallInstallsPackagesWithExperimentalRegistry(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
 	// Manually modify Pulumi.yaml to include a GitHub URL in packages section
-	// This reproduces the specific bug scenario
 	pulumiYamlContent := `name: package-add-remote-test
 description: A minimal TypeScript Pulumi program
 runtime:

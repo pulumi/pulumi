@@ -53,8 +53,8 @@ packages:
 		pluginSpec       workspace.PluginSpec
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
-		expectedType     any
-		expectError      bool
+		expected         Result
+		expectsError     bool
 	}{
 		{
 			name:       "found in IDP registry",
@@ -74,8 +74,15 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: RegistryResult{},
-			expectError:  false,
+			expected: RegistryResult{
+				Metadata: apitype.PackageMetadata{
+					Name:              "found-pkg",
+					Publisher:         "pulumi",
+					Source:            "pulumi",
+					Version:           semver.Version{Major: 1, Minor: 2, Patch: 3},
+					PluginDownloadURL: "https://example.com/download",
+				},
+			},
 		},
 		{
 			name:       "not found + pre-registry package",
@@ -87,8 +94,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: ExternalSourceResult{},
-			expectError:  false,
+			expected: ExternalSourceResult{},
 		},
 		{
 			name:       "local project package resolves to local path",
@@ -101,8 +107,7 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expectedType: LocalPathResult{},
-			expectError:  false,
+			expected:     LocalPathResult{LocalPluginPathAbs: "./local-path"},
 		},
 		{
 			name:       "local project package resolves to Git URL",
@@ -115,8 +120,7 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expectedType: ExternalSourceResult{},
-			expectError:  false,
+			expected:     ExternalSourceResult{},
 		},
 		{
 			name:       "Git URL plugin",
@@ -128,8 +132,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: ExternalSourceResult{},
-			expectError:  false,
+			expected: ExternalSourceResult{},
 		},
 		{
 			name:       "not found + no fallback available",
@@ -141,8 +144,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: UnknownResult{},
-			expectError:  true,
+			expected:     ErrorResult{Error: nil},
+			expectsError: true,
 		},
 		{
 			name:       "registry error (non-NotFound)",
@@ -156,8 +159,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: UnknownResult{},
-			expectError:  true,
+			expected:     ErrorResult{Error: nil},
+			expectsError: true,
 		},
 
 		// Environment combination tests for pre-registry packages
@@ -172,8 +175,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: ExternalSourceResult{},
-			expectError:  false,
+			expected: ExternalSourceResult{},
 		},
 		{
 			name:       "registry disabled ignores available registry package",
@@ -186,8 +188,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: ExternalSourceResult{},
-			expectError:  false,
+			expected: ExternalSourceResult{},
 		},
 
 		// Environment combination tests for unknown packages
@@ -202,8 +203,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: UnknownResult{},
-			expectError:  false,
+			expected: ErrorResult{Error: nil},
 		},
 		{
 			name:       "unknown package with experimental off",
@@ -216,8 +216,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedType: UnknownResult{},
-			expectError:  false,
+			expected: ErrorResult{Error: nil},
 		},
 		{
 			name:       "project source takes precedence over plugin name",
@@ -225,13 +224,12 @@ packages:
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty
+						panic("Registry should not be queried when project source is available")
 					},
 				}, nil
 			},
 			setupProject: true,
-			expectedType: LocalPathResult{},
-			expectError:  false,
+			expected:     LocalPathResult{LocalPluginPathAbs: "./local-path"},
 		},
 	}
 
@@ -261,7 +259,7 @@ packages:
 			if tt.setupProject {
 				projectRootArg = projectRoot
 			}
-			result := ResolvePackage(
+			result := Resolve(
 				context.Background(),
 				reg,
 				tt.pluginSpec,
@@ -270,16 +268,12 @@ packages:
 				projectRootArg,
 			)
 
-			assert.IsType(t, tt.expectedType, result)
-
-			if tt.expectError {
-				unknownRes, ok := result.(UnknownResult)
-				require.True(t, ok, "Expected UnknownResult for error case")
-				assert.Error(t, unknownRes.Error)
+			if tt.expectsError {
+				errorRes, ok := result.(ErrorResult)
+				require.True(t, ok, "Expected ErrorResult")
+				assert.Error(t, errorRes.Error)
 			} else {
-				if unknownRes, ok := result.(UnknownResult); ok {
-					require.NoError(t, unknownRes.Error)
-				}
+				assert.Equal(t, tt.expected, result)
 			}
 
 			switch res := result.(type) {
@@ -318,7 +312,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		},
 	}
 
-	result := ResolvePackage(
+	result := Resolve(
 		context.Background(),
 		reg,
 		pluginSpec,
@@ -330,17 +324,9 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		t.TempDir(),
 	)
 
-	assert.IsType(t, RegistryResult{}, result)
-	if unknownRes, ok := result.(UnknownResult); ok {
-		require.NoError(t, unknownRes.Error)
-	}
-
-	switch res := result.(type) {
-	case RegistryResult:
-		assert.Equal(t, version, res.Metadata.Version)
-	default:
-		t.Errorf("Expected RegistryResult but got %T", result)
-	}
+	res, ok := result.(RegistryResult)
+	require.True(t, ok, "Expected RegistryResult but got %T", result)
+	assert.Equal(t, version, res.Metadata.Version)
 }
 
 func TestResolutionStrategyPrecedence(t *testing.T) {
@@ -365,7 +351,7 @@ packages:
 	}
 
 	pluginSpec := workspace.PluginSpec{Name: "aws"}
-	result := ResolvePackage(
+	result := Resolve(
 		context.Background(),
 		reg,
 		pluginSpec, // This is both pre-registry AND defined locally
@@ -377,11 +363,7 @@ packages:
 		tmpDir,
 	)
 
-	// Should prefer local project (local path) resolution over pre-registry resolution
-	assert.IsType(t, LocalPathResult{}, result)
-	if unknownRes, ok := result.(UnknownResult); ok {
-		require.NoError(t, unknownRes.Error)
-	}
+	assert.Equal(t, LocalPathResult{LocalPluginPathAbs: "./local-aws-override"}, result)
 }
 
 func TestGetLocalProjectPackageSource_NilPackages(t *testing.T) {
