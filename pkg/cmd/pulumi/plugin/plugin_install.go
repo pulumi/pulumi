@@ -338,9 +338,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
 ) (workspace.PluginSpec, error) {
 	resolutionEnv := cmd.packageResolutionEnv
-
-	projCtx := packageresolution.LoadProjectContext(absProjectDir)
-	result := packageresolution.ResolvePackage(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, projCtx)
+	result := packageresolution.ResolvePackage(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, absProjectDir)
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult, packageresolution.ExternalSourceResult:

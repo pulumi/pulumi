@@ -236,7 +236,6 @@ packages:
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -258,9 +257,9 @@ packages:
 				env = *tt.env
 			}
 
-			var proj *ProjectContext
+			var projectRootArg string
 			if tt.setupProject {
-				proj = &ProjectContext{Root: projectRoot}
+				projectRootArg = projectRoot
 			}
 			result := ResolvePackage(
 				context.Background(),
@@ -268,7 +267,7 @@ packages:
 				tt.pluginSpec,
 				diagtest.LogSink(t),
 				env,
-				proj,
+				projectRootArg,
 			)
 
 			assert.IsType(t, tt.expectedType, result)
@@ -324,7 +323,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
-		&ProjectContext{Root: t.TempDir()},
+		t.TempDir(),
 	)
 
 	assert.IsType(t, RegistryResult{}, result)
@@ -369,45 +368,12 @@ packages:
 			DisableRegistryResolve: true,
 			Experimental:           false,
 		},
-		&ProjectContext{Root: tmpDir},
+		tmpDir,
 	)
 
 	// Should prefer local project (local path) resolution over pre-registry resolution
 	assert.IsType(t, LocalPathResult{}, result)
 	require.NoError(t, result.Err())
-}
-
-func TestLoadProjectContext_EmptyDir(t *testing.T) {
-	t.Parallel()
-
-	result := LoadProjectContext("")
-	assert.Nil(t, result)
-}
-
-func TestLoadProjectContext_ValidProject(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	pulumiYaml := `name: test-project
-runtime: nodejs`
-
-	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
-	require.NoError(t, err)
-
-	result := LoadProjectContext(tmpDir)
-	require.NotNil(t, result)
-	assert.Equal(t, tmpDir, result.Root)
-}
-
-func TestLoadProjectContext_InvalidProject(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte("invalid yaml content: ["), 0o600)
-	require.NoError(t, err)
-
-	result := LoadProjectContext(tmpDir)
-	assert.Nil(t, result)
 }
 
 func TestGetLocalProjectPackageSource_NilPackages(t *testing.T) {
@@ -420,8 +386,7 @@ runtime: nodejs`
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	proj := &ProjectContext{Root: tmpDir}
-	source := getLocalProjectPackageSource(proj, "some-package", diagtest.LogSink(t))
+	source := getLocalProjectPackageSource(tmpDir, "some-package", diagtest.LogSink(t))
 	assert.Empty(t, source)
 }
 
@@ -437,7 +402,6 @@ packages:
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	proj := &ProjectContext{Root: tmpDir}
-	source := getLocalProjectPackageSource(proj, "non-existent-package", diagtest.LogSink(t))
+	source := getLocalProjectPackageSource(tmpDir, "non-existent-package", diagtest.LogSink(t))
 	assert.Empty(t, source)
 }

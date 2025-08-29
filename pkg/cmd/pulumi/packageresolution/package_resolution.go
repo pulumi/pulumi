@@ -39,22 +39,6 @@ type Env struct {
 	Experimental           bool
 }
 
-type ProjectContext struct {
-	Root string
-}
-
-// LoadProjectContext loads project context from a specific directory.
-// Returns nil if no project is found or absProjectDir is empty.
-func LoadProjectContext(absProjectDir string) *ProjectContext {
-	if absProjectDir == "" {
-		return nil
-	}
-	if project, err := workspace.LoadProject(filepath.Join(absProjectDir, "Pulumi.yaml")); err == nil && project != nil {
-		return &ProjectContext{Root: absProjectDir}
-	}
-	return nil
-}
-
 type Result interface {
 	Err() error
 }
@@ -95,12 +79,12 @@ func ResolvePackage(
 	pluginSpec workspace.PluginSpec,
 	diagSink diag.Sink,
 	env Env,
-	proj *ProjectContext,
+	projectRoot string, // Pass "" for 'not in a project context'
 ) Result {
 	sourceToCheck := pluginSpec.Name
 
-	if proj != nil {
-		localSource := getLocalProjectPackageSource(proj, pluginSpec.Name, diagSink)
+	if projectRoot != "" {
+		localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name, diagSink)
 		if localSource != "" {
 			sourceToCheck = localSource
 		}
@@ -135,11 +119,11 @@ func ResolvePackage(
 }
 
 func getLocalProjectPackageSource(
-	proj *ProjectContext,
+	projectRoot string,
 	packageName string,
 	diagSink diag.Sink,
 ) string {
-	projPath := filepath.Join(proj.Root, "Pulumi.yaml")
+	projPath := filepath.Join(projectRoot, "Pulumi.yaml")
 	project, err := workspace.LoadProject(projPath)
 	if err != nil {
 		if diagSink != nil {
