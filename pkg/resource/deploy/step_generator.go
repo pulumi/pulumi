@@ -261,38 +261,38 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if err != nil {
 		return nil, err
 	}
-
-	newState := resource.NewState(event.Type(),
-		urn,
-		true,  /*custom*/
-		false, /*delete*/
-		event.ID(),
-		event.Properties(),
-		make(resource.PropertyMap), /* outputs */
-		parent,
-		false, /*protect*/
-		false, /*taint*/
-		true,  /*external*/
-		event.Dependencies(),
-		nil, /* initErrors */
-		event.Provider(),
-		nil,   /* propertyDependencies */
-		false, /* deleteBeforeCreate */
-		event.AdditionalSecretOutputs(),
-		nil,   /* aliases */
-		nil,   /* customTimeouts */
-		"",    /* importID */
-		false, /* retainOnDelete */
-		"",    /* deletedWith */
-		nil,   /* created */
-		nil,   /* modified */
-		event.SourcePosition(),
-		nil,   /* ignoreChanges */
-		nil,   /* replaceOnChanges */
-		false, /* refreshBeforeUpdate */
-		"",    /* viewOf */
-		nil,   /* resourceHooks */
-	)
+	newState := resource.NewState{
+		Type:                    event.Type(),
+		URN:                     urn,
+		Custom:                  true,
+		Delete:                  false,
+		ID:                      event.ID(),
+		Inputs:                  event.Properties(),
+		Outputs:                 make(resource.PropertyMap),
+		Parent:                  parent,
+		Protect:                 false,
+		Taint:                   false,
+		External:                true,
+		Dependencies:            event.Dependencies(),
+		InitErrors:              nil,
+		Provider:                event.Provider(),
+		PropertyDependencies:    nil,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: event.AdditionalSecretOutputs(),
+		Aliases:                 nil,
+		CustomTimeouts:          nil,
+		ImportID:                "",
+		RetainOnDelete:          false,
+		DeletedWith:             "",
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          event.SourcePosition(),
+		IgnoreChanges:           nil,
+		ReplaceOnChanges:        nil,
+		RefreshBeforeUpdate:     false,
+		ViewOf:                  "",
+		ResourceHooks:           nil,
+	}.Make()
 	old, hasOld := sg.deployment.Olds()[urn]
 
 	if newState.ID == "" {
@@ -679,14 +679,38 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
-
-	new := resource.NewState(
-		goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-		refreshBeforeUpdate, "", goal.ResourceHooks)
-
+	new := resource.NewState{
+		Type:                    goal.Type,
+		URN:                     urn,
+		Custom:                  goal.Custom,
+		Delete:                  false,
+		ID:                      "",
+		Inputs:                  goal.Properties,
+		Outputs:                 nil,
+		Parent:                  goal.Parent,
+		Protect:                 protectState,
+		Taint:                   false,
+		External:                false,
+		Dependencies:            goal.Dependencies,
+		InitErrors:              goal.InitErrors,
+		Provider:                goal.Provider,
+		PropertyDependencies:    goal.PropertyDependencies,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
+		Aliases:                 aliasUrns,
+		CustomTimeouts:          &goal.CustomTimeouts,
+		ImportID:                goal.ID,
+		RetainOnDelete:          retainOnDelete,
+		DeletedWith:             goal.DeletedWith,
+		Created:                 createdAt,
+		Modified:                modifiedAt,
+		SourcePosition:          goal.SourcePosition,
+		IgnoreChanges:           goal.IgnoreChanges,
+		ReplaceOnChanges:        goal.ReplaceOnChanges,
+		RefreshBeforeUpdate:     refreshBeforeUpdate,
+		ViewOf:                  "",
+		ResourceHooks:           goal.ResourceHooks,
+	}.Make()
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
@@ -910,12 +934,38 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			// use.
 			var newnew *resource.State
 			if err == nil {
-				newnew = resource.NewState(
-					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, new.Protect, false, false,
-					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-					goal.AdditionalSecretOutputs, new.Aliases, &goal.CustomTimeouts, "", new.RetainOnDelete, goal.DeletedWith,
-					new.Created, new.Modified, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-					new.RefreshBeforeUpdate, "", goal.ResourceHooks)
+				newnew = resource.NewState{
+					Type:                    goal.Type,
+					URN:                     urn,
+					Custom:                  goal.Custom,
+					Delete:                  false,
+					ID:                      "",
+					Inputs:                  goal.Properties,
+					Outputs:                 nil,
+					Parent:                  goal.Parent,
+					Protect:                 new.Protect,
+					Taint:                   false,
+					External:                false,
+					Dependencies:            goal.Dependencies,
+					InitErrors:              goal.InitErrors,
+					Provider:                goal.Provider,
+					PropertyDependencies:    goal.PropertyDependencies,
+					PendingReplacement:      false,
+					AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
+					Aliases:                 new.Aliases,
+					CustomTimeouts:          &goal.CustomTimeouts,
+					ImportID:                "",
+					RetainOnDelete:          new.RetainOnDelete,
+					DeletedWith:             goal.DeletedWith,
+					Created:                 new.Created,
+					Modified:                new.Modified,
+					SourcePosition:          goal.SourcePosition,
+					IgnoreChanges:           goal.IgnoreChanges,
+					ReplaceOnChanges:        goal.ReplaceOnChanges,
+					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
+					ViewOf:                  "",
+					ResourceHooks:           goal.ResourceHooks,
+				}.Make()
 			}
 
 			sg.events <- &continueResourceImportEvent{

@@ -183,6 +183,36 @@ func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *resource.State {
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, name)
-	return resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, false, nil,
-		nil, "", nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil)
+	return resource.NewState{
+		Type:                    typ,
+		URN:                     urn,
+		Custom:                  false,
+		Delete:                  false,
+		ID:                      "",
+		Inputs:                  resource.PropertyMap{},
+		Outputs:                 nil,
+		Parent:                  "",
+		Protect:                 false,
+		Taint:                   false,
+		External:                false,
+		Dependencies:            nil,
+		InitErrors:              nil,
+		Provider:                "",
+		PropertyDependencies:    nil,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: nil,
+		Aliases:                 nil,
+		CustomTimeouts:          nil,
+		ImportID:                "",
+		RetainOnDelete:          false,
+		DeletedWith:             "",
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          "",
+		IgnoreChanges:           nil,
+		ReplaceOnChanges:        nil,
+		RefreshBeforeUpdate:     false,
+		ViewOf:                  "",
+		ResourceHooks:           nil,
+	}.Make()
 }
