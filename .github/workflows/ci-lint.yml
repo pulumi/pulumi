@@ -18,6 +18,7 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GOLANGCI_LINT_VERSION: v2.3.0
+  REQUIREDFIELD_VERSION: v0.7.1
 
 jobs:
   golangci:
@@ -45,6 +46,9 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --help
+
+      - name: Install requiredfield
+        run: go install go.abhg.dev/requiredfield/cmd/requiredfield@${{ env.REQUIREDFIELD_VERSION }}
 
       - name: Run golangci-lint
         run: make lint_golang
