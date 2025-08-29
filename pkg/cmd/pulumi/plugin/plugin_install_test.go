@@ -341,11 +341,20 @@ packages:
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	origDir, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origDir) }()
-	_ = os.Chdir(tmpDir)
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() {
+		err := os.Chdir(origDir)
+		require.NoError(t, err)
+	}()
+	err = os.Chdir(tmpDir)
+	require.NoError(t, err)
 
 	installCalled := false
+	defer func() {
+		require.True(t, installCalled, "Expected installPluginSpec to be called")
+	}()
+
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
@@ -360,6 +369,8 @@ packages:
 			_ context.Context, _ string, install workspace.PluginSpec, _ string,
 			_ diag.Sink, _ colors.Colorization, _ bool,
 		) error {
+			require.Equal(t, "my-local-provider", install.Name)
+			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
 			installCalled = true
 			return nil
 		},
@@ -367,7 +378,6 @@ packages:
 
 	err = cmd.Run(context.Background(), []string{"resource", "my-local-provider"})
 	require.NoError(t, err)
-	assert.True(t, installCalled)
 }
 
 func TestSuggestedPackagesDisplay(t *testing.T) {

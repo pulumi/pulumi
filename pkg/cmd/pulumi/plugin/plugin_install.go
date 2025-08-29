@@ -338,14 +338,16 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
 ) (workspace.PluginSpec, error) {
 	resolutionEnv := cmd.packageResolutionEnv
-	result := packageresolution.ResolvePackage(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, absProjectDir)
+	result := packageresolution.Resolve(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, absProjectDir)
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult, packageresolution.ExternalSourceResult:
 		return pluginSpec, nil
 	case packageresolution.RegistryResult:
-		return cmd.applyRegistryMetadata(pluginSpec, res.Metadata), nil
-	case packageresolution.UnknownResult:
+		pluginSpec.Name = res.Metadata.Name
+		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
+		return pluginSpec, nil
+	case packageresolution.ErrorResult:
 		if res.Error != nil && errors.Is(res.Error, registry.ErrNotFound) {
 			for _, suggested := range registry.GetSuggestedPackages(res.Error) {
 				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
@@ -356,15 +358,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 		}
 		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", res.Error)
 	default:
-		return pluginSpec, fmt.Errorf("Unexpected result type: %T", result)
+		contract.Failf("Unexpected result type: %T", result)
+		return pluginSpec, nil
 	}
-}
-
-// applyRegistryMetadata applies package metadata from the registry to the plugin spec.
-func (cmd *pluginInstallCmd) applyRegistryMetadata(
-	pluginSpec workspace.PluginSpec, pkgMetadata apitype.PackageMetadata,
-) workspace.PluginSpec {
-	pluginSpec.Name = pkgMetadata.Name
-	pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
-	return pluginSpec
 }

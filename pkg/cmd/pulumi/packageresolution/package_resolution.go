@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -39,28 +38,40 @@ type Env struct {
 	Experimental           bool
 }
 
+type Result interface {
+	isResult()
+}
+
 type RegistryResult struct {
 	Metadata apitype.PackageMetadata
 }
+
+func (RegistryResult) isResult() {}
 
 type LocalPathResult struct {
 	LocalPluginPathAbs string
 }
 
+func (LocalPathResult) isResult() {}
+
 type ExternalSourceResult struct{}
 
-type UnknownResult struct {
+func (ExternalSourceResult) isResult() {}
+
+type ErrorResult struct {
 	Error error
 }
 
-func ResolvePackage(
+func (ErrorResult) isResult() {}
+
+func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
 	pluginSpec workspace.PluginSpec,
 	diagSink diag.Sink,
 	env Env,
 	projectRoot string, // Pass "" for 'not in a project context'
-) any {
+) Result {
 	sourceToCheck := pluginSpec.Name
 
 	if projectRoot != "" {
@@ -71,15 +82,14 @@ func ResolvePackage(
 	}
 
 	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
-		return LocalPathResult{
-			LocalPluginPathAbs: sourceToCheck,
-		}
+		return LocalPathResult{LocalPluginPathAbs: sourceToCheck}
+	}
+
+	if workspace.IsExternalURL(sourceToCheck) {
+		return ExternalSourceResult{}
 	}
 
 	if pluginSpec.IsGitPlugin() {
-		return ExternalSourceResult{}
-	}
-	if _, _, err := gitutil.ParseGitRepoURL(sourceToCheck); err == nil {
 		return ExternalSourceResult{}
 	}
 
@@ -96,9 +106,7 @@ func ResolvePackage(
 		return ExternalSourceResult{}
 	}
 
-	return UnknownResult{
-		Error: registryErr,
-	}
+	return ErrorResult{Error: registryErr}
 }
 
 func getLocalProjectPackageSource(
@@ -127,4 +135,3 @@ func getLocalProjectPackageSource(
 	}
 	return ""
 }
-

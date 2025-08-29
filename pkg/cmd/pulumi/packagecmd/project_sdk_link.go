@@ -915,7 +915,7 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
-	result := packageresolution.ResolvePackage(
+	result := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
 		pluginSpec,
@@ -934,7 +934,7 @@ func ProviderFromSource(
 		return setupProvider(descriptor, nil)
 	case packageresolution.RegistryResult:
 		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
-	case packageresolution.UnknownResult:
+	case packageresolution.ErrorResult:
 		if res.Error != nil && errors.Is(res.Error, registry.ErrNotFound) {
 			for _, suggested := range registry.GetSuggestedPackages(res.Error) {
 				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
@@ -943,7 +943,8 @@ func ProviderFromSource(
 		}
 		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", res.Error)
 	default:
-		return Provider{}, nil, fmt.Errorf("Unexpected result type: %T", result)
+		contract.Failf("Unexpected result type: %T", result)
+		return Provider{}, nil, nil
 	}
 }
 
