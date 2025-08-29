@@ -119,17 +119,17 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	}
 
 	// toDelete tracks operation IDs of resources that are to be deleted.
-	toDelete := make(map[uint64]struct{})
+	toDelete := make(map[int64]struct{})
 	// toDeleteInSnapshot tracks the indices of resources in the snapshot that are to be deleted.
-	toDeleteInSnapshot := make(map[int]struct{})
+	toDeleteInSnapshot := make(map[int64]struct{})
 	// toReplace tracks operation IDs of resources that are to be replaced.
-	toReplace := make(map[uint64]*resource.State)
+	toReplace := make(map[int64]*resource.State)
 	// toReplaceInSnapshot tracks indices of resources in the snapshot that are to be replaced.
-	toReplaceInSnapshot := make(map[int]*resource.State)
+	toReplaceInSnapshot := make(map[int64]*resource.State)
 	// markAsDeletion tracks indices of resources in the snapshot that are to be marked for deletion.
-	markAsDeletion := make(map[int]struct{})
+	markAsDeletion := make(map[int64]struct{})
 	// markAsPendingReplacement tracks indices of resources in the snapshot that are to be marked for pending replacement.
-	markAsPendingReplacement := make(map[int]struct{})
+	markAsPendingReplacement := make(map[int64]struct{})
 	for _, entry := range sj.journalEntries {
 		if entry.Kind == engine.JournalEntrySuccess && entry.DeleteNew != 0 {
 			toDelete[entry.DeleteNew] = struct{}{}
@@ -153,7 +153,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		}
 	}
 
-	incompleteOps := make(map[uint64]engine.JournalEntry)
+	incompleteOps := make(map[int64]engine.JournalEntry)
 	hasRefresh := false
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sj.journalEntries {
@@ -215,12 +215,12 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	// Append any resources from the base plan that were not produced by the current plan.
 	if snap != nil {
 		for i, res := range snap.Resources {
-			if _, ok := toDeleteInSnapshot[i]; !ok {
-				if _, ok := markAsPendingReplacement[i]; ok {
+			if _, ok := toDeleteInSnapshot[int64(i)]; !ok {
+				if _, ok := markAsPendingReplacement[int64(i)]; ok {
 					res.PendingReplacement = true
 				}
 
-				if state, ok := toReplaceInSnapshot[i]; ok {
+				if state, ok := toReplaceInSnapshot[int64(i)]; ok {
 					// If this is a resource that was replaced, we want to
 					// replace it in the snapshot.  We only do so if the same
 					// resource has not been marked for deletion.  This
@@ -229,7 +229,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 					// delete happens (so we're supposed to delete the resource).
 					resources = append(resources, state)
 				} else {
-					if _, ok := markAsDeletion[i]; ok {
+					if _, ok := markAsDeletion[int64(i)]; ok {
 						res.Delete = true
 					}
 					resources = append(resources, res)
