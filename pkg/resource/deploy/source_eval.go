@@ -478,10 +478,29 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal(
-			providers.MakeProviderType(req.Package()),
-			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, nil, "", "", nil),
+		goal: resource.NewGoal{
+			Type:                    providers.MakeProviderType(req.Package()),
+			Name:                    req.DefaultName(),
+			Custom:                  true,
+			Properties:              inputs,
+			Parent:                  "",
+			Protect:                 nil,
+			Dependencies:            nil,
+			Provider:                "",
+			InitErrors:              nil,
+			PropertyDependencies:    nil,
+			DeleteBeforeReplace:     nil,
+			IgnoreChanges:           nil,
+			AdditionalSecretOutputs: nil,
+			Aliases:                 nil,
+			ID:                      "",
+			CustomTimeouts:          nil,
+			ReplaceOnChanges:        nil,
+			RetainOnDelete:          nil,
+			DeletedWith:             "",
+			SourcePosition:          "",
+			ResourceHooks:           nil,
+		}.Make(),
 		done: done,
 	}
 	return event, done, nil
@@ -2536,13 +2555,29 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				timeouts.Update = seconds
 			}
 		}
-
-		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
-			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition, resourceHooks,
-		)
-
+		goal := resource.NewGoal{
+			Type:                    t,
+			Name:                    name,
+			Custom:                  custom,
+			Properties:              props,
+			Parent:                  parent,
+			Protect:                 protect,
+			Dependencies:            rawDependencies,
+			Provider:                providerRef.String(),
+			InitErrors:              nil,
+			PropertyDependencies:    rawPropertyDependencies,
+			DeleteBeforeReplace:     opts.DeleteBeforeReplace,
+			IgnoreChanges:           ignoreChanges,
+			AdditionalSecretOutputs: additionalSecretKeys,
+			Aliases:                 parsedAliases,
+			ID:                      id,
+			CustomTimeouts:          &timeouts,
+			ReplaceOnChanges:        replaceOnChanges,
+			RetainOnDelete:          retainOnDelete,
+			DeletedWith:             deletedWith,
+			SourcePosition:          sourcePosition,
+			ResourceHooks:           resourceHooks,
+		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
 			parentGoal, ok := rm.resGoals[goal.Parent]
