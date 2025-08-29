@@ -33,7 +33,7 @@ import (
 
 	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -827,7 +827,7 @@ type Provider struct {
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 ) (Provider, *workspace.PackageSpec, error) {
-	projCtx := cmdRegistry.DetectProjectContext()
+	projCtx := packageresolution.LoadProjectContext(pctx.Root)
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return Provider{}, nil, err
@@ -917,38 +917,35 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
-	result := cmdRegistry.ResolvePackage(
+	result := packageresolution.ResolvePackage(
 		pctx.Base(),
 		reg,
 		pluginSpec,
 		pctx.Diag,
-		cmdRegistry.PackageResolutionEnv{
+		packageresolution.Env{
 			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
 			Experimental:           env.Experimental.Value(),
 		},
 		projCtx,
 	)
 
-	switch result.Strategy {
-	case cmdRegistry.LocalPluginPathResolution:
-		return setupProviderFromPath(packageSource, pctx)
-	case cmdRegistry.LegacyResolution:
+	switch res := result.(type) {
+	case packageresolution.LocalPathResult:
+		return setupProviderFromPath(res.LocalPluginPathAbs, pctx)
+	case packageresolution.ExternalSourceResult:
 		return setupProvider(descriptor, nil)
-	case cmdRegistry.RegistryResolution:
-		if result.Metadata == nil {
-			return Provider{}, nil, errors.New("Registry resolution should have metadata")
-		}
-		return setupProviderFromRegistryMeta(*result.Metadata, setupProvider)
-	case cmdRegistry.UnknownPackage:
-		if result.Error != nil && errors.Is(result.Error, registry.ErrNotFound) {
-			for _, suggested := range registry.GetSuggestedPackages(result.Error) {
+	case packageresolution.RegistryResult:
+		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
+	case packageresolution.UnknownResult:
+		if res.Error != nil && errors.Is(res.Error, registry.ErrNotFound) {
+			for _, suggested := range registry.GetSuggestedPackages(res.Error) {
 				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
 					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
 			}
 		}
-		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", result.Error)
+		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", res.Error)
 	default:
-		return Provider{}, nil, fmt.Errorf("Unknown resolution strategy: %v", result.Strategy)
+		return Provider{}, nil, fmt.Errorf("Unexpected result type: %T", result)
 	}
 }
 

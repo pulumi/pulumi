@@ -17,7 +17,7 @@ package plugin
 import (
 	"github.com/spf13/cobra"
 
-	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -48,7 +48,7 @@ func NewPluginCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	packageResolutionEnv := cmdRegistry.PackageResolutionEnv{
+	packageResolutionEnv := packageresolution.Env{
 		DisableRegistryResolve: env.DisableRegistryResolve.Value(),
 		Experimental:           env.Experimental.Value(),
 	}
