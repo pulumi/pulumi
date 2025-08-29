@@ -827,7 +827,6 @@ type Provider struct {
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 ) (Provider, *workspace.PackageSpec, error) {
-	projCtx := packageresolution.LoadProjectContext(pctx.Root)
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return Provider{}, nil, err
@@ -926,7 +925,7 @@ func ProviderFromSource(
 			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
 			Experimental:           env.Experimental.Value(),
 		},
-		projCtx,
+		pctx.Root,
 	)
 
 	switch res := result.(type) {
