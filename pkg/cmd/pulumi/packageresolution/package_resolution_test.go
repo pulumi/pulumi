@@ -54,7 +54,6 @@ packages:
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
 		expected         Result
-		expectsError     bool
 	}{
 		{
 			name:       "found in IDP registry",
@@ -144,8 +143,7 @@ packages:
 					},
 				}, nil
 			},
-			expected:     ErrorResult{Error: nil},
-			expectsError: true,
+			expected: ErrorResult{},
 		},
 		{
 			name:       "registry error (non-NotFound)",
@@ -159,8 +157,7 @@ packages:
 					},
 				}, nil
 			},
-			expected:     ErrorResult{Error: nil},
-			expectsError: true,
+			expected: ErrorResult{},
 		},
 
 		// Environment combination tests for pre-registry packages
@@ -203,7 +200,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ErrorResult{Error: nil},
+			expected: ErrorResult{},
 		},
 		{
 			name:       "unknown package with experimental off",
@@ -216,7 +213,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ErrorResult{Error: nil},
+			expected: ErrorResult{},
 		},
 		{
 			name:       "project source takes precedence over plugin name",
@@ -268,11 +265,12 @@ packages:
 				projectRootArg,
 			)
 
-			if tt.expectsError {
+			switch tt.expected.(type) {
+			case ErrorResult:
 				errorRes, ok := result.(ErrorResult)
 				require.True(t, ok, "Expected ErrorResult")
 				assert.Error(t, errorRes.Error)
-			} else {
+			default:
 				assert.Equal(t, tt.expected, result)
 			}
 
@@ -376,7 +374,7 @@ runtime: nodejs`
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	source := getLocalProjectPackageSource(tmpDir, "some-package", diagtest.LogSink(t))
+	source := getLocalProjectPackageSource(tmpDir, "some-package")
 	assert.Empty(t, source)
 }
 
@@ -392,6 +390,6 @@ packages:
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	source := getLocalProjectPackageSource(tmpDir, "non-existent-package", diagtest.LogSink(t))
+	source := getLocalProjectPackageSource(tmpDir, "non-existent-package")
 	assert.Empty(t, source)
 }
