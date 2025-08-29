@@ -39,7 +39,7 @@ which you can do as follows:
    top-level `.mise.toml` file. After this, you should find that the tools you
    need are now available in your `$PATH`.
 5. Run `mise settings experimental=true` or use the `MISE_EXPERIMENTAL` environment variable. 
-   This is currently required to enable the Go backend.
+   This is currently required to enable the [Go backend](https://mise.jdx.dev/dev-tools/backends/go.html#go-backend).
 6. Run `mise install` to ensure all tools are up to date. You may need to re-run
    this if the tool list changes.
 
