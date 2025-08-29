@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"iter"
@@ -367,4 +368,57 @@ packages:
 	err = cmd.Run(context.Background(), []string{"resource", "my-local-provider"})
 	require.NoError(t, err)
 	assert.True(t, installCalled)
+}
+
+func TestSuggestedPackagesDisplay(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+
+	cmd := &pluginInstallCmd{
+		diag: sink,
+		packageResolutionEnv: packageresolution.Env{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {
+					if !yield(apitype.PackageMetadata{
+						Source:    "community",
+						Publisher: "example",
+						Name:      "similar-pkg",
+						Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
+					}, nil) {
+						return
+					}
+					yield(apitype.PackageMetadata{
+						Source:    "github",
+						Publisher: "someuser",
+						Name:      "another-similar-pkg",
+						Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
+					}, nil)
+				}
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginSpec, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			assert.Fail(t, "installPluginSpec should not have been called")
+			return nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{"resource", "missing-pkg", "1.0.0"})
+	assert.ErrorContains(t, err, "Unable to resolve package from name")
+
+	output := stdout.String() + stderr.String()
+	assert.Contains(t, output, "community/example/similar-pkg@1.0.0 is a similar package")
+	assert.Contains(t, output, "github/someuser/another-similar-pkg@2.1.0 is a similar package")
 }
