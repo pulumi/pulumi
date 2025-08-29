@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Set ThreadPoolExecutor max_workers to parallelism * 4
