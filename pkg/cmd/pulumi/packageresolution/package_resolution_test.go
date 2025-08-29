@@ -383,3 +383,61 @@ func TestLoadProjectContext_EmptyDir(t *testing.T) {
 	result := LoadProjectContext("")
 	assert.Nil(t, result)
 }
+
+func TestLoadProjectContext_ValidProject(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	result := LoadProjectContext(tmpDir)
+	require.NotNil(t, result)
+	assert.Equal(t, tmpDir, result.Root)
+}
+
+func TestLoadProjectContext_InvalidProject(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte("invalid yaml content: ["), 0o600)
+	require.NoError(t, err)
+
+	result := LoadProjectContext(tmpDir)
+	assert.Nil(t, result)
+}
+
+func TestGetLocalProjectPackageSource_NilPackages(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	proj := &ProjectContext{Root: tmpDir}
+	source := getLocalProjectPackageSource(proj, "some-package", diagtest.LogSink(t))
+	assert.Empty(t, source)
+}
+
+func TestGetLocalProjectPackageSource_PackageNotFound(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs
+packages:
+  existing-package: ./local-path`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	proj := &ProjectContext{Root: tmpDir}
+	source := getLocalProjectPackageSource(proj, "non-existent-package", diagtest.LogSink(t))
+	assert.Empty(t, source)
+}
