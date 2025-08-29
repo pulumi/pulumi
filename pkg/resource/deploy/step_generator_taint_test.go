@@ -121,8 +121,29 @@ func TestTaintedResourceDiff(t *testing.T) {
 
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal(urn.Type(), urn.Name(), true, inputs, "", nil,
-			nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+		goal: resource.NewGoal{
+			Type:                    urn.Type(),
+			Name:                    urn.Name(),
+			Custom:                  true,
+			Properties:              inputs,
+			Parent:                  "",
+			Protect:                 nil,
+			Dependencies:            nil,
+			Provider:                "",
+			InitErrors:              []string{},
+			PropertyDependencies:    nil,
+			DeleteBeforeReplace:     nil,
+			IgnoreChanges:           nil,
+			AdditionalSecretOutputs: nil,
+			Aliases:                 nil,
+			ID:                      "",
+			CustomTimeouts:          nil,
+			ReplaceOnChanges:        nil,
+			RetainOnDelete:          nil,
+			DeletedWith:             "",
+			SourcePosition:          "",
+			ResourceHooks:           nil,
+		}.Make(),
 		done: done,
 	}
 
@@ -297,8 +318,29 @@ func TestDiffWithTaintedResource(t *testing.T) {
 
 			done := make(chan *RegisterResult)
 			event := &registerResourceEvent{
-				goal: resource.NewGoal(urn.Type(), urn.Name(), true, inputs, "", nil,
-					nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+				goal: resource.NewGoal{
+					Type:                    urn.Type(),
+					Name:                    urn.Name(),
+					Custom:                  true,
+					Properties:              inputs,
+					Parent:                  "",
+					Protect:                 nil,
+					Dependencies:            nil,
+					Provider:                "",
+					InitErrors:              []string{},
+					PropertyDependencies:    nil,
+					DeleteBeforeReplace:     nil,
+					IgnoreChanges:           nil,
+					AdditionalSecretOutputs: nil,
+					Aliases:                 nil,
+					ID:                      "",
+					CustomTimeouts:          nil,
+					ReplaceOnChanges:        nil,
+					RetainOnDelete:          nil,
+					DeletedWith:             "",
+					SourcePosition:          "",
+					ResourceHooks:           nil,
+				}.Make(),
 				done: done,
 			}
 
