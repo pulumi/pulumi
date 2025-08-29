@@ -821,7 +821,6 @@ type Provider struct {
 }
 
 // ProviderFromSource takes a plugin name or path.
-// Automatically detects project context when available for local package resolution.
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
