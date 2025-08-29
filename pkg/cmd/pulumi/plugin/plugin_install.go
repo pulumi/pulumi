@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	cmdPkg "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -122,7 +122,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.installPluginSpec = installPluginSpec
 	}
 	if cmd.registry == nil {
-		cmd.registry = cmdPkg.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
+		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.
