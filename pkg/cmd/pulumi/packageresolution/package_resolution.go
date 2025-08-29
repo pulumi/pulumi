@@ -25,12 +25,12 @@ package packageresolution
 import (
 	"context"
 	"path/filepath"
-	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -76,7 +76,10 @@ func ResolvePackage(
 		}
 	}
 
-	if isGitURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
+	if pluginSpec.IsGitPlugin() {
+		return ExternalSourceResult{}
+	}
+	if _, _, err := gitutil.ParseGitRepoURL(sourceToCheck); err == nil {
 		return ExternalSourceResult{}
 	}
 
@@ -125,8 +128,3 @@ func getLocalProjectPackageSource(
 	return ""
 }
 
-func isGitURL(source string) bool {
-	return strings.HasPrefix(source, "https://github.com/") ||
-		strings.HasPrefix(source, "git://") ||
-		strings.HasPrefix(source, "ssh://git@")
-}
