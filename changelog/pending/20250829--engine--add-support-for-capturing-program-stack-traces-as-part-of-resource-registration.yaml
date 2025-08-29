@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add support for capturing program stack traces as part of resource registration
