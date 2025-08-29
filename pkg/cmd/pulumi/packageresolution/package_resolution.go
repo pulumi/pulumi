@@ -39,38 +39,18 @@ type Env struct {
 	Experimental           bool
 }
 
-type Result interface {
-	Err() error
-}
-
 type RegistryResult struct {
 	Metadata apitype.PackageMetadata
-}
-
-func (r RegistryResult) Err() error {
-	return nil
 }
 
 type LocalPathResult struct {
 	LocalPluginPathAbs string
 }
 
-func (r LocalPathResult) Err() error {
-	return nil
-}
-
 type ExternalSourceResult struct{}
-
-func (r ExternalSourceResult) Err() error {
-	return nil
-}
 
 type UnknownResult struct {
 	Error error
-}
-
-func (r UnknownResult) Err() error {
-	return r.Error
 }
 
 func ResolvePackage(
@@ -80,7 +60,7 @@ func ResolvePackage(
 	diagSink diag.Sink,
 	env Env,
 	projectRoot string, // Pass "" for 'not in a project context'
-) Result {
+) any {
 	sourceToCheck := pluginSpec.Name
 
 	if projectRoot != "" {
