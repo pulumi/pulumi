@@ -546,12 +546,6 @@ func update(
 	// Initialize our deployment object with the context and options.
 	deployment, err := newDeployment(ctx, info, actions, opts)
 	if err != nil {
-		if ctx.SnapshotManager != nil {
-			closeErr := ctx.SnapshotManager.Close()
-			if closeErr != nil {
-				logging.V(7).Infof("failed to close snapshot manager: %v", closeErr)
-			}
-		}
 		return nil, nil, err
 	}
 	defer contract.IgnoreClose(deployment)
@@ -559,29 +553,8 @@ func update(
 	// Execute the deployment.
 	plan, changes, err := deployment.run(ctx)
 
-	if ctx.SnapshotManager != nil {
-		closeErr := ctx.SnapshotManager.Close()
-		if closeErr != nil {
-			logging.V(7).Infof("failed to close snapshot manager: %v", closeErr)
-		}
-		// If the snapshot manager failed to close, we should return that error in addition
-		// to any error from the deployment.
-		//
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		err = errors.Join(err, closeErr)
-	}
-
-	if ctx.RecordErrorFunc != nil {
-		snapErr := ctx.RecordErrorFunc()
-		if snapErr != nil {
-			ctx.Events <- NewEvent(ErrorEventPayload{
-				Error: fmt.Sprintf("snapshot mismatch: %s", snapErr),
-			})
-		}
+	if ctx.FinalizeUpdateFunc != nil {
+		ctx.FinalizeUpdateFunc()
 	}
 
 	return plan, changes, err

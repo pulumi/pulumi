@@ -1673,17 +1673,24 @@ func (b *cloudBackend) runEngineAction(
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
 	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
+	snapshotManagerClosed := false
 	engineCtx := &engine.Context{
 		Cancel:        cancellationScope.Context(),
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
-		RecordErrorFunc: func() error {
+		FinalizeUpdateFunc: func() {
 			if snapshotManager == nil || journalPersister == nil {
-				return nil
+				return
 			}
-			errs := errors.Join(validationErrs...)
-			errs = errors.Join(errs, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
-			return errs
+			err := errors.Join(validationErrs...)
+			err = errors.Join(err, combinedManager.Close())
+			snapshotManagerClosed = true
+			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
+			if err != nil {
+				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
+					Error: fmt.Sprintf("snapshot mismatch: %s", err),
+				})
+			}
 		},
 	}
 	if combinedManager != nil {
@@ -1725,6 +1732,18 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
+	if combinedManager != nil && !snapshotManagerClosed {
+		err = combinedManager.Close()
+		// If the snapshot manager failed to close, we should return that error.
+		// Even though all the parts of the operation have potentially succeeded, a
+		// snapshotting failure is likely to rear its head on the next
+		// operation/invocation (e.g. an invalid snapshot that fails integrity
+		// checks, or a failure to write that means the snapshot is incomplete).
+		// Reporting now should make debugging and reporting easier.
+		if err != nil {
+			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
+		}
+	}
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
