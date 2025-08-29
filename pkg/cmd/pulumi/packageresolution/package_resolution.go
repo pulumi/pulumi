@@ -24,6 +24,7 @@ package packageresolution
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -75,7 +76,7 @@ func Resolve(
 	sourceToCheck := pluginSpec.Name
 
 	if projectRoot != "" {
-		localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name, diagSink)
+		localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name)
 		if localSource != "" {
 			sourceToCheck = localSource
 		}
@@ -106,22 +107,19 @@ func Resolve(
 		return ExternalSourceResult{}
 	}
 
+	if registryErr == nil {
+		registryErr = fmt.Errorf("package %s not found", pluginSpec.Name)
+	}
 	return ErrorResult{Error: registryErr}
 }
 
 func getLocalProjectPackageSource(
 	projectRoot string,
 	packageName string,
-	diagSink diag.Sink,
 ) string {
 	projPath := filepath.Join(projectRoot, "Pulumi.yaml")
 	project, err := workspace.LoadProject(projPath)
 	if err != nil {
-		if diagSink != nil {
-			diagSink.Infof(
-				diag.Message("", "Could not read project file %s when checking for local package %s: %v"),
-				projPath, packageName, err)
-		}
 		return ""
 	}
 
