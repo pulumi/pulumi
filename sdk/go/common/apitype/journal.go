@@ -29,13 +29,13 @@ const (
 type JournalEntry struct {
 	Kind JournalEntryKind `json:"kind"`
 	// ID of the operation this journal entry is associated with.
-	OperationID uint64 `json:"operationID"`
+	OperationID int64 `json:"operationID"`
 	// ID for the delete Operation that this journal entry is associated with.
-	DeleteOld int `json:"deleteOld"`
+	DeleteOld int64 `json:"deleteOld"`
 	// ID for the delete Operation that this journal entry is associated with.
-	DeleteNew uint64 `json:"deleteNew"`
+	DeleteNew int64 `json:"deleteNew"`
 	// PendingReplacement is the index of the resource that's to be marked aspending replacement
-	PendingReplacement int `json:"pendingReplacement,omitempty"`
+	PendingReplacement int64 `json:"pendingReplacement,omitempty"`
 	// The resource state associated with this journal entry.
 	State *ResourceV3 `json:"state,omitempty"`
 	// The operation associated with this journal entry, if any.
