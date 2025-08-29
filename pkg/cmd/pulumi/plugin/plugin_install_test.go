@@ -24,7 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -129,7 +129,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
-		packageResolutionEnv: cmdRegistry.PackageResolutionEnv{
+		packageResolutionEnv: packageresolution.Env{
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
@@ -244,7 +244,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
-			packageResolutionEnv: cmdRegistry.PackageResolutionEnv{
+			packageResolutionEnv: packageresolution.Env{
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			},
@@ -271,7 +271,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
-			packageResolutionEnv: cmdRegistry.PackageResolutionEnv{
+			packageResolutionEnv: packageresolution.Env{
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			},

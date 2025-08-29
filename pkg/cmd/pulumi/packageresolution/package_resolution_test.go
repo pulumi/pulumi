@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package registry
+package packageresolution
 
 import (
 	"context"
@@ -49,11 +49,11 @@ packages:
 
 	tests := []struct {
 		name             string
-		env              *PackageResolutionEnv
+		env              *Env
 		pluginSpec       workspace.PluginSpec
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
-		expectedStrategy PackageResolutionStrategy
+		expectedType     Result
 		expectError      bool
 	}{
 		{
@@ -74,8 +74,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: RegistryResolution,
-			expectError:      false,
+			expectedType: RegistryResult{},
+			expectError:  false,
 		},
 		{
 			name:       "not found + pre-registry package",
@@ -87,8 +87,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: LegacyResolution,
-			expectError:      false,
+			expectedType: ExternalSourceResult{},
+			expectError:  false,
 		},
 		{
 			name:       "local project package resolves to local path",
@@ -100,9 +100,9 @@ packages:
 					},
 				}, nil
 			},
-			setupProject:     true,
-			expectedStrategy: LocalPluginPathResolution,
-			expectError:      false,
+			setupProject: true,
+			expectedType: LocalPathResult{},
+			expectError:  false,
 		},
 		{
 			name:       "local project package resolves to Git URL",
@@ -114,9 +114,9 @@ packages:
 					},
 				}, nil
 			},
-			setupProject:     true,
-			expectedStrategy: LegacyResolution,
-			expectError:      false,
+			setupProject: true,
+			expectedType: ExternalSourceResult{},
+			expectError:  false,
 		},
 		{
 			name:       "Git URL plugin",
@@ -128,8 +128,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: LegacyResolution,
-			expectError:      false,
+			expectedType: ExternalSourceResult{},
+			expectError:  false,
 		},
 		{
 			name:       "not found + no fallback available",
@@ -141,8 +141,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: UnknownPackage,
-			expectError:      true,
+			expectedType: UnknownResult{},
+			expectError:  true,
 		},
 		{
 			name:       "registry error (non-NotFound)",
@@ -156,14 +156,14 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: UnknownPackage,
-			expectError:      true,
+			expectedType: UnknownResult{},
+			expectError:  true,
 		},
 
 		// Environment combination tests for pre-registry packages
 		{
 			name:       "pre-registry package with registry disabled",
-			env:        &PackageResolutionEnv{DisableRegistryResolve: true, Experimental: false},
+			env:        &Env{DisableRegistryResolve: true, Experimental: false},
 			pluginSpec: workspace.PluginSpec{Name: "aws"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -172,12 +172,12 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: LegacyResolution,
-			expectError:      false,
+			expectedType: ExternalSourceResult{},
+			expectError:  false,
 		},
 		{
 			name:       "registry disabled ignores available registry package",
-			env:        &PackageResolutionEnv{DisableRegistryResolve: true, Experimental: true},
+			env:        &Env{DisableRegistryResolve: true, Experimental: true},
 			pluginSpec: workspace.PluginSpec{Name: "aws"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -186,14 +186,14 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: LegacyResolution,
-			expectError:      false,
+			expectedType: ExternalSourceResult{},
+			expectError:  false,
 		},
 
 		// Environment combination tests for unknown packages
 		{
 			name:       "unknown package with registry disabled",
-			env:        &PackageResolutionEnv{DisableRegistryResolve: true, Experimental: false},
+			env:        &Env{DisableRegistryResolve: true, Experimental: false},
 			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -202,12 +202,12 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: UnknownPackage,
-			expectError:      false,
+			expectedType: UnknownResult{},
+			expectError:  false,
 		},
 		{
 			name:       "unknown package with experimental off",
-			env:        &PackageResolutionEnv{DisableRegistryResolve: false, Experimental: false},
+			env:        &Env{DisableRegistryResolve: false, Experimental: false},
 			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -216,8 +216,8 @@ packages:
 					},
 				}, nil
 			},
-			expectedStrategy: UnknownPackage,
-			expectError:      false,
+			expectedType: UnknownResult{},
+			expectError:  false,
 		},
 		{
 			name:       "project source takes precedence over plugin name",
@@ -229,9 +229,9 @@ packages:
 					},
 				}, nil
 			},
-			setupProject:     true,
-			expectedStrategy: LocalPluginPathResolution,
-			expectError:      false,
+			setupProject: true,
+			expectedType: LocalPathResult{},
+			expectError:  false,
 		},
 	}
 
@@ -250,7 +250,7 @@ packages:
 			reg, expectedErr := tt.registryResponse()
 			require.NoError(t, expectedErr)
 
-			env := PackageResolutionEnv{
+			env := Env{
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			}
@@ -258,9 +258,9 @@ packages:
 				env = *tt.env
 			}
 
-			var proj *PackageResolutionProjectContext
+			var proj *ProjectContext
 			if tt.setupProject {
-				proj = &PackageResolutionProjectContext{Root: projectRoot}
+				proj = &ProjectContext{Root: projectRoot}
 			}
 			result := ResolvePackage(
 				context.Background(),
@@ -271,19 +271,17 @@ packages:
 				proj,
 			)
 
-			assert.Equal(t, tt.expectedStrategy, result.Strategy)
+			assert.IsType(t, tt.expectedType, result)
 
 			if tt.expectError {
-				assert.Error(t, result.Error)
+				assert.Error(t, result.Err())
 			} else {
-				require.NoError(t, result.Error)
+				require.NoError(t, result.Err())
 			}
 
-			if result.Strategy == RegistryResolution {
-				require.NotNil(t, result.Metadata)
-				assert.Equal(t, tt.pluginSpec.Name, result.Metadata.Name)
-			} else {
-				assert.Nil(t, result.Metadata)
+			switch res := result.(type) {
+			case RegistryResult:
+				assert.Equal(t, tt.pluginSpec.Name, res.Metadata.Name)
 			}
 		})
 	}
@@ -322,17 +320,22 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		reg,
 		pluginSpec,
 		diagtest.LogSink(t),
-		PackageResolutionEnv{
+		Env{
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
-		&PackageResolutionProjectContext{Root: t.TempDir()},
+		&ProjectContext{Root: t.TempDir()},
 	)
 
-	assert.Equal(t, RegistryResolution, result.Strategy)
-	require.NoError(t, result.Error)
-	require.NotNil(t, result.Metadata)
-	assert.Equal(t, version, result.Metadata.Version)
+	assert.IsType(t, RegistryResult{}, result)
+	require.NoError(t, result.Err())
+
+	switch res := result.(type) {
+	case RegistryResult:
+		assert.Equal(t, version, res.Metadata.Version)
+	default:
+		t.Errorf("Expected RegistryResult but got %T", result)
+	}
 }
 
 func TestResolutionStrategyPrecedence(t *testing.T) {
@@ -362,14 +365,21 @@ packages:
 		reg,
 		pluginSpec, // This is both pre-registry AND defined locally
 		diagtest.LogSink(t),
-		PackageResolutionEnv{
+		Env{
 			DisableRegistryResolve: true,
 			Experimental:           false,
 		},
-		&PackageResolutionProjectContext{Root: tmpDir},
+		&ProjectContext{Root: tmpDir},
 	)
 
 	// Should prefer local project (local path) resolution over pre-registry resolution
-	assert.Equal(t, LocalPluginPathResolution, result.Strategy)
-	require.NoError(t, result.Error)
+	assert.IsType(t, LocalPathResult{}, result)
+	require.NoError(t, result.Err())
+}
+
+func TestLoadProjectContext_EmptyDir(t *testing.T) {
+	t.Parallel()
+
+	result := LoadProjectContext("")
+	assert.Nil(t, result)
 }

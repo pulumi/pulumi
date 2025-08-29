@@ -12,14 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package registry
+// Package packageresolution provides functionality for resolving package sources
+// when the source location is unknown beforehand. This is used throughout the
+// CLI to determine where to fetch packages from (registry, local paths, or external sources).
+//
+// This differs from registry.ResolvePackageFromName which specifically queries
+// the Pulumi registry. This package determines the resolution strategy first,
+// then may delegate to registry functions, local file operations, or external
+// source handling as appropriate.
+package packageresolution
 
 import (
 	"context"
 	"path/filepath"
 	"strings"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -27,39 +34,59 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type PackageResolutionStrategy int
-
-const (
-	RegistryResolution PackageResolutionStrategy = iota
-	LocalPluginPathResolution
-	LegacyResolution
-	UnknownPackage
-)
-
-type PackageResolutionEnv struct {
+type Env struct {
 	DisableRegistryResolve bool
 	Experimental           bool
 }
 
-type PackageResolutionProjectContext struct {
+type ProjectContext struct {
 	Root string
 }
 
-// DetectProjectContext tries to detect the current project context.
-// Returns nil if no project is found (e.g., when not in a project directory).
-func DetectProjectContext() *PackageResolutionProjectContext {
-	if _, root, err := pkgWorkspace.Instance.ReadProject(); err == nil {
-		return &PackageResolutionProjectContext{Root: root}
+// LoadProjectContext loads project context from a specific directory.
+// Returns nil if no project is found or absProjectDir is empty.
+func LoadProjectContext(absProjectDir string) *ProjectContext {
+	if absProjectDir == "" {
+		return nil
+	}
+	if project, err := workspace.LoadProject(filepath.Join(absProjectDir, "Pulumi.yaml")); err == nil && project != nil {
+		return &ProjectContext{Root: absProjectDir}
 	}
 	return nil
 }
 
-type PackageResolutionResult struct {
-	// Metadata is only set for RegistryResolution strategy
-	// This avoids needing to call registry resolution again if the package is found
-	Metadata *apitype.PackageMetadata
-	Strategy PackageResolutionStrategy
-	Error    error
+type Result interface {
+	Err() error
+}
+
+type RegistryResult struct {
+	Metadata apitype.PackageMetadata
+}
+
+func (r RegistryResult) Err() error {
+	return nil
+}
+
+type LocalPathResult struct {
+	LocalPluginPathAbs string
+}
+
+func (r LocalPathResult) Err() error {
+	return nil
+}
+
+type ExternalSourceResult struct{}
+
+func (r ExternalSourceResult) Err() error {
+	return nil
+}
+
+type UnknownResult struct {
+	Error error
+}
+
+func (r UnknownResult) Err() error {
+	return r.Error
 }
 
 func ResolvePackage(
@@ -67,10 +94,10 @@ func ResolvePackage(
 	reg registry.Registry,
 	pluginSpec workspace.PluginSpec,
 	diagSink diag.Sink,
-	env PackageResolutionEnv,
-	proj *PackageResolutionProjectContext,
-) PackageResolutionResult {
-	var sourceToCheck string
+	env Env,
+	proj *ProjectContext,
+) Result {
+	sourceToCheck := pluginSpec.Name
 
 	if proj != nil {
 		localSource := getLocalProjectPackageSource(proj, pluginSpec.Name, diagSink)
@@ -79,48 +106,36 @@ func ResolvePackage(
 		}
 	}
 
-	if sourceToCheck == "" {
-		sourceToCheck = pluginSpec.Name
-	}
-
 	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
-		return PackageResolutionResult{
-			Strategy: LocalPluginPathResolution,
+		return LocalPathResult{
+			LocalPluginPathAbs: sourceToCheck,
 		}
 	}
 
 	if isGitURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
-		return PackageResolutionResult{
-			Strategy: LegacyResolution,
-		}
+		return ExternalSourceResult{}
 	}
 
 	var registryErr error
 	if !env.DisableRegistryResolve && env.Experimental {
 		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
 		if err == nil {
-			return PackageResolutionResult{
-				Metadata: &metadata,
-				Strategy: RegistryResolution,
-			}
+			return RegistryResult{Metadata: metadata}
 		}
 		registryErr = err
 	}
 
 	if registry.IsPreRegistryPackage(pluginSpec.Name) {
-		return PackageResolutionResult{
-			Strategy: LegacyResolution,
-		}
+		return ExternalSourceResult{}
 	}
 
-	return PackageResolutionResult{
-		Strategy: UnknownPackage,
-		Error:    registryErr,
+	return UnknownResult{
+		Error: registryErr,
 	}
 }
 
 func getLocalProjectPackageSource(
-	proj *PackageResolutionProjectContext,
+	proj *ProjectContext,
 	packageName string,
 	diagSink diag.Sink,
 ) string {

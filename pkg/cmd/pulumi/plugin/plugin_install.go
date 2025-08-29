@@ -26,7 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	cmdPkg "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdRegistry "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/registry"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -42,7 +42,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPluginInstallCmd(packageResolutionEnv cmdRegistry.PackageResolutionEnv) *cobra.Command {
+func newPluginInstallCmd(packageResolutionEnv packageresolution.Env) *cobra.Command {
 	var picmd pluginInstallCmd
 	picmd.packageResolutionEnv = packageResolutionEnv
 	cmd := &cobra.Command{
@@ -92,7 +92,7 @@ type pluginInstallCmd struct {
 	color    colors.Colorization
 	registry registry.Registry
 
-	packageResolutionEnv cmdRegistry.PackageResolutionEnv
+	packageResolutionEnv packageresolution.Env
 
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
@@ -186,7 +186,11 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
 			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
 			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
-			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec)
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, cwd)
 			if err != nil {
 				return err
 			}
@@ -331,33 +335,30 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
 func (cmd *pluginInstallCmd) resolvePluginSpec(
-	ctx context.Context, pluginSpec workspace.PluginSpec,
+	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
 ) (workspace.PluginSpec, error) {
 	resolutionEnv := cmd.packageResolutionEnv
 
-	projCtx := cmdRegistry.DetectProjectContext()
-	result := cmdRegistry.ResolvePackage(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, projCtx)
+	projCtx := packageresolution.LoadProjectContext(absProjectDir)
+	result := packageresolution.ResolvePackage(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, projCtx)
 
-	switch result.Strategy {
-	case cmdRegistry.LocalPluginPathResolution, cmdRegistry.LegacyResolution:
+	switch res := result.(type) {
+	case packageresolution.LocalPathResult, packageresolution.ExternalSourceResult:
 		return pluginSpec, nil
-	case cmdRegistry.RegistryResolution:
-		if result.Metadata == nil {
-			return pluginSpec, errors.New("Registry resolution should have metadata")
-		}
-		return cmd.applyRegistryMetadata(pluginSpec, *result.Metadata), nil
-	case cmdRegistry.UnknownPackage:
-		if result.Error != nil && errors.Is(result.Error, registry.ErrNotFound) {
-			for _, suggested := range registry.GetSuggestedPackages(result.Error) {
+	case packageresolution.RegistryResult:
+		return cmd.applyRegistryMetadata(pluginSpec, res.Metadata), nil
+	case packageresolution.UnknownResult:
+		if res.Error != nil && errors.Is(res.Error, registry.ErrNotFound) {
+			for _, suggested := range registry.GetSuggestedPackages(res.Error) {
 				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
 					suggested.Source, suggested.Publisher, suggested.Name,
 					suggested.Version,
 				)
 			}
 		}
-		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", result.Error)
+		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", res.Error)
 	default:
-		return pluginSpec, fmt.Errorf("Unknown resolution strategy: %v", result.Strategy)
+		return pluginSpec, fmt.Errorf("Unexpected result type: %T", result)
 	}
 }
 
