@@ -333,11 +333,11 @@ Please ensure these components are properly imported to your package's entry poi
          */
         for (const type of this.getOrderedInheritanceChain(node)) {
 
-            const symbol = type.getSymbol();
-
-            if (symbol?.escapedName === "ComponentResource") {
+            if (this.isTypeComponentResource(type)) {
                 break;
             }
+
+            const symbol = type.getSymbol();
 
             if (symbol?.members) {
                 outputs = { 
@@ -367,20 +367,18 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
+        return this.getOrderedInheritanceChain(node).some(this.isTypeComponentResource);
+    }
 
-        return this.getOrderedInheritanceChain(node).some((type) => {
+    private isTypeComponentResource(type: typescript.Type): boolean {
+        const symbol = type.getSymbol();
 
-            const symbol = type.getSymbol();
+        const matchesName = symbol?.escapedName === "ComponentResource";
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
 
-            const matchesName = symbol?.escapedName === "ComponentResource";
-            const sourceFile = symbol?.declarations?.[0].getSourceFile();
-            const matchesSourceFile =
-                sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
-
-            return matchesName && matchesSourceFile;
-
-        });
-
+        return matchesName && matchesSourceFile!;
     }
 
     private getOrderedInheritanceChain(node: typescript.ClassDeclaration): typescript.Type[] {
