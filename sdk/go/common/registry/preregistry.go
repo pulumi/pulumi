@@ -23,16 +23,16 @@ import "strings"
 // needs to be in the Pulumi registry OR PulumiPublishedBeforeRegistry(name) needs to be
 // true.
 //
-// PulumiPublishedBeforeRegistry exists only for backwards compatibility, and should never
+// IsPreRegistryPackage exists only for backwards compatibility, and should never
 // need to be updated. All future resource packages published by Pulumi should be
 // published in the Pulumi registry, and so should not need to be added to this exception
 // list.
-func PulumiPublishedBeforeRegistry(name string) bool {
-	_, ok := preRegistry[strings.ToLower(name)]
+func IsPreRegistryPackage(name string) bool {
+	_, ok := preRegistryPackages[strings.ToLower(name)]
 	return ok
 }
 
-var preRegistry = map[string]struct{}{
+var preRegistryPackages = map[string]struct{}{
 	"terraform-module":                     {},
 	"eks":                                  {},
 	"wavefront":                            {},
