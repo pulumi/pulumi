@@ -383,7 +383,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
 
 
 class OutputApplyTests(unittest.TestCase):
-    async def test_apply_always_sets_is_secret_and_is_known(self):
+    def test_apply_always_sets_is_secret_and_is_known(self):
         """Regressing a convoluted situation where apply created an Output
         with incomplete is_secret, is_known future, manifesting in
         program hangs when those futures were awaited.

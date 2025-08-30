@@ -1761,11 +1761,8 @@ func TestRunPlugin(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.CWD = filepath.Join(e.RootPath, "provider-nodejs")
-	e.RunCommand("pulumi", "install")
-
-	e.CWD = filepath.Join(e.RootPath, "provider-python")
-	e.RunCommand("pulumi", "install")
+	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
+	installPythonProviderDependencies(t, filepath.Join(e.RootPath, "provider-python"))
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")

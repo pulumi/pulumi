@@ -19,22 +19,21 @@ out of RPC calls.
 import asyncio
 import functools
 import inspect
-from abc import ABC, abstractmethod
-from collections import abc
-from enum import Enum
 import os
 import typing
+from abc import ABC, abstractmethod
+from collections import abc
+from collections.abc import Callable, Iterable, Mapping
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Optional,
     Union,
     cast,
     get_args,
     get_origin,
 )
-from collections.abc import Iterable, Mapping
 
 from google.protobuf import struct_pb2
 from semver import Version
@@ -679,7 +678,12 @@ async def serialize_property(
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
                 origin = get_origin(typ)
-                if typ is dict or origin in [dict, dict, Mapping, abc.Mapping]:
+                if typ is dict or origin in [
+                    dict,
+                    typing.Dict,  # noqa - we want to check for the deprecated `typing.Dict` type here
+                    abc.Mapping,
+                    typing.Mapping,
+                ]:
                     args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         get_type = lambda k: args[1]
@@ -1243,7 +1247,12 @@ def translate_output_properties(
 
             # If typ is a dict, get the type for its values, to pass along for each key.
             origin = get_origin(typ)
-            if typ is dict or origin in [dict, dict, Mapping, abc.Mapping]:
+            if typ is dict or origin in [
+                dict,
+                typing.Dict,  # noqa - we want to check for the deprecated `typing.Dict` type here
+                abc.Mapping,
+                typing.Mapping,
+            ]:
                 args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     get_type = lambda k: args[1]
