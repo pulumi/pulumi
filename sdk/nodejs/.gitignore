@@ -7,3 +7,7 @@
 .nyc_output/
 !yarn.lock
 !vendor
+!dist/pulumi-analyzer-policy
+!dist/pulumi-analyzer-policy.cmd
+!dist/pulumi-resource-pulumi-nodejs
+!dist/pulumi-resource-pulumi-nodejs.cmd
