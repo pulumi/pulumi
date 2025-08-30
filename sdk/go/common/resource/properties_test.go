@@ -18,9 +18,44 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestNewPropertyNonGeneric tests the non-generic NewProperty functions, ensuring they
+// behave the same as the generic NewProperty function.
+func TestNewPropertyNonGeneric(t *testing.T) {
+	t.Parallel()
+
+	assetValue, err := asset.FromText("hello world")
+	require.NoError(t, err)
+
+	archiveValue, err := archive.FromAssets(map[string]any{
+		"hello": assetValue,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, NewProperty(""), NewStringProperty(""))
+	assert.Equal(t, NewProperty("hi"), NewStringProperty("hi"))
+	assert.Equal(t, NewProperty(false), NewBoolProperty(false))
+	assert.Equal(t, NewProperty(true), NewBoolProperty(true))
+	assert.Equal(t, NewProperty(0.0), NewNumberProperty(0))
+	assert.Equal(t, NewProperty(42.0), NewNumberProperty(42))
+	assert.Equal(t, NewProperty([]PropertyValue{}), NewArrayProperty([]PropertyValue{}))
+	assert.Equal(t, NewProperty(assetValue), NewAssetProperty(assetValue))
+	assert.Equal(t, NewProperty(archiveValue), NewArchiveProperty(archiveValue))
+	assert.Equal(t, NewProperty(PropertyMap{}), NewObjectProperty(PropertyMap{}))
+	assert.Equal(t, NewProperty(Computed{Element: NewProperty("")}),
+		NewComputedProperty(Computed{Element: NewProperty("")}))
+	assert.Equal(t, NewProperty(Output{Element: NewProperty("")}),
+		NewOutputProperty(Output{Element: NewProperty("")}))
+	assert.Equal(t, NewProperty(&Secret{Element: NewProperty("")}),
+		NewSecretProperty(&Secret{Element: NewProperty("")}))
+	assert.Equal(t, NewProperty(ResourceReference{}),
+		NewResourceReferenceProperty(ResourceReference{}))
+}
 
 // TestMappable ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
 // equivalents.
