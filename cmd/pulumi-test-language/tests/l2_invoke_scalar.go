@@ -46,7 +46,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					AssertPropertyMapMember(l, outputs, "scalar", resource.NewBoolProperty(true))
+					AssertPropertyMapMember(l, outputs, "scalar", resource.NewProperty(true))
 				},
 			},
 		},

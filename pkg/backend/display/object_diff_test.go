@@ -132,10 +132,10 @@ func Test_PrintObject(t *testing.T) {
 		{
 			"secret_noshow",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
-				"secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("secrets")}),
+				"secret": resource.NewProperty(&resource.Secret{Element: resource.NewProperty("secrets")}),
 				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
-					"super_secret": resource.NewSecretProperty(&resource.Secret{
-						Element: resource.NewStringProperty("super_secret"),
+					"super_secret": resource.NewProperty(&resource.Secret{
+						Element: resource.NewProperty("super_secret"),
 					}),
 				}),
 			}),
@@ -149,10 +149,10 @@ func Test_PrintObject(t *testing.T) {
 		{
 			"secrets_show",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
-				"secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("my_secret")}),
+				"secret": resource.NewProperty(&resource.Secret{Element: resource.NewProperty("my_secret")}),
 				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
-					"super_secret": resource.NewSecretProperty(&resource.Secret{
-						Element: resource.NewStringProperty("my_super_secret"),
+					"super_secret": resource.NewProperty(&resource.Secret{
+						Element: resource.NewProperty("my_super_secret"),
 					}),
 				}),
 			}),
@@ -299,17 +299,17 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
-					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
 				}),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
-					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
 					"secretObj": resource.MakeSecret(
-						resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
-							"a": resource.NewStringProperty("1"),
+						resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"a": resource.NewProperty("1"),
 						}))),
 				}),
 			},
@@ -330,17 +330,17 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
-					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
 				}),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
-					"secret": resource.MakeSecret(resource.NewStringProperty("shhhh")),
+					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
 					"secretObj": resource.MakeSecret(
-						resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
-							"a": resource.NewStringProperty("1"),
+						resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"a": resource.NewProperty("1"),
 						}))),
 				}),
 			},

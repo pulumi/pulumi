@@ -272,7 +272,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]any{
 		"values": map[string]any{
-			"pulumiConfig": cmd.render(resource.NewObjectProperty(config)),
+			"pulumiConfig": cmd.render(resource.NewProperty(config)),
 		},
 	})
 	if err != nil {

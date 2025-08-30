@@ -109,27 +109,27 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 	var prop resource.PropertyValue
 	switch v := c.Value().(type) {
 	case bool:
-		prop = resource.NewBoolProperty(v)
+		prop = resource.NewProperty(v)
 	case int64:
-		prop = resource.NewNumberProperty(float64(v))
+		prop = resource.NewProperty(float64(v))
 	case uint64:
-		prop = resource.NewNumberProperty(float64(v))
+		prop = resource.NewProperty(float64(v))
 	case float64:
-		prop = resource.NewNumberProperty(v)
+		prop = resource.NewProperty(v)
 	case string:
-		prop = resource.NewStringProperty(v)
+		prop = resource.NewProperty(v)
 	case []Plaintext:
 		vs := make([]resource.PropertyValue, len(v))
 		for i, v := range v {
 			vs[i] = v.PropertyValue()
 		}
-		prop = resource.NewArrayProperty(vs)
+		prop = resource.NewProperty(vs)
 	case map[string]Plaintext:
-		vs := make(map[resource.PropertyKey]resource.PropertyValue, len(v))
+		vs := make(resource.PropertyMap, len(v))
 		for k, v := range v {
 			vs[resource.PropertyKey(k)] = v.PropertyValue()
 		}
-		prop = resource.NewObjectProperty(vs)
+		prop = resource.NewProperty(vs)
 	case nil:
 		prop = resource.NewNullProperty()
 	default:

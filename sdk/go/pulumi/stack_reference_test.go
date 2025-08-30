@@ -152,7 +152,7 @@ func TestStackReferenceSecrets(t *testing.T) {
 		properties[resource.PropertyKey(k)] = v
 	}
 
-	outputs := resource.NewObjectProperty(properties)
+	outputs := resource.NewProperty(properties)
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -164,7 +164,7 @@ func TestStackReferenceSecrets(t *testing.T) {
 			assert.Equal(t, "", args.Provider)
 			assert.Equal(t, args.Inputs["name"].StringValue(), args.ID)
 			return args.Inputs["name"].StringValue(), resource.PropertyMap{
-				"name":    resource.NewStringProperty("stack"),
+				"name":    resource.NewProperty("stack"),
 				"outputs": outputs,
 			}, nil
 		},
@@ -213,9 +213,9 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 	t.Parallel()
 
 	outputs := resource.PropertyMap{
-		"bucket": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("supersecretpassword"),
+		"bucket": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("supersecretpassword"),
 		}),
 	}
 	mocks := testMonitor{
@@ -223,8 +223,8 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
 			assert.Equal(t, "ref", args.Name)
 			return args.Name, resource.PropertyMap{
-				"name":    resource.NewStringProperty(args.Name),
-				"outputs": resource.NewObjectProperty(outputs),
+				"name":    resource.NewProperty(args.Name),
+				"outputs": resource.NewProperty(outputs),
 			}, nil
 		},
 	}

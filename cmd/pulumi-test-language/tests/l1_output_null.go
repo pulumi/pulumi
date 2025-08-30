@@ -44,10 +44,10 @@ func init() {
 
 					// These lines are commented out to show what _should_ be here, but isn't because of the issue above.
 					// AssertPropertyMapMember(l, outputs, "null", resource.NewNullProperty())
-					AssertPropertyMapMember(l, outputs, "array", resource.NewArrayProperty([]resource.PropertyValue{
+					AssertPropertyMapMember(l, outputs, "array", resource.NewProperty([]resource.PropertyValue{
 						resource.NewNullProperty(),
 					}))
-					//AssertPropertyMapMember(l, outputs, "map", resource.NewObjectProperty(resource.PropertyMap{
+					//AssertPropertyMapMember(l, outputs, "map", resource.NewProperty(resource.PropertyMap{
 					//	"key": resource.NewNullProperty(),
 					//}))
 				},

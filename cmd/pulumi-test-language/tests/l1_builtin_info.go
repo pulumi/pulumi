@@ -37,9 +37,9 @@ func init() {
 					outputs := stack.Outputs
 
 					require.Len(l, outputs, 3, "expected 3 outputs")
-					AssertPropertyMapMember(l, outputs, "stackOutput", resource.NewStringProperty("test"))
-					AssertPropertyMapMember(l, outputs, "projectOutput", resource.NewStringProperty("l1-builtin-info"))
-					AssertPropertyMapMember(l, outputs, "organizationOutput", resource.NewStringProperty("organization"))
+					AssertPropertyMapMember(l, outputs, "stackOutput", resource.NewProperty("test"))
+					AssertPropertyMapMember(l, outputs, "projectOutput", resource.NewProperty("l1-builtin-info"))
+					AssertPropertyMapMember(l, outputs, "organizationOutput", resource.NewProperty("organization"))
 				},
 			},
 		},

@@ -256,7 +256,7 @@ func (p *ParameterizedProvider) Construct(
 	return plugin.ConstructResponse{
 		URN: urn,
 		Outputs: resource.PropertyMap{
-			"parameterValue": resource.NewStringProperty(string(p.parameterValue) + "Component"),
+			"parameterValue": resource.NewProperty(string(p.parameterValue) + "Component"),
 		},
 	}, nil
 }

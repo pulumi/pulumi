@@ -256,9 +256,9 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
 	m.resources.Store(urn, resource.PropertyMap{
-		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
-		resource.PropertyKey("id"):    resource.NewStringProperty(id),
-		resource.PropertyKey("state"): resource.NewObjectProperty(state),
+		resource.PropertyKey("urn"):   resource.NewProperty(urn),
+		resource.PropertyKey("id"):    resource.NewProperty(id),
+		resource.PropertyKey("state"): resource.NewProperty(state),
 	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
@@ -308,9 +308,9 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
 	m.resources.Store(urn, resource.PropertyMap{
-		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
-		resource.PropertyKey("id"):    resource.NewStringProperty(id),
-		resource.PropertyKey("state"): resource.NewObjectProperty(state),
+		resource.PropertyKey("urn"):   resource.NewProperty(urn),
+		resource.PropertyKey("id"):    resource.NewProperty(id),
+		resource.PropertyKey("state"): resource.NewProperty(state),
 	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{

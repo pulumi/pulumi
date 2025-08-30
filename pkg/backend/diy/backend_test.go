@@ -243,7 +243,7 @@ func makeUntypedDeploymentTimestamp(
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
 			Type: "a:b:c",
 			Inputs: resource.PropertyMap{
-				resource.PropertyKey("secret"): resource.MakeSecret(resource.NewStringProperty("s3cr3t")),
+				resource.PropertyKey("secret"): resource.MakeSecret(resource.NewProperty("s3cr3t")),
 			},
 			Created:  created,
 			Modified: modified,
@@ -615,7 +615,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
 	}
 
@@ -623,7 +623,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
 		Dependencies: []resource.URN{rBase.URN},
 	}
@@ -632,7 +632,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
 		PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 			resource.PropertyKey("p"): {rBase.URN},
@@ -643,7 +643,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
 		DeletedWith: rBase.URN,
 	}
@@ -652,7 +652,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
 		Parent: rBase.URN,
 	}
@@ -780,7 +780,7 @@ func TestHtmlEscaping(t *testing.T) {
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
 			Inputs: resource.PropertyMap{
-				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
+				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
 			},
 		},
 	}

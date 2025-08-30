@@ -301,7 +301,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
 			Inputs: resource.PropertyMap{
-				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
+				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
 			},
 		},
 	}

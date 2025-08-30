@@ -121,7 +121,7 @@ func TestSecretMasked(t *testing.T) {
 					return plugin.CreateResponse{
 						ID: "id",
 						Properties: resource.PropertyMap{
-							"shouldBeSecret": resource.NewStringProperty("bar"),
+							"shouldBeSecret": resource.NewProperty("bar"),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -133,7 +133,7 @@ func TestSecretMasked(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"shouldBeSecret": resource.MakeSecret(resource.NewStringProperty("bar")),
+				"shouldBeSecret": resource.MakeSecret(resource.NewProperty("bar")),
 			},
 		})
 		require.NoError(t, err)

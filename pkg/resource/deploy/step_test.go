@@ -456,7 +456,7 @@ func TestUpdateStep(t *testing.T) {
 					UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 						return plugin.UpdateResponse{
 								Properties: resource.PropertyMap{
-									"key": resource.NewStringProperty("expected-value"),
+									"key": resource.NewProperty("expected-value"),
 								},
 								Status: resource.StatusPartialFailure,
 							}, &plugin.InitError{
@@ -474,7 +474,7 @@ func TestUpdateStep(t *testing.T) {
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, resource.PropertyMap{
-				"key": resource.NewStringProperty("expected-value"),
+				"key": resource.NewProperty("expected-value"),
 			}, s.new.Outputs)
 		})
 	})
@@ -562,10 +562,10 @@ func TestReadStep(t *testing.T) {
 								ReadResult: plugin.ReadResult{
 									ID: "new-id",
 									Inputs: resource.PropertyMap{
-										"inputs-key": resource.NewStringProperty("expected-value"),
+										"inputs-key": resource.NewProperty("expected-value"),
 									},
 									Outputs: resource.PropertyMap{
-										"outputs-key": resource.NewStringProperty("expected-value"),
+										"outputs-key": resource.NewProperty("expected-value"),
 									},
 								},
 								Status: resource.StatusPartialFailure,
@@ -585,7 +585,7 @@ func TestReadStep(t *testing.T) {
 			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, (resource.PropertyMap)(nil), s.new.Inputs)
 			assert.Equal(t, resource.PropertyMap{
-				"outputs-key": resource.NewStringProperty("expected-value"),
+				"outputs-key": resource.NewProperty("expected-value"),
 			}, s.new.Outputs)
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})
@@ -632,11 +632,11 @@ func TestRefreshStepPatterns(t *testing.T) {
 			name:   "tfbridge 'computed' property changed",
 			inputs: resource.PropertyMap{},
 			outputs: resource.PropertyMap{
-				"etag": resource.NewStringProperty("abc"),
+				"etag": resource.NewProperty("abc"),
 			},
 			readInputs: resource.PropertyMap{},
 			readOutputs: resource.PropertyMap{
-				"etag": resource.NewStringProperty("def"),
+				"etag": resource.NewProperty("def"),
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
@@ -650,16 +650,16 @@ func TestRefreshStepPatterns(t *testing.T) {
 			// really shouldn't change, but this is common in TF providers.
 			name: "tfbridge 'required' property changed",
 			inputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("test"),
+				"title": resource.NewProperty("test"),
 			},
 			outputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("test"),
+				"title": resource.NewProperty("test"),
 			},
 			readInputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("testtesttest"),
+				"title": resource.NewProperty("testtesttest"),
 			},
 			readOutputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("testtesttest"),
+				"title": resource.NewProperty("testtesttest"),
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
@@ -678,16 +678,16 @@ func TestRefreshStepPatterns(t *testing.T) {
 			name:          "tfbridge 'required' property changed w/ ignoreChanges",
 			ignoreChanges: []string{"title"},
 			inputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("test"),
+				"title": resource.NewProperty("test"),
 			},
 			outputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("test"),
+				"title": resource.NewProperty("test"),
 			},
 			readInputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("testtesttest"),
+				"title": resource.NewProperty("testtesttest"),
 			},
 			readOutputs: resource.PropertyMap{
-				"title": resource.NewStringProperty("testtesttest"),
+				"title": resource.NewProperty("testtesttest"),
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
@@ -702,7 +702,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 			name:   "tfbridge 'optional' property changed",
 			inputs: resource.PropertyMap{},
 			outputs: resource.PropertyMap{
-				"body": resource.NewStringProperty(""),
+				"body": resource.NewProperty(""),
 			},
 			readInputs: resource.PropertyMap{
 				// Pretty sure its a bug in tfbridge that it doesn't populate the new value
@@ -710,7 +710,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 				// testing against the current behaviour.
 			},
 			readOutputs: resource.PropertyMap{
-				"body": resource.NewStringProperty("bodybodybody"),
+				"body": resource.NewProperty("bodybodybody"),
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
@@ -730,7 +730,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 			ignoreChanges: []string{"body"},
 			inputs:        resource.PropertyMap{},
 			outputs: resource.PropertyMap{
-				"body": resource.NewStringProperty(""),
+				"body": resource.NewProperty(""),
 			},
 			readInputs: resource.PropertyMap{
 				// Pretty sure its a bug in tfbridge that it doesn't populate the new value
@@ -738,7 +738,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 				// testing against the current behaviour.
 			},
 			readOutputs: resource.PropertyMap{
-				"body": resource.NewStringProperty("bodybodybody"),
+				"body": resource.NewProperty("bodybodybody"),
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
@@ -751,12 +751,12 @@ func TestRefreshStepPatterns(t *testing.T) {
 			name:   "tfbridge 'optional+computed' property element added",
 			inputs: resource.PropertyMap{},
 			outputs: resource.PropertyMap{
-				"tags": resource.NewObjectProperty(resource.PropertyMap{}),
+				"tags": resource.NewProperty(resource.PropertyMap{}),
 			},
 			readInputs: resource.PropertyMap{},
 			readOutputs: resource.PropertyMap{
-				"tags": resource.NewObjectProperty((resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+				"tags": resource.NewProperty((resource.PropertyMap{
+					"foo": resource.NewProperty("bar"),
 				})),
 			},
 			diffResult: plugin.DiffResult{
@@ -775,23 +775,23 @@ func TestRefreshStepPatterns(t *testing.T) {
 		{
 			name: "tfbridge 'optional+computed' property element changed",
 			inputs: resource.PropertyMap{
-				"tags": resource.NewObjectProperty(resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+				"tags": resource.NewProperty(resource.PropertyMap{
+					"foo": resource.NewProperty("bar"),
 				}),
 			},
 			outputs: resource.PropertyMap{
-				"tags": resource.NewObjectProperty(resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+				"tags": resource.NewProperty(resource.PropertyMap{
+					"foo": resource.NewProperty("bar"),
 				}),
 			},
 			readInputs: resource.PropertyMap{
-				"tags": resource.NewObjectProperty((resource.PropertyMap{
-					"foo": resource.NewStringProperty("baz"),
+				"tags": resource.NewProperty((resource.PropertyMap{
+					"foo": resource.NewProperty("baz"),
 				})),
 			},
 			readOutputs: resource.PropertyMap{
-				"tags": resource.NewObjectProperty((resource.PropertyMap{
-					"foo": resource.NewStringProperty("baz"),
+				"tags": resource.NewProperty((resource.PropertyMap{
+					"foo": resource.NewProperty("baz"),
 				})),
 			},
 			diffResult: plugin.DiffResult{
@@ -917,10 +917,10 @@ func TestRefreshStep(t *testing.T) {
 							ReadResult: plugin.ReadResult{
 								ID: "new-id",
 								Inputs: resource.PropertyMap{
-									"inputs-key": resource.NewStringProperty("expected-value"),
+									"inputs-key": resource.NewProperty("expected-value"),
 								},
 								Outputs: resource.PropertyMap{
-									"outputs-key": resource.NewStringProperty("expected-value"),
+									"outputs-key": resource.NewProperty("expected-value"),
 								},
 							},
 							Status: resource.StatusPartialFailure,
@@ -938,7 +938,7 @@ func TestRefreshStep(t *testing.T) {
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, resource.PropertyMap{
-				"outputs-key": resource.NewStringProperty("expected-value"),
+				"outputs-key": resource.NewProperty("expected-value"),
 			}, s.new.Outputs)
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})

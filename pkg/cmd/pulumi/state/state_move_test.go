@@ -353,7 +353,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			ID:     "provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				"key": resource.NewProperty("value"),
 			},
 		},
 		{
@@ -370,7 +370,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			ID:     "other_provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("different value"),
+				"key": resource.NewProperty("different value"),
 			},
 		},
 	}
@@ -959,7 +959,7 @@ func TestMoveSecret(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
@@ -1058,7 +1058,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
@@ -1131,7 +1131,7 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
@@ -1206,7 +1206,7 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 			ID:     "provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				"key": resource.NewProperty("value"),
 			},
 		},
 		{
@@ -1224,7 +1224,7 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 			ID:     "another_provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				"key": resource.NewProperty("value"),
 			},
 		},
 	}

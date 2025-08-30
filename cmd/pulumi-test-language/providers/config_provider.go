@@ -222,7 +222,7 @@ func (p *ConfigProvider) Create(
 	text := req.Properties["text"].StringValue()
 
 	props := resource.PropertyMap{
-		"text": resource.NewStringProperty(p.prefix + ": " + text),
+		"text": resource.NewProperty(p.prefix + ": " + text),
 	}
 
 	return plugin.CreateResponse{

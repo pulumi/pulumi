@@ -2353,7 +2353,7 @@ func TestDefaultProviders(t *testing.T) {
 					config: &configSourceMock{
 						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 							return resource.PropertyMap{
-								"disable-default-providers": resource.NewNumberProperty(100),
+								"disable-default-providers": resource.NewProperty(100.0),
 							}, nil
 						},
 					},
@@ -2367,7 +2367,7 @@ func TestDefaultProviders(t *testing.T) {
 					config: &configSourceMock{
 						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 							return resource.PropertyMap{
-								"disable-default-providers": resource.NewStringProperty(""),
+								"disable-default-providers": resource.NewProperty(""),
 							}, nil
 						},
 					},
@@ -2383,7 +2383,7 @@ func TestDefaultProviders(t *testing.T) {
 						config: &configSourceMock{
 							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 								return resource.PropertyMap{
-									"disable-default-providers": resource.NewStringProperty("[[["),
+									"disable-default-providers": resource.NewProperty("[[["),
 								}, nil
 							},
 						},
@@ -2398,7 +2398,7 @@ func TestDefaultProviders(t *testing.T) {
 						config: &configSourceMock{
 							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 								return resource.PropertyMap{
-									"disable-default-providers": resource.NewStringProperty(`["foo", 2, 3]`),
+									"disable-default-providers": resource.NewProperty(`["foo", 2, 3]`),
 								}, nil
 							},
 						},
@@ -2707,7 +2707,7 @@ func TestCall(t *testing.T) {
 				) (plugin.CallResponse, error) {
 					assert.Equal(t,
 						resource.PropertyMap{
-							"test": resource.NewStringProperty("test-value"),
+							"test": resource.NewProperty("test-value"),
 						},
 						req.Args)
 					require.Equal(t, 1, len(req.Options.ArgDependencies))
@@ -2740,7 +2740,7 @@ func TestCall(t *testing.T) {
 		}()
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewStringProperty("test-value"),
+			"test": resource.NewProperty("test-value"),
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
@@ -2809,7 +2809,7 @@ func TestCall(t *testing.T) {
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewStringProperty("test-value"),
+			"test": resource.NewProperty("test-value"),
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
@@ -2868,7 +2868,7 @@ func TestCall(t *testing.T) {
 				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					return plugin.CallResponse{
 						Return: resource.PropertyMap{
-							"result": resource.NewNumberProperty(100),
+							"result": resource.NewProperty(100.0),
 						},
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"prop": {
@@ -2890,7 +2890,7 @@ func TestCall(t *testing.T) {
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewStringProperty("test-value"),
+			"test": resource.NewProperty("test-value"),
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
@@ -3582,7 +3582,7 @@ func TestValidationFailures(t *testing.T) {
 
 		props := resource.PropertyMap{
 			"testproperty": resource.NewPropertyValue("testvalue"),
-			"nested": resource.NewArrayProperty(
+			"nested": resource.NewProperty(
 				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
 			),
 		}
@@ -3615,69 +3615,69 @@ func TestDowngradeOutputValues(t *testing.T) {
 		{
 			"plain",
 			resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewNumberProperty(42),
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(42.0),
 			},
 			resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewNumberProperty(42),
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(42.0),
 			},
 		},
 		{
 			"secret",
 			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"foo": resource.MakeSecret(resource.NewProperty("hello")),
 			},
 			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"foo": resource.MakeSecret(resource.NewProperty("hello")),
 			},
 		},
 		{
 			"output",
 			resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 				}),
 			},
 			resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty("hello"),
 			},
 		},
 		{
 			"secret output",
 			resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 					Secret:  true,
 				}),
 			},
 			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"foo": resource.MakeSecret(resource.NewProperty("hello")),
 			},
 		},
 		{
 			"unknown output",
 			resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{}),
+				"foo": resource.NewProperty(resource.Output{}),
 			},
 			resource.PropertyMap{
-				"foo": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeComputed(resource.NewProperty("")),
 			},
 		},
 		{
 			"unknown resource reference",
 			resource.PropertyMap{
-				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+				"foo": resource.NewProperty(resource.ResourceReference{
 					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  resource.NewOutputProperty(resource.Output{}),
+					ID:  resource.NewProperty(resource.Output{}),
 				}),
 			},
 			resource.PropertyMap{
-				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+				"foo": resource.NewProperty(resource.ResourceReference{
 					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  resource.MakeComputed(resource.NewStringProperty("")),
+					ID:  resource.MakeComputed(resource.NewProperty("")),
 				}),
 			},
 		},

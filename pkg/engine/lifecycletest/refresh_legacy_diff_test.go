@@ -110,10 +110,10 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
 		// B::1 and A::4 will have changes. The latter will also have input changes.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
 		"4": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("zab")},
 		},
 
 		// C::2 and C::5 will be deleted.

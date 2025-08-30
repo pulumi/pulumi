@@ -299,7 +299,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		newProviderState("pkgC", "a", "id2", true, nil),
 		// One provider from package D with a version
 		newProviderState("pkgD", "a", "id1", false, resource.PropertyMap{
-			"version": resource.NewStringProperty("1.0.0"),
+			"version": resource.NewProperty("1.0.0"),
 		}),
 	}
 	loaders := []*providerLoader{
@@ -737,7 +737,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
-	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("1.0.0")}
+	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
@@ -763,7 +763,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
-	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
+	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty(true)}
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
@@ -790,7 +790,7 @@ func TestCRUDBadVersion(t *testing.T) {
 
 	typ := MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
-	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("foo")}
+	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty("foo")}
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
@@ -883,7 +883,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			}
 
 			// Now check that we can get the provider back.
-			olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
+			olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty(true)}
 
 			// Check
 			check, err := r.Check(context.Background(), plugin.CheckRequest{

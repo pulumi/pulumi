@@ -42,10 +42,10 @@ func init() {
 					outputs := stack.Outputs
 
 					require.Len(l, outputs, 4, "expected 4 outputs")
-					AssertPropertyMapMember(l, outputs, "bool", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "array", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "map", resource.NewStringProperty("100"))
-					AssertPropertyMapMember(l, outputs, "nested", resource.NewStringProperty("french hens"))
+					AssertPropertyMapMember(l, outputs, "bool", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "array", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "map", resource.NewProperty("100"))
+					AssertPropertyMapMember(l, outputs, "nested", resource.NewProperty("french hens"))
 				},
 			},
 		},
