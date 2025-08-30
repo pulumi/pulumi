@@ -224,7 +224,7 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 	// the intended provider type with its state, if it's been registered.
 	resource, err := unmarshalResourceReference(ctx, resource.ResourceReference{
 		URN: resource.URN(urn),
-		ID:  resource.NewStringProperty(id),
+		ID:  resource.NewProperty(id),
 	})
 	if err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 			known, element = false, element.Input().Element
 		}
 		// Handle this as a secret output.
-		return copyInputTo(ctx, resource.NewOutputProperty(resource.Output{
+		return copyInputTo(ctx, resource.NewProperty(resource.Output{
 			Element: element,
 			Known:   known,
 			Secret:  true,

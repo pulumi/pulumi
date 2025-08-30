@@ -176,9 +176,9 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
 		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), respC.Outputs["resA"])
+		assert.Equal(t, resource.NewProperty(string(urnA)), respC.Outputs["resA"])
 		if idB != "" {
-			assert.Equal(t, resource.NewStringProperty(string(idB)), respC.Outputs["resB"])
+			assert.Equal(t, resource.NewProperty(string(idB)), respC.Outputs["resB"])
 		} else {
 			assert.True(t, respC.Outputs["resB"].IsComputed())
 		}
@@ -213,7 +213,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 					// If we have resource references here, the engine has not properly disabled them.
 					if req.URN.Name() == "resC" {
-						assert.Equal(t, resource.NewStringProperty(string(urnA)), req.Properties["resA"])
+						assert.Equal(t, resource.NewProperty(string(urnA)), req.Properties["resA"])
 						assert.Equal(t, refB.ResourceReferenceValue().ID, req.Properties["resB"])
 					}
 
@@ -259,7 +259,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), resp.Outputs["resA"])
+		assert.Equal(t, resource.NewProperty(string(urnA)), resp.Outputs["resA"])
 		if refB.ResourceReferenceValue().ID.IsComputed() {
 			assert.True(t, resp.Outputs["resB"].IsComputed())
 		} else {
@@ -333,12 +333,12 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		// Expect the `child` property from `resContainer`'s state to come back from 'pulumi:pulumi:getResource'
 		// as a resource reference.
 		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-			"urn": resource.NewStringProperty(string(resp.URN)),
+			"urn": resource.NewProperty(string(resp.URN)),
 		}, "", "", "")
 		require.NoError(t, err)
 		assert.Empty(t, failures)
-		assert.Equal(t, resource.NewStringProperty(string(resp.URN)), result["urn"])
-		assert.Equal(t, resource.NewStringProperty(string(resp.ID)), result["id"])
+		assert.Equal(t, resource.NewProperty(string(resp.URN)), result["urn"])
+		assert.Equal(t, resource.NewProperty(string(resp.ID)), result["id"])
 		state := result["state"].ObjectValue()
 		assert.Equal(t, refChild, state["child"])
 

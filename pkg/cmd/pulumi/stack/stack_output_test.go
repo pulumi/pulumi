@@ -40,9 +40,9 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("hunter2"),
+		"bucketName": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
@@ -149,9 +149,9 @@ func TestStackOutputCmd_json(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("hunter2"),
+		"bucketName": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
@@ -258,9 +258,9 @@ func TestStackOutputCmd_shell(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("hunter2"),
+		"bucketName": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 

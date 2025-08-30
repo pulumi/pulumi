@@ -60,7 +60,7 @@ func TestPlan(t *testing.T) {
 					resource.PropertyKey("foo"),
 				},
 			}
-			val := resource.NewStringProperty("val")
+			val := resource.NewProperty("val")
 			errStr := p.MakeError(resource.PropertyKey("foo"), "", &val)
 			assert.True(t, strings.HasPrefix(errStr, "-"))
 		})
@@ -564,7 +564,7 @@ func TestCheckDiff(t *testing.T) {
 				err := checkDiff(
 					resource.PropertyMap{},
 					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewStringProperty("test"),
+						resource.PropertyKey("should-delete"): resource.NewProperty("test"),
 					},
 					PlanDiff{
 						Deletes: []resource.PropertyKey{
@@ -577,10 +577,10 @@ func TestCheckDiff(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
 					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewStringProperty("test"),
+						resource.PropertyKey("should-delete"): resource.NewProperty("test"),
 					},
 					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-delete"): resource.NewProperty("new-test"),
 					},
 					PlanDiff{
 						Deletes: []resource.PropertyKey{
@@ -602,11 +602,11 @@ func TestCheckDiff(t *testing.T) {
 			err := checkDiff(
 				resource.PropertyMap{},
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				PlanDiff{
 					Adds: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 				})
 			require.NoError(t, err)
@@ -622,14 +622,14 @@ func TestCheckDiff(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("old-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("old-test"),
 				},
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				PlanDiff{
 					Updates: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 				})
 			require.NoError(t, err)
@@ -638,14 +638,14 @@ func TestCheckDiff(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				PlanDiff{
 					Updates: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 				})
 			require.NoError(t, err)
@@ -657,11 +657,11 @@ func TestCheckDiff(t *testing.T) {
 				err := checkDiff(
 					resource.PropertyMap{},
 					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 					PlanDiff{
 						Updates: resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
 					})
 				assert.ErrorContains(t, err,
@@ -671,14 +671,14 @@ func TestCheckDiff(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
 					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 					PlanDiff{
 						Updates: resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
 						},
 					})
 				assert.ErrorContains(t, err, "properties changed: ~=should-update[{new-new-test}!={new-test}]")
@@ -689,12 +689,12 @@ func TestCheckDiff(t *testing.T) {
 					t.Parallel()
 					err := checkDiff(
 						resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
 						resource.PropertyMap{},
 						PlanDiff{
 							Updates: resource.PropertyMap{
-								resource.PropertyKey("should-update"): resource.NewStringProperty("new-new-test"),
+								resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
 							},
 						})
 					assert.ErrorContains(t, err,
@@ -704,12 +704,12 @@ func TestCheckDiff(t *testing.T) {
 					t.Parallel()
 					err := checkDiff(
 						resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
 						resource.PropertyMap{},
 						PlanDiff{
 							Updates: resource.PropertyMap{
-								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewStringProperty("new-new-test")),
+								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewProperty("new-new-test")),
 							},
 						})
 					require.NoError(t, err)

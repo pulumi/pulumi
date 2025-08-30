@@ -409,19 +409,19 @@ func TestMapFromMapNestedPropertyValues(t *testing.T) {
 	t.Parallel()
 
 	actual := NewPropertyMapFromMap(map[string]interface{}{
-		"prop": NewStringProperty("value"),
+		"prop": NewProperty("value"),
 		"nested": map[string]interface{}{
-			"obj": NewObjectProperty(PropertyMap{
-				"k": NewStringProperty("v"),
+			"obj": NewProperty(PropertyMap{
+				"k": NewProperty("v"),
 			}),
 		},
 	})
 
 	expected := PropertyMap{
-		"prop": NewStringProperty("value"),
-		"nested": NewObjectProperty(PropertyMap{
-			"obj": NewObjectProperty(PropertyMap{
-				"k": NewStringProperty("v"),
+		"prop": NewProperty("value"),
+		"nested": NewProperty(PropertyMap{
+			"obj": NewProperty(PropertyMap{
+				"k": NewProperty("v"),
 			}),
 		}),
 	}

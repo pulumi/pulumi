@@ -50,11 +50,11 @@ func init() {
 
 					outputs := stack.Outputs
 					AssertPropertyMapMember(l, outputs, "nonSecret",
-						resource.NewStringProperty("hello world"))
+						resource.NewProperty("hello world"))
 					AssertPropertyMapMember(l, outputs, "firstSecret",
-						resource.MakeSecret(resource.NewStringProperty("hello world")))
+						resource.MakeSecret(resource.NewProperty("hello world")))
 					AssertPropertyMapMember(l, outputs, "secondSecret",
-						resource.MakeSecret(resource.NewStringProperty("goodbye world")))
+						resource.MakeSecret(resource.NewProperty("goodbye world")))
 				},
 			},
 		},

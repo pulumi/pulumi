@@ -451,7 +451,7 @@ func TestCustomSerialization(t *testing.T) {
 	textAsset, err := rasset.FromText("alpha beta gamma")
 	require.NoError(t, err)
 
-	strProp := resource.NewStringProperty("strProp")
+	strProp := resource.NewProperty("strProp")
 
 	computed := resource.Computed{Element: strProp}
 	output := resource.Output{Element: strProp}
@@ -727,12 +727,12 @@ func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 	ctx := context.Background()
 	crypter := config.NewPanicCrypter()
 
-	secret := resource.MakeSecret(resource.NewStringProperty("secret"))
+	secret := resource.MakeSecret(resource.NewProperty("secret"))
 	_, err := SerializePropertyValue(ctx, secret, crypter, true)
 	require.NoError(t, err)
 
-	secret = resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-		resource.MakeSecret(resource.NewStringProperty("secret")),
+	secret = resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+		resource.MakeSecret(resource.NewProperty("secret")),
 	}))
 	_, err = SerializePropertyValue(ctx, secret, crypter, true)
 	require.NoError(t, err)
@@ -800,7 +800,7 @@ func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue
 			o[k] = replaceOutputsWithComputed(v)
 		}
 	case v.IsOutput():
-		return resource.MakeComputed(resource.NewStringProperty(""))
+		return resource.MakeComputed(resource.NewProperty(""))
 	case v.IsSecret():
 		v.SecretValue().Element = replaceOutputsWithComputed(v.SecretValue().Element)
 	}

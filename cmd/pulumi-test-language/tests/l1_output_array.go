@@ -37,32 +37,32 @@ func init() {
 					outputs := stack.Outputs
 
 					require.Len(l, outputs, 5, "expected 5 outputs")
-					AssertPropertyMapMember(l, outputs, "empty", resource.NewArrayProperty([]resource.PropertyValue{}))
-					AssertPropertyMapMember(l, outputs, "small", resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewStringProperty("Hello"),
-						resource.NewStringProperty("World"),
+					AssertPropertyMapMember(l, outputs, "empty", resource.NewProperty([]resource.PropertyValue{}))
+					AssertPropertyMapMember(l, outputs, "small", resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty("Hello"),
+						resource.NewProperty("World"),
 					}))
-					AssertPropertyMapMember(l, outputs, "numbers", resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewNumberProperty(0), resource.NewNumberProperty(1), resource.NewNumberProperty(2),
-						resource.NewNumberProperty(3), resource.NewNumberProperty(4), resource.NewNumberProperty(5),
+					AssertPropertyMapMember(l, outputs, "numbers", resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(0.0), resource.NewProperty(1.0), resource.NewProperty(2.0),
+						resource.NewProperty(3.0), resource.NewProperty(4.0), resource.NewProperty(5.0),
 					}))
-					AssertPropertyMapMember(l, outputs, "nested", resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewNumberProperty(1), resource.NewNumberProperty(2), resource.NewNumberProperty(3),
+					AssertPropertyMapMember(l, outputs, "nested", resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(1.0), resource.NewProperty(2.0), resource.NewProperty(3.0),
 						}),
-						resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewNumberProperty(4), resource.NewNumberProperty(5), resource.NewNumberProperty(6),
+						resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(4.0), resource.NewProperty(5.0), resource.NewProperty(6.0),
 						}),
-						resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewNumberProperty(7), resource.NewNumberProperty(8), resource.NewNumberProperty(9),
+						resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(7.0), resource.NewProperty(8.0), resource.NewProperty(9.0),
 						}),
 					}))
 
 					large := []resource.PropertyValue{}
 					for i := 0; i < 150; i++ {
-						large = append(large, resource.NewStringProperty(lorem))
+						large = append(large, resource.NewProperty(lorem))
 					}
-					AssertPropertyMapMember(l, outputs, "large", resource.NewArrayProperty(large))
+					AssertPropertyMapMember(l, outputs, "large", resource.NewProperty(large))
 				},
 			},
 		},

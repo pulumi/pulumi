@@ -167,7 +167,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Outputs: resource.PropertyMap{
-								"o1": resource.NewNumberProperty(float64(readCall)),
+								"o1": resource.NewProperty(float64(readCall)),
 							},
 						},
 						Status: resource.StatusOK,
@@ -217,7 +217,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	res2URN := p.NewURN("pkgA:m:typA", "resB", "")
 
-	res2Outputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	res2Outputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	//
 	// Refresh will persist any initialization errors that are returned by `Read`. This provider
@@ -779,16 +779,16 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
 		// B::1 has output-only changes which will not be reported as a refresh diff.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
 
 		// A::4 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"4": {
 			Outputs: resource.PropertyMap{
-				"baz": resource.NewStringProperty("qux"),
-				"oof": resource.NewStringProperty("zab"),
+				"baz": resource.NewProperty("qux"),
+				"oof": resource.NewProperty("zab"),
 			},
-			Inputs: resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+			Inputs: resource.PropertyMap{"oof": resource.NewProperty("zab")},
 		},
 
 		// C::2 and C::5 will be deleted.
@@ -953,12 +953,12 @@ func TestCanceledRefresh(t *testing.T) {
 		// A::0 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"0": {
-			Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("rab")},
+			Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("rab")},
 		},
 		// B::1 will have output changes.
 		"1": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
+			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
 		},
 		// C::2 will be deleted.
 		"2": {},
@@ -1110,7 +1110,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	idBefore := resource.ID("myid")
 	idAfter := resource.ID("mynewid")
-	outputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	outputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1220,9 +1220,9 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 func TestRefreshWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1313,7 +1313,7 @@ func TestRefreshWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1330,11 +1330,11 @@ func TestRefreshWithProgram(t *testing.T) {
 func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
-	expectedAuth := resource.NewStringProperty("upauth")
+	expectedAuth := resource.NewProperty("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1448,10 +1448,10 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
-	expectedAuth = resource.NewStringProperty("refreshauth")
+	expectedAuth = resource.NewProperty("refreshauth")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1468,11 +1468,11 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
-	expectedAuth := resource.NewStringProperty("upauth")
+	expectedAuth := resource.NewProperty("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1580,10 +1580,10 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
-	expectedAuth = resource.NewStringProperty("refreshauth")
+	expectedAuth = resource.NewProperty("refreshauth")
 	p.Config = config.Map{
 		config.MustParseKey("pkgA:config:auth"): config.NewValue("refreshauth"),
 	}
@@ -1603,11 +1603,11 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
-	expectedAuth := resource.NewStringProperty("upauth")
+	expectedAuth := resource.NewProperty("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1714,7 +1714,7 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// We can't change the 'expectedauth' in this case because we're re-loading the provider
 	// from state. We change config here to show that's the case.
 	p.Config = config.Map{
@@ -1735,9 +1735,9 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1852,7 +1852,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1868,9 +1868,9 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 func TestRefreshWithBigProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1969,7 +1969,7 @@ func TestRefreshWithBigProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1986,9 +1986,9 @@ func TestRefreshWithBigProgram(t *testing.T) {
 func TestRefreshWithAlias(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2092,7 +2092,7 @@ func TestRefreshWithAlias(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -2108,8 +2108,8 @@ func TestRefreshWithAlias(t *testing.T) {
 func TestRefreshRunProgramDeletedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2191,7 +2191,7 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 	firstID := snap.Resources[1].ID
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
 	// Run a refresh update
@@ -2210,8 +2210,8 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2313,7 +2313,7 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 	firstID := snap.Resources[1].ID
 
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
 	// Run a refresh update
@@ -2332,8 +2332,8 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	initialProperties := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	initialProperties := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2427,7 +2427,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	firstID := snap.Resources[1].ID
 
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
 	// Run a refresh update

@@ -399,9 +399,9 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	// Create a resource reference to the child, that we'll register as an output of the component and return as part of
 	// our ConstructResponse.
-	refPropVal := resource.NewResourceReferenceProperty(resource.ResourceReference{
+	refPropVal := resource.NewProperty(resource.ResourceReference{
 		URN: resource.URN(child.Urn),
-		ID:  resource.NewStringProperty(child.Id),
+		ID:  resource.NewProperty(child.Id),
 	})
 	refStruct, err := plugin.MarshalPropertyValue("ref", refPropVal, plugin.MarshalOptions{
 		KeepResources: true,
@@ -490,7 +490,7 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 	}
 
 	// Create resource references for the inputRef and outputRef component outputs.
-	inputRefPropVal := resource.NewResourceReferenceProperty(inputRef)
+	inputRefPropVal := resource.NewProperty(inputRef)
 	inputRefStruct, err := plugin.MarshalPropertyValue("inputRef", inputRefPropVal, plugin.MarshalOptions{
 		KeepResources: true,
 		KeepSecrets:   true,
@@ -499,9 +499,9 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 		return plugin.ConstructResponse{}, fmt.Errorf("marshal input ref: %w", err)
 	}
 
-	outputRefPropVal := resource.NewResourceReferenceProperty(resource.ResourceReference{
+	outputRefPropVal := resource.NewProperty(resource.ResourceReference{
 		URN: resource.URN(child.Urn),
-		ID:  resource.NewStringProperty(child.Id),
+		ID:  resource.NewProperty(child.Id),
 	})
 	outputRefStruct, err := plugin.MarshalPropertyValue("outputRef", outputRefPropVal, plugin.MarshalOptions{
 		KeepResources: true,

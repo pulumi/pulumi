@@ -230,7 +230,7 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewStringProperty(value.StringValue() + " world"),
+				"result": resource.NewProperty(value.StringValue() + " world"),
 			},
 		}, nil
 	case "simple-invoke:index:myInvokeScalar":
@@ -260,7 +260,7 @@ func (p *SimpleInvokeProvider) Invoke(
 		// invoke implementations.
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewBoolProperty(true),
+				"result": resource.NewProperty(true),
 			},
 		}, nil
 	case "simple-invoke:index:unit":
@@ -272,7 +272,7 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewStringProperty("Hello world"),
+				"result": resource.NewProperty("Hello world"),
 			},
 		}, nil
 	case "simple-invoke:index:secretInvoke":
@@ -309,7 +309,7 @@ func (p *SimpleInvokeProvider) Invoke(
 		}
 
 		// if the secretResponse is true, wrap the response as a secret
-		response := resource.NewStringProperty(value.StringValue() + " world")
+		response := resource.NewProperty(value.StringValue() + " world")
 		if secretResponse.BoolValue() {
 			response = resource.MakeSecret(response)
 		}
@@ -358,7 +358,7 @@ func (p *SimpleInvokeProvider) Create(
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.PropertyMap{
-			"text": resource.NewStringProperty("Goodbye"),
+			"text": resource.NewProperty("Goodbye"),
 		},
 		Status: resource.StatusOK,
 	}, nil

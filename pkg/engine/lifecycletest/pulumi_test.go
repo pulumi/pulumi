@@ -219,7 +219,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
 	inputs = resource.PropertyMap{
-		"input": resource.MakeComputed(resource.NewStringProperty("")),
+		"input": resource.MakeComputed(resource.NewProperty("")),
 	}
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
@@ -1024,9 +1024,9 @@ func TestUpdatePartialFailure(t *testing.T) {
 						require.Len(t, inputs, 1)
 						require.Len(t, outputs, 1)
 						assert.Equal(t,
-							resource.NewStringProperty("old inputs"), inputs[resource.PropertyKey("input_prop")])
+							resource.NewProperty("old inputs"), inputs[resource.PropertyKey("input_prop")])
 						assert.Equal(t,
-							resource.NewNumberProperty(42), outputs[resource.PropertyKey("output_prop")])
+							resource.NewProperty(42.0), outputs[resource.PropertyKey("output_prop")])
 					default:
 						t.Fatalf("unexpected journal operation: %d", entry.Kind)
 					}
@@ -1566,19 +1566,19 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 
 	// Check that ignoring a secret value works, first update to make foo, bar secret
 	snap = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(3),
-		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("foo"),
-			resource.NewStringProperty("bar"),
+		"a": resource.NewProperty(3.0),
+		"b": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("foo"),
+			resource.NewProperty("bar"),
 		})),
 	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(3),
-		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("foo"),
-			resource.NewStringProperty("baz"),
+		"a": resource.NewProperty(3.0),
+		"b": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("foo"),
+			resource.NewProperty("baz"),
 		})),
 	}, []string{"b[1]"}, []display.StepOp{deploy.OpSame}, "change-value-not-secretness")
 }
@@ -1595,11 +1595,11 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	program := func(monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewObjectProperty(resource.PropertyMap{
-					"bar": resource.NewStringProperty("baz"),
+				"foo": resource.NewProperty(resource.PropertyMap{
+					"bar": resource.NewProperty("baz"),
 				}),
-				"qux": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("zed"),
+				"qux": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty("zed"),
 				}),
 			},
 		})
@@ -1636,13 +1636,13 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"qux": resource.NewArrayProperty([]resource.PropertyValue{}),
+				"qux": resource.NewProperty([]resource.PropertyValue{}),
 			},
 			IgnoreChanges: []string{"qux[0]"},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"qux": resource.NewArrayProperty([]resource.PropertyValue{}),
+			"qux": resource.NewProperty([]resource.PropertyValue{}),
 		}, resp.Outputs)
 		return nil
 	}
@@ -1666,18 +1666,18 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"qux": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("zed"),
-					resource.NewStringProperty("zob"),
+				"qux": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty("zed"),
+					resource.NewProperty("zob"),
 				}),
 			},
 			IgnoreChanges: []string{"qux[1]"},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"qux": resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("zed"),
-				resource.NewStringProperty("zob"),
+			"qux": resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("zed"),
+				resource.NewProperty("zob"),
 			}),
 		}, resp.Outputs)
 		return nil
@@ -1811,7 +1811,7 @@ func TestReplaceOnChanges(t *testing.T) {
 			// we treat 42 as an OpSame. We use this to check that the right diff function is being
 			// used.
 			for k, v := range req.NewInputs {
-				if v == resource.NewNumberProperty(42) {
+				if v == resource.NewProperty(42.0) {
 					req.NewInputs[k] = req.OldOutputs[k]
 				}
 			}
@@ -2164,7 +2164,7 @@ func TestProviderPreview(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
@@ -2254,7 +2254,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
@@ -2410,7 +2410,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
@@ -2461,7 +2461,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		} else {
 			require.NoError(t, err)
 			assert.True(t, respC.Outputs.DeepEquals(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			}))
 		}
 
@@ -2482,7 +2482,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
 		} else {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{
-				"message": resource.NewStringProperty("Hello, bar!"),
+				"message": resource.NewProperty("Hello, bar!"),
 			}), "outs was %v", outs)
 		}
 
@@ -2500,7 +2500,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
 		} else {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{
-				"message": resource.NewStringProperty("Hello, bar!"),
+				"message": resource.NewProperty("Hello, bar!"),
 			}), "outs was %v", outs)
 		}
 
@@ -2710,7 +2710,7 @@ func TestComponentOutputs(t *testing.T) {
 		assert.Equal(t, resource.PropertyMap{}, resp.Outputs)
 
 		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		})
 		require.NoError(t, err)
 		return nil
@@ -3079,10 +3079,10 @@ func TestEventSecrets(t *testing.T) {
 	}
 
 	inputs = resource.PropertyMap{
-		"webhooks": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewObjectProperty(resource.PropertyMap{
-				"clientConfig": resource.NewObjectProperty(resource.PropertyMap{
-					"service": resource.NewStringProperty("foo"),
+		"webhooks": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty(resource.PropertyMap{
+				"clientConfig": resource.NewProperty(resource.PropertyMap{
+					"service": resource.NewProperty("foo"),
 				}),
 			}),
 		})),
@@ -3090,10 +3090,10 @@ func TestEventSecrets(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	inputs = resource.PropertyMap{
-		"webhooks": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewObjectProperty(resource.PropertyMap{
-				"clientConfig": resource.NewObjectProperty(resource.PropertyMap{
-					"service": resource.NewStringProperty("bar"),
+		"webhooks": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty(resource.PropertyMap{
+				"clientConfig": resource.NewProperty(resource.PropertyMap{
+					"service": resource.NewProperty("bar"),
 				}),
 			}),
 		})),
@@ -3162,9 +3162,9 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	project := p.GetProject()
 
 	inputs = resource.PropertyMap{
-		"a": resource.NewStringProperty("testA"),
+		"a": resource.NewProperty("testA"),
 		// b is missing
-		"c": resource.MakeSecret(resource.NewStringProperty("testC")),
+		"c": resource.MakeSecret(resource.NewProperty("testC")),
 	}
 
 	// Run an update to create the resource and check we warn about b
@@ -3735,7 +3735,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					for k, v := range req.News {
 						results[k] = v
 					}
-					results["default"] = resource.NewStringProperty("default")
+					results["default"] = resource.NewProperty("default")
 
 					return plugin.CheckResponse{Properties: results}, nil
 				},
@@ -3773,11 +3773,11 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 						results[k] = v
 					}
 					// Add a computed property
-					results["computed"] = resource.MakeComputed(resource.NewStringProperty(""))
+					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
 					if !req.Preview {
 						id = resource.ID("1")
-						results["computed"] = resource.NewStringProperty("computed")
+						results["computed"] = resource.NewProperty("computed")
 					}
 					return plugin.CreateResponse{
 						ID:         id,
@@ -3806,10 +3806,10 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 						results[k] = v
 					}
 					// Add a computed property
-					results["computed"] = resource.MakeComputed(resource.NewStringProperty(""))
+					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
 					if !req.Preview {
-						results["computed"] = resource.NewStringProperty("computed")
+						results["computed"] = resource.NewProperty("computed")
 					}
 
 					return plugin.UpdateResponse{
@@ -4200,7 +4200,7 @@ func TestAutomaticDiff(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{
-		"foo": resource.NewNumberProperty(1),
+		"foo": resource.NewProperty(1.0),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -4223,7 +4223,7 @@ func TestAutomaticDiff(t *testing.T) {
 
 	// Change the inputs and run again
 	inputs = resource.PropertyMap{
-		"foo": resource.NewNumberProperty(2),
+		"foo": resource.NewProperty(2.0),
 	}
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,

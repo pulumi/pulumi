@@ -60,7 +60,7 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 			return nil, err
 		}
 
-		propertyValue := resource.NewStringProperty(v)
+		propertyValue := resource.NewProperty(v)
 		if c.Secure() {
 			propertyValue = resource.MakeSecret(propertyValue)
 		}

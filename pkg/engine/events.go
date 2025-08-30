@@ -698,7 +698,7 @@ func (e *eventEmitter) startDebugging(info plugin.DebuggingInfo) {
 }
 
 func filterResourceProperties(m resource.PropertyMap, debug bool, showSecrets bool) resource.PropertyMap {
-	return filterPropertyValue(resource.NewObjectProperty(m), debug, showSecrets).ObjectValue()
+	return filterPropertyValue(resource.NewProperty(m), debug, showSecrets).ObjectValue()
 }
 
 func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool) resource.PropertyValue {
@@ -707,34 +707,34 @@ func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool)
 		return v
 	case v.IsString():
 		// have to ensure we filter out secrets.
-		return resource.NewStringProperty(logging.FilterString(v.StringValue()))
+		return resource.NewProperty(logging.FilterString(v.StringValue()))
 	case v.IsAsset():
-		return resource.NewAssetProperty(filterAsset(v.AssetValue(), debug))
+		return resource.NewProperty(filterAsset(v.AssetValue(), debug))
 	case v.IsArchive():
-		return resource.NewArchiveProperty(filterArchive(v.ArchiveValue(), debug))
+		return resource.NewProperty(filterArchive(v.ArchiveValue(), debug))
 	case v.IsArray():
 		arr := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, v := range v.ArrayValue() {
 			arr[i] = filterPropertyValue(v, debug, showSecrets)
 		}
-		return resource.NewArrayProperty(arr)
+		return resource.NewProperty(arr)
 	case v.IsObject():
 		obj := make(resource.PropertyMap, len(v.ObjectValue()))
 		for k, v := range v.ObjectValue() {
 			obj[k] = filterPropertyValue(v, debug, showSecrets)
 		}
-		return resource.NewObjectProperty(obj)
+		return resource.NewProperty(obj)
 	case v.IsComputed():
 		return resource.MakeComputed(filterPropertyValue(v.Input().Element, debug, showSecrets))
 	case v.IsOutput():
 		return resource.MakeComputed(filterPropertyValue(v.OutputValue().Element, debug, showSecrets))
 	case v.IsSecret() && showSecrets:
-		return resource.NewSecretProperty(v.SecretValue())
+		return resource.NewProperty(v.SecretValue())
 	case v.IsSecret():
-		return resource.MakeSecret(resource.NewStringProperty("[secret]"))
+		return resource.MakeSecret(resource.NewProperty("[secret]"))
 	case v.IsResourceReference():
 		ref := v.ResourceReferenceValue()
-		return resource.NewResourceReferenceProperty(resource.ResourceReference{
+		return resource.NewProperty(resource.ResourceReference{
 			URN:            resource.URN(logging.FilterString(string(ref.URN))),
 			ID:             filterPropertyValue(ref.ID, debug, showSecrets),
 			PackageVersion: logging.FilterString(ref.PackageVersion),

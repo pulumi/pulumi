@@ -53,7 +53,7 @@ func init() {
 					})
 					expectedInputs := deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
-					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
 						resource.NewPropertyMapFromMap(map[string]interface{}{
 							"pluginDownloadURL": "http://example.com",
 						}))
@@ -68,7 +68,7 @@ func init() {
 					})
 					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
-					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
 						resource.NewPropertyMapFromMap(map[string]interface{}{
 							"pluginDownloadURL": "http://example.com",
 						}))

@@ -191,7 +191,7 @@ func (r *ResourceSpec) AsResource() *resource.State {
 	// we'll set the ResourceSpec's ID field as an input property.
 	if !providers.IsProviderType(r.Type) {
 		s.Inputs = resource.PropertyMap{
-			"__id": resource.NewStringProperty(r.ID.String()),
+			"__id": resource.NewProperty(r.ID.String()),
 		}
 	}
 

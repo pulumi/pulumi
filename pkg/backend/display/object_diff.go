@@ -287,7 +287,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 		for i, v := range p.ArrayValue() {
 			arr[i] = massageStackPreviewAdd(v)
 		}
-		return resource.NewArrayProperty(arr)
+		return resource.NewProperty(arr)
 	case p.IsObject():
 		obj := resource.PropertyMap{}
 		for k, v := range p.ObjectValue() {
@@ -295,7 +295,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 				obj[k] = massageStackPreviewAdd(v)
 			}
 		}
-		return resource.NewObjectProperty(obj)
+		return resource.NewProperty(obj)
 	default:
 		return p
 	}
@@ -655,9 +655,9 @@ func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
 func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
 	switch t := v.(type) {
 	case *asset.Asset:
-		return resource.NewAssetProperty(t)
+		return resource.NewProperty(t)
 	case *archive.Archive:
-		return resource.NewArchiveProperty(t)
+		return resource.NewProperty(t)
 	default:
 		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
 		return resource.PropertyValue{V: nil}

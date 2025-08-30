@@ -58,7 +58,7 @@ func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
 	internalInputs := inputs[internalKey]
 	if !internalInputs.IsObject() {
 		newMap := resource.PropertyMap{}
-		internalInputs = resource.NewObjectProperty(newMap)
+		internalInputs = resource.NewProperty(newMap)
 		inputs[internalKey] = internalInputs
 		return newMap
 	}
@@ -85,10 +85,10 @@ func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) 
 	propMap := make(resource.PropertyMap)
 	for key, checksum := range value {
 		hex := hex.EncodeToString(checksum)
-		propMap[resource.PropertyKey(key)] = resource.NewStringProperty(hex)
+		propMap[resource.PropertyKey(key)] = resource.NewProperty(hex)
 	}
 
-	internalInputs[pluginChecksumsKey] = resource.NewObjectProperty(propMap)
+	internalInputs[pluginChecksumsKey] = resource.NewProperty(propMap)
 }
 
 // GetProviderChecksums fetches a provider plugin checksums from the given property map.
@@ -121,7 +121,7 @@ func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[pluginDownloadKey] = resource.NewStringProperty(value)
+	internalInputs[pluginDownloadKey] = resource.NewProperty(value)
 }
 
 // GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
@@ -148,7 +148,7 @@ func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
 	// __internal, and don't try and look up the key from the root config where a provider may just have a config key
 	// itself of the same text.
 	addOrGetInternal(inputs)
-	inputs[versionKey] = resource.NewStringProperty(value.String())
+	inputs[versionKey] = resource.NewProperty(value.String())
 }
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the
@@ -184,7 +184,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 // Sets the provider name in the given property map.
 func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[nameKey] = resource.NewStringProperty(name.String())
+	internalInputs[nameKey] = resource.NewProperty(name.String())
 }
 
 // GetProviderName fetches and parses a provider name from the given property map. If the
@@ -219,9 +219,9 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+	inputs[versionKey] = resource.NewProperty(value.Version.String())
 	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewStringProperty(
+	internalInputs[parameterizationKey] = resource.NewProperty(
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 

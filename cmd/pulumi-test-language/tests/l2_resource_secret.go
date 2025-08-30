@@ -47,7 +47,7 @@ func init() {
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"public":  "open",
-						"private": resource.MakeSecret(resource.NewStringProperty("closed")),
+						"private": resource.MakeSecret(resource.NewProperty("closed")),
 						"publicData": map[string]interface{}{
 							"public": "open",
 							// TODO https://github.com/pulumi/pulumi/issues/10319: This should be a secret,
@@ -55,7 +55,7 @@ func init() {
 							// fix it. We should fix the engine to ensure this ends up as secret as well.
 							"private": "closed",
 						},
-						"privateData": resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
+						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 							"public":  "open",
 							"private": "closed",
 						}))),

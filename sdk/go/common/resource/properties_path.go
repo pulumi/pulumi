@@ -228,13 +228,13 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			case dest.IsNull():
 				// If the destination array does not exist, create a new array with enough room to store the value at
 				// the requested index.
-				dest = NewArrayProperty(make([]PropertyValue, key+1))
+				dest = NewProperty(make([]PropertyValue, key+1))
 				set(dest)
 			case dest.IsArray():
 				// If the destination array does exist, ensure that it is large enough to accommodate the requested
 				// index.
 				if arr := dest.ArrayValue(); key >= len(arr) {
-					dest = NewArrayProperty(append(make([]PropertyValue, key+1-len(arr)), arr...))
+					dest = NewProperty(append(make([]PropertyValue, key+1-len(arr)), arr...))
 					set(dest)
 				}
 			default:
@@ -250,7 +250,7 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			switch {
 			case dest.IsNull():
 				// If the destination does not exist, create a new object.
-				dest = NewObjectProperty(PropertyMap{})
+				dest = NewProperty(PropertyMap{})
 				set(dest)
 			case dest.IsObject():
 				// OK
@@ -563,7 +563,7 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 // intermediate locations, it also won't create or delete array locations (because that would change the size
 // of the array).
 func (p PropertyPath) Reset(old, new PropertyMap) bool {
-	return p.reset(NewObjectProperty(old), NewObjectProperty(new), false, false)
+	return p.reset(NewProperty(old), NewProperty(new), false, false)
 }
 
 func requiresQuote(c rune) bool {

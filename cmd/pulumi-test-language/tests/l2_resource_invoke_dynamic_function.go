@@ -46,9 +46,9 @@ func init() {
 						l,
 						r.Outputs,
 						"dynamic",
-						resource.NewObjectProperty(
+						resource.NewProperty(
 							resource.NewPropertyMapFromMap(
-								map[string]any{"resultProperty": resource.NewStringProperty("resultValue")},
+								map[string]any{"resultProperty": resource.NewProperty("resultValue")},
 							),
 						),
 					)

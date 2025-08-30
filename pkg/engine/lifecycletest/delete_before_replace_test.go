@@ -75,12 +75,12 @@ func generateComplexTestDependencyGraph(
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
-			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewStringProperty("foo")}),
+			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewProperty("foo")}),
 			newResource(urnB, "1", string(urnA)+"::0", nil, nil, nil),
 			newResource(urnC, "2", "",
 				[]resource.URN{urnA},
 				propertyDependencies{"A": []resource.URN{urnA}},
-				resource.PropertyMap{"A": resource.NewStringProperty("bar")}),
+				resource.PropertyMap{"A": resource.NewProperty("bar")}),
 			newResource(urnD, "3", "",
 				[]resource.URN{urnA},
 				propertyDependencies{"B": []resource.URN{urnA}}, nil),
@@ -118,7 +118,7 @@ func generateComplexTestDependencyGraph(
 			return resp.ID
 		}
 
-		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewStringProperty("bar")})
+		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewProperty("bar")})
 		register(urnB, string(urnA)+"::"+string(idA), nil)
 		idC := register(urnC, "", nil)
 		idD := register(urnD, "", nil)
@@ -254,12 +254,12 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		urnA = register("A", nil, nil, nil)
 		urnB = register("B", nil, nil, nil)
 		urnC = register("C", resource.PropertyMap{
-			"A": resource.NewStringProperty("foo"),
-			"B": resource.NewStringProperty("bar"),
+			"A": resource.NewProperty("foo"),
+			"B": resource.NewProperty("bar"),
 		}, nil, []resource.URN{urnA, urnB})
 		urnD = register("D", resource.PropertyMap{
-			"A": resource.NewStringProperty("foo"),
-			"B": resource.NewStringProperty("bar"),
+			"A": resource.NewProperty("foo"),
+			"B": resource.NewProperty("bar"),
 		}, propertyDependencies{
 			"A": []resource.URN{urnB},
 			"B": []resource.URN{urnA, urnC},
@@ -358,7 +358,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
-	inputsA["A"] = resource.NewStringProperty("bar")
+	inputsA["A"] = resource.NewProperty("bar")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -382,7 +382,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
-	dbrA, inputsA["A"] = &dbrValue, resource.NewStringProperty("baz")
+	dbrA, inputsA["A"] = &dbrValue, resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -407,7 +407,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the value of resB.A. Only resB should be replaced, and the replacement should be create-before-delete.
-	inputsB["A"] = resource.NewStringProperty("qux")
+	inputsB["A"] = resource.NewProperty("qux")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -431,7 +431,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it no longer requires delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
-	dbrA, inputsA["A"] = nil, resource.NewStringProperty("zam")
+	dbrA, inputsA["A"] = nil, resource.NewProperty("zam")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -455,7 +455,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the diff of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
-	dbrDiff, inputsA["A"] = true, resource.NewStringProperty("foo")
+	dbrDiff, inputsA["A"] = true, resource.NewProperty("foo")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -481,7 +481,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it disables delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
-	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewStringProperty("bar")
+	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewProperty("bar")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -567,7 +567,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	inputsA["A"] = resource.NewStringProperty("bar")
+	inputsA["A"] = resource.NewProperty("bar")
 	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs: inputsB,
@@ -687,7 +687,7 @@ func TestDBRProtect(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 
 	// Update A to trigger a replace this should error because of the protect flag on B.
-	inputsA["A"] = resource.NewStringProperty("bar")
+	inputsA["A"] = resource.NewProperty("bar")
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "unable to replace resource \"urn:pulumi:test::test::pkgA:index:typ::resB\""+
 		" as part of replacing \"urn:pulumi:test::test::pkgA:index:typ::resA\" as it is currently marked for protection.")
@@ -730,7 +730,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	}
 
 	inputsA := resource.PropertyMap{
-		"value": resource.NewStringProperty("foo"),
+		"value": resource.NewProperty("foo"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:index:typA", "resA", true, deploytest.ResourceOptions{
@@ -764,7 +764,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 
 	// Update value to trigger a replace this should also replace resB because of the replaceOnChanges.
-	inputsA["value"] = resource.NewStringProperty("bar")
+	inputsA["value"] = resource.NewProperty("bar")
 	validate := func(
 		project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 		events []engine.Event, err error,

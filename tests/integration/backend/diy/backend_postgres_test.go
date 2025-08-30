@@ -327,11 +327,11 @@ func TestPostgresBackend(t *testing.T) {
 			Custom: true,
 			ID:     "test-resource-id",
 			Inputs: resource.PropertyMap{
-				"name": resource.NewStringProperty("test-resource"),
+				"name": resource.NewProperty("test-resource"),
 			},
 			Outputs: resource.PropertyMap{
-				"name": resource.NewStringProperty("test-resource"),
-				"arn":  resource.NewStringProperty("arn:test:resource"),
+				"name": resource.NewProperty("test-resource"),
+				"arn":  resource.NewProperty("arn:test:resource"),
 			},
 		},
 	}, nil, deploy.SnapshotMetadata{})

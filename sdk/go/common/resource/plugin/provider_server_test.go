@@ -98,8 +98,8 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 			return ReadResult{
 				ID: resource.ID("none"),
 				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-					"result": resource.NewSecretProperty(&resource.Secret{
-						Element: resource.NewStringProperty(string(id)),
+					"result": resource.NewProperty(&resource.Secret{
+						Element: resource.NewProperty(string(id)),
 					}),
 				}),
 			}, resource.StatusOK, nil

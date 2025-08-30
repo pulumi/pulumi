@@ -427,10 +427,10 @@ func (c *backendClient) GetStackResourceOutputs(
 		}
 
 		resc := resource.PropertyMap{
-			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs),
+			resource.PropertyKey("type"):    resource.NewProperty(string(r.Type)),
+			resource.PropertyKey("outputs"): resource.NewProperty(r.Outputs),
 		}
-		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
+		pm[resource.PropertyKey(r.URN)] = resource.NewProperty(resc)
 	}
 	return pm, nil
 }

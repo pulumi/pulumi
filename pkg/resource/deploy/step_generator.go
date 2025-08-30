@@ -2861,7 +2861,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 			for _, propertyDep := range r.PropertyDependencies[pk] {
 				if replaceSet[propertyDep] {
 					hasDependencyInReplaceSet = true
-					pv = resource.MakeComputed(resource.NewStringProperty("<unknown>"))
+					pv = resource.MakeComputed(resource.NewProperty("<unknown>"))
 				}
 			}
 			inputsForDiff[pk] = pv
