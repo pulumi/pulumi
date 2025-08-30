@@ -52,6 +52,7 @@ func chdir(t *testing.T, dir string) {
 
 //nolint:paralleltest // changes directory for process
 func TestRegress13774(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	orgName := ""
