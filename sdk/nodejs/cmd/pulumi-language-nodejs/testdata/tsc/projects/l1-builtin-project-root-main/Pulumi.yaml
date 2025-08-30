@@ -1,0 +1,6 @@
+name: l1-builtin-project-root-main
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+main: subdir
