@@ -928,7 +928,7 @@ func ProviderFromSource(
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
 	if !plugin.IsLocalPluginPath(pctx.Base(), packageSource) {
-		if !env.DisableRegistryResolve.Value() && env.Experimental.Value() {
+		if !env.DisableRegistryResolve.Value() {
 			meta, err := registry.ResolvePackageFromName(pctx.Base(), reg, pluginSpec.Name, pluginSpec.Version)
 			if err == nil {
 				spec := workspace.PluginSpec{
