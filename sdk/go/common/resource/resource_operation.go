@@ -41,3 +41,10 @@ type Operation struct {
 func NewOperation(state *State, op OperationType) Operation {
 	return Operation{state, op}
 }
+
+func (op Operation) Copy() Operation {
+	return Operation{
+		Resource: op.Resource.Copy(),
+		Type:     op.Type,
+	}
+}

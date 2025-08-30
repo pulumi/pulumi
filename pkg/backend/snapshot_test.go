@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -52,12 +53,13 @@ func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
 	return m.SavedSnapshots[len(m.SavedSnapshots)-1]
 }
 
-func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotManager, *MockStackPersister) {
 	err := baseSnap.VerifyIntegrity()
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
+	journal := NewSnapshotJournaler(sp, baseSnap.SecretsManager, baseSnap)
+	return engine.NewJournalSnapshotManager(journal, baseSnap), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -1059,19 +1061,16 @@ func TestRecordingSameFailure(t *testing.T) {
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
-	//
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	assert.ErrorContains(t, err, "failed to verify snapshot")
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
@@ -1079,19 +1078,17 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
 	r := NewResource("a")
 
 	snap := NewSnapshot([]*resource.State{r})
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
@@ -1102,19 +1099,16 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	DisableIntegrityChecking = true
 	defer func() { DisableIntegrityChecking = old }()
 
-	// Arrange.
-	//
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	require.NoError(t, err)
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
@@ -1125,19 +1119,16 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	DisableIntegrityChecking = true
 	defer func() { DisableIntegrityChecking = old }()
 
-	// Arrange.
-	//
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
