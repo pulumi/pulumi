@@ -96,6 +96,96 @@ func (x *SourcePosition) GetColumn() int32 {
 	return 0
 }
 
+// A StackFrame represents a single stack frame.
+type StackFrame struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pc            *SourcePosition        `protobuf:"bytes,1,opt,name=pc,proto3" json:"pc,omitempty"` // The position of the frame's program counter. Optional.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StackFrame) Reset() {
+	*x = StackFrame{}
+	mi := &file_pulumi_source_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StackFrame) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StackFrame) ProtoMessage() {}
+
+func (x *StackFrame) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_source_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StackFrame.ProtoReflect.Descriptor instead.
+func (*StackFrame) Descriptor() ([]byte, []int) {
+	return file_pulumi_source_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *StackFrame) GetPc() *SourcePosition {
+	if x != nil {
+		return x.Pc
+	}
+	return nil
+}
+
+// A StackTrace represents the frames on the stack at the point of an RPC call.
+type StackTrace struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Frames        []*StackFrame          `protobuf:"bytes,1,rep,name=frames,proto3" json:"frames,omitempty"` // The frames on the stack.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StackTrace) Reset() {
+	*x = StackTrace{}
+	mi := &file_pulumi_source_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StackTrace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StackTrace) ProtoMessage() {}
+
+func (x *StackTrace) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_source_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StackTrace.ProtoReflect.Descriptor instead.
+func (*StackTrace) Descriptor() ([]byte, []int) {
+	return file_pulumi_source_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *StackTrace) GetFrames() []*StackFrame {
+	if x != nil {
+		return x.Frames
+	}
+	return nil
+}
+
 var File_pulumi_source_proto protoreflect.FileDescriptor
 
 const file_pulumi_source_proto_rawDesc = "" +
@@ -104,7 +194,13 @@ const file_pulumi_source_proto_rawDesc = "" +
 	"\x0eSourcePosition\x12\x10\n" +
 	"\x03uri\x18\x01 \x01(\tR\x03uri\x12\x12\n" +
 	"\x04line\x18\x02 \x01(\x05R\x04line\x12\x16\n" +
-	"\x06column\x18\x03 \x01(\x05R\x06columnB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
+	"\x06column\x18\x03 \x01(\x05R\x06column\"7\n" +
+	"\n" +
+	"StackFrame\x12)\n" +
+	"\x02pc\x18\x01 \x01(\v2\x19.pulumirpc.SourcePositionR\x02pc\";\n" +
+	"\n" +
+	"StackTrace\x12-\n" +
+	"\x06frames\x18\x01 \x03(\v2\x15.pulumirpc.StackFrameR\x06framesB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
 	file_pulumi_source_proto_rawDescOnce sync.Once
@@ -118,16 +214,20 @@ func file_pulumi_source_proto_rawDescGZIP() []byte {
 	return file_pulumi_source_proto_rawDescData
 }
 
-var file_pulumi_source_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_pulumi_source_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_source_proto_goTypes = []any{
 	(*SourcePosition)(nil), // 0: pulumirpc.SourcePosition
+	(*StackFrame)(nil),     // 1: pulumirpc.StackFrame
+	(*StackTrace)(nil),     // 2: pulumirpc.StackTrace
 }
 var file_pulumi_source_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: pulumirpc.StackFrame.pc:type_name -> pulumirpc.SourcePosition
+	1, // 1: pulumirpc.StackTrace.frames:type_name -> pulumirpc.StackFrame
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_source_proto_init() }
@@ -141,7 +241,7 @@ func file_pulumi_source_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_source_proto_rawDesc), len(file_pulumi_source_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

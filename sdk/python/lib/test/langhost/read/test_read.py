@@ -41,6 +41,7 @@ class ReadTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "foo2")
@@ -49,7 +50,18 @@ class ReadTest(LanghostTest):
         }
 
     def read_resource(
-        self, ctx, ty, name, _id, parent, state, dependencies, provider, version
+        self,
+        ctx,
+        ty,
+        name,
+        _id,
+        parent,
+        state,
+        dependencies,
+        provider,
+        version,
+        source_position,
+        stack_trace,
     ):
         if name == "foo":
             self.assertDictEqual(

@@ -43,6 +43,7 @@ class ComponentDependenciesTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "combined-mine":
             self.assertTrue(protect)

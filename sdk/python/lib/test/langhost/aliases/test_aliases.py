@@ -40,6 +40,7 @@ class AliasesTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         return {
             "urn": f"urn:pulumi:stack::project::{ty}::{name}",

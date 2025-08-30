@@ -17,12 +17,12 @@ import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import {
-    getResource,
-    readResource,
-    registerResource,
-    registerResourceHook,
-    registerResourceOutputs,
-    SourcePosition,
+	getResource,
+	readResource,
+	registerResource,
+	registerResourceHook,
+	registerResourceOutputs,
+	SourcePosition,
 } from "./runtime/resource";
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
@@ -37,32 +37,32 @@ export type URN = string; // an automatically generated logical URN, used to sta
  * resource type, optional parent, optional project and optional stack.
  */
 export function createUrn(
-    name: Input<string>,
-    type: Input<string>,
-    parent?: Resource | Input<URN>,
-    project?: string,
-    stack?: string,
+	name: Input<string>,
+	type: Input<string>,
+	parent?: Resource | Input<URN>,
+	project?: string,
+	stack?: string,
 ): Output<string> {
-    let parentPrefix: Output<string>;
-    if (parent) {
-        let parentUrn: Output<string>;
-        if (Resource.isInstance(parent)) {
-            parentUrn = parent.urn;
-        } else {
-            parentUrn = output(parent);
-        }
-        parentPrefix = parentUrn.apply((parentUrnString) => {
-            const prefix = parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$";
-            if (prefix.endsWith("::pulumi:pulumi:Stack$")) {
-                // Don't prefix the stack type as a parent type
-                return `urn:pulumi:${stack || getStack()}::${project || getProject()}::`;
-            }
-            return prefix;
-        });
-    } else {
-        parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
-    }
-    return interpolate`${parentPrefix}${type}::${name}`;
+	let parentPrefix: Output<string>;
+	if (parent) {
+		let parentUrn: Output<string>;
+		if (Resource.isInstance(parent)) {
+			parentUrn = parent.urn;
+		} else {
+			parentUrn = output(parent);
+		}
+		parentPrefix = parentUrn.apply((parentUrnString) => {
+			const prefix = parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$";
+			if (prefix.endsWith("::pulumi:pulumi:Stack$")) {
+				// Don't prefix the stack type as a parent type
+				return `urn:pulumi:${stack || getStack()}::${project || getProject()}::`;
+			}
+			return prefix;
+		});
+	} else {
+		parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
+	}
+	return interpolate`${parentPrefix}${type}::${name}`;
 }
 
 /**
@@ -72,43 +72,43 @@ export function createUrn(
  * name of the parent, and the parent name changed.
  */
 function inheritedChildAlias(
-    childName: string,
-    parentName: string,
-    parentAlias: Input<string>,
-    childType: string,
+	childName: string,
+	parentName: string,
+	parentAlias: Input<string>,
+	childType: string,
 ): Output<string> {
-    // If the child name has the parent name as a prefix, then we make the assumption that it was
-    // constructed from the convention of using `{name}-details` as the name of the child resource.  To
-    // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
-    // the child resource name.
-    //
-    // For example:
-    // * name: "newapp-function"
-    // * opts.parent.__name: "newapp"
-    // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
-    // * parentAliasName: "app"
-    // * aliasName: "app-function"
-    // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    let aliasName = output(childName);
-    if (childName.startsWith(parentName)) {
-        aliasName = output(parentAlias).apply((parentAliasUrn) => {
-            const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
-            return parentAliasName + childName.substring(parentName.length);
-        });
-    }
-    return createUrn(aliasName, childType, parentAlias);
+	// If the child name has the parent name as a prefix, then we make the assumption that it was
+	// constructed from the convention of using `{name}-details` as the name of the child resource.  To
+	// ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
+	// the child resource name.
+	//
+	// For example:
+	// * name: "newapp-function"
+	// * opts.parent.__name: "newapp"
+	// * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+	// * parentAliasName: "app"
+	// * aliasName: "app-function"
+	// * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+	let aliasName = output(childName);
+	if (childName.startsWith(parentName)) {
+		aliasName = output(parentAlias).apply((parentAliasUrn) => {
+			const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
+			return parentAliasName + childName.substring(parentName.length);
+		});
+	}
+	return createUrn(aliasName, childType, parentAlias);
 }
 
 /**
  * Extracts the type and name from a URN.
  */
 function urnTypeAndName(urn: URN) {
-    const parts = urn.split("::");
-    const typeParts = parts[2].split("$");
-    return {
-        name: parts[3],
-        type: typeParts[typeParts.length - 1],
-    };
+	const parts = urn.split("::");
+	const typeParts = parts[2].split("$");
+	return {
+		name: parts[3],
+		type: typeParts[typeParts.length - 1],
+	};
 }
 
 /**
@@ -120,40 +120,40 @@ function urnTypeAndName(urn: URN) {
  * N+(M*(1+N)).
  */
 export function allAliases(
-    childAliases: Input<URN | Alias>[],
-    childName: string,
-    childType: string,
-    parent: Resource,
-    parentName: string,
+	childAliases: Input<URN | Alias>[],
+	childName: string,
+	childType: string,
+	parent: Resource,
+	parentName: string,
 ): Output<URN>[] {
-    const aliases: Output<URN>[] = [];
-    for (const childAlias of childAliases) {
-        aliases.push(collapseAliasToUrn(childAlias, childName, childType, parent));
-    }
-    for (const parentAlias of parent.__aliases || []) {
-        // For each parent alias, add an alias that uses that base child name and the parent alias
-        aliases.push(inheritedChildAlias(childName, parentName, parentAlias, childType));
-        // Also add an alias for each child alias and the parent alias
-        for (const childAlias of childAliases) {
-            const inheritedAlias = collapseAliasToUrn(childAlias, childName, childType, parent).apply(
-                (childAliasURN) => {
-                    const { name: aliasedChildName, type: aliasedChildType } = urnTypeAndName(childAliasURN);
-                    return inheritedChildAlias(aliasedChildName, parentName, parentAlias, aliasedChildType);
-                },
-            );
-            aliases.push(inheritedAlias);
-        }
-    }
-    return aliases;
+	const aliases: Output<URN>[] = [];
+	for (const childAlias of childAliases) {
+		aliases.push(collapseAliasToUrn(childAlias, childName, childType, parent));
+	}
+	for (const parentAlias of parent.__aliases || []) {
+		// For each parent alias, add an alias that uses that base child name and the parent alias
+		aliases.push(inheritedChildAlias(childName, parentName, parentAlias, childType));
+		// Also add an alias for each child alias and the parent alias
+		for (const childAlias of childAliases) {
+			const inheritedAlias = collapseAliasToUrn(childAlias, childName, childType, parent).apply(
+				(childAliasURN) => {
+					const { name: aliasedChildName, type: aliasedChildType } = urnTypeAndName(childAliasURN);
+					return inheritedChildAlias(aliasedChildName, parentName, parentAlias, aliasedChildType);
+				},
+			);
+			aliases.push(inheritedAlias);
+		}
+	}
+	return aliases;
 }
 
 /**
  * {@link CallSite} describes a single stack frame, including optional position information.
  */
 interface CallSite {
-    file?: string;
-    line?: number;
-    column?: number;
+	file?: string;
+	line?: number;
+	column?: number;
 }
 
 /**
@@ -164,23 +164,23 @@ export abstract class Resource {
     /**
      * A regexp for use with {@link sourcePosition}.
      */
-    private static framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
+	private static framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
 
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiResource: boolean = true;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __pulumiResource: boolean = true;
 
     /**
      * The optional parent of this resource.
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __parentResource: Resource | undefined;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __parentResource: Resource | undefined;
 
     /**
      * The child resources of this resource. We use these (only from a
@@ -225,22 +225,22 @@ export abstract class Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public __childResources: Set<Resource> | undefined;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public __childResources: Set<Resource> | undefined;
 
     /**
      * The stable logical URN used to distinctly address a resource, both before
      * and after deployments.
      */
-    public readonly urn!: Output<URN>;
+	public readonly urn!: Output<URN>;
 
     /**
      * When set to true, ensures that this resource cannot be deleted.
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    private readonly __protect?: boolean;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	private readonly __protect?: boolean;
 
     /**
      * A collection of transformations to apply as part of resource
@@ -253,8 +253,8 @@ export abstract class Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    __transformations?: ResourceTransformation[];
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	__transformations?: ResourceTransformation[];
 
     /**
      * A list of aliases applied to this resource.
@@ -266,8 +266,8 @@ export abstract class Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    readonly __aliases?: Input<URN>[];
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	readonly __aliases?: Input<URN>[];
 
     /**
      * The name assigned to the resource at construction.
@@ -279,8 +279,8 @@ export abstract class Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    readonly __name?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	readonly __name?: string;
 
     /**
      * The set of providers to use for child resources. Keyed by package name
@@ -288,8 +288,8 @@ export abstract class Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    private readonly __providers: Record<string, ProviderResource>;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	private readonly __providers: Record<string, ProviderResource>;
 
     /**
      * The specified provider or provider determined from the parent for custom
@@ -299,26 +299,26 @@ export abstract class Resource {
      *
      * @internal
      */
-    // Note: This is deliberately not named `__provider` as that conflicts with the property
-    // used by the `dynamic.Resource` class.
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    readonly __prov?: ProviderResource;
+	// Note: This is deliberately not named `__provider` as that conflicts with the property
+	// used by the `dynamic.Resource` class.
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	readonly __prov?: ProviderResource;
 
     /**
      * The specified provider version.
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    readonly __version?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	readonly __version?: string;
 
     /**
      * The specified provider download URL.
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    readonly __pluginDownloadURL?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	readonly __pluginDownloadURL?: string;
 
     /**
      * A private field containing the type ID for this object. Useful for
@@ -326,114 +326,91 @@ export abstract class Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiType: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __pulumiType: string;
 
-    public static isInstance(obj: any): obj is Resource {
-        return utils.isInstance<Resource>(obj, "__pulumiResource");
-    }
+	public static isInstance(obj: any): obj is Resource {
+		return utils.isInstance<Resource>(obj, "__pulumiResource");
+	}
 
     /**
      * Returns the list of callsites for the current stack. The top of the stack is at index 0.
      *
      * Some callsites may not contain position information. It is up to the caller to detect this situation.
      */
-    private static callsites(): CallSite[] {
-        // NOTE: it would be lovely to implement this using prepareStackTrace and actual V8 callsite information.
-        // Unfortunately, the V8 source locations are not mapped from transpiled locations to user locations, and
-        // Node 20.x does not expose an easy way to access source map information. Furthermore, ts-node may inject
-        // hooks that perform this mapping as part of prepareStackTrace. Instead of using prepareStackTrace, then,
-        // we parse its output as returned via `new Error().stack`. The stack trace will look like:
-        //
-        //     Error
-        //         at foo (file:line:column)
-        //         at bar (file:line:column)
-        //         at baz (file:line:column)
-        //
-        // We process this by splitting it into lines and parsing the position information out of each line.
-        const stackTraceLimit = Error.stackTraceLimit;
-        try {
-            Error.stackTraceLimit = Number.POSITIVE_INFINITY;
+	private static callsites(): CallSite[] {
+		// NOTE: it would be lovely to implement this using prepareStackTrace and actual V8 callsite information.
+		// Unfortunately, the V8 source locations are not mapped from transpiled locations to user locations, and
+		// Node 20.x does not expose an easy way to access source map information. Furthermore, ts-node may inject
+		// hooks that perform this mapping as part of prepareStackTrace. Instead of using prepareStackTrace, then,
+		// we parse its output as returned via `new Error().stack`. The stack trace will look like:
+		//
+		//     Error
+		//         at foo (file:line:column)
+		//         at bar (file:line:column)
+		//         at baz (file:line:column)
+		//
+		// We process this by splitting it into lines and parsing the position information out of each line.
+		const stackTraceLimit = Error.stackTraceLimit;
+		try {
+			Error.stackTraceLimit = Number.POSITIVE_INFINITY;
 
-            const stackTrace = new Error().stack;
-            return (
-                stackTrace
-                    ?.split("\n")
-                    ?.slice(1)
-                    ?.map((frame) => {
-                        const { file, line, column } = Resource.framePositionRegExp.exec(frame)?.groups || {};
-                        if (!file || !line || !column || file.startsWith("node:")) {
-                            return {};
-                        }
-                        const lineNum = parseInt(line, 10);
-                        const colNum = parseInt(column, 10);
-                        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
-                            return {};
-                        }
-                        return { file, line: lineNum, column: colNum };
-                    }) || []
-            );
-        } finally {
-            Error.stackTraceLimit = stackTraceLimit;
-        }
-    }
+			const stackTrace = new Error().stack;
+			return (
+				stackTrace
+					?.split("\n")
+					?.slice(1)
+					?.map((frame) => {
+						const { file, line, column } = Resource.framePositionRegExp.exec(frame)?.groups || {};
+						if (!file || !line || !column || file.startsWith("node:")) {
+							return {};
+						}
+						const lineNum = parseInt(line, 10);
+						const colNum = parseInt(column, 10);
+						if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+							return {};
+						}
+						return { file, line: lineNum, column: colNum };
+					}) || []
+			);
+		} finally {
+			Error.stackTraceLimit = stackTraceLimit;
+		}
+	}
 
-    /**
-     * Returns the source position of the user code that instantiated this
-     * resource.
-     *
-     * This is somewhat brittle in that it expects a call stack of the form:
-     *
-     * - {@link Resource} class constructor
-     * - abstract {@link Resource} subclass constructor
-     * - concrete {@link Resource} subclass constructor
-     * - user code
-     *
-     * This stack reflects the expected class hierarchy of:
-     *
-     * Resource > Custom/Component resource > Cloud/Component resource
-     *
-     * For example, consider the AWS S3 Bucket resource. When user code
-     * instantiates a Bucket, the stack will look like this:
-     *
-     *     new Resource (/path/to/resource.ts:123:45)
-     *     new CustomResource (/path/to/resource.ts:678:90)
-     *     new Bucket (/path/to/bucket.ts:987:65)
-     *     <user code> (/path/to/index.ts:4:3)
-     *
-     */
-    private static sourcePosition(): SourcePosition | undefined {
-        // Skip the first four frames: sourcePosition(), new Resource, new CustomResource, new Bucket
-        const stack = Resource.callsites();
-        if (stack.length < 5) {
-            return undefined;
-        }
-        const userFrame = stack[4];
+	private static stackTrace(skip: number): (SourcePosition | undefined)[] {
+		let stack = Resource.callsites();
+		if (stack.length < skip + 1) {
+			return [];
+		}
+		stack = stack.slice(skip + 1);
 
-        // If any part of the position is missing, return undefined.
-        const { file, line, column } = userFrame;
-        if (!file || !line || !column) {
-            return undefined;
-        }
+		return stack
+			.map((frame) => {
+				const { file, line, column } = frame;
+				if (!file || !line || !column) {
+					return undefined;
+				}
 
-        return {
-            uri: url.pathToFileURL(file).toString(),
-            line,
-            column,
-        };
-    }
+				return {
+					uri: url.pathToFileURL(file).toString(),
+					line,
+					column,
+				};
+			});
+	}
 
     /**
      * Returns the provider for the given module member, if one exists.
      */
-    public getProvider(moduleMember: string): ProviderResource | undefined {
-        const pkg = pkgFromType(moduleMember);
-        if (pkg === undefined) {
-            return undefined;
-        }
+	public getProvider(moduleMember: string): ProviderResource | undefined {
+		const pkg = pkgFromType(moduleMember);
+		if (pkg === undefined) {
+			return undefined;
+		}
 
-        return this.__providers[pkg];
-    }
+		return this.__providers[pkg];
+	}
 
     /**
      * Creates and registers a new resource object. `t` is the fully qualified
@@ -457,179 +434,199 @@ export abstract class Resource {
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(
-        t: string,
-        name: string,
-        custom: boolean,
-        props: Inputs = {},
-        opts: ResourceOptions = {},
-        remote: boolean = false,
-        dependency: boolean = false,
-        packageRef?: Promise<string | undefined>,
-    ) {
-        this.__pulumiType = t;
+	constructor(
+		t: string,
+		name: string,
+		custom: boolean,
+		props: Inputs = {},
+		opts: ResourceOptions = {},
+		remote: boolean = false,
+		dependency: boolean = false,
+		packageRef?: Promise<string | undefined>,
+	) {
+		this.__pulumiType = t;
 
-        if (dependency) {
-            this.__providers = {};
-            return;
-        }
+		if (dependency) {
+			this.__providers = {};
+			return;
+		}
 
-        if (opts.parent && !Resource.isInstance(opts.parent)) {
-            throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
-        }
+		if (opts.parent && !Resource.isInstance(opts.parent)) {
+			throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
+		}
 
-        if (!t) {
-            throw new ResourceError("Missing resource type argument", opts.parent);
-        }
-        if (!name) {
-            throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
-        }
+		if (!t) {
+			throw new ResourceError("Missing resource type argument", opts.parent);
+		}
+		if (!name) {
+			throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
+		}
 
-        // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
-        // options assigned to this resource.
-        const parent = opts.parent || getStackResource();
-        this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
-        for (const transformation of this.__transformations) {
-            const tres = transformation({ resource: this, type: t, name, props, opts });
-            if (tres) {
-                if (tres.opts.parent !== opts.parent) {
-                    // This is currently not allowed because the parent tree is needed to establish what
-                    // transformation to apply in the first place, and to compute inheritance of other
-                    // resource options in the Resource constructor before transformations are run (so
-                    // modifying it here would only even partially take affect).  It's theoretically
-                    // possible this restriction could be lifted in the future, but for now just
-                    // disallow re-parenting resources in transformations to be safe.
-                    throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
-                }
-                props = tres.props;
-                opts = tres.opts;
-            }
-        }
+		// Before anything else - if there are transformations registered, invoke them in order to transform the properties and
+		// options assigned to this resource.
+		const parent = opts.parent || getStackResource();
+		this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
+		for (const transformation of this.__transformations) {
+			const tres = transformation({ resource: this, type: t, name, props, opts });
+			if (tres) {
+				if (tres.opts.parent !== opts.parent) {
+					// This is currently not allowed because the parent tree is needed to establish what
+					// transformation to apply in the first place, and to compute inheritance of other
+					// resource options in the Resource constructor before transformations are run (so
+					// modifying it here would only even partially take affect).  It's theoretically
+					// possible this restriction could be lifted in the future, but for now just
+					// disallow re-parenting resources in transformations to be safe.
+					throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
+				}
+				props = tres.props;
+				opts = tres.opts;
+			}
+		}
 
-        this.__name = name;
+		this.__name = name;
 
-        // Make a shallow clone of opts to ensure we don't modify the value passed in.
-        opts = Object.assign({}, opts);
+		// Make a shallow clone of opts to ensure we don't modify the value passed in.
+		opts = Object.assign({}, opts);
 
-        // Check the parent type if one exists and fill in any default options.
-        this.__providers = {};
-        if (parent) {
-            this.__parentResource = parent;
-            this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
-            this.__parentResource.__childResources.add(this);
+		// Check the parent type if one exists and fill in any default options.
+		this.__providers = {};
+		if (parent) {
+			this.__parentResource = parent;
+			this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
+			this.__parentResource.__childResources.add(this);
 
-            if (opts.protect === undefined) {
-                opts.protect = parent.__protect;
-            }
+			if (opts.protect === undefined) {
+				opts.protect = parent.__protect;
+			}
 
-            this.__providers = parent.__providers;
-        }
+			this.__providers = parent.__providers;
+		}
 
-        // providers is found by combining (in ascending order of priority)
-        //      1. provider
-        //      2. self_providers
-        //      3. opts.providers
-        this.__providers = {
-            ...this.__providers,
-            ...convertToProvidersMap((<ComponentResourceOptions>opts).providers),
-            ...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
-        };
+		// providers is found by combining (in ascending order of priority)
+		//      1. provider
+		//      2. self_providers
+		//      3. opts.providers
+		this.__providers = {
+			...this.__providers,
+			...convertToProvidersMap((<ComponentResourceOptions>opts).providers),
+			...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
+		};
 
-        const pkg = pkgFromType(t);
+		const pkg = pkgFromType(t);
 
-        // provider is the first option that does not return none
-        // 1. opts.provider
-        // 2. a matching provider in opts.providers
-        // 3. a matching provider inherited from opts.parent
-        if ((custom || remote) && opts.provider === undefined) {
-            const parentProvider = parent?.getProvider(t);
+		// provider is the first option that does not return none
+		// 1. opts.provider
+		// 2. a matching provider in opts.providers
+		// 3. a matching provider inherited from opts.parent
+		if ((custom || remote) && opts.provider === undefined) {
+			const parentProvider = parent?.getProvider(t);
 
-            if (pkg && pkg in this.__providers) {
-                opts.provider = this.__providers[pkg];
-            } else if (parentProvider) {
-                opts.provider = parentProvider;
-            }
-        }
+			if (pkg && pkg in this.__providers) {
+				opts.provider = this.__providers[pkg];
+			} else if (parentProvider) {
+				opts.provider = parentProvider;
+			}
+		}
 
-        // Custom and remote resources have a backing provider. If this is a custom or
-        // remote resource and a provider has been specified that has the same package
-        // as the resource's package, save it in `__prov`.
-        // If the provider's package isn't the same as the resource's package, don't
-        // save it in `__prov` because the user specified `provider: someProvider` as
-        // shorthand for `providers: [someProvider]`, which is a provider intended for
-        // the component's children and not for this resource itself.
-        // `__prov` is passed along in `Call` gRPC requests for resource method calls
-        // (when set) so that the call goes to the same provider as the resource.
-        if ((custom || remote) && opts.provider) {
-            if (pkg && pkg === opts.provider.getPackage()) {
-                this.__prov = opts.provider;
-            }
-        }
+		// Custom and remote resources have a backing provider. If this is a custom or
+		// remote resource and a provider has been specified that has the same package
+		// as the resource's package, save it in `__prov`.
+		// If the provider's package isn't the same as the resource's package, don't
+		// save it in `__prov` because the user specified `provider: someProvider` as
+		// shorthand for `providers: [someProvider]`, which is a provider intended for
+		// the component's children and not for this resource itself.
+		// `__prov` is passed along in `Call` gRPC requests for resource method calls
+		// (when set) so that the call goes to the same provider as the resource.
+		if ((custom || remote) && opts.provider) {
+			if (pkg && pkg === opts.provider.getPackage()) {
+				this.__prov = opts.provider;
+			}
+		}
 
-        this.__protect = opts.protect;
-        this.__version = opts.version;
-        this.__pluginDownloadURL = opts.pluginDownloadURL;
+		this.__protect = opts.protect;
+		this.__version = opts.version;
+		this.__pluginDownloadURL = opts.pluginDownloadURL;
 
-        // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
-        // default `name` and `type` to apply until we are inside the resource constructor.
-        this.__aliases = [];
-        if (opts.aliases) {
-            for (const alias of opts.aliases) {
-                this.__aliases.push(collapseAliasToUrn(alias, name, t, parent));
-            }
-        }
+		// Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
+		// default `name` and `type` to apply until we are inside the resource constructor.
+		this.__aliases = [];
+		if (opts.aliases) {
+			for (const alias of opts.aliases) {
+				this.__aliases.push(collapseAliasToUrn(alias, name, t, parent));
+			}
+		}
 
-        const sourcePosition = Resource.sourcePosition();
+		// This is somewhat brittle in that it expects a call stack of the form:
+		//
+		// - {@link Resource} class constructor
+		// - abstract {@link Resource} subclass constructor
+		// - concrete {@link Resource} subclass constructor
+		// - user code
+		//
+		// This stack reflects the expected class hierarchy of:
+		//
+		// Resource > Custom/Component resource > Cloud/Component resource
+		//
+		// For example, consider the AWS S3 Bucket resource. When user code
+		// instantiates a Bucket, the stack will look like this:
+		//
+		//     new Resource (/path/to/resource.ts:123:45)
+		//     new CustomResource (/path/to/resource.ts:678:90)
+		//     new Bucket (/path/to/bucket.ts:987:65)
+		//     <user code> (/path/to/index.ts:4:3)
+		const stackTrace = Resource.stackTrace(5);
+		const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
 
-        if (opts.urn) {
-            // This is a resource that already exists. Read its state from the engine.
-            getResource(this, parent, props, custom, opts.urn);
-        } else if (opts.id) {
-            // If this is a custom resource that already exists, read its state from the provider.
-            if (!custom) {
-                throw new ResourceError(
-                    "Cannot read an existing resource unless it has a custom provider",
-                    opts.parent,
-                );
-            }
-            readResource(this, parent, t, name, props, opts, sourcePosition, packageRef);
-        } else {
-            // Kick off the resource registration.  If we are actually performing a deployment, this
-            // resource's properties will be resolved asynchronously after the operation completes, so
-            // that dependent computations resolve normally.  If we are just planning, on the other
-            // hand, values will never resolve.
-            registerResource(
-                this,
-                parent,
-                t,
-                name,
-                custom,
-                remote,
-                (urn) => new DependencyResource(urn),
-                props,
-                opts,
-                sourcePosition,
-                packageRef,
-            );
-        }
-    }
+		if (opts.urn) {
+			// This is a resource that already exists. Read its state from the engine.
+			getResource(this, parent, props, custom, opts.urn);
+		} else if (opts.id) {
+			// If this is a custom resource that already exists, read its state from the provider.
+			if (!custom) {
+				throw new ResourceError(
+					"Cannot read an existing resource unless it has a custom provider",
+					opts.parent,
+				);
+			}
+			readResource(this, parent, t, name, props, opts, sourcePosition, stackTrace, packageRef);
+		} else {
+			// Kick off the resource registration.  If we are actually performing a deployment, this
+			// resource's properties will be resolved asynchronously after the operation completes, so
+			// that dependent computations resolve normally.  If we are just planning, on the other
+			// hand, values will never resolve.
+			registerResource(
+				this,
+				parent,
+				t,
+				name,
+				custom,
+				remote,
+				(urn) => new DependencyResource(urn),
+				props,
+				opts,
+				sourcePosition,
+				stackTrace,
+				packageRef,
+			);
+		}
+	}
 }
 
 function convertToProvidersMap(providers: Record<string, ProviderResource> | ProviderResource[] | undefined) {
-    if (!providers) {
-        return {};
-    }
+	if (!providers) {
+		return {};
+	}
 
-    if (!Array.isArray(providers)) {
-        return providers;
-    }
+	if (!Array.isArray(providers)) {
+		return providers;
+	}
 
-    const result: Record<string, ProviderResource> = {};
-    for (const provider of providers) {
-        result[provider.getPackage()] = provider;
-    }
+	const result: Record<string, ProviderResource> = {};
+	for (const provider of providers) {
+		result[provider.getPackage()] = provider;
+	}
 
-    return result;
+	return result;
 }
 
 (<any>Resource).doNotCapture = true;
@@ -686,13 +683,13 @@ export interface Alias {
      * The previous name of the resource. If not provided, the current name of
      * the resource is used.
      */
-    name?: Input<string>;
+	name?: Input<string>;
 
     /**
      * The previous type of the resource. If not provided, the current type of
      * the resource is used.
      */
-    type?: Input<string>;
+	type?: Input<string>;
 
     /**
      * The previous parent of the resource. If not provided (i.e. `{ name: "foo"
@@ -701,19 +698,19 @@ export interface Alias {
      *
      * To specify no original parent, use `{ parent: pulumi.rootStackResource }`.
      */
-    parent?: Resource | Input<URN>;
+	parent?: Resource | Input<URN>;
 
     /**
      * The previous stack of the resource. If not provided, defaults to
      * `pulumi.getStack()`.
      */
-    stack?: Input<string>;
+	stack?: Input<string>;
 
     /**
      * The previous project of the resource. If not provided, defaults to
      * `pulumi.getProject()`.
      */
-    project?: Input<string>;
+	project?: Input<string>;
 }
 
 /**
@@ -721,32 +718,32 @@ export interface Alias {
  * values.
  */
 function collapseAliasToUrn(
-    alias: Input<Alias | string>,
-    defaultName: string,
-    defaultType: string,
-    defaultParent: Resource | undefined,
+	alias: Input<Alias | string>,
+	defaultName: string,
+	defaultType: string,
+	defaultParent: Resource | undefined,
 ): Output<URN> {
-    return output(alias).apply((a) => {
-        if (typeof a === "string") {
-            return output(a);
-        }
+	return output(alias).apply((a) => {
+		if (typeof a === "string") {
+			return output(a);
+		}
 
-        const name = a.hasOwnProperty("name") ? a.name : defaultName;
-        const type = a.hasOwnProperty("type") ? a.type : defaultType;
-        const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
-        const project = a.hasOwnProperty("project") ? a.project : getProject();
-        const stack = a.hasOwnProperty("stack") ? a.stack : getStack();
+		const name = a.hasOwnProperty("name") ? a.name : defaultName;
+		const type = a.hasOwnProperty("type") ? a.type : defaultType;
+		const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
+		const project = a.hasOwnProperty("project") ? a.project : getProject();
+		const stack = a.hasOwnProperty("stack") ? a.stack : getStack();
 
-        if (name === undefined) {
-            throw new Error("No valid 'name' passed in for alias.");
-        }
+		if (name === undefined) {
+			throw new Error("No valid 'name' passed in for alias.");
+		}
 
-        if (type === undefined) {
-            throw new Error("No valid 'type' passed in for alias.");
-        }
+		if (type === undefined) {
+			throw new Error("No valid 'type' passed in for alias.");
+		}
 
-        return createUrn(name, type, parent, project, stack);
-    });
+		return createUrn(name, type, parent, project, stack);
+	});
 }
 
 /**
@@ -754,53 +751,53 @@ function collapseAliasToUrn(
  * resource's behavior.
  */
 export interface ResourceOptions {
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies that
-    // mergeOptions works properly for it. Also be sure to update the logic in callbacks.ts that marshals to
-    // and from this type to the wire protocol.
+	// !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies that
+	// mergeOptions works properly for it. Also be sure to update the logic in callbacks.ts that marshals to
+	// and from this type to the wire protocol.
 
     /**
      * An optional existing ID to load, rather than create.
      */
-    id?: Input<ID>;
+	id?: Input<ID>;
 
     /**
      * An optional parent resource to which this resource belongs.
      */
-    parent?: Resource;
+	parent?: Resource;
 
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+	dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
 
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
-    protect?: boolean;
+	protect?: boolean;
 
     /**
      * Ignore changes to any of the specified properties.
      */
-    ignoreChanges?: string[];
+	ignoreChanges?: string[];
 
     /**
      * Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes to any
      * properties will force a replacement.  Initialization errors from previous deployments will require replacement
      * instead of update only if `"*"` is passed.
      */
-    replaceOnChanges?: string[];
+	replaceOnChanges?: string[];
 
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
      * rarely be used.
      */
-    version?: string;
+	version?: string;
 
     /**
      * An optional list of aliases to treat this resource as matching.
      */
-    aliases?: Input<URN | Alias>[];
+	aliases?: Input<URN | Alias>[];
 
     /**
      * An optional provider to use for this resource's CRUD operations. If no provider is supplied,
@@ -809,19 +806,19 @@ export interface ResourceOptions {
      *
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
-    provider?: ProviderResource;
+	provider?: ProviderResource;
 
     /**
      * An optional customTimeouts configuration block.
      */
-    customTimeouts?: CustomTimeouts;
+	customTimeouts?: CustomTimeouts;
 
     /**
      * Optional list of transformations to apply to this resource during construction. The
      * transformations are applied in order, and are applied prior to transformation applied to
      * parents walking from the resource up to the stack.
      */
-    transformations?: ResourceTransformation[];
+	transformations?: ResourceTransformation[];
 
     /**
      * Optional list of transforms to apply to this resource during construction. The
@@ -830,56 +827,56 @@ export interface ResourceOptions {
      *
      * This property is experimental.
      */
-    transforms?: ResourceTransform[];
+	transforms?: ResourceTransform[];
 
     /**
      * The URN of a previously-registered resource of this type to read from the engine.
      */
-    urn?: URN;
+	urn?: URN;
 
     /**
      * An option to specify the URL from which to download this resources
      * associated plugin. This version overrides the URL information inferred
      * from the current package and should rarely be used.
      */
-    pluginDownloadURL?: string;
+	pluginDownloadURL?: string;
 
     /**
      * If set to True, the providers Delete method will not be called for this resource.
      */
-    retainOnDelete?: boolean;
+	retainOnDelete?: boolean;
 
     /**
      * If set, the providers Delete method will not be called for this resource
      * if specified is being deleted as well.
      */
-    deletedWith?: Resource;
+	deletedWith?: Resource;
 
     /**
      * Optional resource hooks to bind to this resource. The hooks will be
      * invoked during certain step of the lifecycle of the resource.
      */
-    hooks?: ResourceHookBinding;
+	hooks?: ResourceHookBinding;
 
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
-    // that mergeOptions works properly for it.
+	// !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+	// that mergeOptions works properly for it.
 }
 
 export interface CustomTimeouts {
     /**
      * The optional create timeout represented as a string e.g. 5m, 40s, 1d.
      */
-    create?: string;
+	create?: string;
 
     /**
      * The optional update timeout represented as a string e.g. 5m, 40s, 1d.
      */
-    update?: string;
+	update?: string;
 
     /**
      * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
-    delete?: string;
+	delete?: string;
 }
 
 /**
@@ -905,7 +902,7 @@ export type ResourceTransformation = (args: ResourceTransformationArgs) => Resou
  * transformed.
  */
 export type ResourceTransform = (
-    args: ResourceTransformArgs,
+	args: ResourceTransformArgs,
 ) => Promise<ResourceTransformResult | undefined> | ResourceTransformResult | undefined;
 
 /**
@@ -915,27 +912,27 @@ export interface ResourceTransformArgs {
     /**
      * True if the resource is a custom resource, false if it is a component resource.
      */
-    custom: boolean;
+	custom: boolean;
 
     /**
      * The type of the resource.
      */
-    type: string;
+	type: string;
 
     /**
      * The name of the resource.
      */
-    name: string;
+	name: string;
 
     /**
      * The original properties passed to the resource constructor.
      */
-    props: Inputs;
+	props: Inputs;
 
     /**
      * The original resource options passed to the resource constructor.
      */
-    opts: ResourceOptions;
+	opts: ResourceOptions;
 }
 /**
  * {@link ResourceTransformResult} is the result that must be returned by a
@@ -947,12 +944,12 @@ export interface ResourceTransformResult {
     /**
      * The new properties to use in place of the original `props`
      */
-    props: Inputs;
+	props: Inputs;
 
     /**
      * The new resource options to use in place of the original `opts`
      */
-    opts: ResourceOptions;
+	opts: ResourceOptions;
 }
 
 /**
@@ -963,27 +960,27 @@ export interface ResourceTransformationArgs {
     /**
      * The {@link Resource} instance that is being transformed.
      */
-    resource: Resource;
+	resource: Resource;
 
     /**
      * The type of the resource.
      */
-    type: string;
+	type: string;
 
     /**
      * The name of the resource.
      */
-    name: string;
+	name: string;
 
     /**
      * The original properties passed to the resource constructor.
      */
-    props: Inputs;
+	props: Inputs;
 
     /**
      * The original resource options passed to the resource constructor.
      */
-    opts: ResourceOptions;
+	opts: ResourceOptions;
 }
 
 /**
@@ -996,12 +993,12 @@ export interface ResourceTransformationResult {
     /**
      * The new properties to use in place of the original `props`
      */
-    props: Inputs;
+	props: Inputs;
 
     /**
      * The new resource options to use in place of the original `opts`
      */
-    opts: ResourceOptions;
+	opts: ResourceOptions;
 }
 
 /**
@@ -1009,14 +1006,14 @@ export interface ResourceTransformationResult {
  * custom resource's behavior.
  */
 export interface CustomResourceOptions extends ResourceOptions {
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
-    // that mergeOptions works properly for it.
+	// !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+	// that mergeOptions works properly for it.
 
     /**
      * When set to true, indicates that this resource should be deleted before
      * its replacement is created when replacement is necessary.
      */
-    deleteBeforeReplace?: boolean;
+	deleteBeforeReplace?: boolean;
 
     /**
      * The names of outputs for this resource that should be treated as secrets.
@@ -1024,7 +1021,7 @@ export interface CustomResourceOptions extends ResourceOptions {
      * already determine based on inputs to your resource. It can be used to
      * mark certain ouputs as a secrets on a per resource basis.
      */
-    additionalSecretOutputs?: string[];
+	additionalSecretOutputs?: string[];
 
     /**
      * When provided with a resource ID, indicates that this resource's provider
@@ -1033,10 +1030,10 @@ export interface CustomResourceOptions extends ResourceOptions {
      * current state. Once a resource has been imported, the import property
      * must be removed from the resource's options.
      */
-    import?: ID;
+	import?: ID;
 
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
-    // that mergeOptions works properly for it.
+	// !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+	// that mergeOptions works properly for it.
 }
 
 /**
@@ -1046,15 +1043,15 @@ export class ResourceHook {
     /**
      * The unqiue name of the resource hook.
      */
-    public name: string;
+	public name: string;
     /**
      * The function that will be called when the resource hook is triggered.
      */
-    public callback: ResourceHookFunction;
+	public callback: ResourceHookFunction;
     /**
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
-    public opts?: ResourceHookOptions;
+	public opts?: ResourceHookOptions;
 
     /**
      * Tracks the registration of the resource hook. The promise will resolve
@@ -1062,25 +1059,25 @@ export class ResourceHook {
      *
      * @internal
      */
-    public __registered: Promise<void>;
+	public __registered: Promise<void>;
 
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * @internal
      */
-    public readonly __pulumiResourceHook: boolean = true;
+	public readonly __pulumiResourceHook: boolean = true;
 
-    constructor(name: string, callback: ResourceHookFunction, opts?: ResourceHookOptions) {
-        this.name = name;
-        this.callback = callback;
-        this.opts = opts;
-        this.__registered = registerResourceHook(this);
-    }
+	constructor(name: string, callback: ResourceHookFunction, opts?: ResourceHookOptions) {
+		this.name = name;
+		this.callback = callback;
+		this.opts = opts;
+		this.__registered = registerResourceHook(this);
+	}
 
-    public static isInstance(obj: any): obj is ResourceHook {
-        return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
-    }
+	public static isInstance(obj: any): obj is ResourceHook {
+		return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
+	}
 }
 
 /**
@@ -1090,7 +1087,7 @@ export interface ResourceHookOptions {
     /**
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
-    onDryRun?: boolean;
+	onDryRun?: boolean;
 }
 
 /**
@@ -1110,35 +1107,35 @@ export interface ResourceHookArgs {
     /**
      * The URN of the resource that triggered the hook.
      */
-    urn: URN;
+	urn: URN;
     /**
      * The ID of the resource that triggered the hook.
      */
-    id: ID;
+	id: ID;
     /**
      * The name of the resource that triggered the hook.
      */
-    name: string;
+	name: string;
     /**
      * The type of the resource that triggered the hook.
      */
-    type: string;
+	type: string;
     /**
      * The new inputs of the resource that triggered the hook.
      */
-    newInputs?: Record<string, any>;
+	newInputs?: Record<string, any>;
     /**
      * The old inputs of the resource that triggered the hook.
      */
-    oldInputs?: Record<string, any>;
+	oldInputs?: Record<string, any>;
     /**
      * The new outputs of the resource that triggered the hook.
      */
-    newOutputs?: Record<string, any>;
+	newOutputs?: Record<string, any>;
     /**
      * The old outputs of the resource that triggered the hook.
      */
-    oldOutputs?: Record<string, any>;
+	oldOutputs?: Record<string, any>;
 }
 
 /**
@@ -1162,19 +1159,19 @@ export interface ResourceHookBinding {
     /**
      * Hooks to be invoked before the resource is created.
      */
-    beforeCreate?: Array<ResourceHookFunction | ResourceHook>;
+	beforeCreate?: Array<ResourceHookFunction | ResourceHook>;
     /**
      * Hooks to be invoked after the resource is created.
      */
-    afterCreate?: Array<ResourceHookFunction | ResourceHook>;
+	afterCreate?: Array<ResourceHookFunction | ResourceHook>;
     /**
      * Hooks to be invoked before the resource is updated.
      */
-    beforeUpdate?: Array<ResourceHookFunction | ResourceHook>;
+	beforeUpdate?: Array<ResourceHookFunction | ResourceHook>;
     /**
      * Hooks to be invoked after the resource is updated.
      */
-    afterUpdate?: Array<ResourceHookFunction | ResourceHook>;
+	afterUpdate?: Array<ResourceHookFunction | ResourceHook>;
     /**
      * Hooks to be invoked before the resource is deleted.
      *
@@ -1183,7 +1180,7 @@ export interface ResourceHookBinding {
      * {@link ResourceHookFunction}. This is because the engine needs to be able to identify a hook when a resource is
      * deleted.
      */
-    beforeDelete?: Array<ResourceHook>;
+	beforeDelete?: Array<ResourceHook>;
     /**
      * Hooks to be invoked after the resource is deleted.
      *
@@ -1192,7 +1189,7 @@ export interface ResourceHookBinding {
      * {@link ResourceHookFunction}. This is because the engine needs to be able to identify a hook when a resource is
      * deleted.
      */
-    afterDelete?: Array<ResourceHook>;
+	afterDelete?: Array<ResourceHook>;
 }
 
 /**
@@ -1200,8 +1197,8 @@ export interface ResourceHookBinding {
  * component resource's behavior.
  */
 export interface ComponentResourceOptions extends ResourceOptions {
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
-    // that mergeOptions works properly for it.
+	// !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+	// that mergeOptions works properly for it.
 
     /**
      * An optional set of providers to use for child resources. Either keyed by
@@ -1210,10 +1207,10 @@ export interface ComponentResourceOptions extends ResourceOptions {
      *
      * Note: only a list should be used. Mapping keys are not respected.
      */
-    providers?: Record<string, ProviderResource> | ProviderResource[];
+	providers?: Record<string, ProviderResource> | ProviderResource[];
 
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
-    // that mergeOptions works properly for it.
+	// !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+	// that mergeOptions works properly for it.
 }
 
 /**
@@ -1229,23 +1226,23 @@ export abstract class CustomResource extends Resource {
      * @internal
      *
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiCustomResource: boolean;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __pulumiCustomResource: boolean;
 
     /**
      * The provider-assigned unique ID for this managed resource. It is set
      * during deployments and may be missing (undefined) during planning phases.
      */
-    public readonly id!: Output<ID>;
+	public readonly id!: Output<ID>;
 
     /**
      * Returns true if the given object is a {@link CustomResource}. This is
      * designed to work even when multiple copies of the Pulumi SDK have been
      * loaded into the same process.
      */
-    public static isInstance(obj: any): obj is CustomResource {
-        return utils.isInstance<CustomResource>(obj, "__pulumiCustomResource");
-    }
+	public static isInstance(obj: any): obj is CustomResource {
+		return utils.isInstance<CustomResource>(obj, "__pulumiCustomResource");
+	}
 
     /**
      * Creates and registers a new managed resource. `t` is the fully qualified
@@ -1268,24 +1265,24 @@ export abstract class CustomResource extends Resource {
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(
-        t: string,
-        name: string,
-        props?: Inputs,
-        opts: CustomResourceOptions = {},
-        dependency = false,
-        packageRef?: Promise<string | undefined>,
-    ) {
-        if ((<ComponentResourceOptions>opts).providers) {
-            throw new ResourceError(
-                "Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?",
-                opts.parent,
-            );
-        }
+	constructor(
+		t: string,
+		name: string,
+		props?: Inputs,
+		opts: CustomResourceOptions = {},
+		dependency = false,
+		packageRef?: Promise<string | undefined>,
+	) {
+		if ((<ComponentResourceOptions>opts).providers) {
+			throw new ResourceError(
+				"Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?",
+				opts.parent,
+			);
+		}
 
-        super(t, name, true, props, opts, false, dependency, packageRef);
-        this.__pulumiCustomResource = true;
-    }
+		super(t, name, true, props, opts, false, dependency, packageRef);
+		this.__pulumiCustomResource = true;
+	}
 }
 
 (<any>CustomResource).doNotCapture = true;
@@ -1299,27 +1296,27 @@ export abstract class ProviderResource extends CustomResource {
     /**
      * @internal
      */
-    private readonly pkg: string;
+	private readonly pkg: string;
 
     /**
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public __registrationId?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public __registrationId?: string;
 
-    public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
-        if (provider === undefined) {
-            return undefined;
-        }
+	public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
+		if (provider === undefined) {
+			return undefined;
+		}
 
-        if (!provider.__registrationId) {
-            const providerURN = await provider.urn.promise();
-            const providerID = (await provider.id.promise()) || unknownValue;
-            provider.__registrationId = `${providerURN}::${providerID}`;
-        }
+		if (!provider.__registrationId) {
+			const providerURN = await provider.urn.promise();
+			const providerID = (await provider.id.promise()) || unknownValue;
+			provider.__registrationId = `${providerURN}::${providerID}`;
+		}
 
-        return provider.__registrationId;
-    }
+		return provider.__registrationId;
+	}
 
     /**
      * Creates and registers a new provider resource for a particular package.
@@ -1335,24 +1332,24 @@ export abstract class ProviderResource extends CustomResource {
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(
-        pkg: string,
-        name: string,
-        props?: Inputs,
-        opts: ResourceOptions = {},
-        dependency: boolean = false,
-        packageRef?: Promise<string | undefined>,
-    ) {
-        super(`pulumi:providers:${pkg}`, name, props, opts, dependency, packageRef);
-        this.pkg = pkg;
-    }
+	constructor(
+		pkg: string,
+		name: string,
+		props?: Inputs,
+		opts: ResourceOptions = {},
+		dependency: boolean = false,
+		packageRef?: Promise<string | undefined>,
+	) {
+		super(`pulumi:providers:${pkg}`, name, props, opts, dependency, packageRef);
+		this.pkg = pkg;
+	}
 
     /**
      * @internal
      */
-    public getPackage() {
-        return this.pkg;
-    }
+	public getPackage() {
+		return this.pkg;
+	}
 }
 
 /**
@@ -1367,35 +1364,35 @@ export class ComponentResource<TData = any> extends Resource {
      *
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiComponentResource = true;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __pulumiComponentResource = true;
 
     /**
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __data: Promise<TData>;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __data: Promise<TData>;
 
     /**
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    private __registered = false;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	private __registered = false;
 
     /**
      * @internal
      */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __remote: boolean;
+	// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+	public readonly __remote: boolean;
 
     /**
      * Returns true if the given object is a {@link CustomResource}. This is
      * designed to work even when multiple copies of the Pulumi SDK have been
      * loaded into the same process.
      */
-    public static isInstance(obj: any): obj is ComponentResource {
-        return utils.isInstance<ComponentResource>(obj, "__pulumiComponentResource");
-    }
+	public static isInstance(obj: any): obj is ComponentResource {
+		return utils.isInstance<ComponentResource>(obj, "__pulumiComponentResource");
+	}
 
     /**
      * Creates and registers a new component resource. `type` is the fully
@@ -1416,63 +1413,63 @@ export class ComponentResource<TData = any> extends Resource {
      * @param remote
      *  True if this is a remote component resource.
      */
-    constructor(
-        type: string,
-        name: string,
-        args: Inputs = {},
-        opts: ComponentResourceOptions = {},
-        remote: boolean = false,
-        packageRef?: Promise<string | undefined>,
-    ) {
-        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
-        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
-        // only as a container for other resources.  Another way to think about this is that a normal
-        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
-        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
-        // for a component resource.  The component is just used for organizational purposes and does
-        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
-        // do not have any effect on the cloud side of things at all.
-        super(
-            type,
-            name,
+	constructor(
+		type: string,
+		name: string,
+		args: Inputs = {},
+		opts: ComponentResourceOptions = {},
+		remote: boolean = false,
+		packageRef?: Promise<string | undefined>,
+	) {
+		// Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
+		// we explicitly do not want to pass them along to the engine.  The ComponentResource acts
+		// only as a container for other resources.  Another way to think about this is that a normal
+		// 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
+		// in some way, the cloud resource needs to be updated (and vice versa).  That is not true
+		// for a component resource.  The component is just used for organizational purposes and does
+		// not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
+		// do not have any effect on the cloud side of things at all.
+		super(
+			type,
+			name,
             /*custom:*/ false,
             /*props:*/ remote || opts?.urn ? args : {},
-            opts,
-            remote,
-            false,
-            packageRef,
-        );
-        this.__remote = remote;
-        this.__registered = remote || !!opts?.urn;
-        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
-    }
+			opts,
+			remote,
+			false,
+			packageRef,
+		);
+		this.__remote = remote;
+		this.__registered = remote || !!opts?.urn;
+		this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+	}
 
     /**
      * @internal
      */
-    private async initializeAndRegisterOutputs(args: Inputs) {
-        const data = await this.initialize(args);
-        this.registerOutputs();
-        return data;
-    }
+	private async initializeAndRegisterOutputs(args: Inputs) {
+		const data = await this.initialize(args);
+		this.registerOutputs();
+		return data;
+	}
 
     /**
      * Can be overridden by a subclass to asynchronously initialize data for this component
      * automatically when constructed. The data will be available immediately for subclass
      * constructors to use. To access the data use {@link getData}.
      */
-    protected async initialize(args: Inputs): Promise<TData> {
-        return <TData>undefined!;
-    }
+	protected async initialize(args: Inputs): Promise<TData> {
+		return <TData>undefined!;
+	}
 
     /**
      * Retrieves the data produces by {@link initialize}. The data is
      * immediately available in a derived class's constructor after the
      * `super(...)` call to `ComponentResource`.
      */
-    protected getData(): Promise<TData> {
-        return this.__data;
-    }
+	protected getData(): Promise<TData> {
+		return this.__data;
+	}
 
     /**
      * Registers synthetic outputs that a component has initialized, usually by
@@ -1484,14 +1481,14 @@ export class ComponentResource<TData = any> extends Resource {
      * strictly necessary as this will automatically be called after the {@link
      * initialize} method completes.
      */
-    protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
-        if (this.__registered) {
-            return;
-        }
+	protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
+		if (this.__registered) {
+			return;
+		}
 
-        this.__registered = true;
-        registerResourceOutputs(this, outputs || {});
-    }
+		this.__registered = true;
+		registerResourceOutputs(this, outputs || {});
+	}
 }
 
 (<any>ComponentResource).doNotCapture = true;
@@ -1503,7 +1500,7 @@ export class ComponentResource<TData = any> extends Resource {
  * @internal
  */
 export const testingOptions = {
-    isDryRun: false,
+	isDryRun: false,
 };
 
 /**
@@ -1527,107 +1524,107 @@ export const testingOptions = {
  *     always treated as collections, even if only a single value was provided.
  */
 export function mergeOptions(
-    opts1: CustomResourceOptions | undefined,
-    opts2: CustomResourceOptions | undefined,
+	opts1: CustomResourceOptions | undefined,
+	opts2: CustomResourceOptions | undefined,
 ): CustomResourceOptions;
 export function mergeOptions(
-    opts1: ComponentResourceOptions | undefined,
-    opts2: ComponentResourceOptions | undefined,
+	opts1: ComponentResourceOptions | undefined,
+	opts2: ComponentResourceOptions | undefined,
 ): ComponentResourceOptions;
 export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions;
 export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions {
-    const dest = <any>{ ...opts1 };
-    const source = <any>{ ...opts2 };
+	const dest = <any>{ ...opts1 };
+	const source = <any>{ ...opts2 };
 
-    // Ensure provider/providers are all expanded into the `ProviderResource[]` form.
-    // This makes merging simple.
-    expandProviders(dest);
-    expandProviders(source);
+	// Ensure provider/providers are all expanded into the `ProviderResource[]` form.
+	// This makes merging simple.
+	expandProviders(dest);
+	expandProviders(source);
 
-    // iterate specifically over the supplied properties in [source].  Note: there may not be an
-    // corresponding value in [dest].
-    for (const key of Object.keys(source)) {
-        const destVal = dest[key];
-        const sourceVal = source[key];
+	// iterate specifically over the supplied properties in [source].  Note: there may not be an
+	// corresponding value in [dest].
+	for (const key of Object.keys(source)) {
+		const destVal = dest[key];
+		const sourceVal = source[key];
 
-        // For 'dependsOn' we might have singleton resources in both options bags. We
-        // want to make sure we combine them into a collection.
-        if (key === "dependsOn") {
-            dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ true);
-            continue;
-        }
+		// For 'dependsOn' we might have singleton resources in both options bags. We
+		// want to make sure we combine them into a collection.
+		if (key === "dependsOn") {
+			dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ true);
+			continue;
+		}
 
-        if (key === "hooks") {
-            continue;
-        }
+		if (key === "hooks") {
+			continue;
+		}
 
-        dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
-    }
+		dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
+	}
 
-    if (dest.hooks || source.hooks) {
-        const hookTypes = [
-            "beforeCreate",
-            "afterCreate",
-            "beforeUpdate",
-            "afterUpdate",
-            "beforeDelete",
-            "afterDelete",
-        ] as const;
-        for (const hookType of hookTypes) {
-            const destHooks = dest?.hooks?.[hookType];
-            const sourceHooks = source?.hooks?.[hookType];
-            if (destHooks || sourceHooks) {
-                if (!dest.hooks) {
-                    dest.hooks = {};
-                }
-                dest.hooks[hookType] = merge(destHooks, sourceHooks, /*alwaysCreateArray:*/ false);
-            }
-        }
-    }
+	if (dest.hooks || source.hooks) {
+		const hookTypes = [
+			"beforeCreate",
+			"afterCreate",
+			"beforeUpdate",
+			"afterUpdate",
+			"beforeDelete",
+			"afterDelete",
+		] as const;
+		for (const hookType of hookTypes) {
+			const destHooks = dest?.hooks?.[hookType];
+			const sourceHooks = source?.hooks?.[hookType];
+			if (destHooks || sourceHooks) {
+				if (!dest.hooks) {
+					dest.hooks = {};
+				}
+				dest.hooks[hookType] = merge(destHooks, sourceHooks, /*alwaysCreateArray:*/ false);
+			}
+		}
+	}
 
-    // Now, if we are left with a .providers that is just a single key/value pair, then
-    // collapse that down into .provider form.
-    normalizeProviders(dest);
+	// Now, if we are left with a .providers that is just a single key/value pair, then
+	// collapse that down into .provider form.
+	normalizeProviders(dest);
 
-    return dest;
+	return dest;
 }
 
 function isPromiseOrOutput(val: any): boolean {
-    return val instanceof Promise || Output.isInstance(val);
+	return val instanceof Promise || Output.isInstance(val);
 }
 
 /**
  * @internal
  */
 export function expandProviders(options: ComponentResourceOptions) {
-    // Convert 'providers' map to array form.
-    if (options.providers && !Array.isArray(options.providers)) {
-        for (const k in options.providers) {
-            if (Object.prototype.hasOwnProperty.call(options.providers, k)) {
-                const v = options.providers[k];
-                if (k !== v.getPackage()) {
-                    const message = `provider resource map where key ${k} doesn't match provider ${v.getPackage()}`;
-                    log.warn(message);
-                }
-            }
-        }
-        options.providers = utils.values(options.providers);
-    }
+	// Convert 'providers' map to array form.
+	if (options.providers && !Array.isArray(options.providers)) {
+		for (const k in options.providers) {
+			if (Object.prototype.hasOwnProperty.call(options.providers, k)) {
+				const v = options.providers[k];
+				if (k !== v.getPackage()) {
+					const message = `provider resource map where key ${k} doesn't match provider ${v.getPackage()}`;
+					log.warn(message);
+				}
+			}
+		}
+		options.providers = utils.values(options.providers);
+	}
 }
 
 function normalizeProviders(opts: ComponentResourceOptions) {
-    // If we have 0 providers, delete providers. Otherwise, convert providers into a map.
-    const providers = <ProviderResource[]>opts.providers;
-    if (providers) {
-        if (providers.length === 0) {
-            opts.providers = undefined;
-        } else {
-            opts.providers = {};
-            for (const res of providers) {
-                opts.providers[res.getPackage()] = res;
-            }
-        }
-    }
+	// If we have 0 providers, delete providers. Otherwise, convert providers into a map.
+	const providers = <ProviderResource[]>opts.providers;
+	if (providers) {
+		if (providers.length === 0) {
+			opts.providers = undefined;
+		} else {
+			opts.providers = {};
+			for (const res of providers) {
+				opts.providers[res.getPackage()] = res;
+			}
+		}
+	}
 }
 
 /**
@@ -1635,33 +1632,33 @@ function normalizeProviders(opts: ComponentResourceOptions) {
  *  This is exported for testing purposes.
  */
 export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
-    // unwind any top level promise/outputs.
-    if (isPromiseOrOutput(dest)) {
-        return output(dest).apply((d) => merge(d, source, alwaysCreateArray));
-    }
+	// unwind any top level promise/outputs.
+	if (isPromiseOrOutput(dest)) {
+		return output(dest).apply((d) => merge(d, source, alwaysCreateArray));
+	}
 
-    if (isPromiseOrOutput(source)) {
-        return output(source).apply((s) => merge(dest, s, alwaysCreateArray));
-    }
+	if (isPromiseOrOutput(source)) {
+		return output(source).apply((s) => merge(dest, s, alwaysCreateArray));
+	}
 
-    // If either are an array, make a new array and merge the values into it.
-    // Otherwise, just overwrite the destination with the source value.
-    if (alwaysCreateArray || Array.isArray(dest) || Array.isArray(source)) {
-        const result: any[] = [];
-        addToArray(result, dest);
-        addToArray(result, source);
-        return result;
-    }
+	// If either are an array, make a new array and merge the values into it.
+	// Otherwise, just overwrite the destination with the source value.
+	if (alwaysCreateArray || Array.isArray(dest) || Array.isArray(source)) {
+		const result: any[] = [];
+		addToArray(result, dest);
+		addToArray(result, source);
+		return result;
+	}
 
-    return source;
+	return source;
 }
 
 function addToArray(resultArray: any[], value: any) {
-    if (Array.isArray(value)) {
-        resultArray.push(...value);
-    } else if (value !== undefined && value !== null) {
-        resultArray.push(value);
-    }
+	if (Array.isArray(value)) {
+		resultArray.push(...value);
+	} else if (value !== undefined && value !== null) {
+		resultArray.push(value);
+	}
 }
 
 /**
@@ -1670,17 +1667,17 @@ function addToArray(resultArray: any[], value: any) {
  * only created when dealing with remote component resources.
  */
 export class DependencyResource extends CustomResource {
-    constructor(urn: URN) {
-        super("", "", {}, {}, true);
+	constructor(urn: URN) {
+		super("", "", {}, {}, true);
 
-        (<any>this).urn = new Output(
-            <any>this,
-            Promise.resolve(urn),
-            Promise.resolve(true),
-            Promise.resolve(false),
-            Promise.resolve([]),
-        );
-    }
+		(<any>this).urn = new Output(
+			<any>this,
+			Promise.resolve(urn),
+			Promise.resolve(true),
+			Promise.resolve(false),
+			Promise.resolve([]),
+		);
+	}
 }
 
 /**
@@ -1689,32 +1686,32 @@ export class DependencyResource extends CustomResource {
  * reference. Its only valid properties are its URN and ID.
  */
 export class DependencyProviderResource extends ProviderResource {
-    constructor(ref: string) {
-        const [urn, id] = parseResourceReference(ref);
-        const urnParts = urn.split("::");
-        const qualifiedType = urnParts[2];
-        const type = qualifiedType.split("$").pop()!;
-        // type will be "pulumi:providers:<package>" and we want the last part.
-        const typeParts = type.split(":");
-        const pkg = typeParts.length > 2 ? typeParts[2] : "";
+	constructor(ref: string) {
+		const [urn, id] = parseResourceReference(ref);
+		const urnParts = urn.split("::");
+		const qualifiedType = urnParts[2];
+		const type = qualifiedType.split("$").pop()!;
+		// type will be "pulumi:providers:<package>" and we want the last part.
+		const typeParts = type.split(":");
+		const pkg = typeParts.length > 2 ? typeParts[2] : "";
 
-        super(pkg, "", {}, {}, true);
+		super(pkg, "", {}, {}, true);
 
-        (<any>this).urn = new Output(
-            <any>this,
-            Promise.resolve(urn),
-            Promise.resolve(true),
-            Promise.resolve(false),
-            Promise.resolve([]),
-        );
-        (<any>this).id = new Output(
-            <any>this,
-            Promise.resolve(id),
-            Promise.resolve(true),
-            Promise.resolve(false),
-            Promise.resolve([]),
-        );
-    }
+		(<any>this).urn = new Output(
+			<any>this,
+			Promise.resolve(urn),
+			Promise.resolve(true),
+			Promise.resolve(false),
+			Promise.resolve([]),
+		);
+		(<any>this).id = new Output(
+			<any>this,
+			Promise.resolve(id),
+			Promise.resolve(true),
+			Promise.resolve(false),
+			Promise.resolve([]),
+		);
+	}
 }
 
 /**
@@ -1723,13 +1720,13 @@ export class DependencyProviderResource extends ProviderResource {
  * @internal
  */
 export function parseResourceReference(ref: string): [string, string] {
-    const lastSep = ref.lastIndexOf("::");
-    if (lastSep === -1) {
-        throw new Error(`expected '::' in provider reference ${ref}`);
-    }
-    const urn = ref.slice(0, lastSep);
-    const id = ref.slice(lastSep + 2);
-    return [urn, id];
+	const lastSep = ref.lastIndexOf("::");
+	if (lastSep === -1) {
+		throw new Error(`expected '::' in provider reference ${ref}`);
+	}
+	const urn = ref.slice(0, lastSep);
+	const id = ref.slice(lastSep + 2);
+	return [urn, id];
 }
 
 /**
@@ -1738,29 +1735,29 @@ export function parseResourceReference(ref: string): [string, string] {
  * @internal
  */
 export function pkgFromType(type: string): string | undefined {
-    const parts = type.split(":");
-    if (parts.length === 3) {
-        return parts[0];
-    }
-    return undefined;
+	const parts = type.split(":");
+	if (parts.length === 3) {
+		return parts[0];
+	}
+	return undefined;
 }
 
 /**
  * The Pulumi type assigned to the resource at construction, of the form `package:module:name`.
  */
 export function resourceType(res: Resource): string {
-    return res.__pulumiType;
+	return res.__pulumiType;
 }
 
 /**
  * The Pulumi name assigned to the resource at construction, i.e. the "name" in its constructor call.
  */
 export function resourceName(res: Resource): string {
-    if (res.__name === undefined) {
-        throw new ResourceError(
-            "Resource name is not available, this resource instance must have been constructed by an old SDK",
-            res,
-        );
-    }
-    return res.__name;
+	if (res.__name === undefined) {
+		throw new ResourceError(
+			"Resource name is not available, this resource instance must have been constructed by an old SDK",
+			res,
+		);
+	}
+	return res.__name;
 }

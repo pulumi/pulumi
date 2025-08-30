@@ -47,6 +47,7 @@ class PropertyRenamingTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         # Test:
         #  1. Everything that we receive from the running program is in camel-case. The engine never sees

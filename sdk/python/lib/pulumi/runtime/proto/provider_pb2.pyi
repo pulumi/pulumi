@@ -627,6 +627,7 @@ class CallRequest(google.protobuf.message.Message):
     MONITORENDPOINT_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
+    STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     project: builtins.str
@@ -643,6 +644,8 @@ class CallRequest(google.protobuf.message.Message):
     """the organization of the stack being deployed into."""
     accepts_output_values: builtins.bool
     """the engine can be passed output values back, returnDependencies can be left blank if returning output values."""
+    stack_trace_handle: builtins.str
+    """The stack trace handle for the call. Supports stitching stack traces together across plugins."""
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
         """the arguments for the function invocation."""
@@ -674,9 +677,10 @@ class CallRequest(google.protobuf.message.Message):
         monitorEndpoint: builtins.str = ...,
         organization: builtins.str = ...,
         accepts_output_values: builtins.bool = ...,
+        stack_trace_handle: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["accepts_output_values", b"accepts_output_values", "argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "project", b"project", "stack", b"stack", "tok", b"tok"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accepts_output_values", b"accepts_output_values", "argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "project", b"project", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "tok", b"tok"]) -> None: ...
 
 global___CallRequest = CallRequest
 
@@ -1736,6 +1740,7 @@ class ConstructRequest(google.protobuf.message.Message):
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     RESOURCE_HOOKS_FIELD_NUMBER: builtins.int
+    STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
@@ -1793,6 +1798,8 @@ class ConstructRequest(google.protobuf.message.Message):
     may be used to communicate dependency information and so there is no need to populate
     [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
     """
+    stack_trace_handle: builtins.str
+    """The stack trace handle for the construct call. Supports stitching stack traces together across plugins."""
     @property
     def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """Configuration for the specified project and stack."""
@@ -1877,9 +1884,10 @@ class ConstructRequest(google.protobuf.message.Message):
         retainOnDelete: builtins.bool | None = ...,
         accepts_output_values: builtins.bool = ...,
         resource_hooks: global___ConstructRequest.ResourceHooksBinding | None = ...,
+        stack_trace_handle: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "inputs", b"inputs", "protect", b"protect", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace"]) -> typing.Literal["deleteBeforeReplace"] | None: ...
     @typing.overload

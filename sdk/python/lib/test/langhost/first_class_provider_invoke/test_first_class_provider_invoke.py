@@ -72,6 +72,7 @@ class TestFirstClassProviderInvoke(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "testprov":
             self.assertEqual("pulumi:providers:test", ty)

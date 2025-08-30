@@ -16,6 +16,7 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -166,9 +166,7 @@ func (r *ResourceSpec) AsResource() *resource.State {
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 
-	tags := maps.Keys(r.Tags)
-	slices.Sort(tags)
-
+	tags := strings.Join(slices.Sorted(maps.Keys(r.Tags)), ", ")
 	s := &resource.State{
 		Type:                 r.Type,
 		URN:                  r.URN(),
@@ -184,7 +182,8 @@ func (r *ResourceSpec) AsResource() *resource.State {
 		PropertyDependencies: propDeps,
 		DeletedWith:          r.DeletedWith,
 		Aliases:              aliases,
-		SourcePosition:       strings.Join(tags, ", "),
+		SourcePosition:       tags,
+		StackTrace:           []resource.StackFrame{{SourcePosition: tags}},
 	}
 
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),
@@ -233,8 +232,7 @@ func (r *ResourceSpec) Pretty(indent string) string {
 	b.WriteRune(']')
 
 	if len(r.Tags) > 0 {
-		ks := maps.Keys(r.Tags)
-		slices.Sort(ks)
+		ks := slices.Sorted(maps.Keys(r.Tags))
 		b.WriteString(fmt.Sprintf("\n%s  Tags:                %s", indent, strings.Join(ks, ", ")))
 	}
 
@@ -415,7 +413,7 @@ func GeneratedResourceSpec(
 	rso = defaultResourceSpecOptions.With(rso)
 
 	return rapid.Custom(func(t *rapid.T) *ResourceSpec {
-		pkg := rapid.SampledFrom(maps.Keys(provs)).Draw(t, "ResourceSpec.Package")
+		pkg := rapid.SampledFrom(slices.Sorted(maps.Keys(provs))).Draw(t, "ResourceSpec.Package")
 		provider := provs[pkg]
 
 		typ := GeneratedResourceType(pkg).Draw(t, "ResourceSpec.Type")

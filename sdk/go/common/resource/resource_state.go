@@ -60,6 +60,7 @@ type State struct {
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 	SourcePosition          string                // If set, the source location of the resource registration
+	StackTrace              []StackFrame          // If set, the stack trace at time of registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
@@ -95,6 +96,7 @@ func (s *State) Copy() *State {
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
@@ -195,6 +197,9 @@ type NewState struct {
 	// If set, the source location of the resource registration
 	SourcePosition string // required
 
+	// If set, the stack trace at time of registration
+	StackTrace []StackFrame // required
+
 	// If set, the list of properties to ignore changes for.
 	IgnoreChanges []string // required
 
@@ -247,6 +252,7 @@ func (s NewState) Make() *State {
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
@@ -313,4 +319,10 @@ func (s *State) GetAllDependencies() (string, []StateDependency) {
 		allDeps = append(allDeps, StateDependency{Type: ResourceDeletedWith, URN: s.DeletedWith})
 	}
 	return s.Provider, allDeps
+}
+
+// StackFrames are used to record the stack at the time a resource is registered.
+type StackFrame struct {
+	// The source position associated with the stack frame.
+	SourcePosition string
 }
