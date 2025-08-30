@@ -354,7 +354,7 @@ type CancellationScope interface {
 // CancellationScopeSource provides a source for cancellation scopes.
 type CancellationScopeSource interface {
 	// NewScope creates a new cancellation scope.
-	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
+	NewScope(ctx context.Context, events chan<- engine.Event, isPreview bool) CancellationScope
 }
 
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.

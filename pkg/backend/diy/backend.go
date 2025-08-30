@@ -1179,7 +1179,7 @@ func (b *diyBackend) apply(
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
 
-	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	scope := op.Scopes.NewScope(ctx, engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
