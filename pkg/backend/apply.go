@@ -33,6 +33,31 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+// Application encapsulates the backend-specific parts of an in-progress application of a Pulumi operation.
+type Application interface {
+	// Permalinkt returns a permalink to some web view of the operation, or the empty string if no such link is
+	// available/supported by the backend that produced the application.
+	Permalink() string
+
+	// CreateSnapshotPersister returns a SnapshotPersister that can be used to persist the snapshot of the stack
+	// after this application completes.
+	CreateSnapshotPersister() (SnapshotPersister, error)
+
+	// CreateBackendClient returns a BackendClient that can be used to interact with this application's backend during the
+	// in-progress operation.
+	CreateBackendClient() (deploy.BackendClient, error)
+
+	// End is called when the operation completes, either successfully or with an error. Implementations should perform
+	// any backend-specific cleanup and completion functions here.
+	End(
+		start int64,
+		end int64,
+		plan *deploy.Plan,
+		changes sdkDisplay.ResourceChanges,
+		updateErr error,
+	) error
+}
+
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {
 	// DryRun indicates if the update should not change any resource state and instead just preview changes.

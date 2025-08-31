@@ -31,7 +31,6 @@ import (
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -52,22 +51,18 @@ func (b *diyBackend) newUpdate(
 	secretsProvider secrets.Provider,
 	ref *diyBackendReference,
 	op backend.UpdateOperation,
-) (engine.UpdateInfo, error) {
+) (*deploy.Target, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, secretsProvider, ref,
 		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
-		return engine.UpdateInfo{}, err
+		return nil, err
 	}
 
 	// Construct and return a new update.
-	return engine.UpdateInfo{
-		Root:    op.Root,
-		Project: op.Proj,
-		Target:  target,
-	}, nil
+	return target, nil
 }
 
 func (b *diyBackend) getTarget(
