@@ -570,7 +570,18 @@ func propertyTitlePrinter(name string, align int) func(*propertyPrinter) {
 }
 
 func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
+	p.printPropertyValueRecurse(v)
+	p.writeVerbatim("\n")
+}
+
+func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 	switch {
+	case v.IsSecret():
+		if p.showSecrets {
+			p.printPropertyValueRecurse(v.SecretValue().Element)
+		} else {
+			p.printPrimitivePropertyValue(v)
+		}
 	case isPrimitive(v):
 		p.printPrimitivePropertyValue(v)
 	case v.IsArray():
@@ -644,7 +655,6 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 	default:
 		contract.Failf("Unknown PropertyValue type %v", v)
 	}
-	p.writeVerbatim("\n")
 }
 
 func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
@@ -857,11 +867,7 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writeVerbatim("[unknown]")
 		}
 	} else if v.IsSecret() {
-		if p.showSecrets {
-			p.printPropertyValue(v.SecretValue().Element)
-		} else {
-			p.writeVerbatim("[secret]")
-		}
+		p.writeVerbatim("[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}
