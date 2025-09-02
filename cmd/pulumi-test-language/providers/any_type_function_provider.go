@@ -192,8 +192,8 @@ func (p *AnyTypeFunctionProvider) Invoke(
 
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewObjectProperty(resource.PropertyMap{
-					"resultProperty": resource.NewStringProperty("resultValue"),
+				"result": resource.NewProperty(resource.PropertyMap{
+					"resultProperty": resource.NewProperty("resultValue"),
 				}),
 			},
 		}, nil

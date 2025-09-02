@@ -16,17 +16,17 @@
 Runtime support for the Pulumi configuration system.  Please use pulumi.Config instead.
 """
 
-from typing import Dict, Any, List, Optional, Set
+from typing import Any, Optional
 from contextvars import ContextVar
 
 import json
 import os
 
 # default to an empty map for config.
-CONFIG: ContextVar[Dict[str, Any]] = ContextVar("global_config", default={})
+CONFIG: ContextVar[dict[str, Any]] = ContextVar("global_config", default={})
 
 # default to an empty set for config secret keys.
-_SECRET_KEYS: ContextVar[Set[str]] = ContextVar("global_secret_keys", default=set())
+_SECRET_KEYS: ContextVar[set[str]] = ContextVar("global_secret_keys", default=set())
 
 
 def set_config(k: str, v: Any):
@@ -37,7 +37,7 @@ def set_config(k: str, v: Any):
 
 
 def set_all_config(
-    config: Dict[str, str], secret_keys: Optional[List[str]] = None
+    config: dict[str, str], secret_keys: Optional[list[str]] = None
 ) -> None:
     """
     Overwrites the config map and optional list of secret keys.
@@ -51,7 +51,7 @@ def set_all_config(
         _SECRET_KEYS.set(set(secret_keys))
 
 
-def get_config_env() -> Dict[str, Any]:
+def get_config_env() -> dict[str, Any]:
     """
     Returns the environment map that will be used for config checking when variables aren't set.
     """
@@ -77,7 +77,7 @@ def get_config_env_key(k: str) -> str:
     return f"PULUMI_CONFIG_{env_key}"
 
 
-def get_config_secret_keys_env() -> List[str]:
+def get_config_secret_keys_env() -> list[str]:
     """
     Returns the list of config keys that contain secrets.
     """

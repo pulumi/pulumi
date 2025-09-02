@@ -41,10 +41,11 @@ import (
 )
 
 const (
-	// The default package source is "private" for packages published to the Pulumi Registry. This corresponds to the
-	// private registry of an organization.
-	// Examples of other sources include "pulumi" for the public registry and "opentofu" for packages published to the
-	// OpenTofu Registry.
+	// The default package source is "private" for packages published to the
+	// Private Registry. This corresponds to an organization's own packages
+	// inaccessible to others. Examples of other sources include "pulumi" for
+	// public packages and "opentofu" for packages published to the OpenTofu
+	// registry, but available through an organization's Private Registry.
 	defaultPackageSource = "private"
 )
 
@@ -70,9 +71,9 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
 		Args:  cmdutil.MinimumNArgs(1),
-		Short: "Publish a package to the Pulumi Registry",
-		Long: "Publish a package to the Pulumi Registry.\n\n" +
-			"This command publishes a package to the Pulumi Registry. The package can be a provider " +
+		Short: "Publish a package to the Private Registry",
+		Long: "Publish a package to the Private Registry.\n\n" +
+			"This command publishes a package to the Private Registry. The package can be a provider " +
 			"or a schema.\n\n" +
 			"When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to " +
 			"resolve a resource plugin first, installing it on-demand, similarly to:\n\n" +
@@ -99,7 +100,7 @@ func newPackagePublishCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,
-		"The origin of the package (e.g., 'pulumi', 'private', 'opentofu'). Defaults to the private registry.")
+		"The origin of the package (e.g., 'pulumi', 'private', 'opentofu'). Defaults to 'private'.")
 	if !env.Dev.Value() {
 		// hide the source flag from the help output. Only registry administrators can set the source. Regular users can only
 		// publish private packages.
@@ -202,7 +203,7 @@ func (cmd *packagePublishCmd) Run(
 
 	registry, err := b.GetCloudRegistry()
 	if err != nil {
-		return fmt.Errorf("failed to get cloud registry: %w", err)
+		return fmt.Errorf("failed to get the Private Registry backend: %w", err)
 	}
 
 	// We need to set the content-size header for S3 puts. For byte buffers (or deterministic readers)

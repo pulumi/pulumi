@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Any, Dict
+from typing import Optional, Any
 
 
 class StackSettingsSecureConfigValue:
@@ -30,14 +30,14 @@ class StackSettings:
     secrets_provider: Optional[str]
     encrypted_key: Optional[str]
     encryption_salt: Optional[str]
-    config: Optional[Dict[str, Any]]
+    config: Optional[dict[str, Any]]
 
     def __init__(
         self,
         secrets_provider: Optional[str] = None,
         encrypted_key: Optional[str] = None,
         encryption_salt: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[dict[str, Any]] = None,
     ):
         self.secrets_provider = secrets_provider
         self.encrypted_key = encrypted_key
@@ -48,7 +48,7 @@ class StackSettings:
     def _deserialize(cls, data: dict):
         config = data.get("config")
         if config is not None:
-            stack_config: Dict[str, Any] = {}
+            stack_config: dict[str, Any] = {}
             for key, val in config.items():
                 if isinstance(val, str):
                     stack_config[key] = val

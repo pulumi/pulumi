@@ -160,7 +160,7 @@ func (p *LargeProvider) Create(
 	// aim for 100mb of data (400mb is the size limit we normally set, but nodejs is far more limited)
 	repeat := (100 * 1024 * 1024) / len(value.StringValue())
 	result := resource.PropertyMap{
-		"value": resource.NewStringProperty(
+		"value": resource.NewProperty(
 			strings.Repeat(value.StringValue(), repeat)),
 	}
 	return plugin.CreateResponse{

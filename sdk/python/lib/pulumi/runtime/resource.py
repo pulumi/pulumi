@@ -16,20 +16,14 @@ import os
 import pathlib
 import traceback
 from typing import (
-    Awaitable,
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    List,
-    Mapping,
     NamedTuple,
     Optional,
-    Sequence,
-    Set,
-    Tuple,
     Union,
 )
+from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
 from google.protobuf import struct_pb2
@@ -77,7 +71,7 @@ class ResourceResolverOperations(NamedTuple):
     This resource's input properties, serialized into protobuf structures.
     """
 
-    dependencies: Set[str]
+    dependencies: set[str]
     """
     The set of URNs, corresponding to the resources that this resource depends on.
     """
@@ -87,17 +81,17 @@ class ResourceResolverOperations(NamedTuple):
     An optional reference to a provider that should be used for this resource's CRUD operations.
     """
 
-    provider_refs: Dict[str, str]
+    provider_refs: dict[str, str]
     """
     An optional dict of references to providers that should be used for this resource's CRUD operations.
     """
 
-    property_dependencies: Dict[str, List[str]]
+    property_dependencies: dict[str, list[str]]
     """
     A map from property name to the URNs of the resources the property depends on.
     """
 
-    aliases: List[alias_pb2.Alias]
+    aliases: list[alias_pb2.Alias]
     """
     A list of aliases applied to this resource.
     """
@@ -119,8 +113,8 @@ async def prepare_aliases(
     resource: "Resource",
     resource_options: Optional["ResourceOptions"],
     supports_alias_specs: bool,
-) -> List[alias_pb2.Alias]:
-    aliases: List[alias_pb2.Alias] = []
+) -> list[alias_pb2.Alias]:
+    aliases: list[alias_pb2.Alias] = []
     if resource_options is None or resource_options.aliases is None:
         return aliases
 
@@ -178,7 +172,7 @@ async def prepare_resource(
     typ: Optional[type] = None,
 ) -> ResourceResolverOperations:
     # Before we can proceed, all our dependencies must be finished.
-    explicit_urn_dependencies: Set[str] = set()
+    explicit_urn_dependencies: set[str] = set()
     if opts is not None and opts.depends_on is not None:
         explicit_urn_dependencies = await _resolve_depends_on_urns(
             opts._depends_on_list(), from_resource=res
@@ -186,7 +180,7 @@ async def prepare_resource(
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-    property_dependencies_resources: Dict[str, List["Resource"]] = {}
+    property_dependencies_resources: dict[str, list[Resource]] = {}
 
     # If we have type information, we'll use it for translations rather than the resource's translate_input_property.
     translate: Optional[Callable[[str], str]] = res.translate_input_property
@@ -235,14 +229,14 @@ async def prepare_resource(
 
     # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
     # resolved provider refs.
-    provider_refs: Dict[str, str] = {}
+    provider_refs: dict[str, str] = {}
     if (remote or not custom) and opts is not None:
         providers = convert_providers(opts.provider, opts.providers)
         for name, provider in providers.items():
             provider_refs[name] = await _create_provider_ref(provider)
 
-    dependencies: Set[str] = set(explicit_urn_dependencies)
-    property_dependencies: Dict[str, List[str]] = {}
+    dependencies: set[str] = set(explicit_urn_dependencies)
+    property_dependencies: dict[str, list[str]] = {}
     for key, deps in property_dependencies_resources.items():
         expanded_deps = await _expand_dependencies(deps, from_resource=res)
         urns = set(expanded_deps.keys())
@@ -368,7 +362,7 @@ def inherited_child_alias(
 
 
 # Extract the type and name parts of a URN
-def urn_type_and_name(urn: str) -> Tuple[str, str]:
+def urn_type_and_name(urn: str) -> tuple[str, str]:
     parts = urn.split("::")
     type_parts = parts[2].split("$")
     return (parts[3], type_parts[-1])
@@ -379,13 +373,13 @@ def all_aliases(
     child_name: str,
     child_type: str,
     parent: Optional["Resource"],
-) -> "List[Input[str]]":
+) -> list[Input[str]]:
     """
     Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
     If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
     or, as calculated in the logic below, N+(M*(1+N)).
     """
-    aliases: "List[Input[str]]" = []
+    aliases: list[Input[str]] = []
 
     for child_alias in child_aliases or []:
         aliases.append(
@@ -443,10 +437,10 @@ def collapse_alias_to_urn(
         name: str = inner.name if inner.name is not ... else defaultName  # type: ignore
         type_: str = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
         parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: "Input[str]" = settings.get_project()
+        project: Input[str] = settings.get_project()
         if inner.project is not ... and inner.project is not None:
             project = inner.project
-        stack: "Input[str]" = settings.get_stack()
+        stack: Input[str] = settings.get_stack()
         if inner.stack is not ... and inner.stack is not None:
             stack = inner.stack
 
@@ -461,7 +455,7 @@ def collapse_alias_to_urn(
             lambda args: create_urn(name, type_, parent, args[0], args[1])
         )
 
-    inputAlias: "Output[Union[Alias, str]]" = Output.from_input(alias)
+    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
@@ -503,7 +497,7 @@ def create_urn(
 
 def resource_output(
     res: "Resource",
-) -> Tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
+) -> tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
     value_future: asyncio.Future[Any] = asyncio.Future()
     known_future: asyncio.Future[bool] = asyncio.Future()
     secret_future: asyncio.Future[bool] = asyncio.Future()
@@ -613,8 +607,8 @@ def get_resource(
 
 
 def _translate_ignore_changes(
-    res: "Resource", typ: Optional[type], ignore_changes: Optional[List[str]]
-) -> Optional[List[str]]:
+    res: "Resource", typ: Optional[type], ignore_changes: Optional[list[str]]
+) -> Optional[list[str]]:
     if ignore_changes is not None:
         if typ is not None:
             # If `typ` is specified, use its type/name metadata for translation.
@@ -628,8 +622,8 @@ def _translate_ignore_changes(
 
 
 def _translate_additional_secret_outputs(
-    res: "Resource", typ: Optional[type], additional_secret_outputs: Optional[List[str]]
-) -> Optional[List[str]]:
+    res: "Resource", typ: Optional[type], additional_secret_outputs: Optional[list[str]]
+) -> Optional[list[str]]:
     if additional_secret_outputs is not None:
         if typ is not None:
             # If a `typ` is specified, we've opt-ed in to doing translations using type/name metadata rather
@@ -649,8 +643,8 @@ def _translate_additional_secret_outputs(
 
 
 def _translate_replace_on_changes(
-    res: "Resource", typ: Optional[type], replace_on_changes: Optional[List[str]]
-) -> Optional[List[str]]:
+    res: "Resource", typ: Optional[type], replace_on_changes: Optional[list[str]]
+) -> Optional[list[str]]:
     if replace_on_changes is not None:
         if typ is not None:
             # If `typ` is specified, use its type/name metadata for translation.
@@ -953,7 +947,7 @@ def register_resource(
                 ) from e
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
-            callbacks: List[callback_pb2.Callback] = []
+            callbacks: list[callback_pb2.Callback] = []
             if opts.transforms:
                 if not _sync_monitor_supports_transforms():
                     raise Exception(
@@ -996,8 +990,8 @@ def register_resource(
                 "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
             ).upper() not in {"TRUE", "1"}
 
-            full_aliases_specs: Optional[List[alias_pb2.Alias]] = None
-            alias_urns: Optional[List[str]] = None
+            full_aliases_specs: Optional[list[alias_pb2.Alias]] = None
+            alias_urns: Optional[list[str]] = None
             if resolver.supports_alias_specs:
                 full_aliases_specs = resolver.aliases
             else:
@@ -1175,9 +1169,9 @@ def register_resource_outputs(
 
 
 class PropertyDependencies:
-    urns: List[str]
+    urns: list[str]
 
-    def __init__(self, urns: List[str]):
+    def __init__(self, urns: list[str]):
         self.urns = urns
 
 
@@ -1185,7 +1179,7 @@ class RegisterResponse:
     urn: str
     id: Optional[str]
     object: struct_pb2.Struct
-    propertyDependencies: Optional[Dict[str, PropertyDependencies]]
+    propertyDependencies: Optional[dict[str, PropertyDependencies]]
     result: Optional[resource_pb2.Result.ValueType]
 
     def __init__(
@@ -1193,7 +1187,7 @@ class RegisterResponse:
         urn: str,
         id: Optional[str],
         object: struct_pb2.Struct,
-        propertyDependencies: Optional[Dict[str, PropertyDependencies]],
+        propertyDependencies: Optional[dict[str, PropertyDependencies]],
         result: Optional[resource_pb2.Result.ValueType],
     ):
         self.urn = urn
@@ -1256,7 +1250,7 @@ async def _prepare_resource_hooks(
         "before_delete",
         "after_delete",
     ]:
-        hooks_for_type: list[Union["ResourceHook", "ResourceHookFunction"]] = getattr(
+        hooks_for_type: list[Union[ResourceHook, ResourceHookFunction]] = getattr(
             hooks, hook_type, []
         )
         for i, _hook in enumerate(hooks_for_type or []):

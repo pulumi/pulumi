@@ -73,7 +73,7 @@ func init() {
 					require.Len(l, outputs, 1, "expected 1 output")
 					AssertPropertyMapMember(
 						l, outputs,
-						"defaultProviderValue", resource.NewStringProperty("defaultProvValuedefaultValue"),
+						"defaultProviderValue", resource.NewProperty("defaultProvValuedefaultValue"),
 					)
 				},
 			},

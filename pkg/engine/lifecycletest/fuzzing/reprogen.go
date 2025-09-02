@@ -601,7 +601,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 						g.writeBlock(
 							"Inputs: resource.PropertyMap{",
 							func(g *generator) {
-								g.writeLinef("\"__id\": resource.NewStringProperty(\"%s\"),", r.ID.String())
+								g.writeLinef("\"__id\": resource.NewProperty(\"%s\"),", r.ID.String())
 							},
 							"},",
 						)

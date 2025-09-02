@@ -168,7 +168,7 @@ func (p *SimpleInvokeWithScalarReturnProvider) Invoke(
 		// invoke implementations.
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewBoolProperty(true),
+				"result": resource.NewProperty(true),
 			},
 		}, nil
 	}
@@ -211,7 +211,7 @@ func (p *SimpleInvokeWithScalarReturnProvider) Create(
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.PropertyMap{
-			"text": resource.NewStringProperty("Goodbye"),
+			"text": resource.NewProperty("Goodbye"),
 		},
 		Status: resource.StatusOK,
 	}, nil

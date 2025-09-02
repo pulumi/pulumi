@@ -244,10 +244,10 @@ func (p *CamelNamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (
 		ReadResult: plugin.ReadResult{
 			ID: req.ID,
 			Inputs: resource.PropertyMap{
-				"theInput": resource.NewBoolProperty(true),
+				"theInput": resource.NewProperty(true),
 			},
 			Outputs: resource.PropertyMap{
-				"theOutput": resource.NewBoolProperty(true),
+				"theOutput": resource.NewProperty(true),
 			},
 		},
 		Status: resource.StatusOK,

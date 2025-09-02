@@ -15,13 +15,17 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"iter"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -126,6 +130,10 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
+		packageResolutionOptions: packageresolution.Options{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
@@ -237,6 +245,10 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -252,7 +264,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		err := cmd.Run(context.Background(), []string{"resource", "unknown", "1.48.0"})
 		assert.ErrorContains(t, err,
-			"Unable to resolve package from name: not found: unknown@1.48.0 does not match a registry package")
+			"Unable to resolve package from name: package unknown@1.48.0 not found")
 	})
 
 	t.Run("without version", func(t *testing.T) {
@@ -260,6 +272,10 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -275,7 +291,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		err := cmd.Run(context.Background(), []string{"resource", "unknown"})
 		assert.ErrorContains(t, err,
-			"Unable to resolve package from name: not found: unknown does not match a registry package")
+			"Unable to resolve package from name: package unknown not found")
 	})
 }
 
@@ -311,4 +327,108 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	}
 
 	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+}
+
+func TestRegistryFallbackWithLocalPackages(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs
+packages:
+  my-local-provider: ./my-provider`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() {
+		err := os.Chdir(origDir)
+		require.NoError(t, err)
+	}()
+	err = os.Chdir(tmpDir)
+	require.NoError(t, err)
+
+	installCalled := false
+	defer func() {
+		require.True(t, installCalled, "Expected installPluginSpec to be called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			return &semver.Version{Major: 1}, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {}
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginSpec, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			require.Equal(t, "my-local-provider", install.Name)
+			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
+			installCalled = true
+			return nil
+		},
+	}
+
+	err = cmd.Run(context.Background(), []string{"resource", "my-local-provider"})
+	require.NoError(t, err)
+}
+
+func TestSuggestedPackagesDisplay(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+
+	cmd := &pluginInstallCmd{
+		diag: sink,
+		packageResolutionOptions: packageresolution.Options{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {
+					if !yield(apitype.PackageMetadata{
+						Source:    "community",
+						Publisher: "example",
+						Name:      "similar-pkg",
+						Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
+					}, nil) {
+						return
+					}
+					yield(apitype.PackageMetadata{
+						Source:    "github",
+						Publisher: "someuser",
+						Name:      "another-similar-pkg",
+						Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
+					}, nil)
+				}
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginSpec, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			assert.Fail(t, "installPluginSpec should not have been called")
+			return nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{"resource", "missing-pkg", "1.0.0"})
+	assert.ErrorContains(t, err, "Unable to resolve package from name")
+
+	output := stdout.String() + stderr.String()
+	assert.Contains(t, output, "community/example/similar-pkg@1.0.0 is a similar package")
+	assert.Contains(t, output, "github/someuser/another-similar-pkg@2.1.0 is a similar package")
 }

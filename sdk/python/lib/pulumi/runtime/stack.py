@@ -18,7 +18,8 @@ Support for automatic stack components.
 
 import asyncio
 from inspect import isawaitable
-from typing import Any, Callable, Dict, List, Awaitable, Optional
+from typing import Any, Callable, Optional
+from collections.abc import Awaitable
 from google.protobuf import empty_pb2
 import grpc
 
@@ -177,7 +178,7 @@ class Stack(ComponentResource):
     A synthetic stack component that automatically parents resources as the program runs.
     """
 
-    outputs: Dict[str, Any]
+    outputs: dict[str, Any]
 
     def __init__(self, func: Callable[[], Optional[Awaitable[None]]]) -> None:
         # Ensure we don't already have a stack registered.
@@ -213,7 +214,7 @@ class Stack(ComponentResource):
 
 # Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
 # but python seems to offer no alternative.
-def massage(attr: Any, seen: List[Any]):
+def massage(attr: Any, seen: list[Any]):
     """
     massage takes an arbitrary python value and attempts to *deeply* convert it into
     plain-old-python-value that can registered as an output.  In general, this means leaving alone
@@ -252,12 +253,12 @@ def massage(attr: Any, seen: List[Any]):
             raise Exception("Invariant broken when processing stack outputs")
 
 
-def massage_complex(attr: Any, seen: List[Any]) -> Any:
+def massage_complex(attr: Any, seen: list[Any]) -> Any:
     def is_public_key(key: str) -> bool:
         return not key.startswith("_")
 
     def serialize_all_keys(include: Callable[[str], bool]):
-        plain_object: Dict[str, Any] = {}
+        plain_object: dict[str, Any] = {}
         for key in attr.__dict__.keys():
             if include(key):
                 plain_object[key] = massage(attr.__dict__[key], seen)
@@ -290,7 +291,7 @@ def massage_complex(attr: Any, seen: List[Any]) -> Any:
     return serialize_all_keys(is_public_key)
 
 
-def reference_contains(val1: Any, seen: List[Any]) -> bool:
+def reference_contains(val1: Any, seen: list[Any]) -> bool:
     for val2 in seen:
         if val1 is val2:
             return True

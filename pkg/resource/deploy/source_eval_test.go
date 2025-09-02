@@ -180,9 +180,38 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 				protect = *g.Protect
 			}
 			s.Done(&RegisterResult{
-				State: resource.NewState(g.Type, resp.URN, g.Custom, false, resp.ID, g.Properties, resp.Outputs, g.Parent,
-					protect, false, false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
-					"", false, "", nil, nil, "", nil, nil, false, "", nil),
+				State: resource.NewState{
+					Type:                    g.Type,
+					URN:                     resp.URN,
+					Custom:                  g.Custom,
+					Delete:                  false,
+					ID:                      resp.ID,
+					Inputs:                  g.Properties,
+					Outputs:                 resp.Outputs,
+					Parent:                  g.Parent,
+					Protect:                 protect,
+					Taint:                   false,
+					External:                false,
+					Dependencies:            g.Dependencies,
+					InitErrors:              nil,
+					Provider:                g.Provider,
+					PropertyDependencies:    g.PropertyDependencies,
+					PendingReplacement:      false,
+					AdditionalSecretOutputs: nil,
+					Aliases:                 nil,
+					CustomTimeouts:          nil,
+					ImportID:                "",
+					RetainOnDelete:          false,
+					DeletedWith:             "",
+					Created:                 nil,
+					Modified:                nil,
+					SourcePosition:          "",
+					IgnoreChanges:           nil,
+					ReplaceOnChanges:        nil,
+					RefreshBeforeUpdate:     false,
+					ViewOf:                  "",
+					ResourceHooks:           nil,
+				}.Make(),
 			})
 		}
 		return nil
@@ -295,29 +324,134 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgA", "providerA", nil, ""),
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", nil,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    componentURN.Type(),
+				Name:                    componentURN.Name(),
+				Custom:                  false,
+				Properties:              resource.PropertyMap{},
+				Parent:                  "",
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                "",
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		// Register a couple resources using provider A.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:index:typA", "res1", true, resource.PropertyMap{}, componentURN, nil, nil,
-				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgA:index:typA",
+				Name:                    "res1",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  componentURN,
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                providerARef.String(),
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:index:typA", "res2", true, resource.PropertyMap{}, componentURN, nil, nil,
-				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgA:index:typA",
+				Name:                    "res2",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  componentURN,
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                providerARef.String(),
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		// Register two more providers.
 		newProviderEvent("pkgA", "providerB", nil, ""),
 		newProviderEvent("pkgC", "providerC", nil, componentURN),
 		// Register a few resources that use the new providers.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:index:typB", "res3", true, resource.PropertyMap{}, "", nil, nil,
-				providerBRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgB:index:typB",
+				Name:                    "res3",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  "",
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                providerBRef.String(),
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:index:typC", "res4", true, resource.PropertyMap{}, "", nil, nil,
-				providerCRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgB:index:typC",
+				Name:                    "res4",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  "",
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                providerCRef.String(),
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 	}
 
@@ -359,9 +493,38 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			protect = *goal.Protect
 		}
 		reg.Done(&RegisterResult{
-			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, protect, false, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-				false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil),
+			State: resource.NewState{
+				Type:                    goal.Type,
+				URN:                     urn,
+				Custom:                  goal.Custom,
+				Delete:                  false,
+				ID:                      id,
+				Inputs:                  goal.Properties,
+				Outputs:                 resource.PropertyMap{},
+				Parent:                  goal.Parent,
+				Protect:                 protect,
+				Taint:                   false,
+				External:                false,
+				Dependencies:            goal.Dependencies,
+				InitErrors:              nil,
+				Provider:                goal.Provider,
+				PropertyDependencies:    goal.PropertyDependencies,
+				PendingReplacement:      false,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				CustomTimeouts:          nil,
+				ImportID:                "",
+				RetainOnDelete:          false,
+				DeletedWith:             "",
+				Created:                 nil,
+				Modified:                nil,
+				SourcePosition:          "",
+				IgnoreChanges:           nil,
+				ReplaceOnChanges:        nil,
+				RefreshBeforeUpdate:     false,
+				ViewOf:                  "",
+				ResourceHooks:           nil,
+			}.Make(),
 		})
 
 		processed++
@@ -394,26 +557,131 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", nil,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    componentURN.Type(),
+				Name:                    componentURN.Name(),
+				Custom:                  false,
+				Properties:              resource.PropertyMap{},
+				Parent:                  "",
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                "",
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:m:typA", "res1", true, resource.PropertyMap{},
-				componentURN, nil, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgA:m:typA",
+				Name:                    "res1",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  componentURN,
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                "",
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:m:typA", "res2", true, resource.PropertyMap{},
-				componentURN, nil, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgA:m:typA",
+				Name:                    "res2",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  componentURN,
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                "",
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", nil,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgB:m:typB",
+				Name:                    "res3",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  "",
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                "",
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", nil,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", "", nil),
+			goal: resource.NewGoal{
+				Type:                    "pkgB:m:typC",
+				Name:                    "res4",
+				Custom:                  true,
+				Properties:              resource.PropertyMap{},
+				Parent:                  "",
+				Protect:                 nil,
+				Dependencies:            nil,
+				Provider:                "",
+				InitErrors:              []string{},
+				PropertyDependencies:    nil,
+				DeleteBeforeReplace:     nil,
+				IgnoreChanges:           nil,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				ID:                      "",
+				CustomTimeouts:          nil,
+				ReplaceOnChanges:        nil,
+				RetainOnDelete:          nil,
+				DeletedWith:             "",
+				SourcePosition:          "",
+				ResourceHooks:           nil,
+			}.Make(),
 		},
 	}
 
@@ -466,9 +734,38 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			protect = *goal.Protect
 		}
 		reg.Done(&RegisterResult{
-			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, protect, false, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-				false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil),
+			State: resource.NewState{
+				Type:                    goal.Type,
+				URN:                     urn,
+				Custom:                  goal.Custom,
+				Delete:                  false,
+				ID:                      id,
+				Inputs:                  goal.Properties,
+				Outputs:                 resource.PropertyMap{},
+				Parent:                  goal.Parent,
+				Protect:                 protect,
+				Taint:                   false,
+				External:                false,
+				Dependencies:            goal.Dependencies,
+				InitErrors:              nil,
+				Provider:                goal.Provider,
+				PropertyDependencies:    goal.PropertyDependencies,
+				PendingReplacement:      false,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				CustomTimeouts:          nil,
+				ImportID:                "",
+				RetainOnDelete:          false,
+				DeletedWith:             "",
+				Created:                 nil,
+				Modified:                nil,
+				SourcePosition:          "",
+				IgnoreChanges:           nil,
+				ReplaceOnChanges:        nil,
+				RefreshBeforeUpdate:     false,
+				ViewOf:                  "",
+				ResourceHooks:           nil,
+			}.Make(),
 		})
 
 		processed++
@@ -561,9 +858,38 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		read := event.(ReadResourceEvent)
 		urn := newURN(read.Type(), read.Name(), read.Parent())
 		read.Done(&ReadResult{
-			State: resource.NewState(read.Type(), urn, true, false, read.ID(), read.Properties(),
-				resource.PropertyMap{}, read.Parent(), false, false, false, read.Dependencies(), nil, read.Provider(),
-				nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil),
+			State: resource.NewState{
+				Type:                    read.Type(),
+				URN:                     urn,
+				Custom:                  true,
+				Delete:                  false,
+				ID:                      read.ID(),
+				Inputs:                  read.Properties(),
+				Outputs:                 resource.PropertyMap{},
+				Parent:                  read.Parent(),
+				Protect:                 false,
+				Taint:                   false,
+				External:                false,
+				Dependencies:            read.Dependencies(),
+				InitErrors:              nil,
+				Provider:                read.Provider(),
+				PropertyDependencies:    nil,
+				PendingReplacement:      false,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				CustomTimeouts:          nil,
+				ImportID:                "",
+				RetainOnDelete:          false,
+				DeletedWith:             "",
+				Created:                 nil,
+				Modified:                nil,
+				SourcePosition:          "",
+				IgnoreChanges:           nil,
+				ReplaceOnChanges:        nil,
+				RefreshBeforeUpdate:     false,
+				ViewOf:                  "",
+				ResourceHooks:           nil,
+			}.Make(),
 		})
 		reads++
 	}
@@ -656,18 +982,76 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			}
 
 			e.Done(&RegisterResult{
-				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-					goal.Parent, protect, false, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-					false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil),
+				State: resource.NewState{
+					Type:                    goal.Type,
+					URN:                     urn,
+					Custom:                  goal.Custom,
+					Delete:                  false,
+					ID:                      id,
+					Inputs:                  goal.Properties,
+					Outputs:                 resource.PropertyMap{},
+					Parent:                  goal.Parent,
+					Protect:                 protect,
+					Taint:                   false,
+					External:                false,
+					Dependencies:            goal.Dependencies,
+					InitErrors:              nil,
+					Provider:                goal.Provider,
+					PropertyDependencies:    goal.PropertyDependencies,
+					PendingReplacement:      false,
+					AdditionalSecretOutputs: nil,
+					Aliases:                 nil,
+					CustomTimeouts:          nil,
+					ImportID:                "",
+					RetainOnDelete:          false,
+					DeletedWith:             "",
+					Created:                 nil,
+					Modified:                nil,
+					SourcePosition:          "",
+					IgnoreChanges:           nil,
+					ReplaceOnChanges:        nil,
+					RefreshBeforeUpdate:     false,
+					ViewOf:                  "",
+					ResourceHooks:           nil,
+				}.Make(),
 			})
 			registers++
 
 		case ReadResourceEvent:
 			urn := newURN(e.Type(), e.Name(), e.Parent())
 			e.Done(&ReadResult{
-				State: resource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
-					resource.PropertyMap{}, e.Parent(), false, false, false, e.Dependencies(), nil, e.Provider(), nil,
-					false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "", nil),
+				State: resource.NewState{
+					Type:                    e.Type(),
+					URN:                     urn,
+					Custom:                  true,
+					Delete:                  false,
+					ID:                      e.ID(),
+					Inputs:                  e.Properties(),
+					Outputs:                 resource.PropertyMap{},
+					Parent:                  e.Parent(),
+					Protect:                 false,
+					Taint:                   false,
+					External:                false,
+					Dependencies:            e.Dependencies(),
+					InitErrors:              nil,
+					Provider:                e.Provider(),
+					PropertyDependencies:    nil,
+					PendingReplacement:      false,
+					AdditionalSecretOutputs: nil,
+					Aliases:                 nil,
+					CustomTimeouts:          nil,
+					ImportID:                "",
+					RetainOnDelete:          false,
+					DeletedWith:             "",
+					Created:                 nil,
+					Modified:                nil,
+					SourcePosition:          "",
+					IgnoreChanges:           nil,
+					ReplaceOnChanges:        nil,
+					RefreshBeforeUpdate:     false,
+					ViewOf:                  "",
+					ResourceHooks:           nil,
+				}.Make(),
 			})
 			reads++
 		}
@@ -823,19 +1207,75 @@ func TestDisableDefaultProviders(t *testing.T) {
 				case ReadResourceEvent:
 					urn := newURN(event.Type(), event.Name(), event.Parent())
 					event.Done(&ReadResult{
-						State: resource.NewState(event.Type(), urn, true, false, event.ID(), event.Properties(),
-							resource.PropertyMap{}, event.Parent(), false, false, false, event.Dependencies(), nil,
-							event.Provider(), nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false,
-							"", nil),
+						State: resource.NewState{
+							Type:                    event.Type(),
+							URN:                     urn,
+							Custom:                  true,
+							Delete:                  false,
+							ID:                      event.ID(),
+							Inputs:                  event.Properties(),
+							Outputs:                 resource.PropertyMap{},
+							Parent:                  event.Parent(),
+							Protect:                 false,
+							Taint:                   false,
+							External:                false,
+							Dependencies:            event.Dependencies(),
+							InitErrors:              nil,
+							Provider:                event.Provider(),
+							PropertyDependencies:    nil,
+							PendingReplacement:      false,
+							AdditionalSecretOutputs: nil,
+							Aliases:                 nil,
+							CustomTimeouts:          nil,
+							ImportID:                "",
+							RetainOnDelete:          false,
+							DeletedWith:             "",
+							Created:                 nil,
+							Modified:                nil,
+							SourcePosition:          "",
+							IgnoreChanges:           nil,
+							ReplaceOnChanges:        nil,
+							RefreshBeforeUpdate:     false,
+							ViewOf:                  "",
+							ResourceHooks:           nil,
+						}.Make(),
 					})
 					reads++
 				case RegisterResourceEvent:
 					urn := newURN(event.Goal().Type, event.Goal().Name, event.Goal().Parent)
 					event.Done(&RegisterResult{
-						State: resource.NewState(event.Goal().Type, urn, true, false, "id", event.Goal().Properties,
-							resource.PropertyMap{}, event.Goal().Parent, false, false, false, event.Goal().Dependencies,
-							nil, event.Goal().Provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil,
-							nil, false, "", nil),
+						State: resource.NewState{
+							Type:                    event.Goal().Type,
+							URN:                     urn,
+							Custom:                  true,
+							Delete:                  false,
+							ID:                      "id",
+							Inputs:                  event.Goal().Properties,
+							Outputs:                 resource.PropertyMap{},
+							Parent:                  event.Goal().Parent,
+							Protect:                 false,
+							Taint:                   false,
+							External:                false,
+							Dependencies:            event.Goal().Dependencies,
+							InitErrors:              nil,
+							Provider:                event.Goal().Provider,
+							PropertyDependencies:    nil,
+							PendingReplacement:      false,
+							AdditionalSecretOutputs: nil,
+							Aliases:                 nil,
+							CustomTimeouts:          nil,
+							ImportID:                "",
+							RetainOnDelete:          false,
+							DeletedWith:             "",
+							Created:                 nil,
+							Modified:                nil,
+							SourcePosition:          "",
+							IgnoreChanges:           nil,
+							ReplaceOnChanges:        nil,
+							RefreshBeforeUpdate:     false,
+							ViewOf:                  "",
+							ResourceHooks:           nil,
+						}.Make(),
 					})
 					registers++
 				default:
@@ -1913,7 +2353,7 @@ func TestDefaultProviders(t *testing.T) {
 					config: &configSourceMock{
 						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 							return resource.PropertyMap{
-								"disable-default-providers": resource.NewNumberProperty(100),
+								"disable-default-providers": resource.NewProperty(100.0),
 							}, nil
 						},
 					},
@@ -1927,7 +2367,7 @@ func TestDefaultProviders(t *testing.T) {
 					config: &configSourceMock{
 						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 							return resource.PropertyMap{
-								"disable-default-providers": resource.NewStringProperty(""),
+								"disable-default-providers": resource.NewProperty(""),
 							}, nil
 						},
 					},
@@ -1943,7 +2383,7 @@ func TestDefaultProviders(t *testing.T) {
 						config: &configSourceMock{
 							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 								return resource.PropertyMap{
-									"disable-default-providers": resource.NewStringProperty("[[["),
+									"disable-default-providers": resource.NewProperty("[[["),
 								}, nil
 							},
 						},
@@ -1958,7 +2398,7 @@ func TestDefaultProviders(t *testing.T) {
 						config: &configSourceMock{
 							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
 								return resource.PropertyMap{
-									"disable-default-providers": resource.NewStringProperty(`["foo", 2, 3]`),
+									"disable-default-providers": resource.NewProperty(`["foo", 2, 3]`),
 								}, nil
 							},
 						},
@@ -2267,7 +2707,7 @@ func TestCall(t *testing.T) {
 				) (plugin.CallResponse, error) {
 					assert.Equal(t,
 						resource.PropertyMap{
-							"test": resource.NewStringProperty("test-value"),
+							"test": resource.NewProperty("test-value"),
 						},
 						req.Args)
 					require.Equal(t, 1, len(req.Options.ArgDependencies))
@@ -2300,7 +2740,7 @@ func TestCall(t *testing.T) {
 		}()
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewStringProperty("test-value"),
+			"test": resource.NewProperty("test-value"),
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
@@ -2369,7 +2809,7 @@ func TestCall(t *testing.T) {
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewStringProperty("test-value"),
+			"test": resource.NewProperty("test-value"),
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
@@ -2428,7 +2868,7 @@ func TestCall(t *testing.T) {
 				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					return plugin.CallResponse{
 						Return: resource.PropertyMap{
-							"result": resource.NewNumberProperty(100),
+							"result": resource.NewProperty(100.0),
 						},
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"prop": {
@@ -2450,7 +2890,7 @@ func TestCall(t *testing.T) {
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewStringProperty("test-value"),
+			"test": resource.NewProperty("test-value"),
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
@@ -3142,7 +3582,7 @@ func TestValidationFailures(t *testing.T) {
 
 		props := resource.PropertyMap{
 			"testproperty": resource.NewPropertyValue("testvalue"),
-			"nested": resource.NewArrayProperty(
+			"nested": resource.NewProperty(
 				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
 			),
 		}
@@ -3175,69 +3615,69 @@ func TestDowngradeOutputValues(t *testing.T) {
 		{
 			"plain",
 			resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewNumberProperty(42),
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(42.0),
 			},
 			resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewNumberProperty(42),
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(42.0),
 			},
 		},
 		{
 			"secret",
 			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"foo": resource.MakeSecret(resource.NewProperty("hello")),
 			},
 			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"foo": resource.MakeSecret(resource.NewProperty("hello")),
 			},
 		},
 		{
 			"output",
 			resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 				}),
 			},
 			resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty("hello"),
 			},
 		},
 		{
 			"secret output",
 			resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 					Secret:  true,
 				}),
 			},
 			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"foo": resource.MakeSecret(resource.NewProperty("hello")),
 			},
 		},
 		{
 			"unknown output",
 			resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{}),
+				"foo": resource.NewProperty(resource.Output{}),
 			},
 			resource.PropertyMap{
-				"foo": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeComputed(resource.NewProperty("")),
 			},
 		},
 		{
 			"unknown resource reference",
 			resource.PropertyMap{
-				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+				"foo": resource.NewProperty(resource.ResourceReference{
 					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  resource.NewOutputProperty(resource.Output{}),
+					ID:  resource.NewProperty(resource.Output{}),
 				}),
 			},
 			resource.PropertyMap{
-				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+				"foo": resource.NewProperty(resource.ResourceReference{
 					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  resource.MakeComputed(resource.NewStringProperty("")),
+					ID:  resource.MakeComputed(resource.NewProperty("")),
 				}),
 			},
 		},

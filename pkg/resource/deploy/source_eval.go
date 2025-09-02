@@ -478,10 +478,29 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal(
-			providers.MakeProviderType(req.Package()),
-			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, nil, "", "", nil),
+		goal: resource.NewGoal{
+			Type:                    providers.MakeProviderType(req.Package()),
+			Name:                    req.DefaultName(),
+			Custom:                  true,
+			Properties:              inputs,
+			Parent:                  "",
+			Protect:                 nil,
+			Dependencies:            nil,
+			Provider:                "",
+			InitErrors:              nil,
+			PropertyDependencies:    nil,
+			DeleteBeforeReplace:     nil,
+			IgnoreChanges:           nil,
+			AdditionalSecretOutputs: nil,
+			Aliases:                 nil,
+			ID:                      "",
+			CustomTimeouts:          nil,
+			ReplaceOnChanges:        nil,
+			RetainOnDelete:          nil,
+			DeletedWith:             "",
+			SourcePosition:          "",
+			ResourceHooks:           nil,
+		}.Make(),
 		done: done,
 	}
 	return event, done, nil
@@ -1937,7 +1956,7 @@ func errorToMessage(err error, inputs resource.PropertyMap) string {
 			message = fmt.Sprintf("%v: %v", message, e.Cause().Message())
 		}
 		if len(e.InputPropertiesErrors()) > 0 {
-			props := resource.NewObjectProperty(inputs)
+			props := resource.NewProperty(inputs)
 			for _, err := range e.InputPropertiesErrors() {
 				propertyPath, e := resource.ParsePropertyPath(err.PropertyPath)
 				if e == nil {
@@ -2536,13 +2555,29 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				timeouts.Update = seconds
 			}
 		}
-
-		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
-			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition, resourceHooks,
-		)
-
+		goal := resource.NewGoal{
+			Type:                    t,
+			Name:                    name,
+			Custom:                  custom,
+			Properties:              props,
+			Parent:                  parent,
+			Protect:                 protect,
+			Dependencies:            rawDependencies,
+			Provider:                providerRef.String(),
+			InitErrors:              nil,
+			PropertyDependencies:    rawPropertyDependencies,
+			DeleteBeforeReplace:     opts.DeleteBeforeReplace,
+			IgnoreChanges:           ignoreChanges,
+			AdditionalSecretOutputs: additionalSecretKeys,
+			Aliases:                 parsedAliases,
+			ID:                      id,
+			CustomTimeouts:          &timeouts,
+			ReplaceOnChanges:        replaceOnChanges,
+			RetainOnDelete:          retainOnDelete,
+			DeletedWith:             deletedWith,
+			SourcePosition:          sourcePosition,
+			ResourceHooks:           resourceHooks,
+		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
 			parentGoal, ok := rm.resGoals[goal.Parent]
@@ -2878,7 +2913,7 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			if output.Known {
 				result = downgradeOutputPropertyValue(output.Element)
 			} else {
-				result = resource.MakeComputed(resource.NewStringProperty(""))
+				result = resource.MakeComputed(resource.NewProperty(""))
 			}
 			if output.Secret {
 				result = resource.MakeSecret(result)
@@ -2886,21 +2921,21 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			return result
 		}
 		if v.IsObject() {
-			return resource.NewObjectProperty(downgradeOutputValues(v.ObjectValue()))
+			return resource.NewProperty(downgradeOutputValues(v.ObjectValue()))
 		}
 		if v.IsArray() {
 			result := make([]resource.PropertyValue, len(v.ArrayValue()))
 			for i, elem := range v.ArrayValue() {
 				result[i] = downgradeOutputPropertyValue(elem)
 			}
-			return resource.NewArrayProperty(result)
+			return resource.NewProperty(result)
 		}
 		if v.IsSecret() {
 			return resource.MakeSecret(downgradeOutputPropertyValue(v.SecretValue().Element))
 		}
 		if v.IsResourceReference() {
 			ref := v.ResourceReferenceValue()
-			return resource.NewResourceReferenceProperty(
+			return resource.NewProperty(
 				resource.ResourceReference{
 					URN:            ref.URN,
 					ID:             downgradeOutputPropertyValue(ref.ID),
@@ -2949,7 +2984,7 @@ func upgradeOutputValues(
 				currentDeps = currentDeps.Union(deps)
 
 				output.Dependencies = currentDeps.ToSlice()
-				result[k] = resource.NewOutputProperty(output)
+				result[k] = resource.NewProperty(output)
 			}
 		} else {
 			// no deps just copy across

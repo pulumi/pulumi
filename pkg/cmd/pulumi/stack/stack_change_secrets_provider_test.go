@@ -188,7 +188,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				URN:  resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type: resource.RootStackType,
 				Outputs: resource.PropertyMap{
-					"foo": resource.MakeSecret(resource.NewStringProperty("bar")),
+					"foo": resource.MakeSecret(resource.NewProperty("bar")),
 				},
 			},
 		},
@@ -270,7 +270,7 @@ runtime: mock
 	// Check that the snapshot still records the secret value with the same value
 	foo := snapshot.Resources[0].Outputs["foo"]
 	assert.True(t, foo.IsSecret())
-	assert.Equal(t, resource.NewStringProperty("bar"), foo.SecretValue().Element)
+	assert.Equal(t, resource.NewProperty("bar"), foo.SecretValue().Element)
 	// Check the config has been updated to the new secret
 	project, err := workspace.LoadProject("Pulumi.yaml")
 	require.NoError(t, err)

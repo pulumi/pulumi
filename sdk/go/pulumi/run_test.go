@@ -153,7 +153,7 @@ func TestRegisterResource(t *testing.T) {
 				assert.Equal(t, "", args.Provider)
 				assert.Equal(t, "", args.ID)
 
-				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+				return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 			case "test:resource:complextype":
 				assert.Equal(t, "resB", args.Name)
 				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -166,9 +166,9 @@ func TestRegisterResource(t *testing.T) {
 				assert.Equal(t, "", args.ID)
 
 				return "someID", resource.PropertyMap{
-					"foo":    resource.NewStringProperty("qux"),
-					"secret": resource.MakeSecret(resource.NewStringProperty("shh")),
-					"output": resource.MakeOutput(resource.NewStringProperty("known unknown")),
+					"foo":    resource.NewProperty("qux"),
+					"secret": resource.MakeSecret(resource.NewProperty("shh")),
+					"output": resource.MakeOutput(resource.NewProperty("known unknown")),
 				}, nil
 			default:
 				assert.Fail(t, "Expected a valid resource type, got %v", args.TypeToken)
@@ -278,7 +278,7 @@ func TestReadResource(t *testing.T) {
 			assert.Equal(t, "", args.Provider)
 			assert.Equal(t, "someID", args.ID)
 
-			return args.ID, resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return args.ID, resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -569,7 +569,7 @@ func TestRemoteComponent(t *testing.T) {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
 			case "pkg:index:MyRemoteComponent":
-				outprop := resource.NewStringProperty("output: " + args.Inputs["inprop"].StringValue())
+				outprop := resource.NewProperty("output: " + args.Inputs["inprop"].StringValue())
 				return args.Name + "_id", resource.PropertyMap{
 					"inprop":  args.Inputs["inprop"],
 					"outprop": outprop,
@@ -611,7 +611,7 @@ func TestWaitOrphanedApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -640,7 +640,7 @@ func TestWaitOrphanedNestedApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -672,7 +672,7 @@ func TestWaitOrphanedAllApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -704,7 +704,7 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -746,7 +746,7 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -778,7 +778,7 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -820,7 +820,7 @@ func TestWaitOrphanedResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -844,7 +844,7 @@ func TestWaitResourceInsideApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -875,7 +875,7 @@ func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -913,7 +913,7 @@ func TestWaitRecursiveApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -952,7 +952,7 @@ func TestWaitOrphanedManualOutput(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -989,7 +989,7 @@ func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -1010,7 +1010,7 @@ func TestExportResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -1092,10 +1092,10 @@ func TestResourceInput(t *testing.T) {
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			switch args.TypeToken {
 			case "test:resource:type":
-				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+				return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 			case "pkg:index:MyRemoteComponent":
 				return args.Name + "_id", resource.PropertyMap{
-					"outprop": resource.NewStringProperty("bar"),
+					"outprop": resource.NewProperty("bar"),
 				}, nil
 			default:
 				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)

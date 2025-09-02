@@ -33,6 +33,7 @@ import (
 
 	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -833,14 +834,6 @@ func ProviderFromSource(
 		PluginSpec: pluginSpec,
 	}
 
-	isExecutable := func(info fs.FileInfo) bool {
-		// Windows doesn't have executable bits to check
-		if runtime.GOOS == "windows" {
-			return !info.IsDir()
-		}
-		return info.Mode()&0o111 != 0 && !info.IsDir()
-	}
-
 	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
 		p, err := pctx.Host.Provider(descriptor)
 		if err == nil {
@@ -922,54 +915,41 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
-	// For all plugins except for file paths, we try to load it from the provider host.
-	//
-	// Note that if a local folder has a name that could match an downloadable plugin, we
-	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
-	// name.
-	if !plugin.IsLocalPluginPath(pctx.Base(), packageSource) {
-		if !env.DisableRegistryResolve.Value() && env.Experimental.Value() {
-			meta, err := registry.ResolvePackageFromName(pctx.Base(), reg, pluginSpec.Name, pluginSpec.Version)
-			if err == nil {
-				spec := workspace.PluginSpec{
-					Name:              meta.Name,
-					Kind:              apitype.ResourcePlugin,
-					Version:           &meta.Version,
-					PluginDownloadURL: meta.PluginDownloadURL,
-				}
-				var params *workspace.Parameterization
-				if meta.Parameterization != nil {
-					spec.Name = meta.Parameterization.BaseProvider.Name
-					spec.Version = &meta.Parameterization.BaseProvider.Version
-					params = &workspace.Parameterization{
-						Name:    meta.Name,
-						Version: meta.Version,
-						Value:   meta.Parameterization.Parameter,
-					}
-				}
-				return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
-					Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
-					Version: meta.Version.String(),
-				})
-			} else if errors.Is(err, registry.ErrNotFound) &&
-				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
-				// Let's try installing it without the registry.
-				return setupProvider(descriptor, nil)
-			}
-			for _, suggested := range registry.GetSuggestedPackages(err) {
+	result, err := packageresolution.Resolve(
+		pctx.Base(),
+		reg,
+		pluginSpec,
+		packageresolution.Options{
+			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
+			Experimental:           env.Experimental.Value(),
+		},
+		pctx.Root,
+	)
+	if err != nil {
+		var packageNotFoundErr *packageresolution.PackageNotFoundError
+		if errors.As(err, &packageNotFoundErr) {
+			for _, suggested := range packageNotFoundErr.Suggestions() {
 				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-					suggested.Source, suggested.Publisher, suggested.Name,
-					suggested.Version,
-				)
+					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
 			}
-			return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", err)
 		}
-
-		// We assume this was a plugin and not a path, so load the plugin.
-		return setupProvider(descriptor, nil)
+		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", err)
 	}
 
-	// We were given a path to a binary or folder, so invoke that.
+	switch res := result.(type) {
+	case packageresolution.LocalPathResult:
+		return setupProviderFromPath(res.LocalPluginPathAbs, pctx)
+	case packageresolution.ExternalSourceResult:
+		return setupProvider(descriptor, nil)
+	case packageresolution.RegistryResult:
+		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
+	default:
+		contract.Failf("Unexpected result type: %T", result)
+		return Provider{}, nil, nil
+	}
+}
+
+func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider, *workspace.PackageSpec, error) {
 	info, err := os.Stat(packageSource)
 	if os.IsNotExist(err) {
 		return Provider{}, nil, fmt.Errorf("could not find file %s", packageSource)
@@ -987,4 +967,38 @@ func ProviderFromSource(
 		return Provider{}, nil, err
 	}
 	return Provider{Provider: p}, nil, nil
+}
+
+func isExecutable(info fs.FileInfo) bool {
+	// Windows doesn't have executable bits to check
+	if runtime.GOOS == "windows" {
+		return !info.IsDir()
+	}
+	return info.Mode()&0o111 != 0 && !info.IsDir()
+}
+
+func setupProviderFromRegistryMeta(
+	meta apitype.PackageMetadata,
+	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
+) (Provider, *workspace.PackageSpec, error) {
+	spec := workspace.PluginSpec{
+		Name:              meta.Name,
+		Kind:              apitype.ResourcePlugin,
+		Version:           &meta.Version,
+		PluginDownloadURL: meta.PluginDownloadURL,
+	}
+	var params *workspace.Parameterization
+	if meta.Parameterization != nil {
+		spec.Name = meta.Parameterization.BaseProvider.Name
+		spec.Version = &meta.Parameterization.BaseProvider.Version
+		params = &workspace.Parameterization{
+			Name:    meta.Name,
+			Version: meta.Version,
+			Value:   meta.Parameterization.Parameter,
+		}
+	}
+	return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
+		Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
+		Version: meta.Version.String(),
+	})
 }

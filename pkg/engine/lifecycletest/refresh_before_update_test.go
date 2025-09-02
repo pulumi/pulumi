@@ -96,7 +96,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{
-		"input": resource.NewStringProperty("value-1"),
+		"input": resource.NewProperty("value-1"),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -137,7 +137,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 
 	// Second update.
 	inputs = resource.PropertyMap{
-		"input": resource.NewStringProperty("value-2"),
+		"input": resource.NewProperty("value-2"),
 	}
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)

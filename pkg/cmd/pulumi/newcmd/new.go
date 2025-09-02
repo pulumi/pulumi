@@ -815,6 +815,11 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 		return "", nil
 	}
 
+	if args.aiPrompt == "" && !opts.IsInteractive {
+		return "", errors.New(
+			"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
+	}
+
 	checkedBackend, ok := b.(httpstate.Backend)
 	if !ok {
 		if args.aiLanguage != "" && args.aiPrompt == "" {

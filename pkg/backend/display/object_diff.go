@@ -287,7 +287,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 		for i, v := range p.ArrayValue() {
 			arr[i] = massageStackPreviewAdd(v)
 		}
-		return resource.NewArrayProperty(arr)
+		return resource.NewProperty(arr)
 	case p.IsObject():
 		obj := resource.PropertyMap{}
 		for k, v := range p.ObjectValue() {
@@ -295,7 +295,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 				obj[k] = massageStackPreviewAdd(v)
 			}
 		}
-		return resource.NewObjectProperty(obj)
+		return resource.NewProperty(obj)
 	default:
 		return p
 	}
@@ -570,7 +570,18 @@ func propertyTitlePrinter(name string, align int) func(*propertyPrinter) {
 }
 
 func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
+	p.printPropertyValueRecurse(v)
+	p.writeVerbatim("\n")
+}
+
+func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 	switch {
+	case v.IsSecret():
+		if p.showSecrets {
+			p.printPropertyValueRecurse(v.SecretValue().Element)
+		} else {
+			p.printPrimitivePropertyValue(v)
+		}
 	case isPrimitive(v):
 		p.printPrimitivePropertyValue(v)
 	case v.IsArray():
@@ -644,7 +655,6 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 	default:
 		contract.Failf("Unknown PropertyValue type %v", v)
 	}
-	p.writeVerbatim("\n")
 }
 
 func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
@@ -655,9 +665,9 @@ func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
 func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
 	switch t := v.(type) {
 	case *asset.Asset:
-		return resource.NewAssetProperty(t)
+		return resource.NewProperty(t)
 	case *archive.Archive:
-		return resource.NewArchiveProperty(t)
+		return resource.NewProperty(t)
 	default:
 		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
 		return resource.PropertyValue{V: nil}
@@ -857,11 +867,7 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writeVerbatim("[unknown]")
 		}
 	} else if v.IsSecret() {
-		if p.showSecrets {
-			p.printPropertyValue(v.SecretValue().Element)
-		} else {
-			p.writeVerbatim("[secret]")
-		}
+		p.writeVerbatim("[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}

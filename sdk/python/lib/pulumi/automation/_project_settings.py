@@ -14,13 +14,10 @@
 
 from typing import (
     Any,
-    Dict,
-    Iterable,
-    Mapping,
     Optional,
-    Tuple,
     Union,
 )
+from collections.abc import Iterable, Mapping
 
 
 class ProjectRuntimeInfo:
@@ -34,14 +31,14 @@ class ProjectRuntimeInfo:
         self.options = options
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "ProjectRuntimeInfo":
+    def from_dict(data: dict[str, Any]) -> "ProjectRuntimeInfo":
         """Deserialize a ProjectRuntimeInfo from a dictionary."""
         return ProjectRuntimeInfo(
             name=data["name"],
             options=data.get("options"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize a ProjectRuntimeInfo to a dictionary."""
         return _to_dict(
             [
@@ -69,7 +66,7 @@ class ProjectTemplateConfigValue:
         self.secret = secret
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "ProjectTemplateConfigValue":
+    def from_dict(data: dict[str, Any]) -> "ProjectTemplateConfigValue":
         """Deserialize a ProjectTemplateConfigValue from a dictionary."""
         return ProjectTemplateConfigValue(
             description=data.get("description"),
@@ -77,7 +74,7 @@ class ProjectTemplateConfigValue:
             secret=data.get("secret", False),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize a ProjectTemplateConfigValue to a dictionary."""
         return _to_dict(
             [
@@ -109,7 +106,7 @@ class ProjectTemplate:
         self.important = important
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "ProjectTemplate":
+    def from_dict(data: dict[str, Any]) -> "ProjectTemplate":
         """Deserialize a ProjectTemplate from a dictionary."""
         return ProjectTemplate(
             description=data.get("description"),
@@ -121,7 +118,7 @@ class ProjectTemplate:
             important=data.get("important"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize a ProjectTemplate to a dictionary."""
         return _to_dict(
             [
@@ -142,13 +139,13 @@ class ProjectBackend:
         self.url = url
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "ProjectBackend":
+    def from_dict(data: dict[str, Any]) -> "ProjectBackend":
         """Deserialize a ProjectBackend from a dictionary."""
         return ProjectBackend(
             url=data.get("url"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize a ProjectBackend to a dictionary."""
         return _to_dict(
             [
@@ -206,7 +203,7 @@ class ProjectSettings:
         self.backend = backend
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "ProjectSettings":
+    def from_dict(data: dict[str, Any]) -> "ProjectSettings":
         """Deserialize a ProjectSettings from a dictionary."""
         runtime = data["runtime"]
         if isinstance(runtime, dict):
@@ -233,7 +230,7 @@ class ProjectSettings:
             backend=backend,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize a ProjectSettings to a dictionary."""
         return _to_dict(
             [
@@ -258,6 +255,6 @@ class ProjectSettings:
         )
 
 
-def _to_dict(kvs: Iterable[Tuple[str, Any]]) -> Dict[str, Any]:
+def _to_dict(kvs: Iterable[tuple[str, Any]]) -> dict[str, Any]:
     """Convert a list of key-value pairs into a dictionary, filtering out None values."""
     return {k: v for k, v in kvs if v is not None}

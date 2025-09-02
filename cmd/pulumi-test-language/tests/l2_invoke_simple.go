@@ -46,8 +46,8 @@ func init() {
 
 					outputs := stack.Outputs
 
-					AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
-					AssertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
+					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
+					AssertPropertyMapMember(l, outputs, "goodbye", resource.NewProperty("goodbye world"))
 				},
 			},
 		},

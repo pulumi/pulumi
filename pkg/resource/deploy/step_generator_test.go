@@ -327,7 +327,7 @@ func TestEngineDiff(t *testing.T) {
 				"val0": resource.NewPropertyValue(3.14),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"val1": resource.NewNumberProperty(42),
+				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
 			expected:        []resource.PropertyKey{"val0", "val1", "val2"},
@@ -339,7 +339,7 @@ func TestEngineDiff(t *testing.T) {
 				"val1": resource.NewPropertyValue(42),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"val1": resource.NewNumberProperty(42),
+				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
 			expected:        []resource.PropertyKey{"val2"},

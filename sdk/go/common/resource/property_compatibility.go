@@ -42,27 +42,27 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	var r PropertyValue
 	switch {
 	case v.IsBool():
-		r = NewBoolProperty(v.AsBool())
+		r = NewProperty(v.AsBool())
 	case v.IsNumber():
-		r = NewNumberProperty(v.AsNumber())
+		r = NewProperty(v.AsNumber())
 	case v.IsString():
-		r = NewStringProperty(v.AsString())
+		r = NewProperty(v.AsString())
 	case v.IsArray():
 		vArr := v.AsArray().AsSlice()
 		arr := make([]PropertyValue, len(vArr))
 		for i, vElem := range vArr {
 			arr[i] = ToResourcePropertyValue(vElem)
 		}
-		r = NewArrayProperty(arr)
+		r = NewProperty(arr)
 	case v.IsMap():
-		r = NewObjectProperty(ToResourcePropertyMap(v.AsMap()))
+		r = NewProperty(ToResourcePropertyMap(v.AsMap()))
 	case v.IsAsset():
-		r = NewAssetProperty(v.AsAsset())
+		r = NewProperty(v.AsAsset())
 	case v.IsArchive():
-		r = NewArchiveProperty(v.AsArchive())
+		r = NewProperty(v.AsArchive())
 	case v.IsResourceReference():
 		ref := v.AsResourceReference()
-		r = NewResourceReferenceProperty(ResourceReference{
+		r = NewProperty(ResourceReference{
 			URN:            ref.URN,
 			ID:             ToResourcePropertyValue(ref.ID),
 			PackageVersion: ref.PackageVersion,
@@ -73,7 +73,7 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 
 	switch {
 	case len(v.Dependencies()) > 0 || (v.Secret() && v.IsComputed()):
-		r = NewOutputProperty(Output{
+		r = NewProperty(Output{
 			Element:      r,
 			Known:        !v.IsComputed(),
 			Secret:       v.Secret(),

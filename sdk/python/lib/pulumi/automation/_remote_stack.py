@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional
+from typing import Optional
 
 from pulumi.automation._cmd import OnOutput
 from pulumi.automation._output import OutputMap
@@ -114,7 +114,7 @@ class RemoteStack:
         self,
         page_size: Optional[int] = None,
         page: Optional[int] = None,
-    ) -> List[UpdateSummary]:
+    ) -> list[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).

@@ -133,7 +133,7 @@ func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*r
 		"result": prefix + result,
 	})
 	if prefix != "" {
-		outputs["prefix"] = resource.NewStringProperty(prefix)
+		outputs["prefix"] = resource.NewProperty(prefix)
 	}
 	outputs["result"] = resource.MakeSecret(outputs["result"])
 

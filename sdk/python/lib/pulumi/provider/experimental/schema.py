@@ -325,4 +325,4 @@ def generate_schema(
 def remove_none(d: Union[dict[str, Any], Any]) -> dict[str, Any]:
     if not isinstance(d, dict):
         return d
-    return dict((k, remove_none(v)) for k, v in d.items() if v is not None)  # type: ignore
+    return {k: remove_none(v) for k, v in d.items() if v is not None}  # type: ignore

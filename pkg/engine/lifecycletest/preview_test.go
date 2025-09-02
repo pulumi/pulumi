@@ -36,10 +36,10 @@ import (
 func TestPreviewRefreshWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	updateOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("qux")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	updateOutputs := resource.PropertyMap{"foo": resource.NewProperty("qux")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -150,7 +150,7 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider for refresh
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a preview with refresh
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
@@ -187,21 +187,21 @@ func TestPreviewStackOutputs(t *testing.T) {
 		switch step {
 		case 0:
 			outputs = resource.PropertyMap{
-				"first":  resource.NewStringProperty("abc"),
-				"second": resource.NewStringProperty("def"),
+				"first":  resource.NewProperty("abc"),
+				"second": resource.NewProperty("def"),
 			}
 		case 1:
 			// Changes to "first" should be shown in the preview.
 			// Changes to "second" should not be shown in the preview, as it is not changed.
 			outputs = resource.PropertyMap{
-				"first":  resource.NewStringProperty("step 1"),
-				"second": resource.NewStringProperty("def"),
+				"first":  resource.NewProperty("step 1"),
+				"second": resource.NewProperty("def"),
 			}
 		case 2:
 			// We're changing "first" to an unknown, so it should not be shown in the preview.
 			outputs = resource.PropertyMap{
-				"first":  resource.NewComputedProperty(resource.Computed{}),
-				"second": resource.NewStringProperty("def"),
+				"first":  resource.NewProperty(resource.Computed{}),
+				"second": resource.NewProperty("def"),
 			}
 		}
 

@@ -652,17 +652,39 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	if !res.Custom && res.ID != "" {
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
-
-	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.Taint, res.External, res.Dependencies, res.InitErrors, res.Provider,
-		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
-		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified, res.SourcePosition, res.IgnoreChanges,
-		res.ReplaceOnChanges,
-		res.RefreshBeforeUpdate,
-		res.ViewOf,
-		res.ResourceHooks,
-	), nil
+	return resource.NewState{
+			Type:                    res.Type,
+			URN:                     res.URN,
+			Custom:                  res.Custom,
+			Delete:                  res.Delete,
+			ID:                      res.ID,
+			Inputs:                  inputs,
+			Outputs:                 outputs,
+			Parent:                  res.Parent,
+			Protect:                 res.Protect,
+			Taint:                   res.Taint,
+			External:                res.External,
+			Dependencies:            res.Dependencies,
+			InitErrors:              res.InitErrors,
+			Provider:                res.Provider,
+			PropertyDependencies:    res.PropertyDependencies,
+			PendingReplacement:      res.PendingReplacement,
+			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
+			Aliases:                 res.Aliases,
+			CustomTimeouts:          res.CustomTimeouts,
+			ImportID:                res.ImportID,
+			RetainOnDelete:          res.RetainOnDelete,
+			DeletedWith:             res.DeletedWith,
+			Created:                 res.Created,
+			Modified:                res.Modified,
+			SourcePosition:          res.SourcePosition,
+			IgnoreChanges:           res.IgnoreChanges,
+			ReplaceOnChanges:        res.ReplaceOnChanges,
+			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
+			ViewOf:                  res.ViewOf,
+			ResourceHooks:           res.ResourceHooks,
+		}.Make(),
+		nil
 }
 
 // DeserializeOperation hydrates a pending resource/operation pair.
@@ -696,14 +718,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return resource.NewBoolProperty(w), nil
+			return resource.NewProperty(w), nil
 		case float64:
-			return resource.NewNumberProperty(w), nil
+			return resource.NewProperty(w), nil
 		case string:
 			if w == computedValuePlaceholder {
-				return resource.MakeComputed(resource.NewStringProperty("")), nil
+				return resource.MakeComputed(resource.NewProperty("")), nil
 			}
-			return resource.NewStringProperty(w), nil
+			return resource.NewProperty(w), nil
 		case []interface{}:
 			arr := make([]resource.PropertyValue, len(w))
 			for i, elem := range w {
@@ -713,7 +735,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 				}
 				arr[i] = ev
 			}
-			return resource.NewArrayProperty(arr), nil
+			return resource.NewProperty(arr), nil
 		case map[string]interface{}:
 			obj, err := DeserializeProperties(w, dec)
 			if err != nil {
@@ -730,14 +752,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isasset, "resource with asset signature is not an asset")
-					return resource.NewAssetProperty(asset), nil
+					return resource.NewProperty(asset), nil
 				case archive.ArchiveSig:
 					archive, isarchive, err := archive.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isarchive, "resource with archive signature is not an archive")
-					return resource.NewArchiveProperty(archive), nil
+					return resource.NewProperty(archive), nil
 				case resource.SecretSig:
 					prop := resource.MakeSecret(resource.NewNullProperty())
 					secret := prop.SecretValue()
@@ -834,7 +856,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			}
 
 			// Otherwise, it's just a weakly typed object map.
-			return resource.NewObjectProperty(obj), nil
+			return resource.NewProperty(obj), nil
 		default:
 			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}

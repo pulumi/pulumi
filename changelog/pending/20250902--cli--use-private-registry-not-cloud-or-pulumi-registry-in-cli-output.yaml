@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Use "Private Registry", not cloud or Pulumi registry, in CLI output

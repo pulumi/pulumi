@@ -238,10 +238,10 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		ReadResult: plugin.ReadResult{
 			ID: req.ID,
 			Inputs: resource.PropertyMap{
-				"value": resource.NewBoolProperty(true),
+				"value": resource.NewProperty(true),
 			},
 			Outputs: resource.PropertyMap{
-				"value": resource.NewBoolProperty(true),
+				"value": resource.NewProperty(true),
 			},
 		},
 		Status: resource.StatusOK,

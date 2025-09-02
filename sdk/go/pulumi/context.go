@@ -832,7 +832,7 @@ func (ctx *Context) InvokePackage(
 	if err != nil {
 		return err
 	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), resultV.Elem())
 
 	if hasSecret {
 		return errors.New("unexpected secret result returned to invoke call, " +
@@ -857,7 +857,7 @@ func (ctx *Context) InvokePackageRaw(
 	if err != nil {
 		return false, err
 	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), resultV.Elem())
 	if err != nil {
 		return false, err
 	}
@@ -948,7 +948,7 @@ func (ctx *Context) InvokeOutput(
 		}
 
 		known := !outProps.ContainsUnknowns()
-		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
+		secret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), dest)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
@@ -1117,7 +1117,7 @@ func (ctx *Context) CallPackage(
 			var secret bool
 			dest := reflect.New(output.ElementType()).Elem()
 			known := !outprops.ContainsUnknowns()
-			secret, err = unmarshalOutput(ctx, resource.NewObjectProperty(outprops), dest)
+			secret, err = unmarshalOutput(ctx, resource.NewProperty(outprops), dest)
 			if err != nil {
 				internal.RejectOutput(output, err)
 			} else {
@@ -2144,9 +2144,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		return
 	}
 
-	outprops["urn"] = resource.NewStringProperty(urn)
+	outprops["urn"] = resource.NewProperty(urn)
 	if id != "" || !keepUnknowns {
-		outprops["id"] = resource.NewStringProperty(id)
+		outprops["id"] = resource.NewProperty(id)
 	} else {
 		outprops["id"] = resource.MakeComputed(resource.PropertyValue{})
 	}
@@ -2162,9 +2162,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 			}
 		}
 		if !known {
-			outprops[""] = resource.MakeComputed(resource.NewStringProperty(""))
+			outprops[""] = resource.MakeComputed(resource.NewProperty(""))
 		} else {
-			outprops[""] = resource.NewObjectProperty(remaining)
+			outprops[""] = resource.NewProperty(remaining)
 		}
 	}
 

@@ -19,7 +19,7 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 from google.protobuf import empty_pb2
 
@@ -124,7 +124,7 @@ class Mocks(ABC):
     """
 
     @abstractmethod
-    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str, str]]]]:
+    def call(self, args: MockCallArgs) -> tuple[dict, Optional[list[tuple[str, str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -133,7 +133,7 @@ class Mocks(ABC):
         return {}, None
 
     @abstractmethod
-    def new_resource(self, args: MockResourceArgs) -> Tuple[Optional[str], dict]:
+    def new_resource(self, args: MockResourceArgs) -> tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
@@ -150,7 +150,7 @@ class MockMonitor:
         state: dict
 
     mocks: Mocks
-    resources: Dict[str, ResourceRegistration]
+    resources: dict[str, ResourceRegistration]
 
     def __init__(self, mocks: Mocks):
         self.mocks = mocks

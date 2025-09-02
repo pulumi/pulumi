@@ -229,8 +229,8 @@ func TestResourceRemediation(t *testing.T) {
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that gets ignored because it runs first",
 							Properties: resource.PropertyMap{
-								"a":   resource.NewStringProperty("nope"),
-								"ggg": resource.NewBoolProperty(true),
+								"a":   resource.NewProperty("nope"),
+								"ggg": resource.NewProperty(true),
 							},
 						},
 						{
@@ -239,9 +239,9 @@ func TestResourceRemediation(t *testing.T) {
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that actually gets applied because it runs last",
 							Properties: resource.PropertyMap{
-								"a":   resource.NewStringProperty("foo"),
-								"fff": resource.NewBoolProperty(true),
-								"z":   resource.NewStringProperty("bar"),
+								"a":   resource.NewProperty("foo"),
+								"fff": resource.NewProperty(true),
+								"z":   resource.NewProperty("bar"),
 							},
 						},
 					}, nil

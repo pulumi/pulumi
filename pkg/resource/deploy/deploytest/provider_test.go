@@ -112,8 +112,8 @@ func TestProvider(t *testing.T) {
 					req plugin.CheckConfigRequest,
 				) (plugin.CheckConfigResponse, error) {
 					assert.Equal(t, resource.URN("expected-urn"), req.URN)
-					assert.Equal(t, resource.NewStringProperty("old-value"), req.Olds["old"])
-					assert.Equal(t, resource.NewStringProperty("new-value"), req.News["new"])
+					assert.Equal(t, resource.NewProperty("old-value"), req.Olds["old"])
+					assert.Equal(t, resource.NewProperty("new-value"), req.News["new"])
 					called = true
 					return plugin.CheckConfigResponse{}, expectedErr
 				},
@@ -121,10 +121,10 @@ func TestProvider(t *testing.T) {
 			_, err := prov.CheckConfig(context.Background(), plugin.CheckConfigRequest{
 				URN: resource.URN("expected-urn"),
 				Olds: resource.PropertyMap{
-					"old": resource.NewStringProperty("old-value"),
+					"old": resource.NewProperty("old-value"),
 				},
 				News: resource.PropertyMap{
-					"new": resource.NewStringProperty("new-value"),
+					"new": resource.NewProperty("new-value"),
 				},
 				AllowUnknowns: true,
 			})
@@ -136,14 +136,14 @@ func TestProvider(t *testing.T) {
 			prov := &Provider{}
 			resp, err := prov.CheckConfig(context.Background(), plugin.CheckConfigRequest{
 				News: resource.PropertyMap{
-					"expected": resource.NewStringProperty("expected-value"),
+					"expected": resource.NewProperty("expected-value"),
 				},
 				AllowUnknowns: true,
 			})
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
 			// Should return the news.
-			assert.Equal(t, resource.NewStringProperty("expected-value"), resp.Properties["expected"])
+			assert.Equal(t, resource.NewProperty("expected-value"), resp.Properties["expected"])
 		})
 	})
 	t.Run("Construct", func(t *testing.T) {
@@ -257,7 +257,7 @@ func TestProvider(t *testing.T) {
 		t.Run("has InvokeF", func(t *testing.T) {
 			t.Parallel()
 			expectedPropertyMap := resource.PropertyMap{
-				"key": resource.NewStringProperty("expected-value"),
+				"key": resource.NewProperty("expected-value"),
 			}
 			var called bool
 			prov := &Provider{

@@ -26,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -41,8 +42,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPluginInstallCmd() *cobra.Command {
+func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *cobra.Command {
 	var picmd pluginInstallCmd
+	picmd.packageResolutionOptions = packageResolutionOptions
 	cmd := &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -89,6 +91,8 @@ type pluginInstallCmd struct {
 	env      env.Env
 	color    colors.Colorization
 	registry registry.Registry
+
+	packageResolutionOptions packageresolution.Options
 
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
@@ -180,29 +184,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
-			!cmd.env.GetBool(env.DisableRegistryResolve) &&
 			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
 			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
-			pkgMetadata, err := registry.ResolvePackageFromName(ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version)
-			if err == nil {
-				pluginSpec.Name = pkgMetadata.Name
-				pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
-			} else if errors.Is(err, registry.ErrNotFound) &&
-				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
-				// If the error is [registry.ErrNotFound], then this could
-				// be a Pulumi plugin that isn't in the registry.
-				//
-				// We just ignore the failure in the hope that the
-				// download against GitHub will succeed.
-			} else {
-				for _, suggested := range registry.GetSuggestedPackages(err) {
-					cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-						suggested.Source, suggested.Publisher, suggested.Name,
-						suggested.Version,
-					)
-				}
-				return fmt.Errorf("Unable to resolve package from name: %w", err)
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
 			}
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, cwd)
+			if err != nil {
+				return err
+			}
+			pluginSpec = updatedSpec
 		}
 
 		// If we don't have a version try to look one up
@@ -339,4 +331,36 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 		return workspace.SingleFilePlugin(f, spec), nil
 	}
 	return workspace.TarPlugin(f), nil
+}
+
+// resolvePluginSpec resolves plugin specifications using various resolution strategies.
+func (cmd *pluginInstallCmd) resolvePluginSpec(
+	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
+) (workspace.PluginSpec, error) {
+	resolutionEnv := cmd.packageResolutionOptions
+	result, err := packageresolution.Resolve(ctx, cmd.registry, pluginSpec, resolutionEnv, absProjectDir)
+	if err != nil {
+		var packageNotFoundErr *packageresolution.PackageNotFoundError
+		if errors.As(err, &packageNotFoundErr) {
+			for _, suggested := range packageNotFoundErr.Suggestions() {
+				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name,
+					suggested.Version,
+				)
+			}
+		}
+		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", err)
+	}
+
+	switch res := result.(type) {
+	case packageresolution.LocalPathResult, packageresolution.ExternalSourceResult:
+		return pluginSpec, nil
+	case packageresolution.RegistryResult:
+		pluginSpec.Name = res.Metadata.Name
+		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
+		return pluginSpec, nil
+	default:
+		contract.Failf("Unexpected result type: %T", result)
+		return pluginSpec, nil
+	}
 }

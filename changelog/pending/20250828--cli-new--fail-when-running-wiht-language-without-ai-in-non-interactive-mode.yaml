@@ -1,0 +1,4 @@
+changes:
+  - type: fix
+    scope: cli/new
+    description: Fail when running with --language without --ai in non-interactive mode
