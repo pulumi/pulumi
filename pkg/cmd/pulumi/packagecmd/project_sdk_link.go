@@ -919,10 +919,7 @@ func ProviderFromSource(
 		pctx.Base(),
 		reg,
 		pluginSpec,
-		packageresolution.Options{
-			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
-			Experimental:           env.Experimental.Value(),
-		},
+		packageresolution.Options{DisableRegistryResolve: env.DisableRegistryResolve.Value()},
 		pctx.Root,
 	)
 	if err != nil {
