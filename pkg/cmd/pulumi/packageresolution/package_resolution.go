@@ -24,6 +24,7 @@ package packageresolution
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -88,7 +89,9 @@ func Resolve(
 		if err == nil {
 			return RegistryResult{Metadata: metadata}, nil
 		}
-		registryErr = err
+		if !errors.Is(err, registry.ErrNotFound) {
+			registryErr = err
+		}
 	}
 
 	if registry.IsPreRegistryPackage(pluginSpec.Name) {

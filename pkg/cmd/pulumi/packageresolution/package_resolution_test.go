@@ -143,7 +143,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("package not found"),
+			expectedErr: errors.New("package unknown-pkg not found"),
 		},
 		{
 			name:       "registry error (non-NotFound)",
@@ -200,7 +200,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("package not found"),
+			expectedErr: errors.New("package unknown-package not found"),
 		},
 		{
 			name:       "unknown package with experimental off",
@@ -213,7 +213,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("package not found"),
+			expectedErr: errors.New("package unknown-package not found"),
 		},
 		{
 			name:       "project source takes precedence over plugin name",
