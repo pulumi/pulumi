@@ -158,10 +158,8 @@ func Test_PrintObject(t *testing.T) {
 			}),
 			`<{%reset%}>nested_secret: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>    super_secret: <{%reset%}><{%reset%}>"my_super_secret"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>}<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>secret       : <{%reset%}><{%reset%}>"my_secret"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
 <{%reset%}>`,
 			true,
 		},
