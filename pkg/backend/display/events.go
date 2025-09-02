@@ -433,6 +433,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.PolicyLoadEvent != nil:
 		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
 
+	case apiEvent.StartDebuggingEvent != nil:
+		p := apiEvent.StartDebuggingEvent
+		event = engine.NewEvent(engine.StartDebuggingEventPayload{
+			Config: p.Config,
+		})
+
 	case apiEvent.ProgressEvent != nil:
 		p := apiEvent.ProgressEvent
 		event = engine.NewEvent(engine.ProgressEventPayload{
@@ -442,6 +448,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Completed: p.Completed,
 			Total:     p.Total,
 			Done:      p.Done,
+		})
+
+	case apiEvent.ErrorEvent != nil:
+		p := apiEvent.ErrorEvent
+		event = engine.NewEvent(engine.ErrorEventPayload{
+			Error: p.Error,
 		})
 
 	default:
