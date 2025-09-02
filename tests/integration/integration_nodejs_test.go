@@ -2108,6 +2108,7 @@ func TestNodejsDynamicProviderOutput(t *testing.T) {
 					event.DiagnosticEvent.Severity == "info" &&
 					strings.Contains(event.DiagnosticEvent.Message, message) {
 					found = true
+					break
 				}
 			}
 			b, err := json.Marshal(stackInfo.Events)

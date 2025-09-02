@@ -612,16 +612,12 @@ func TestDynamicProviderConfig(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicProviderOutputPython(t *testing.T) {
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-output"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
-		Stdout: stdout,
-		Stderr: stderr,
-		Quick:  true,
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotEmpty(t, stackInfo.Events)
 			message := "message from provider"
@@ -631,6 +627,7 @@ func TestDynamicProviderOutputPython(t *testing.T) {
 					event.DiagnosticEvent.Severity == "info" &&
 					strings.Contains(event.DiagnosticEvent.Message, message) {
 					found = true
+					break
 				}
 			}
 			b, err := json.Marshal(stackInfo.Events)
