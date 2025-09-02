@@ -25,7 +25,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,11 +48,12 @@ packages:
 
 	tests := []struct {
 		name             string
-		env              *Env
+		env              *Options
 		pluginSpec       workspace.PluginSpec
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
 		expected         Result
+		expectedErr      error
 	}{
 		{
 			name:       "found in IDP registry",
@@ -143,7 +143,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ErrorResult{},
+			expectedErr: errors.New("package not found"),
 		},
 		{
 			name:       "registry error (non-NotFound)",
@@ -157,13 +157,13 @@ packages:
 					},
 				}, nil
 			},
-			expected: ErrorResult{},
+			expectedErr: errors.New("network error"),
 		},
 
 		// Environment combination tests for pre-registry packages
 		{
 			name:       "pre-registry package with registry disabled",
-			env:        &Env{DisableRegistryResolve: true, Experimental: false},
+			env:        &Options{DisableRegistryResolve: true, Experimental: false},
 			pluginSpec: workspace.PluginSpec{Name: "aws"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -176,7 +176,7 @@ packages:
 		},
 		{
 			name:       "registry disabled ignores available registry package",
-			env:        &Env{DisableRegistryResolve: true, Experimental: true},
+			env:        &Options{DisableRegistryResolve: true, Experimental: true},
 			pluginSpec: workspace.PluginSpec{Name: "aws"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -191,7 +191,7 @@ packages:
 		// Environment combination tests for unknown packages
 		{
 			name:       "unknown package with registry disabled",
-			env:        &Env{DisableRegistryResolve: true, Experimental: false},
+			env:        &Options{DisableRegistryResolve: true, Experimental: false},
 			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -200,11 +200,11 @@ packages:
 					},
 				}, nil
 			},
-			expected: ErrorResult{},
+			expectedErr: errors.New("package not found"),
 		},
 		{
 			name:       "unknown package with experimental off",
-			env:        &Env{DisableRegistryResolve: false, Experimental: false},
+			env:        &Options{DisableRegistryResolve: false, Experimental: false},
 			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -213,7 +213,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ErrorResult{},
+			expectedErr: errors.New("package not found"),
 		},
 		{
 			name:       "project source takes precedence over plugin name",
@@ -244,7 +244,7 @@ packages:
 			reg, expectedErr := tt.registryResponse()
 			require.NoError(t, expectedErr)
 
-			env := Env{
+			env := Options{
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			}
@@ -256,23 +256,21 @@ packages:
 			if tt.setupProject {
 				projectRootArg = projectRoot
 			}
-			result := Resolve(
+			result, err := Resolve(
 				context.Background(),
 				reg,
 				tt.pluginSpec,
-				diagtest.LogSink(t),
 				env,
 				projectRootArg,
 			)
 
-			switch tt.expected.(type) {
-			case ErrorResult:
-				errorRes, ok := result.(ErrorResult)
-				require.True(t, ok, "Expected ErrorResult")
-				assert.Error(t, errorRes.Error)
-			default:
-				assert.Equal(t, tt.expected, result)
+			if tt.expectedErr != nil {
+				assert.Equal(t, tt.expectedErr, err)
+				return
 			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
 
 			switch res := result.(type) {
 			case RegistryResult:
@@ -310,12 +308,11 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		},
 	}
 
-	result := Resolve(
+	result, _ := Resolve(
 		context.Background(),
 		reg,
 		pluginSpec,
-		diagtest.LogSink(t),
-		Env{
+		Options{
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
@@ -349,12 +346,11 @@ packages:
 	}
 
 	pluginSpec := workspace.PluginSpec{Name: "aws"}
-	result := Resolve(
+	result, _ := Resolve(
 		context.Background(),
 		reg,
 		pluginSpec, // This is both pre-registry AND defined locally
-		diagtest.LogSink(t),
-		Env{
+		Options{
 			DisableRegistryResolve: true,
 			Experimental:           false,
 		},

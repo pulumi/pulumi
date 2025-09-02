@@ -28,13 +28,12 @@ import (
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type Env struct {
+type Options struct {
 	DisableRegistryResolve bool
 	Experimental           bool
 }
@@ -59,20 +58,13 @@ type ExternalSourceResult struct{}
 
 func (ExternalSourceResult) isResult() {}
 
-type ErrorResult struct {
-	Error error
-}
-
-func (ErrorResult) isResult() {}
-
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
 	pluginSpec workspace.PluginSpec,
-	diagSink diag.Sink,
-	env Env,
+	options Options,
 	projectRoot string, // Pass "" for 'not in a project context'
-) Result {
+) (Result, error) {
 	sourceToCheck := pluginSpec.Name
 
 	if projectRoot != "" {
@@ -83,34 +75,31 @@ func Resolve(
 	}
 
 	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
-		return LocalPathResult{LocalPluginPathAbs: sourceToCheck}
+		return LocalPathResult{LocalPluginPathAbs: sourceToCheck}, nil
 	}
 
-	if workspace.IsExternalURL(sourceToCheck) {
-		return ExternalSourceResult{}
-	}
-
-	if pluginSpec.IsGitPlugin() {
-		return ExternalSourceResult{}
+	if workspace.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
+		return ExternalSourceResult{}, nil
 	}
 
 	var registryErr error
-	if !env.DisableRegistryResolve && env.Experimental {
+	if !options.DisableRegistryResolve && options.Experimental {
 		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
 		if err == nil {
-			return RegistryResult{Metadata: metadata}
+			return RegistryResult{Metadata: metadata}, nil
 		}
 		registryErr = err
 	}
 
 	if registry.IsPreRegistryPackage(pluginSpec.Name) {
-		return ExternalSourceResult{}
+		return ExternalSourceResult{}, nil
 	}
 
-	if registryErr == nil {
-		registryErr = fmt.Errorf("package %s not found", pluginSpec.Name)
+	if registryErr != nil {
+		return RegistryResult{}, registryErr
 	}
-	return ErrorResult{Error: registryErr}
+
+	return ExternalSourceResult{}, fmt.Errorf("package %s not found", pluginSpec.Name)
 }
 
 func getLocalProjectPackageSource(

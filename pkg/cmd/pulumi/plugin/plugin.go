@@ -48,11 +48,11 @@ func NewPluginCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	packageResolutionEnv := packageresolution.Env{
+	packageResolutionOptions := packageresolution.Options{
 		DisableRegistryResolve: env.DisableRegistryResolve.Value(),
 		Experimental:           env.Experimental.Value(),
 	}
-	cmd.AddCommand(newPluginInstallCmd(packageResolutionEnv))
+	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())
 	cmd.AddCommand(newPluginRmCmd())
 	cmd.AddCommand(newPluginRunCmd())

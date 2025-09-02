@@ -42,9 +42,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPluginInstallCmd(packageResolutionEnv packageresolution.Env) *cobra.Command {
+func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *cobra.Command {
 	var picmd pluginInstallCmd
-	picmd.packageResolutionEnv = packageResolutionEnv
+	picmd.packageResolutionOptions = packageResolutionOptions
 	cmd := &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -92,7 +92,7 @@ type pluginInstallCmd struct {
 	color    colors.Colorization
 	registry registry.Registry
 
-	packageResolutionEnv packageresolution.Env
+	packageResolutionOptions packageresolution.Options
 
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
@@ -337,8 +337,19 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
 ) (workspace.PluginSpec, error) {
-	resolutionEnv := cmd.packageResolutionEnv
-	result := packageresolution.Resolve(ctx, cmd.registry, pluginSpec, cmd.diag, resolutionEnv, absProjectDir)
+	resolutionEnv := cmd.packageResolutionOptions
+	result, err := packageresolution.Resolve(ctx, cmd.registry, pluginSpec, resolutionEnv, absProjectDir)
+	if err != nil {
+		if errors.Is(err, registry.ErrNotFound) {
+			for _, suggested := range registry.GetSuggestedPackages(err) {
+				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name,
+					suggested.Version,
+				)
+			}
+		}
+		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", err)
+	}
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult, packageresolution.ExternalSourceResult:
@@ -347,16 +358,6 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 		pluginSpec.Name = res.Metadata.Name
 		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
 		return pluginSpec, nil
-	case packageresolution.ErrorResult:
-		if res.Error != nil && errors.Is(res.Error, registry.ErrNotFound) {
-			for _, suggested := range registry.GetSuggestedPackages(res.Error) {
-				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-					suggested.Source, suggested.Publisher, suggested.Name,
-					suggested.Version,
-				)
-			}
-		}
-		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", res.Error)
 	default:
 		contract.Failf("Unexpected result type: %T", result)
 		return pluginSpec, nil

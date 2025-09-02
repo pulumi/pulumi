@@ -915,17 +915,25 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
-	result := packageresolution.Resolve(
+	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
 		pluginSpec,
-		pctx.Diag,
-		packageresolution.Env{
+		packageresolution.Options{
 			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
 			Experimental:           env.Experimental.Value(),
 		},
 		pctx.Root,
 	)
+	if err != nil {
+		if errors.Is(err, registry.ErrNotFound) {
+			for _, suggested := range registry.GetSuggestedPackages(err) {
+				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
+			}
+		}
+		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", err)
+	}
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult:
@@ -934,14 +942,6 @@ func ProviderFromSource(
 		return setupProvider(descriptor, nil)
 	case packageresolution.RegistryResult:
 		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
-	case packageresolution.ErrorResult:
-		if res.Error != nil && errors.Is(res.Error, registry.ErrNotFound) {
-			for _, suggested := range registry.GetSuggestedPackages(res.Error) {
-				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
-			}
-		}
-		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", res.Error)
 	default:
 		contract.Failf("Unexpected result type: %T", result)
 		return Provider{}, nil, nil

@@ -130,7 +130,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
-		packageResolutionEnv: packageresolution.Env{
+		packageResolutionOptions: packageresolution.Options{
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
@@ -245,7 +245,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
-			packageResolutionEnv: packageresolution.Env{
+			packageResolutionOptions: packageresolution.Options{
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			},
@@ -272,7 +272,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
-			packageResolutionEnv: packageresolution.Env{
+			packageResolutionOptions: packageresolution.Options{
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			},
@@ -388,7 +388,7 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: sink,
-		packageResolutionEnv: packageresolution.Env{
+		packageResolutionOptions: packageresolution.Options{
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
