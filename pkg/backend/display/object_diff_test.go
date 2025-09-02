@@ -158,10 +158,8 @@ func Test_PrintObject(t *testing.T) {
 			}),
 			`<{%reset%}>nested_secret: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>    super_secret: <{%reset%}><{%reset%}>"my_super_secret"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>}<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>secret       : <{%reset%}><{%reset%}>"my_secret"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
 <{%reset%}>`,
 			true,
 		},
@@ -351,17 +349,12 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				"\"shhhh\"<{%reset%}>" +
 				"<{%reset%}>" +
 				"\n<{%reset%}>" +
-				"<{%reset%}>" +
-				// TODO https://github.com/pulumi/pulumi/issues/20416 - there is a double newline here
-				"\n<{%reset%}>" +
 				"<{%fg 2%}>  + secretObj: <{%reset%}>" +
 				"<{%fg 2%}>{\n<{%reset%}" +
 				"><{%fg 2%}>      + a: <{%reset%}" +
 				"><{%fg 2%}>\"1\"<{%reset%}>" +
 				"<{%fg 2%}>\n<{%reset%}>" +
 				"<{%fg 2%}>    }<{%reset%}>" +
-				"<{%fg 2%}>\n<{%reset%}>" +
-				// TODO https://github.com/pulumi/pulumi/issues/20416 - there is a double newline here
 				"<{%fg 2%}>\n<{%reset%}>",
 		},
 	} {
