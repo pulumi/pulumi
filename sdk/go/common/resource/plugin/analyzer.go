@@ -115,6 +115,31 @@ type Remediation struct {
 	Diagnostic        string
 }
 
+// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
+type PolicyNotApplicable struct {
+	// The name of the policy that was not applicable.
+	PolicyName string
+	// An optional reason why the policy was not applicable.
+	Reason string
+}
+
+type PolicySummary struct {
+	// The URN of the resource. This will be empty for AnalyzeStack.
+	URN resource.URN
+	// The name of the policy pack.
+	PolicyPackName string
+	// The version of the policy pack.
+	PolicyPackVersion string
+	// Names of policies in the policy pack that were disabled.
+	Disabled []string
+	// Not applicable resource policies in the policy pack.
+	NotApplicable []PolicyNotApplicable
+	// The names of policies that passed (i.e. did not produce any violations).
+	Passed []string
+	// The names of policies that failed (i.e. produced violations).
+	Failed []string
+}
+
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
 	Name           string

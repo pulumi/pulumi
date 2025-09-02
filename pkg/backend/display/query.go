@@ -99,7 +99,8 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 		contract.Failf("query mode does not support resource operations")
 		return ""
 
-	case engine.PolicyLoadEvent, engine.PolicyViolationEvent, engine.PolicyRemediationEvent:
+	case engine.PolicyLoadEvent, engine.PolicyViolationEvent, engine.PolicyRemediationEvent,
+		engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
 		return ""
 
 	case engine.ProgressEvent:
