@@ -1209,7 +1209,16 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
 	entry apitype.JournalEntry, token UpdateTokenSource,
 ) error {
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "createjournalentry"), nil, entry, nil,
+	return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
+}
+
+func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifier,
+	entries []apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	req := apitype.JournalEntries{
+		Entries: entries,
+	}
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "journalentries"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 

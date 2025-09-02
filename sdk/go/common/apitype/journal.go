@@ -48,3 +48,7 @@ type JournalEntry struct {
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
 }
+
+type JournalEntries struct {
+	Entries []JournalEntry `json:"entries,omitempty"`
+}
