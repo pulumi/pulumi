@@ -2095,13 +2095,9 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNodejsDynamicProviderOutput(t *testing.T) {
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-output"),
 		Dependencies: []string{"@pulumi/pulumi"},
-		Stdout:       stdout,
-		Stderr:       stderr,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotEmpty(t, stackInfo.Events)
