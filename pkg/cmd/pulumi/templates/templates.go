@@ -122,6 +122,7 @@ func (s *Source) Close() error {
 type Template interface {
 	Name() string
 	Description() string
+	DisplayDescription() string
 	ProjectDescription() string
 	Error() error
 	Download(ctx context.Context) (workspace.Template, error)
