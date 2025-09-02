@@ -926,7 +926,8 @@ func ProviderFromSource(
 		pctx.Root,
 	)
 	if err != nil {
-		if packageNotFoundErr, ok := err.(*packageresolution.PackageNotFoundError); ok {
+		var packageNotFoundErr *packageresolution.PackageNotFoundError
+		if errors.As(err, &packageNotFoundErr) {
 			for _, suggested := range packageNotFoundErr.Suggestions() {
 				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
 					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)

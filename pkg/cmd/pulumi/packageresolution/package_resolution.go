@@ -46,22 +46,23 @@ type PackageNotFoundError struct {
 	OriginalErr error
 }
 
-func (e *PackageNotFoundError) Error() string {
+func (e PackageNotFoundError) Error() string {
 	if e.Version != nil {
 		return fmt.Sprintf("package %s@%s not found", e.Package, e.Version.String())
 	}
 	return fmt.Sprintf("package %s not found", e.Package)
 }
 
-func (e *PackageNotFoundError) Is(target error) bool {
+func (e PackageNotFoundError) Is(target error) bool {
 	return target == ErrPackageNotFound
 }
 
-func (e *PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
-	if e.OriginalErr != nil && errors.Is(e.OriginalErr, registry.ErrNotFound) {
-		return registry.GetSuggestedPackages(e.OriginalErr)
-	}
-	return nil
+func (e PackageNotFoundError) Unwrap() error {
+	return e.OriginalErr
+}
+
+func (e PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
+	return registry.GetSuggestedPackages(e)
 }
 
 type Options struct {

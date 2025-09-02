@@ -340,7 +340,8 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	resolutionEnv := cmd.packageResolutionOptions
 	result, err := packageresolution.Resolve(ctx, cmd.registry, pluginSpec, resolutionEnv, absProjectDir)
 	if err != nil {
-		if packageNotFoundErr, ok := err.(*packageresolution.PackageNotFoundError); ok {
+		var packageNotFoundErr *packageresolution.PackageNotFoundError
+		if errors.As(err, &packageNotFoundErr) {
 			for _, suggested := range packageNotFoundErr.Suggestions() {
 				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
 					suggested.Source, suggested.Publisher, suggested.Name,
