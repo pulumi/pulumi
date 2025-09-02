@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
@@ -54,6 +55,7 @@ type EventPayload interface {
 	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
 		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload |
+		PolicyAnalyzeSummaryEventPayload | PolicyRemediateSummaryEventPayload | PolicyAnalyzeStackSummaryEventPayload |
 		ProgressEventPayload | ErrorEventPayload
 }
 
@@ -94,6 +96,12 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = PolicyRemediationEvent
 	case PolicyLoadEventPayload:
 		typ = PolicyLoadEvent
+	case PolicyAnalyzeSummaryEventPayload:
+		typ = PolicyAnalyzeSummaryEvent
+	case PolicyRemediateSummaryEventPayload:
+		typ = PolicyRemediateSummaryEvent
+	case PolicyAnalyzeStackSummaryEventPayload:
+		typ = PolicyAnalyzeStackSummaryEvent
 	case StartDebuggingEventPayload:
 		typ = StartDebuggingEvent
 	case ProgressEventPayload:
@@ -114,20 +122,23 @@ func NewEvent[T EventPayload](payload T) Event {
 type EventType string
 
 const (
-	CancelEvent             EventType = "cancel"
-	StdoutColorEvent        EventType = "stdoutcolor"
-	DiagEvent               EventType = "diag"
-	PreludeEvent            EventType = "prelude"
-	SummaryEvent            EventType = "summary"
-	ResourcePreEvent        EventType = "resource-pre"
-	ResourceOutputsEvent    EventType = "resource-outputs"
-	ResourceOperationFailed EventType = "resource-operationfailed"
-	PolicyViolationEvent    EventType = "policy-violation"
-	PolicyRemediationEvent  EventType = "policy-remediation"
-	PolicyLoadEvent         EventType = "policy-load"
-	StartDebuggingEvent     EventType = "debugging-start"
-	ProgressEvent           EventType = "progress"
-	ErrorEvent              EventType = "error"
+	CancelEvent                    EventType = "cancel"
+	StdoutColorEvent               EventType = "stdoutcolor"
+	DiagEvent                      EventType = "diag"
+	PreludeEvent                   EventType = "prelude"
+	SummaryEvent                   EventType = "summary"
+	ResourcePreEvent               EventType = "resource-pre"
+	ResourceOutputsEvent           EventType = "resource-outputs"
+	ResourceOperationFailed        EventType = "resource-operationfailed"
+	PolicyViolationEvent           EventType = "policy-violation"
+	PolicyRemediationEvent         EventType = "policy-remediation"
+	PolicyLoadEvent                EventType = "policy-load"
+	PolicyAnalyzeSummaryEvent      EventType = "policy-analyze-summary"
+	PolicyRemediateSummaryEvent    EventType = "policy-remediate-summary"
+	PolicyAnalyzeStackSummaryEvent EventType = "policy-analyze-stack-summary"
+	StartDebuggingEvent            EventType = "debugging-start"
+	ProgressEvent                  EventType = "progress"
+	ErrorEvent                     EventType = "error"
 )
 
 // ProgressType is the type of download occurring.
@@ -206,6 +217,58 @@ type PolicyRemediationEventPayload struct {
 
 // PolicyLoadEventPayload is the payload for an event with type `policy-load`.
 type PolicyLoadEventPayload struct{}
+
+// PolicyAnalyzeSummaryEventPayload is the payload for an event with type `policy-analyze-summary`.
+type PolicyAnalyzeSummaryEventPayload struct {
+	// The URN of the resource being analyzed.
+	ResourceURN resource.URN
+	// The name of the policy pack.
+	PolicyPackName string
+	// The version of the policy pack.
+	PolicyPackVersion string
+	// Names of resource policies in the policy pack that were disabled.
+	Disabled []string
+	// Not applicable resource policies in the policy pack.
+	NotApplicable []apitype.PolicyNotApplicable
+	// The names of resource policies that passed (i.e. did not produce any violations).
+	Passed []string
+	// The names of resource policies that failed (i.e. produced violations).
+	Failed []string
+}
+
+// PolicyRemediateSummaryEventPayload is the payload for an event with type `policy-remediate-summary`.
+type PolicyRemediateSummaryEventPayload struct {
+	// The URN of the resource being remediated.
+	ResourceURN resource.URN
+	// The name of the policy pack.
+	PolicyPackName string
+	// The version of the policy pack.
+	PolicyPackVersion string
+	// Names of resource policies in the policy pack that were disabled.
+	Disabled []string
+	// Not applicable resource policies in the policy pack.
+	NotApplicable []apitype.PolicyNotApplicable
+	// The names of resource policies that passed (i.e. did not produce any violations).
+	Passed []string
+	// The names of resource policies that failed (i.e. produced violations).
+	Failed []string
+}
+
+// PolicyAnalyzeStackSummaryEventPayload is the payload for an event with type `policy-analyze-stack-summary`.
+type PolicyAnalyzeStackSummaryEventPayload struct {
+	// The name of the policy pack.
+	PolicyPackName string
+	// The version of the policy pack.
+	PolicyPackVersion string
+	// Names of stack policies in the policy pack that were disabled.
+	Disabled []string
+	// Not applicable stack policies in the policy pack.
+	NotApplicable []apitype.PolicyNotApplicable
+	// The names of stack policies that passed (i.e. did not produce any violations).
+	Passed []string
+	// The names of stack policies that failed (i.e. produced violations).
+	Failed []string
+}
 
 // StartDebuggingEventPayload is the payload for an event of type `debugging-start`
 type StartDebuggingEventPayload struct {
@@ -631,6 +694,71 @@ func (e *eventEmitter) PolicyLoadEvent() {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(PolicyLoadEventPayload{}))
+}
+
+// Emit a new policy analyze summary event with the specified payload.
+func (e *eventEmitter) policyAnalyzeSummaryEvent(s plugin.PolicySummary) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	notApplicable := slice.Map(s.NotApplicable, func(n plugin.PolicyNotApplicable) apitype.PolicyNotApplicable {
+		return apitype.PolicyNotApplicable{
+			PolicyName: n.PolicyName,
+			Reason:     n.Reason,
+		}
+	})
+
+	e.sendEvent(NewEvent(PolicyAnalyzeSummaryEventPayload{
+		ResourceURN:       s.URN,
+		PolicyPackName:    s.PolicyPackName,
+		PolicyPackVersion: s.PolicyPackVersion,
+		Disabled:          s.Disabled,
+		NotApplicable:     notApplicable,
+		Passed:            s.Passed,
+		Failed:            s.Failed,
+	}))
+}
+
+// Emit a new policy remediate summary event with the specified payload.
+func (e *eventEmitter) policyRemediateSummaryEvent(s plugin.PolicySummary) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	notApplicable := slice.Map(s.NotApplicable, func(n plugin.PolicyNotApplicable) apitype.PolicyNotApplicable {
+		return apitype.PolicyNotApplicable{
+			PolicyName: n.PolicyName,
+			Reason:     n.Reason,
+		}
+	})
+
+	e.sendEvent(NewEvent(PolicyRemediateSummaryEventPayload{
+		ResourceURN:       s.URN,
+		PolicyPackName:    s.PolicyPackName,
+		PolicyPackVersion: s.PolicyPackVersion,
+		Disabled:          s.Disabled,
+		NotApplicable:     notApplicable,
+		Passed:            s.Passed,
+		Failed:            s.Failed,
+	}))
+}
+
+// Emit a new policy analyze stack summary event with the specified payload.
+func (e *eventEmitter) policyAnalyzeStackSummaryEvent(s plugin.PolicySummary) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	notApplicable := slice.Map(s.NotApplicable, func(n plugin.PolicyNotApplicable) apitype.PolicyNotApplicable {
+		return apitype.PolicyNotApplicable{
+			PolicyName: n.PolicyName,
+			Reason:     n.Reason,
+		}
+	})
+
+	e.sendEvent(NewEvent(PolicyAnalyzeStackSummaryEventPayload{
+		PolicyPackName:    s.PolicyPackName,
+		PolicyPackVersion: s.PolicyPackVersion,
+		Disabled:          s.Disabled,
+		NotApplicable:     notApplicable,
+		Passed:            s.Passed,
+		Failed:            s.Failed,
+	}))
 }
 
 // Emit a new progress event with the specified payload.

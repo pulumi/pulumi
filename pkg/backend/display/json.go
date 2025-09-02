@@ -221,7 +221,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			continue
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
+		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent,
+			engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
 		case engine.SummaryEvent:

@@ -1179,6 +1179,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	case engine.ErrorEvent:
 		return
+	case engine.PolicyAnalyzeSummaryEvent,
+		engine.PolicyAnalyzeStackSummaryEvent,
+		engine.PolicyRemediateSummaryEvent:
+		return
 	}
 
 	// At this point, all events should relate to resources.

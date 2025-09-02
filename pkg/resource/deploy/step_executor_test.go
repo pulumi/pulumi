@@ -93,6 +93,18 @@ func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, resou
 	panic("unimplemented")
 }
 
+func (e *mockEvents) OnPolicyAnalyzeSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyRemediateSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyAnalyzeStackSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
 func (e *mockEvents) OnSnapshotWrite(base *Snapshot) error {
 	return nil
 }

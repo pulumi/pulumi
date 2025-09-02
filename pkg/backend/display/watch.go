@@ -59,7 +59,8 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			engine.PolicyLoadEvent, engine.PolicyRemediationEvent, engine.ErrorEvent:
 			// Ignore it
 			continue
-		case engine.PolicyViolationEvent:
+		case engine.PolicyViolationEvent, engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent,
+			engine.PolicyAnalyzeStackSummaryEvent:
 			// At this point in time, we don't handle policy events as part of pulumi watch
 			continue
 		case engine.DiagEvent:
