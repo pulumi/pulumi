@@ -227,6 +227,12 @@ func (r registryTemplate) GetRegistryName() string { return r.t.Name }
 func (r registryTemplate) GetTemplateName() string { return r.Name() }
 func (r registryTemplate) GetSource() string       { return r.t.Source }
 func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
+func (r registryTemplate) Provenance() string {
+	if r.t.Source == "github" && strings.HasPrefix(r.t.Name, "pulumi/templates/") {
+		return "Pulumi Template (https://github.com/pulumi/templates)"
+	}
+	return fmt.Sprintf("Private Registry (%s/%s/%s)", r.t.Source, r.t.Publisher, r.t.Name)
+}
 
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
@@ -361,6 +367,7 @@ func (t orgTemplate) Name() string               { return t.t.Name }
 func (t orgTemplate) Description() string        { return "" }
 func (t orgTemplate) ProjectDescription() string { return t.t.Description }
 func (t orgTemplate) Error() error               { return nil }
+func (t orgTemplate) Provenance() string         { return fmt.Sprintf("Organization Template (%s)", t.org) }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -119,3 +120,9 @@ func (t workspaceTemplate) Description() string                                 
 func (t workspaceTemplate) ProjectDescription() string                               { return t.t.ProjectDescription }
 func (t workspaceTemplate) Error() error                                             { return t.t.Error }
 func (t workspaceTemplate) Download(ctx context.Context) (workspace.Template, error) { return t.t, nil }
+func (t workspaceTemplate) Provenance() string {
+	if strings.HasPrefix(t.t.ProjectName, "pulumi/templates/") {
+		return "Pulumi Template (https://github.com/pulumi/templates)"
+	}
+	return "Local Template"
+}

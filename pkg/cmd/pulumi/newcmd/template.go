@@ -63,13 +63,23 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 }
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
-// Each option string is made up of the template name and description with some padding in between.
+// Each option string is made up of the template name, description, and provenance in three columns.
+// Provenance is used for disambiguation when template names are repeated.
 func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, map[string]cmdTemplates.Template) {
-	// Find the longest name length. Used to add padding between the name and description.
+	// Find the longest lengths for each column to add proper padding
 	maxNameLength := 0
+	maxDescLength := 0
 	for _, template := range templates {
 		if len(template.Name()) > maxNameLength {
 			maxNameLength = len(template.Name())
+		}
+		projectDescription := template.ProjectDescription()
+		if template.Error() != nil {
+			projectDescription = BrokenTemplateDescription
+		}
+		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", projectDescription, template.Description())
+		if len(desc) > maxDescLength {
+			maxDescLength = len(desc)
 		}
 	}
 
@@ -84,9 +94,10 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 			projectDescription = BrokenTemplateDescription
 		}
 
-		// Create the option string that combines the name, padding, and description.
+		// Create the option string with three columns: name, description, and provenance
 		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", projectDescription, template.Description())
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name(), desc)
+		provenance := template.Provenance()
+		option := fmt.Sprintf("%-*s  %-*s  %s", maxNameLength, template.Name(), maxDescLength, desc, provenance)
 
 		nameToTemplateMap[option] = template
 		if template.Error() != nil {

@@ -761,6 +761,173 @@ func testContext(t *testing.T) context.Context {
 func ref[T any](v T) *T { return &v }
 
 //nolint:paralleltest // replaces global backend instance
+func TestTemplateProvenance(t *testing.T) {
+	ctx := testContext(t)
+
+	// Test registry templates
+	t.Run("registry templates", func(t *testing.T) {
+		mockRegistry := &backend.MockCloudRegistry{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					yield(apitype.TemplateMetadata{
+						Name:        "my-template",
+						Source:      "private",
+						Publisher:   "test-publisher",
+						Description: ref("Private registry template"),
+					}, nil)
+					yield(apitype.TemplateMetadata{
+						Name:        "github-org/repo/template",
+						Source:      "github", 
+						Publisher:   "github-publisher",
+						Description: ref("GitHub template"),
+					}, nil)
+				}
+			},
+		}
+		mockBackend := &backend.MockBackend{
+			GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+		}
+		testutil.MockBackendInstance(t, mockBackend)
+		testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{})
+
+		source := newImpl(ctx, "", ScopeAll, workspace.TemplateKindPulumiProject,
+			templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+			env.NewEnv(env.MapStore{
+				"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+				"PULUMI_EXPERIMENTAL":             "true",
+			}))
+
+		templates, err := source.Templates()
+		require.NoError(t, err)
+		
+		
+		require.Len(t, templates, 2)
+
+		// Find templates by name since both will be "Private Registry" format
+		var privateTemplate, githubTemplate Template
+		for _, tmpl := range templates {
+			if tmpl.Name() == "my-template" {
+				privateTemplate = tmpl
+			} else if tmpl.Name() == "template" {
+				githubTemplate = tmpl
+			}
+		}
+
+		require.NotNil(t, privateTemplate, "Private template not found")
+		require.NotNil(t, githubTemplate, "GitHub template not found")
+
+		assert.Equal(t, "my-template", privateTemplate.Name())
+		assert.Equal(t, "Private Registry (private/test-publisher/my-template)", privateTemplate.Provenance())
+
+		assert.Equal(t, "template", githubTemplate.Name())
+		assert.Equal(t, "Private Registry (github/github-publisher/github-org/repo/template)", githubTemplate.Provenance())
+	})
+
+	// Test org templates
+	t.Run("org templates", func(t *testing.T) {
+		mockBackend := &backend.MockBackend{
+			SupportsTemplatesF: func() bool { return true },
+			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+				return "user", []string{"test-org"}, nil, nil
+			},
+			ListTemplatesF: func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+				return apitype.ListOrgTemplatesResponse{
+					OrgHasTemplates: true,
+					Templates: map[string][]*apitype.PulumiTemplateRemote{
+						"github.com/example/templates": {
+							{
+								ProjectTemplate: apitype.ProjectTemplate{Description: "Org template description"},
+								Name:            "my-template",
+								SourceName:      "Example Templates",
+								TemplateURL:     "https://github.com/example/templates/my-template",
+							},
+						},
+					},
+				}, nil
+			},
+		}
+		testutil.MockBackendInstance(t, mockBackend)
+		testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+			CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent bool,
+			) (backend.Backend, error) {
+				return mockBackend, nil
+			},
+		})
+
+		source := newImpl(ctx, "", ScopeAll, workspace.TemplateKindPulumiProject,
+			templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+			env.NewEnv(env.MapStore{
+				"PULUMI_DISABLE_REGISTRY_RESOLVE": "true",
+			}))
+
+		templates, err := source.Templates()
+		require.NoError(t, err)
+		require.Len(t, templates, 1)
+
+		assert.Equal(t, "my-template", templates[0].Name())
+		assert.Equal(t, "Organization Template (test-org)", templates[0].Provenance())
+	})
+
+	// Test workspace templates  
+	t.Run("workspace templates", func(t *testing.T) {
+		repoTemplateDir := t.TempDir()
+		
+		// Test 1: Local template
+		localDir := filepath.Join(repoTemplateDir, "local-template")
+		require.NoError(t, os.Mkdir(localDir, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(localDir, "Pulumi.yaml"), []byte(`name: local-template
+runtime: go
+description: A local template
+`), 0o600))
+
+		repoTemplates := templateRepository(workspace.TemplateRepository{
+			Root:         repoTemplateDir,
+			SubDirectory: localDir,
+		}, nil)
+
+		source := newImpl(ctx, "", ScopeLocal, workspace.TemplateKindPulumiProject,
+			repoTemplates, env.NewEnv(env.MapStore{}))
+
+		templates, err := source.Templates()
+		require.NoError(t, err)
+		require.Len(t, templates, 1)
+
+		assert.Equal(t, "local-template", templates[0].Name())
+		assert.Equal(t, "Local Template", templates[0].Provenance())
+	})
+
+	// Test workspace template with Pulumi GitHub structure
+	t.Run("workspace pulumi template", func(t *testing.T) {
+		repoTemplateDir := t.TempDir()
+		
+		// Create a template with pulumi/templates/ naming pattern
+		pulumiDir := filepath.Join(repoTemplateDir, "aws-typescript")
+		require.NoError(t, os.Mkdir(pulumiDir, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(pulumiDir, "Pulumi.yaml"), []byte(`name: pulumi/templates/aws-typescript
+runtime: nodejs
+description: A minimal AWS TypeScript Pulumi program
+`), 0o600))
+
+		repoTemplates := templateRepository(workspace.TemplateRepository{
+			Root:         repoTemplateDir,
+			SubDirectory: pulumiDir,
+		}, nil)
+
+		source := newImpl(ctx, "", ScopeLocal, workspace.TemplateKindPulumiProject,
+			repoTemplates, env.NewEnv(env.MapStore{}))
+
+		templates, err := source.Templates()
+		require.NoError(t, err)
+		require.Len(t, templates, 1)
+
+		
+		assert.Equal(t, "aws-typescript", templates[0].Name())
+		assert.Equal(t, "Pulumi Template (https://github.com/pulumi/templates)", templates[0].Provenance())
+	})
+}
+
+//nolint:paralleltest // replaces global backend instance
 func TestRegistryTemplateResolution(t *testing.T) {
 	ctx := testContext(t)
 

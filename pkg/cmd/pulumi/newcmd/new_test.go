@@ -902,23 +902,22 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 Available Templates:
 `)
 	// Check that our org based templates are there
-	assert.Contains(t, stdout.String(), `
-  template-1                         Describe 1
-  template-2                         Describe 2
-`)
+	assert.Contains(t, stdout.String(), "template-1")
+	assert.Contains(t, stdout.String(), "Organization Template (org1)")
+	assert.Contains(t, stdout.String(), "template-2")
 
 	// Check that normal templates are there
 	assertTemplateContains(t, stdout.String(), `
-  aws-csharp                         A minimal AWS C# Pulumi program
-  aws-fsharp                         A minimal AWS F# Pulumi program
-  aws-go                             A minimal AWS Go Pulumi program
-  aws-java                           A minimal AWS Java Pulumi program
-  aws-javascript                     A minimal AWS JavaScript Pulumi program
-  aws-python                         A minimal AWS Python Pulumi program
-  aws-scala                          A minimal AWS Scala Pulumi program
-  aws-typescript                     A minimal AWS TypeScript Pulumi program
-  aws-visualbasic                    A minimal AWS VB.NET Pulumi program
-  aws-yaml                           A minimal AWS Pulumi YAML program
+  aws-csharp                         A minimal AWS C# Pulumi program Local Template
+  aws-fsharp                         A minimal AWS F# Pulumi program Local Template
+  aws-go                             A minimal AWS Go Pulumi program Local Template
+  aws-java                           A minimal AWS Java Pulumi program Local Template
+  aws-javascript                     A minimal AWS JavaScript Pulumi program Local Template
+  aws-python                         A minimal AWS Python Pulumi program Local Template
+  aws-scala                          A minimal AWS Scala Pulumi program Local Template
+  aws-typescript                     A minimal AWS TypeScript Pulumi program Local Template
+  aws-visualbasic                    A minimal AWS VB.NET Pulumi program Local Template
+  aws-yaml                           A minimal AWS Pulumi YAML program Local Template
 `)
 	assert.Equal(t, "", stderr.String())
 }
@@ -934,11 +933,13 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
 					Name: "template-1", Description: ref("Describe 1"),
+					Source: "private", Publisher: "test-publisher",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
 					Name: "template-2", Description: ref("Describe 2"),
+					Source: "private", Publisher: "test-publisher",
 				}, nil) {
 					return
 				}
@@ -976,24 +977,24 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	assert.Contains(t, stdout.String(), `
 Available Templates:
 `)
-	// Check that our org based templates are there
-	assert.Contains(t, stdout.String(), `
-  template-1                         Describe 1
-  template-2                         Describe 2
-`)
+	// Check that our registry based templates are there
+	assert.Contains(t, stdout.String(), "template-1")
+	assert.Contains(t, stdout.String(), "Private Registry (private/test-publisher/template-1)")
+	assert.Contains(t, stdout.String(), "template-2")
+	assert.Contains(t, stdout.String(), "Private Registry (private/test-publisher/template-2)")
 
 	// Check that normal templates are there
 	assertTemplateContains(t, stdout.String(), `
-  aws-csharp                         A minimal AWS C# Pulumi program
-  aws-fsharp                         A minimal AWS F# Pulumi program
-  aws-go                             A minimal AWS Go Pulumi program
-  aws-java                           A minimal AWS Java Pulumi program
-  aws-javascript                     A minimal AWS JavaScript Pulumi program
-  aws-python                         A minimal AWS Python Pulumi program
-  aws-scala                          A minimal AWS Scala Pulumi program
-  aws-typescript                     A minimal AWS TypeScript Pulumi program
-  aws-visualbasic                    A minimal AWS VB.NET Pulumi program
-  aws-yaml                           A minimal AWS Pulumi YAML program
+  aws-csharp                         A minimal AWS C# Pulumi program Local Template
+  aws-fsharp                         A minimal AWS F# Pulumi program Local Template
+  aws-go                             A minimal AWS Go Pulumi program Local Template
+  aws-java                           A minimal AWS Java Pulumi program Local Template
+  aws-javascript                     A minimal AWS JavaScript Pulumi program Local Template
+  aws-python                         A minimal AWS Python Pulumi program Local Template
+  aws-scala                          A minimal AWS Scala Pulumi program Local Template
+  aws-typescript                     A minimal AWS TypeScript Pulumi program Local Template
+  aws-visualbasic                    A minimal AWS VB.NET Pulumi program Local Template
+  aws-yaml                           A minimal AWS Pulumi YAML program Local Template
 `)
 	assert.Equal(t, "", stderr.String())
 }
@@ -1048,7 +1049,7 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 	// Check that normal templates are there
 	assert.Contains(t, stdout.String(), `
 Available Templates:
-  aiven-go                           A minimal Aiven Go Pulumi program
+  aiven-go                         A minimal Aiven Go Pulumi program                                                                  Local Template
 `)
 	assert.Equal(t, "", stderr.String())
 }
@@ -1178,3 +1179,4 @@ func TestNoPromptWithYes(t *testing.T) {
 		})
 	}
 }
+

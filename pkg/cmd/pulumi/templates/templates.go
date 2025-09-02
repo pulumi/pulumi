@@ -125,6 +125,7 @@ type Template interface {
 	ProjectDescription() string
 	Error() error
 	Download(ctx context.Context) (workspace.Template, error)
+	Provenance() string
 }
 
 // SearchScope dictates where [New] will search for templates.
