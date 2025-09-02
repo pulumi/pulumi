@@ -189,7 +189,7 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 		expected    string
 	}{
 		{
-			name: "stack outputs are with showSames = true",
+			name: "unchanged stack outputs are shown with showSames = true",
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
@@ -210,7 +210,7 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				"<{%fg 3%}>\n<{%reset%}>",
 		},
 		{
-			name: "stack outputs are shown with showSames = false",
+			name: "unchanged stack outputs are not shown with showSames = false",
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
@@ -226,9 +226,7 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				}),
 			},
 			showSames: false,
-			expected: "<{%fg 3%}>    banana: <{%reset%}>" +
-				"<{%fg 3%}>\"yummy\"<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>",
+			expected:  "",
 		},
 		{
 			name: "stack output added",
@@ -294,11 +292,9 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 		{
 			name: "stack output secret with showSecrets = false",
 			oldState: engine.StepEventStateMetadata{
-				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
-				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
-					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
-				}),
+				URN:     "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type:    "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{}),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
@@ -312,12 +308,9 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				}),
 			},
 			showSecrets: false,
-			expected: "<{%reset%}>" +
-				"    secret   : <{%reset%}>" +
-				"<{%reset%}>" +
-				"[secret]<{%reset%}>" +
-				"<{%reset%}>" +
-				"\n<{%reset%}>" +
+			expected: "<{%fg 2%}>  + secret   : <{%reset%}>" +
+				"<{%fg 2%}>[secret]<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
 				"<{%fg 2%}>  + secretObj: <{%reset%}>" +
 				"<{%fg 2%}>[secret]<{%reset%}>" +
 				"<{%fg 2%}>\n<{%reset%}>",
@@ -325,11 +318,9 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 		{
 			name: "stack output secret with showSecrets = true",
 			oldState: engine.StepEventStateMetadata{
-				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
-				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
-					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
-				}),
+				URN:     "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type:    "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{}),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
@@ -343,16 +334,13 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				}),
 			},
 			showSecrets: true,
-			expected: "<{%reset%}>" +
-				"    secret   : <{%reset%}>" +
-				"<{%reset%}>" +
-				"\"shhhh\"<{%reset%}>" +
-				"<{%reset%}>" +
-				"\n<{%reset%}>" +
+			expected: "<{%fg 2%}>  + secret   : <{%reset%}>" +
+				"<{%fg 2%}>\"shhhh\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
 				"<{%fg 2%}>  + secretObj: <{%reset%}>" +
-				"<{%fg 2%}>{\n<{%reset%}" +
-				"><{%fg 2%}>      + a: <{%reset%}" +
-				"><{%fg 2%}>\"1\"<{%reset%}>" +
+				"<{%fg 2%}>{\n<{%reset%}>" +
+				"<{%fg 2%}>      + a: <{%reset%}>" +
+				"<{%fg 2%}>\"1\"<{%reset%}>" +
 				"<{%fg 2%}>\n<{%reset%}>" +
 				"<{%fg 2%}>    }<{%reset%}>" +
 				"<{%fg 2%}>\n<{%reset%}>",

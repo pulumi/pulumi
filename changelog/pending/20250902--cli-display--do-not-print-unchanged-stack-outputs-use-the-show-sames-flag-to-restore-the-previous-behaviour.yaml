@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Do not print unchanged stack outputs. Use the `--show-sames` flag to restore the previous behaviour
