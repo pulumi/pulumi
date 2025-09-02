@@ -1010,6 +1010,10 @@ var urlRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
 })
 
+func IsExternalURL(source string) bool {
+	return strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source)
+}
+
 // Allow sha1 and sha256 hashes.
 var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
@@ -1054,7 +1058,7 @@ type parsePluginSpecInference struct {
 func parsePluginSpec(
 	ctx context.Context, source string, kind apitype.PluginKind,
 ) (PluginSpec, parsePluginSpecInference, error) {
-	if strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source) {
+	if IsExternalURL(source) {
 		return parsePluginSpecFromURL(ctx, source, kind)
 	}
 
