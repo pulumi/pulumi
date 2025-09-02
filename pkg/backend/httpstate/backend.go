@@ -1665,8 +1665,7 @@ func (b *cloudBackend) runEngineAction(
 			}
 		},
 	}
-	var persister backend.SnapshotPersister
-	persister = b.newSnapshotPersister(ctx, update, tokenSource)
+	persister := b.newSnapshotPersister(ctx, update, tokenSource)
 	if kind != apitype.PreviewUpdate && !dryRun {
 		if useJournal {
 			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
