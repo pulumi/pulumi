@@ -1552,7 +1552,7 @@ func (b *diyBackend) getParallel() int {
 }
 
 func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
-	return nil, errors.New("cloud registry is not supported by diy backends")
+	return nil, errors.New("Private Registry is not supported by diy backends")
 }
 
 func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
