@@ -4,7 +4,7 @@ import * as pulumi from "@pulumi/pulumi";
 
 class ResourceProvider implements pulumi.dynamic.ResourceProvider {
     async create(props: any): Promise<pulumi.dynamic.CreateResult> {
-        pulumi.log.info("message from provider")
+        console.log("message from provider")
         return {
             id: "resource-id",
             outs: {},
