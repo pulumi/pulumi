@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -78,14 +77,12 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 	var brokenOptions []string
 	nameToTemplateMap := make(map[string]cmdTemplates.Template)
 	for _, template := range templates {
-		projectDescription := template.ProjectDescription()
-		// If template is broken, indicate it in the project description.
-		if template.Error() != nil {
-			projectDescription = BrokenTemplateDescription
-		}
-
 		// Create the option string that combines the name, padding, and description.
-		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", projectDescription, template.Description())
+		desc := template.DisplayDescription()
+		// If template is broken, indicate it in the description.
+		if template.Error() != nil {
+			desc = BrokenTemplateDescription
+		}
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name(), desc)
 
 		nameToTemplateMap[option] = template

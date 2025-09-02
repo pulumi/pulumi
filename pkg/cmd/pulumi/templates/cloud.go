@@ -185,7 +185,19 @@ func (r registryTemplate) Name() string {
 }
 
 func (r registryTemplate) Description() string {
-	return ""
+	if r.t.Description == nil {
+		return ""
+	}
+	return *r.t.Description
+}
+
+func (r registryTemplate) DisplayDescription() string {
+	var parts []string
+	parts = append(parts, "[Private Registry]")
+	if r.t.Description != nil {
+		parts = append(parts, *r.t.Description)
+	}
+	return strings.Join(parts, " ")
 }
 
 func (r registryTemplate) ProjectDescription() string {
@@ -359,6 +371,7 @@ type orgTemplate struct {
 
 func (t orgTemplate) Name() string               { return t.t.Name }
 func (t orgTemplate) Description() string        { return "" }
+func (t orgTemplate) DisplayDescription() string { return t.t.Description }
 func (t orgTemplate) ProjectDescription() string { return t.t.Description }
 func (t orgTemplate) Error() error               { return nil }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
