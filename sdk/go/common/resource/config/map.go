@@ -192,6 +192,15 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	if len(p) == 1 {
+
+		if v.typ != TypeUnknown {
+			text, _, _, err := newV.MarshalString()
+			if err != nil {
+				return err
+			}
+			v.value = text
+		}
+
 		m[configKey] = v
 		return nil
 	}
@@ -318,7 +327,11 @@ func adjustObjectValue(v Value) (object, error) {
 		}
 		return newObject(int64(i)), nil
 	case TypeBool:
-		return newObject(v.value == "true"), nil
+		b, err := strconv.ParseBool(v.value)
+		if err != nil {
+			return object{}, err
+		}
+		return newObject(b), nil
 	case TypeFloat:
 		f, err := strconv.ParseFloat(v.value, 64)
 		if err != nil {

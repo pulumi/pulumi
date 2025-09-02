@@ -1226,6 +1226,134 @@ func TestSetSuccess(t *testing.T) {
 				MustMakeKey("my", "special"): NewObjectValue(`{"object":{"fizz":"buzz","foo":"bar"},"thing1":1,"thing2":2}`),
 			},
 		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("true", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("true", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("True", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("true", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("TRUE", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("true", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("1", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("true", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("false", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("false", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("False", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("false", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("FALSE", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("false", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedbool",
+			Path:  true,
+			Value: NewTypedValue("0", TypeBool),
+			Expected: Map{
+				MustMakeKey("my", "typedbool"): NewTypedValue("false", TypeBool),
+			},
+		},
+		{
+			Key:   "my:typedstring",
+			Path:  true,
+			Value: NewTypedValue("testValue", TypeString),
+			Expected: Map{
+				MustMakeKey("my", "typedstring"): NewTypedValue("testValue", TypeString),
+			},
+		},
+		{
+			Key:   "my:typedint",
+			Path:  true,
+			Value: NewTypedValue("10", TypeInt),
+			Expected: Map{
+				MustMakeKey("my", "typedint"): NewTypedValue("10", TypeInt),
+			},
+		},
+		{
+			Key:   "my:typedint",
+			Path:  true,
+			Value: NewTypedValue("+10", TypeInt),
+			Expected: Map{
+				MustMakeKey("my", "typedint"): NewTypedValue("10", TypeInt),
+			},
+		},
+		{
+			Key:   "my:typedint",
+			Path:  true,
+			Value: NewTypedValue("0042", TypeInt),
+			Expected: Map{
+				MustMakeKey("my", "typedint"): NewTypedValue("42", TypeInt),
+			},
+		},
+		{
+			Key:   "my:typedfloat",
+			Path:  true,
+			Value: NewTypedValue("10.5", TypeFloat),
+			Expected: Map{
+				MustMakeKey("my", "typedfloat"): NewTypedValue("10.5", TypeFloat),
+			},
+		},
+		{
+			Key:   "my:typedfloat",
+			Path:  true,
+			Value: NewTypedValue("+10.5", TypeFloat),
+			Expected: Map{
+				MustMakeKey("my", "typedfloat"): NewTypedValue("10.5", TypeFloat),
+			},
+		},
+		{
+			Key:   "my:typedfloat",
+			Path:  true,
+			Value: NewTypedValue("0042.5", TypeFloat),
+			Expected: Map{
+				MustMakeKey("my", "typedfloat"): NewTypedValue("42.5", TypeFloat),
+			},
+		},
+		{
+			Key:   "my:typedfloat",
+			Path:  true,
+			Value: NewTypedValue("1e3", TypeFloat),
+			Expected: Map{
+				MustMakeKey("my", "typedfloat"): NewTypedValue("1000", TypeFloat),
+			},
+		},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
