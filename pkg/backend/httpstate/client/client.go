@@ -30,10 +30,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
@@ -49,6 +51,10 @@ import (
 const (
 	// 20s before we give up on a copilot request
 	CopilotRequestTimeout = 20 * time.Second
+
+	JournalingSpoolerEnabled = true
+	JournalingMaxBatchSize   = 100
+	JournalingMaxWorksrs     = 5
 )
 
 // TemplatePublishOperationID uniquely identifies a template publish operation.
@@ -84,6 +90,11 @@ type PublishTemplateVersionCompleteRequest struct {
 // PublishTemplateVersionCompleteResponse is the response from completing a template publish operation.
 type PublishTemplateVersionCompleteResponse struct{}
 
+type queuedJournalEntry struct {
+	result chan error
+	entry  apitype.JournalEntry
+}
+
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
@@ -98,6 +109,10 @@ type Client struct {
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
 	DisableCapabilityProbing bool
+
+	journalSpoolerLock    sync.Mutex
+	journalSpoolerWorkers int
+	journalSpoolerQueue   []*queuedJournalEntry
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -1209,7 +1224,135 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
 	entry apitype.JournalEntry, token UpdateTokenSource,
 ) error {
-	return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
+	if JournalingSpoolerEnabled {
+		res := pc.pushJournalEntry(entry)
+
+		pc.processJournalEntrySpooler(ctx, update, token)
+
+		return <-res.result
+	} else {
+		return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
+	}
+}
+
+func (pc *Client) shouldSpawnJournalEntrySpooler() bool {
+	pc.journalSpoolerLock.Lock()
+	defer pc.journalSpoolerLock.Unlock()
+
+	if pc.journalSpoolerWorkers >= JournalingMaxWorksrs {
+		return false
+	}
+
+	pc.journalSpoolerWorkers++
+	return true
+}
+
+func (pc *Client) doneWithJournalEntrySpooler() bool {
+	pc.journalSpoolerLock.Lock()
+	defer pc.journalSpoolerLock.Unlock()
+
+	if pc.journalSpoolerWorkers == 1 && len(pc.journalSpoolerQueue) > 0 {
+		// If we are the last worker and race with a new entry, don't quit.
+		return false
+	}
+
+	pc.journalSpoolerWorkers--
+	return true
+}
+
+func (pc *Client) processJournalEntrySpooler(ctx context.Context, update UpdateIdentifier, token UpdateTokenSource) {
+	logging.V(1).Infof("Queueing request\n")
+
+	if pc.shouldSpawnJournalEntrySpooler() {
+		go func() {
+			for {
+				pc.runJournalEntrySpooler(ctx, update, token)
+				if pc.doneWithJournalEntrySpooler() {
+					return
+				}
+			}
+		}()
+	}
+}
+
+func (pc *Client) runJournalEntrySpooler(ctx context.Context, update UpdateIdentifier, token UpdateTokenSource) {
+	for {
+		batch := pc.extractJournalEntriesForBatch()
+		if len(batch) == 0 {
+			break
+		}
+
+		logging.V(1).Infof(
+			"Processing a batch of %v entries, %d in flight\n",
+			len(batch),
+			pc.journalSpoolerWorkers,
+		)
+
+		pc.sendJournalEntries(ctx, update, token, batch)
+	}
+}
+
+func (pc *Client) sendJournalEntries(ctx context.Context, update UpdateIdentifier, token UpdateTokenSource, batch []*queuedJournalEntry) {
+	batchSize := len(batch)
+
+	entries := make([]apitype.JournalEntry, batchSize)
+	for i, entry := range batch {
+		entries[i] = entry.entry
+	}
+
+	err := pc.SaveJournalEntries(ctx, update, entries, token)
+
+	if err != nil && batchSize > 1 {
+		// Retry splitting into smaller batches, in case we hit some request limits.
+		halfBatchSize := batchSize / 2
+		pc.sendJournalEntries(ctx, update, token, batch[0:halfBatchSize])
+		pc.sendJournalEntries(ctx, update, token, batch[halfBatchSize:])
+		return
+	}
+
+	for _, entry := range batch {
+		entry.result <- err
+	}
+}
+
+func (pc *Client) pushJournalEntry(entry apitype.JournalEntry) *queuedJournalEntry {
+	pc.journalSpoolerLock.Lock()
+	defer pc.journalSpoolerLock.Unlock()
+
+	if pc.journalSpoolerQueue == nil {
+		pc.journalSpoolerQueue = make([]*queuedJournalEntry, 0, JournalingMaxBatchSize)
+	}
+
+	res := &queuedJournalEntry{
+		result: make(chan error, 1),
+		entry:  entry,
+	}
+
+	pc.journalSpoolerQueue = append(pc.journalSpoolerQueue, res)
+	return res
+}
+
+func (pc *Client) extractJournalEntriesForBatch() []*queuedJournalEntry {
+	pc.journalSpoolerLock.Lock()
+	defer pc.journalSpoolerLock.Unlock()
+
+	batchSize := JournalingMaxBatchSize
+	batch := make([]*queuedJournalEntry, 0, batchSize)
+
+	if pc.journalSpoolerQueue != nil {
+		maxSize := len(pc.journalSpoolerQueue)
+		workers := pc.journalSpoolerWorkers
+		if workers > 1 {
+			// Evenly spread among workers
+			maxSize = min(maxSize, (maxSize+workers-1)/workers)
+		}
+
+		batchSize = min(maxSize, batchSize)
+		batch = pc.journalSpoolerQueue[:batchSize]
+		pc.journalSpoolerQueue = pc.journalSpoolerQueue[batchSize:]
+	}
+
+	return batch
 }
 
 func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifier,
