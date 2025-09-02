@@ -17,6 +17,7 @@ package packageresolution
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
 	"os"
 	"path/filepath"
@@ -143,7 +144,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("package unknown-pkg not found"),
+			expectedErr: &PackageNotFoundError{Package: "unknown-pkg"},
 		},
 		{
 			name:       "registry error (non-NotFound)",
@@ -157,7 +158,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("network error"),
+			expectedErr: fmt.Errorf("%w: %v", ErrRegistryQuery, errors.New("network error")),
 		},
 
 		// Environment combination tests for pre-registry packages
@@ -200,7 +201,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("package unknown-package not found"),
+			expectedErr: &PackageNotFoundError{Package: "unknown-package"},
 		},
 		{
 			name:       "unknown package with experimental off",
@@ -213,7 +214,7 @@ packages:
 					},
 				}, nil
 			},
-			expectedErr: errors.New("package unknown-package not found"),
+			expectedErr: &PackageNotFoundError{Package: "unknown-package"},
 		},
 		{
 			name:       "project source takes precedence over plugin name",
@@ -265,7 +266,14 @@ packages:
 			)
 
 			if tt.expectedErr != nil {
-				assert.Equal(t, tt.expectedErr, err)
+				if packageNotFoundErr, ok := tt.expectedErr.(*PackageNotFoundError); ok {
+					actualErr, actualOk := err.(*PackageNotFoundError)
+					require.True(t, actualOk, "Expected PackageNotFoundError but got %T", err)
+					assert.Equal(t, packageNotFoundErr.Package, actualErr.Package)
+					assert.Equal(t, packageNotFoundErr.Version, actualErr.Version)
+				} else {
+					assert.Equal(t, tt.expectedErr, err)
+				}
 				return
 			}
 
@@ -308,7 +316,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		},
 	}
 
-	result, _ := Resolve(
+	result, err := Resolve(
 		context.Background(),
 		reg,
 		pluginSpec,
@@ -318,6 +326,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		},
 		t.TempDir(),
 	)
+	require.NoError(t, err)
 
 	res, ok := result.(RegistryResult)
 	require.True(t, ok, "Expected RegistryResult but got %T", result)
@@ -346,7 +355,7 @@ packages:
 	}
 
 	pluginSpec := workspace.PluginSpec{Name: "aws"}
-	result, _ := Resolve(
+	result, err := Resolve(
 		context.Background(),
 		reg,
 		pluginSpec, // This is both pre-registry AND defined locally
@@ -356,6 +365,7 @@ packages:
 		},
 		tmpDir,
 	)
+	require.NoError(t, err)
 
 	assert.Equal(t, LocalPathResult{LocalPluginPathAbs: "./local-aws-override"}, result)
 }

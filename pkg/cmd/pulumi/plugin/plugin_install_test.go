@@ -264,7 +264,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		err := cmd.Run(context.Background(), []string{"resource", "unknown", "1.48.0"})
 		assert.ErrorContains(t, err,
-			"Unable to resolve package from name: not found: unknown@1.48.0 does not match a registry package")
+			"Unable to resolve package from name: package unknown@1.48.0 not found")
 	})
 
 	t.Run("without version", func(t *testing.T) {
@@ -291,7 +291,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		err := cmd.Run(context.Background(), []string{"resource", "unknown"})
 		assert.ErrorContains(t, err,
-			"Unable to resolve package from name: not found: unknown does not match a registry package")
+			"Unable to resolve package from name: package unknown not found")
 	})
 }
 

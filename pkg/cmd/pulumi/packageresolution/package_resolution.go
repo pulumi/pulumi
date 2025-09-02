@@ -28,11 +28,41 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+var (
+	ErrPackageNotFound = errors.New("package not found")
+	ErrRegistryQuery   = errors.New("registry query error")
+)
+
+type PackageNotFoundError struct {
+	Package     string
+	Version     *semver.Version
+	OriginalErr error
+}
+
+func (e *PackageNotFoundError) Error() string {
+	if e.Version != nil {
+		return fmt.Sprintf("package %s@%s not found", e.Package, e.Version.String())
+	}
+	return fmt.Sprintf("package %s not found", e.Package)
+}
+
+func (e *PackageNotFoundError) Is(target error) bool {
+	return target == ErrPackageNotFound
+}
+
+func (e *PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
+	if e.OriginalErr != nil && errors.Is(e.OriginalErr, registry.ErrNotFound) {
+		return registry.GetSuggestedPackages(e.OriginalErr)
+	}
+	return nil
+}
 
 type Options struct {
 	DisableRegistryResolve bool
@@ -83,14 +113,18 @@ func Resolve(
 		return ExternalSourceResult{}, nil
 	}
 
-	var registryErr error
+	var registryNotFoundErr error
+	var registryQueryErr error
+
 	if !options.DisableRegistryResolve && options.Experimental {
 		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
 		if err == nil {
 			return RegistryResult{Metadata: metadata}, nil
 		}
-		if !errors.Is(err, registry.ErrNotFound) {
-			registryErr = err
+		if errors.Is(err, registry.ErrNotFound) {
+			registryNotFoundErr = err
+		} else {
+			registryQueryErr = fmt.Errorf("%w: %v", ErrRegistryQuery, err)
 		}
 	}
 
@@ -98,11 +132,15 @@ func Resolve(
 		return ExternalSourceResult{}, nil
 	}
 
-	if registryErr != nil {
-		return RegistryResult{}, registryErr
+	if registryQueryErr != nil {
+		return RegistryResult{}, registryQueryErr
 	}
 
-	return ExternalSourceResult{}, fmt.Errorf("package %s not found", pluginSpec.Name)
+	return ExternalSourceResult{}, &PackageNotFoundError{
+		Package:     pluginSpec.Name,
+		Version:     pluginSpec.Version,
+		OriginalErr: registryNotFoundErr,
+	}
 }
 
 func getLocalProjectPackageSource(
