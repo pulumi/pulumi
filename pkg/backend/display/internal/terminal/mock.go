@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package terminal
 import (
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 )
 
@@ -35,12 +34,15 @@ type MockTerminal struct {
 
 var _ Terminal = &MockTerminal{}
 
+// MockTerminal is a mock terminal implementation that writes its output to a
+// buffer. Terminal codes are printed as explicit strings for identification in
+// test outputs.
 func NewMockTerminal(dest io.Writer, width, height int, raw bool) *MockTerminal {
 	return &MockTerminal{
 		width:  width,
 		height: height,
 		raw:    raw,
-		info:   info{mockTermInfo(0)},
+		info:   mockTermInfo(0),
 		keys:   make(chan string),
 		dest:   dest,
 	}
@@ -50,35 +52,35 @@ func NewMockTerminal(dest io.Writer, width, height int, raw bool) *MockTerminal 
 // explicit strings for identification in test outputs.
 type mockTermInfo int
 
-var termOps = map[string]string{
-	"el1":   "clear-to-cursor",
-	"el":    "clear-to-end",
-	"cuu":   "cursor-up",
-	"cud":   "cursor-down",
-	"civis": "hide-cursor",
-	"cnorm": "show-cursor",
+var _ = Info(mockTermInfo(0))
+
+func (i mockTermInfo) ClearLine(out io.Writer) {
+	fmt.Fprintf(out, "<%%clear-to-cursor%%>")
+	fmt.Fprintf(out, "<%%clear-to-end%%>")
 }
 
-func (ti mockTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	opName, ok := termOps[attr]
-	if !ok {
-		opName = attr
-	}
+func (i mockTermInfo) ClearEnd(out io.Writer) {
+	fmt.Fprintf(out, "<%%clear-to-end%%>")
+}
 
-	if len(params) == 0 {
-		return fmt.Sprintf("<%%%s%%>", opName), nil
-	}
+func (i mockTermInfo) CarriageReturn(out io.Writer) {
+	fmt.Fprint(out, "\r")
+}
 
-	// If the operation has parameters, format them all as a colon-delimited
-	// string, e.g. "cursor-up:2".
-	var op strings.Builder
-	op.WriteString(opName)
-	for _, p := range params {
-		op.WriteRune(':')
-		op.WriteString(fmt.Sprint(p))
-	}
+func (i mockTermInfo) CursorUp(out io.Writer, count int) {
+	fmt.Fprintf(out, "<%%cursor-up:%d%%>", count)
+}
 
-	return fmt.Sprintf("<%%%s%%>", op.String()), nil
+func (i mockTermInfo) CursorDown(out io.Writer, count int) {
+	fmt.Fprintf(out, "<%%cursor-down:%d%%>", count)
+}
+
+func (i mockTermInfo) HideCursor(out io.Writer) {
+	fmt.Fprintf(out, "<%%hide-cursor%%>")
+}
+
+func (i mockTermInfo) ShowCursor(out io.Writer) {
+	fmt.Fprintf(out, "<%%show-cursor%%>")
 }
 
 func (t *MockTerminal) IsRaw() bool {
