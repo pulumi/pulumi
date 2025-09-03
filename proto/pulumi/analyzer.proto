@@ -170,7 +170,8 @@ message AnalyzeStackRequest {
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeDiagnostic diagnostics = 2; // information about policy violations.
+    repeated AnalyzeDiagnostic diagnostics = 2;      // information about policy violations.
+    repeated PolicyNotApplicable not_applicable = 3; // information about policies that were not applicable.
 }
 
 // EnforcementLevel indicates the severity of a policy violation.
@@ -208,7 +209,8 @@ message Remediation {
 
 // RemediateResponse contains a sequence of remediations applied, in order.
 message RemediateResponse {
-    repeated Remediation remediations = 1;       // the list of remediations that were applied.
+    repeated Remediation remediations = 1;           // the list of remediations that were applied.
+    repeated PolicyNotApplicable not_applicable = 2; // information about policies that were not applicable.
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
@@ -229,6 +231,7 @@ message PolicyInfo {
     string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
     EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
     PolicyConfigSchema configSchema = 6;   // Config schema for the policy.
+    PolicyType policy_type = 7;            // Type of the policy.
 }
 
 // PolicyConfigSchema provides the schema for a policy's configuration.
@@ -246,4 +249,17 @@ message PolicyConfig {
 // ConfigureAnalyzerRequest provides configuration information to the analyzer.
 message ConfigureAnalyzerRequest {
     map<string, PolicyConfig> policyConfig = 1; // Map of policy name to config.
+}
+
+// PolicyType indicates the type of a policy.
+enum PolicyType {
+    POLICY_TYPE_UNKNOWN = 0;     // Unknown policy type.
+    POLICY_TYPE_RESOURCE = 1;    // A policy that validates a resource.
+    POLICY_TYPE_STACK = 2;       // A policy that validates a stack.
+}
+
+// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
+message PolicyNotApplicable {
+    string policy_name = 1; // The name of the policy that was not applicable.
+    string reason = 2;      // An optional reason why the policy was not applicable.
 }
