@@ -209,6 +209,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		}
 	}
 
+	// We run this method for its side-effects. On windows, this will enable the windows terminal
+	// to understand ANSI escape codes.
+	_, _, _ = term.StdStreams()
+
 	cmd := &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
@@ -231,10 +235,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// We run this method for its side-effects. On windows, this will enable the windows terminal
-			// to understand ANSI escape codes.
-			_, _, _ = term.StdStreams()
-
 			// If we fail before we start the async update check, go ahead and close the
 			// channel since we know it will never receive a value.
 			var waitForUpdateCheck bool
