@@ -1137,6 +1137,8 @@ func (nameInfo) Format(name string) string {
 }
 
 func TestRewriteAppliesDoesNotPanicInNonStrictMode(t *testing.T) {
+	t.Parallel()
+
 	source := `
 config "vpcId" "string" {
   description = "The ID of the VPC"
