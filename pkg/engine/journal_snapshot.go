@@ -15,10 +15,9 @@
 package engine
 
 import (
-	"reflect"
+	"fmt"
+	"strings"
 	"sync/atomic"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
@@ -31,18 +30,8 @@ import (
 // is responsible for recording and storing the operations, and constructing a snapshot/storing them
 // for later replaying.
 type Journal interface {
-	// BeginOperation begins a new operation in the journal. This should be called before any
-	// mutation is performed on the snapshot. The journal entry should contain the operation ID,
-	// which is used to correlate the begin and end operations in the journal.
-	BeginOperation(entry JournalEntry) error
-	// EndOperation ends an operation in the journal. This should be called after the mutation is
-	// performed on the snapshot. The journal entry should contain the operation ID, which is used
-	// to correlate the begin and end operations in the journal.
-	EndOperation(entry JournalEntry) error
-	// Write updates the base snapshot for this journal. This is used e.g. when providers have
-	// been updated, and we can't simply reuse the base snapshot from the previous plan. This
-	// needs to be called before any other mutation requests.
-	Write(newBase *deploy.Snapshot) error
+	// Append appends a new transaction to the journal.
+	Append(tx JournalTransaction) error
 	// Close closes the journal, flushing any pending operations.
 	Close() error
 }
@@ -68,6 +57,7 @@ type JournalSnapshotManager struct {
 	// state.  This is used to track the added resources and their operation IDs, allowing us too delete
 	// them later if necessary.
 	newResources gsync.Map[*resource.State, int64]
+
 	// A counter used to generate unique operation IDs for journal entries. Note that we use these
 	// sequential IDs to track the order of operations. This matters for reconstructing the Snapshot,
 	// because we need to know which operations were applied first, so dependencies are resolved correctly.
@@ -76,10 +66,7 @@ type JournalSnapshotManager struct {
 	// start an operation after all its dependencies have been resolved. However when reconstructing
 	// the snapshot we have all journal entries available, so we need to ensure that we apply them
 	// in the right order.
-	operationIDCounter atomic.Int64
-
-	// A counter to generate unique IDs for each journal entry.
-	sequenceIDCounter atomic.Int64
+	sequenceNumberCounter atomic.Int64
 }
 
 var _ SnapshotManager = (*JournalSnapshotManager)(nil)
@@ -91,26 +78,29 @@ func (sm *JournalSnapshotManager) Close() error {
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin          JournalEntryKind = 0
-	JournalEntrySuccess        JournalEntryKind = 1
-	JournalEntryFailure        JournalEntryKind = 2
-	JournalEntryRefreshSuccess JournalEntryKind = 3
-	JournalEntryOutputs        JournalEntryKind = 4
-	JournalEntryWrite          JournalEntryKind = 5
+	JournalEntryInvalid                JournalEntryKind = 0
+	JournalEntryAddPendingOperation    JournalEntryKind = 1
+	JournalEntryRemovePendingOperation JournalEntryKind = 2
+	JournalEntryRemoveState            JournalEntryKind = 3
+	JournalEntryPatchState             JournalEntryKind = 4
+	JournalEntryAppendNewState         JournalEntryKind = 5
+	JournalEntryWrite                  JournalEntryKind = 6
 )
 
 func (k JournalEntryKind) String() string {
 	switch k {
-	case JournalEntryBegin:
-		return "Begin"
-	case JournalEntrySuccess:
-		return "Success"
-	case JournalEntryFailure:
-		return "Failure"
-	case JournalEntryRefreshSuccess:
-		return "RefreshSuccess"
-	case JournalEntryOutputs:
-		return "Outputs"
+	case JournalEntryInvalid:
+		return "Invalid"
+	case JournalEntryAddPendingOperation:
+		return "AddPendingOperation"
+	case JournalEntryRemovePendingOperation:
+		return "RemovePendingOperation"
+	case JournalEntryRemoveState:
+		return "RemoveState"
+	case JournalEntryPatchState:
+		return "PatchState"
+	case JournalEntryAppendNewState:
+		return "AppendNewState"
 	case JournalEntryWrite:
 		return "Write"
 	default:
@@ -118,84 +108,244 @@ func (k JournalEntryKind) String() string {
 	}
 }
 
-type JournalEntry struct {
-	// The sequence ID of this journal entry. This is a strictly increasing number, unique for
-	// each journal entry.
-	SequenceID int64
-	// The kind of journal entry this is.
-	Kind JournalEntryKind
-	// The ID of the operation that this journal entry is associated with.  Note that operation
-	// IDs start at 1, only Write operations have ID 0.
-	OperationID int64
-	// The index of the resource in the base snapshot to delete, or -1 if no deletion is needed.
-	RemoveOld *int64
-	// The operation ID of a new resource that should be deleted.
-	RemoveNew *int64
-	// The index of the resource in the base snapshot that should be marked as pending
-	// replacement, or -1 if no pending replacement is needed.
-	PendingReplacement *int64
-	// The index of the resource in the base snapshot that should be marked as deleted,
-	// or -1 if no deletion is needed.
-	Delete *int64
-	// The resource state associated with this journal entry.
-	State *resource.State
-	// The operation associated with this journal entry, if any.
-	Operation *resource.Operation
-	// If true, this journal entry can be elided and does not need to be written immediately.
-	ElideWrite bool
-	// If true, this journal entry is part of a refresh operation.
-	IsRefresh bool
-
-	// The new snapshot if this journal entry is part of a rebase operation.
-	NewSnapshot *deploy.Snapshot
+func formatSequenceNumber(i int64) string {
+	return fmt.Sprintf("%v.%v", (i>>24)&0xffffffffff, i&0xffffff)
 }
 
-func (sm *JournalSnapshotManager) newJournalEntry(kind JournalEntryKind, operationID int64) JournalEntry {
-	sequenceID := sm.sequenceIDCounter.Add(1)
-	return JournalEntry{
-		Kind:        kind,
-		OperationID: operationID,
-		SequenceID:  sequenceID,
+type JournalState struct {
+	// For {Remove,Patch}BaseState
+	Base *int64
+
+	// For {Remove,Patch}NewState
+	New *int64
+}
+
+func (s *JournalState) String() string {
+	switch {
+	case s == nil:
+		return "<nil>"
+	case s.Base != nil:
+		return fmt.Sprintf("base[%v]", formatSequenceNumber(*s.Base))
+	case s.New != nil:
+		return fmt.Sprintf("new[%v]", formatSequenceNumber(*s.New))
+	default:
+		return "<invalid>"
 	}
+}
+
+type JournalTransaction struct {
+	// The 40-bit sequence number of the transaction.
+	SequenceNumber int64
+
+	// The journal entries that make up this transaction.
+	Entries []JournalEntry
+}
+
+func (tx *JournalTransaction) String() string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%v: tx [\n", tx.SequenceNumber)
+
+	for _, entry := range tx.Entries {
+		fmt.Fprintf(&sb, "\t%v,\n", entry)
+	}
+
+	fmt.Fprintf(&sb, "]\n")
+	return sb.String()
+}
+
+type JournalEntry struct {
+	// The kind of the operation.
+	Kind JournalEntryKind
+
+	// For AddPendingOperation
+	PendingOperation *resource.Operation
+
+	// For RemovePendingOperation
+	RemovePendingOperation *int64
+
+	// For {Remove,Patch}{Base,New}State
+	Old *JournalState
+
+	// For PatchBaseState, PatchNewState, and AppendNewState
+	State *resource.State
+
+	// For {Remove,Patch}{Base,New}State
+	InvalidateDependencies bool
+
+	// For Write
+	Snapshot *deploy.Snapshot
+}
+
+func (e JournalEntry) String() string {
+	var sb strings.Builder
+	sb.WriteString(e.Kind.String())
+
+	if e.PendingOperation != nil {
+		fmt.Fprintf(&sb, " op:%v", e.PendingOperation.Type)
+	}
+	if e.RemovePendingOperation != nil {
+		fmt.Fprintf(&sb, " rm:%v", formatSequenceNumber(*e.RemovePendingOperation))
+	}
+
+	if e.Old != nil {
+		fmt.Fprintf(&sb, " old:%v", e.Old)
+	}
+
+	if e.State != nil {
+		fmt.Fprintf(
+			&sb,
+			" new:(urn:%v, id:%v, delete:%v, replace:%v)",
+			e.State.URN,
+			e.State.ID,
+			e.State.Delete,
+			e.State.PendingReplacement,
+		)
+	}
+
+	if e.InvalidateDependencies {
+		fmt.Fprintf(&sb, " -deps")
+	}
+
+	if e.Snapshot != nil {
+		fmt.Fprintf(&sb, " +snap")
+	}
+
+	return sb.String()
+}
+
+// locateState finds the given state in either the base snapshot or the new states produced during the update.
+func (sm *JournalSnapshotManager) tryLocateState(state *resource.State) (*JournalState, bool) {
+	contract.Assertf(state != nil, "state must not be nil")
+
+	// If the state is non-nil, either locate it in the base snapshot or in the journal.
+	if sequenceNumber, ok := sm.newResources.Load(state); ok {
+		return &JournalState{New: &sequenceNumber}, true
+	}
+
+	if sm.baseSnapshot != nil {
+		for i, res := range sm.baseSnapshot.Resources {
+			if res == state {
+				index := int64(i)
+				return &JournalState{Base: &index}, true
+			}
+		}
+	}
+
+	return nil, false
+}
+
+// locateState finds the given state in either the base snapshot or the new states produced during the update.
+func (sm *JournalSnapshotManager) locateState(state *resource.State) *JournalState {
+	s, ok := sm.tryLocateState(state)
+	contract.Assertf(ok, "missing state 0x%p (URN: %v, Delete: %v)", state, state.URN, state.Delete)
+	return s
+}
+
+func (sm *JournalSnapshotManager) transaction(fn func(tx *journalTransaction)) error {
+	tx := &journalTransaction{
+		manager:        sm,
+		sequenceNumber: sm.sequenceNumberCounter.Add(1),
+	}
+	fn(tx)
+
+	return sm.journal.Append(JournalTransaction{
+		SequenceNumber: tx.sequenceNumber,
+		Entries:        tx.entries,
+	})
+}
+
+type journalTransaction struct {
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
+	entries        []JournalEntry
+}
+
+func (tx *journalTransaction) currentSequenceNumber() int64 {
+	return ((tx.sequenceNumber & 0xffffffffff) << 24) | int64(len(tx.entries))
+}
+
+func (tx *journalTransaction) addPendingOperation(op resource.Operation) int64 {
+	sequenceNumber := tx.currentSequenceNumber()
+	tx.entries = append(tx.entries, JournalEntry{
+		Kind:             JournalEntryAddPendingOperation,
+		PendingOperation: &op,
+	})
+	return sequenceNumber
+}
+
+func (tx *journalTransaction) removePendingOperation(sequenceNumber int64) {
+	tx.entries = append(tx.entries, JournalEntry{
+		Kind:                   JournalEntryRemovePendingOperation,
+		RemovePendingOperation: &sequenceNumber,
+	})
+}
+
+func (tx *journalTransaction) tryRemoveState(old *resource.State) {
+	if oldState, ok := tx.manager.tryLocateState(old); ok {
+		tx.entries = append(tx.entries, JournalEntry{
+			Kind: JournalEntryRemoveState,
+			Old:  oldState,
+		})
+	}
+}
+
+func (tx *journalTransaction) removeState(old *resource.State, invalidateDependencies bool) {
+	tx.entries = append(tx.entries, JournalEntry{
+		Kind:                   JournalEntryRemoveState,
+		Old:                    tx.manager.locateState(old),
+		InvalidateDependencies: invalidateDependencies,
+	})
+}
+
+func (tx *journalTransaction) patchState(old, new *resource.State, invalidateDependencies bool) {
+	entry := JournalEntry{
+		Kind:                   JournalEntryPatchState,
+		Old:                    tx.manager.locateState(old),
+		State:                  new.Copy(),
+		InvalidateDependencies: invalidateDependencies,
+	}
+	if entry.Old.New != nil {
+		tx.manager.newResources.Store(entry.State, tx.currentSequenceNumber())
+	}
+	tx.entries = append(tx.entries, entry)
+}
+
+func (tx *journalTransaction) appendState(old, new *resource.State) {
+	entry := JournalEntry{
+		Kind:  JournalEntryAppendNewState,
+		State: new.Copy(),
+	}
+	if old != nil {
+		entry.Old = tx.manager.locateState(old)
+	}
+	entry.State = new
+	tx.manager.newResources.Store(entry.State, tx.currentSequenceNumber())
+	tx.entries = append(tx.entries, entry)
+}
+
+func (tx *journalTransaction) write(snap *deploy.Snapshot) {
+	tx.entries = append(tx.entries, JournalEntry{
+		Kind:     JournalEntryWrite,
+		Snapshot: snap,
+	})
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
 // completed.
 func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	operationID := sm.operationIDCounter.Add(1)
-
-	journalEntry := sm.newJournalEntry(JournalEntryOutputs, operationID)
-	journalEntry.ElideWrite = step.Old() != nil && step.New() != nil && step.Old().Outputs.DeepEquals(step.New().Outputs)
-	// If the outputs have changed, we create a journal entry.  This will cause the resource
-	// to be replaced in the snapshot, and thus the new outputs written.
-	if step.Old() != nil && step.New() != nil && !step.Old().Outputs.DeepEquals(step.New().Outputs) {
-		journalEntry.State = step.New()
-		sm.newResources.Store(step.New(), operationID)
-		sm.markEntryForRemoval(&journalEntry, step.Old())
+	elide := step.Old() != nil && step.New() != nil && step.Old().Outputs.DeepEquals(step.New().Outputs)
+	if elide {
+		return nil
 	}
-	return sm.journal.EndOperation(journalEntry)
-}
 
-// markEntryForRemoval marks the given resource state for deletion in the journal entry. We compare the
-// pointer to the resource state in the base snapshot, to find the position in the baseSnapshot here,
-// in case the resource is already in the base snapshot.
-//
-// If we have a new resource that was created in this plan, but then gets deleted by a subsequent step,
-// we record the operation ID of the new resource, so the snapshot generation can skip the earlier operation,
-// and thus the new resource won't be written to the snapshot.
-func (sm *JournalSnapshotManager) markEntryForRemoval(journalEntry *JournalEntry, toRemove *resource.State) {
-	if sm.baseSnapshot != nil {
-		for i, res := range sm.baseSnapshot.Resources {
-			if res == toRemove {
-				index := int64(i)
-				journalEntry.RemoveOld = &index
-				return
-			}
-		}
+	// The resource we're patching may live in either the base or new resource list.
+	old := step.Old()
+	if old == nil {
+		old = step.New()
 	}
-	rm, ok := sm.newResources.Load(toRemove)
-	journalEntry.RemoveNew = &rm
-	contract.Assertf(ok, "could not find resource that's supposed to be deleted %v", toRemove)
+	return sm.transaction(func(tx *journalTransaction) {
+		tx.patchState(old, step.New(), false)
+	})
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -205,27 +355,25 @@ func (sm *JournalSnapshotManager) BeginMutation(step deploy.Step) (SnapshotMutat
 	contract.Requiref(step != nil, "step", "cannot be nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
-	operationID := sm.operationIDCounter.Add(1)
-
 	switch step.Op() {
 	case deploy.OpSame:
-		return sm.doSame(step, operationID)
+		return sm.doSame(step)
 	case deploy.OpCreate, deploy.OpCreateReplacement:
-		return sm.doCreate(step, operationID)
+		return sm.doCreate(step)
 	case deploy.OpUpdate:
-		return sm.doUpdate(step, operationID)
+		return sm.doUpdate(step)
 	case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-		return sm.doDelete(step, operationID)
+		return sm.doDelete(step)
 	case deploy.OpReplace:
-		return sm.doReplace(step, operationID)
+		return sm.doReplace(step)
 	case deploy.OpRead, deploy.OpReadReplacement:
-		return sm.doRead(step, operationID)
+		return sm.doRead(step)
 	case deploy.OpRefresh:
-		return sm.doRefresh(step, operationID)
+		return sm.doRefresh(step)
 	case deploy.OpRemovePendingReplace:
-		return sm.doRemovePendingReplace(step, operationID)
+		return sm.doRemovePendingReplace(step)
 	case deploy.OpImport, deploy.OpImportReplacement:
-		return sm.doImport(step, operationID)
+		return sm.doImport(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -241,7 +389,26 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 		return nil
 	}
 	sm.baseSnapshot = base
-	return sm.journal.Write(base)
+	return sm.transaction(func(tx *journalTransaction) {
+		newBase := &deploy.Snapshot{
+			Manifest:          base.Manifest,
+			SecretsManager:    base.SecretsManager,
+			Resources:         make([]*resource.State, 0, len(base.Resources)),
+			PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
+			Metadata:          base.Metadata,
+		}
+
+		// Copy the resources from the base snapshot to the new snapshot.
+		for _, res := range base.Resources {
+			newBase.Resources = append(newBase.Resources, res.Copy())
+		}
+		// Copy the pending operations from the base snapshot to the new snapshot.
+		for _, op := range base.PendingOperations {
+			newBase.PendingOperations = append(newBase.PendingOperations, op.Copy())
+		}
+
+		tx.write(newBase)
+	})
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -260,141 +427,12 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 // operations in the journal. This ID is also used to track the newly created resources.
 
 type sameSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager *JournalSnapshotManager
 }
 
-// mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
-// step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
-// this step can be elided.
-func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
-	old := step.Old()
-	new := step.New()
-
-	contract.Assertf(old.Delete == new.Delete,
-		"either both or neither resource must be pending deletion, got %v (old) != %v (new)",
-		old.Delete, new.Delete)
-	contract.Assertf(old.External == new.External,
-		"either both or neither resource must be external, got %v (old) != %v (new)",
-		old.External, new.External)
-
-	if sameStep, isSameStep := step.(*deploy.SameStep); isSameStep {
-		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for SameStep")
-	}
-
-	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
-	// resource is aliased.
-	if old.URN != new.URN {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of URN")
-		return true
-	}
-
-	// If the type of this resource has changed, we must write the checkpoint. This should only be possible when a
-	// resource is aliased.
-	if old.Type != new.Type {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Type")
-		return true
-	}
-
-	// If the kind of this resource has changed, we must write the checkpoint.
-	if old.Custom != new.Custom {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Custom")
-		return true
-	}
-
-	// We need to persist the changes if CustomTimeouts have changed
-	if old.CustomTimeouts != new.CustomTimeouts {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CustomTimeouts")
-		return true
-	}
-
-	// We need to persist the changes if RetainOnDelete has changed
-	if old.RetainOnDelete != new.RetainOnDelete {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
-		return true
-	}
-
-	contract.Assertf(old.ID == new.ID,
-		"old and new resource IDs must be equal, got %v (old) != %v (new)", old.ID, new.ID)
-
-	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
-	// aliased providers or upgrades to default providers.
-	if old.Provider != new.Provider {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Provider")
-		return true
-	}
-
-	// If this resource's parent has changed, we must write the checkpoint.
-	if old.Parent != new.Parent {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Parent")
-		return true
-	}
-
-	// If the DeletedWith attribute of this resource has changed, we must write the checkpoint.
-	if old.DeletedWith != new.DeletedWith {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
-		return true
-	}
-
-	// If the protection attribute of this resource has changed, we must write the checkpoint.
-	if old.Protect != new.Protect {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
-		return true
-	}
-
-	// If the inputs or outputs of this resource have changed, we must write the checkpoint. Note that it is possible
-	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
-	// resource's provider deems the physical change to be semantically irrelevant.
-	if !old.Inputs.DeepEquals(new.Inputs) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Inputs")
-		return true
-	}
-	if !old.Outputs.DeepEquals(new.Outputs) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Outputs")
-		return true
-	}
-
-	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both
-	// lists being empty ourselves.
-	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
-		// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
-		sortDeps := func(deps []resource.URN) []resource.URN {
-			result := make([]resource.URN, len(deps))
-			copy(result, deps)
-			slices.Sort(result)
-			return result
-		}
-		oldDeps := sortDeps(old.Dependencies)
-		newDeps := sortDeps(new.Dependencies)
-		if !reflect.DeepEqual(oldDeps, newDeps) {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
-			return true
-		}
-	}
-
-	if !reflect.DeepEqual(old.ResourceHooks, new.ResourceHooks) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ResourceHooks")
-		return true
-	}
-
-	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
-	// checkpoint. Likewise source positions are purely metadata and do not affect the system correctness, so
-	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when
-	// making large source code changes.
-
-	logging.V(9).Infof("SnapshotManager: mustWrite() false")
-	return false
-}
-
-func (sm *JournalSnapshotManager) doSame(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doSame(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doSame(%s)", step.URN())
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	journalEntry.ElideWrite = true
-	err := sm.journal.BeginOperation(journalEntry)
-	if err != nil {
-		return nil, err
-	}
-	return &sameSnapshotMutation{sm, operationID}, nil
+	return &sameSnapshotMutation{sm}, nil
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -402,172 +440,143 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 
-	kind := JournalEntrySuccess
+	// Bail out early if the step was not successful.
 	if !successful {
-		kind = JournalEntryFailure
+		return nil
 	}
-	journalEntry := ssm.manager.newJournalEntry(kind, ssm.operationID)
 
-	sameStep, isSameStep := step.(*deploy.SameStep)
-	if !isSameStep || !sameStep.IsSkippedCreate() {
-		journalEntry.State = step.New()
-		ssm.manager.newResources.Store(step.New(), ssm.operationID)
-		if old := step.Old(); old != nil {
-			ssm.manager.markEntryForRemoval(&journalEntry, step.Old())
+	return ssm.manager.transaction(func(txn *journalTransaction) {
+		sameStep, isSameStep := step.(*deploy.SameStep)
+		if !isSameStep || !sameStep.IsSkippedCreate() {
+			txn.appendState(step.Old(), step.New())
+		} else {
+			txn.tryRemoveState(step.Old())
 		}
-	}
-
-	if successful && isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
-		journalEntry.ElideWrite = true
-	}
-
-	return ssm.manager.journal.EndOperation(journalEntry)
+	})
 }
 
-func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doCreate(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeCreating)
 
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+	var sequenceNumber int64
+	err := sm.transaction(func(tx *journalTransaction) {
+		sequenceNumber = tx.addPendingOperation(resource.NewOperation(step.New().Copy(), resource.OperationTypeCreating))
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	return &createSnapshotMutation{sm, operationID}, nil
+	return &createSnapshotMutation{sm, sequenceNumber}, nil
 }
 
 type createSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
-	kind := JournalEntrySuccess
-	if !successful {
-		kind = JournalEntryFailure
-	}
-	journalEntry := csm.manager.newJournalEntry(kind, csm.operationID)
-	journalEntry.State = step.New()
-	csm.manager.newResources.Store(step.New(), csm.operationID)
-	if old := step.Old(); old != nil && old.PendingReplacement {
-		csm.manager.markEntryForRemoval(&journalEntry, old)
-	}
 
-	// If this step is a create replacement, we need to mark the old resource for deletion.
-	// The engine marks this in its in-memory representation, but since the snapshot manager
-	// is operating on a copy of the snapshot, we need to explicitly mark the resource.
-	if step.Old() != nil && !step.Old().PendingReplacement && csm.manager.baseSnapshot != nil {
-		for i, res := range csm.manager.baseSnapshot.Resources {
-			if res == step.Old() {
-				index := int64(i)
-				journalEntry.Delete = &index
-				break
+	return csm.manager.transaction(func(tx *journalTransaction) {
+		tx.removePendingOperation(csm.sequenceNumber)
+
+		// If this step is a create replacement, we need to mark the old resource for deletion.
+		// The engine marks this in its in-memory representation, but since the snapshot manager
+		// is operating on a copy of the snapshot, we need to explicitly mark the resource.
+		if successful {
+			if old := step.Old(); old != nil {
+				if old.PendingReplacement {
+					tx.removeState(old, false)
+				} else {
+					tx.patchState(old, old, false)
+				}
 			}
-		}
-	}
 
-	return csm.manager.journal.EndOperation(journalEntry)
+			tx.appendState(nil, step.New())
+		}
+	})
 }
 
-func (sm *JournalSnapshotManager) doUpdate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doUpdate(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeUpdating)
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+
+	var sequenceNumber int64
+	err := sm.transaction(func(tx *journalTransaction) {
+		sequenceNumber = tx.addPendingOperation(resource.NewOperation(step.New().Copy(), resource.OperationTypeUpdating))
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	return &updateSnapshotMutation{sm, operationID}, nil
+	return &updateSnapshotMutation{sm, sequenceNumber}, nil
 }
 
 type updateSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
-	kind := JournalEntrySuccess
-	if !successful {
-		kind = JournalEntryFailure
-	}
-	journalEntry := usm.manager.newJournalEntry(kind, usm.operationID)
-	if old := step.Old(); old != nil {
-		usm.manager.markEntryForRemoval(&journalEntry, step.Old())
-	}
-	journalEntry.State = step.New()
-	usm.manager.newResources.Store(step.New(), usm.operationID)
-	return usm.manager.journal.EndOperation(journalEntry)
+
+	return usm.manager.transaction(func(tx *journalTransaction) {
+		tx.removePendingOperation(usm.sequenceNumber)
+		if successful {
+			tx.appendState(step.Old(), step.New())
+		}
+	})
 }
 
-func (sm *JournalSnapshotManager) doDelete(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doDelete(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
-	op := resource.NewOperation(step.Old(), resource.OperationTypeDeleting)
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	journalEntry.Operation = &op
 
-	err := sm.journal.BeginOperation(journalEntry)
+	var sequenceNumber int64
+	err := sm.transaction(func(tx *journalTransaction) {
+		sequenceNumber = tx.addPendingOperation(resource.NewOperation(step.Old().Copy(), resource.OperationTypeDeleting))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &deleteSnapshotMutation{sm, operationID}, nil
+	return &deleteSnapshotMutation{sm, sequenceNumber}, nil
 }
 
 type deleteSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
-	kind := JournalEntrySuccess
-	if !successful {
-		kind = JournalEntryFailure
-	}
-	journalEntry := dsm.manager.newJournalEntry(kind, dsm.operationID)
-	if successful {
-		contract.Assertf(
-			!step.Old().Protect ||
-				step.Op() == deploy.OpDiscardReplaced ||
-				step.Op() == deploy.OpDeleteReplaced,
-			"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
-			step.Old().Protect, step.Op())
 
-		if step.Old().PendingReplacement {
-			if dsm.manager.baseSnapshot != nil {
-				for i, res := range dsm.manager.baseSnapshot.Resources {
-					if res == step.Old() {
-						index := int64(i)
-						journalEntry.PendingReplacement = &index
-						break
-					}
-				}
+	return dsm.manager.transaction(func(tx *journalTransaction) {
+		tx.removePendingOperation(dsm.sequenceNumber)
+		if successful {
+			contract.Assertf(
+				!step.Old().Protect ||
+					step.Op() == deploy.OpDiscardReplaced ||
+					step.Op() == deploy.OpDeleteReplaced,
+				"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
+				step.Old().Protect, step.Op())
+
+			old := step.Old()
+			if !old.PendingReplacement {
+				tx.removeState(old, false)
+			} else {
+				tx.patchState(old, old, false)
 			}
 		}
-
-		if !step.Old().PendingReplacement {
-			dsm.manager.markEntryForRemoval(&journalEntry, step.Old())
-		}
-	}
-	return dsm.manager.journal.EndOperation(journalEntry)
+	})
 }
 
-func (sm *JournalSnapshotManager) doReplace(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doReplace(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doReplace(%s)", step.URN())
-	return &replaceSnapshotMutation{sm, operationID}, nil
+	return &replaceSnapshotMutation{sm, 0}, nil
 }
 
 type replaceSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -575,159 +584,143 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 	return nil
 }
 
-func (sm *JournalSnapshotManager) doRead(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doRead(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeReading)
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+
+	var sequenceNumber int64
+	err := sm.transaction(func(tx *journalTransaction) {
+		sequenceNumber = tx.addPendingOperation(resource.NewOperation(step.New().Copy(), resource.OperationTypeReading))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &readSnapshotMutation{sm, operationID}, nil
+	return &readSnapshotMutation{sm, sequenceNumber}, nil
 }
 
 type readSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
-	kind := JournalEntrySuccess
-	if !successful {
-		kind = JournalEntryFailure
-	}
-	journalEntry := rsm.manager.newJournalEntry(kind, rsm.operationID)
-	journalEntry.State = step.New()
-	rsm.manager.newResources.Store(step.New(), rsm.operationID)
-	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
-		rsm.manager.markEntryForRemoval(&journalEntry, step.Old())
-	}
-	return rsm.manager.journal.EndOperation(journalEntry)
+
+	return rsm.manager.transaction(func(tx *journalTransaction) {
+		tx.removePendingOperation(rsm.sequenceNumber)
+		if successful {
+			if old := step.Old(); old != nil {
+				tx.removeState(step.Old(), false)
+			}
+			tx.appendState(nil, step.New())
+		}
+	})
 }
 
-func (sm *JournalSnapshotManager) doRefresh(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doRefresh(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRefresh(%s)", step.URN())
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-
-	err := sm.journal.BeginOperation(journalEntry)
-	if err != nil {
-		return nil, err
-	}
-	return &refreshSnapshotMutation{sm, operationID}, nil
+	return &refreshSnapshotMutation{sm, 0}, nil
 }
 
 type refreshSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpRefresh, "step.Op", "must be %q, got %q", deploy.OpRefresh, step.Op())
 	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
-	kind := JournalEntryRefreshSuccess
-	if !successful {
-		kind = JournalEntryFailure
-	}
-	journalEntry := rsm.manager.newJournalEntry(kind, rsm.operationID)
 
-	if step.New() != nil {
-		journalEntry.State = step.New()
-		rsm.manager.newResources.Store(step.New(), rsm.operationID)
-	}
+	return rsm.manager.transaction(func(tx *journalTransaction) {
+		if successful {
+			// We're treating persisted refreshes and slightly different than non-persisted ones.
+			// Persisted refreshes are just a delete and create of the resource, and the new resource
+			// can be appended at the end of the base snapshot.  Meanwhile for "non-persisted" refreshes
+			// the resource needs to be updated in place, to make sure all ordering constraints
+			// are satisfied.
 
-	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
-	viewStep, isViewStep := step.(*deploy.ViewStep)
-	if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) && successful {
-		// We're treating persisted refreshes and slightly different than non-persisted ones.
-		// Persisted refreshes are just a delete and create of the resource, and the new resource
-		// can be appended at the end of the base snapshot.  Meanwhile for "non-persisted" refreshes
-		// the resource needs to be updated in place, to make sure all ordering constraints
-		// are satisfied.
-		journalEntry.Kind = JournalEntrySuccess
-		// We still need to know it is a refresh, so we can update dependencies correctly.
-		journalEntry.IsRefresh = true
-	}
-	if old := step.Old(); old != nil {
-		rsm.manager.markEntryForRemoval(&journalEntry, old)
-	}
-
-	return rsm.manager.journal.EndOperation(journalEntry)
+			refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
+			viewStep, isViewStep := step.(*deploy.ViewStep)
+			if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) {
+				hasNew := step.New() != nil
+				tx.removeState(step.Old(), !hasNew)
+				if hasNew {
+					tx.appendState(nil, step.New())
+				}
+			} else {
+				if new := step.New(); new != nil {
+					tx.patchState(step.Old(), new, true)
+				} else {
+					tx.removeState(step.Old(), true)
+				}
+			}
+		}
+	})
 }
 
 func (sm *JournalSnapshotManager) doRemovePendingReplace(
-	step deploy.Step, operationID int64,
+	step deploy.Step,
 ) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	err := sm.journal.BeginOperation(journalEntry)
-	if err != nil {
-		return nil, err
-	}
-	return &removePendingReplaceSnapshotMutation{sm, operationID}, err
+	return &removePendingReplaceSnapshotMutation{sm}, nil
 }
 
 type removePendingReplaceSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager *JournalSnapshotManager
 }
 
 func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpRemovePendingReplace, "step.Op",
 		"must be %q, got %q", deploy.OpRemovePendingReplace, step.Op())
-	journalEntry := rsm.manager.newJournalEntry(JournalEntrySuccess, rsm.operationID)
-	if step.Old() != nil {
-		rsm.manager.markEntryForRemoval(&journalEntry, step.Old())
-	}
-	return rsm.manager.journal.EndOperation(journalEntry)
+
+	return rsm.manager.transaction(func(tx *journalTransaction) {
+		tx.removeState(step.Old(), false)
+	})
 }
 
-func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) (SnapshotMutation, error) {
+func (sm *JournalSnapshotManager) doImport(step deploy.Step) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
-	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+
+	var sequenceNumber int64
+	err := sm.transaction(func(tx *journalTransaction) {
+		sequenceNumber = tx.addPendingOperation(resource.NewOperation(step.New().Copy(), resource.OperationTypeImporting))
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	return &importSnapshotMutation{sm, operationID}, nil
+	return &importSnapshotMutation{sm, sequenceNumber}, nil
 }
 
 type importSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager        *JournalSnapshotManager
+	sequenceNumber int64
 }
 
 func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement, "step.Op",
 		"must be %q or %q, got %q", deploy.OpImport, deploy.OpImportReplacement, step.Op())
-	kind := JournalEntrySuccess
-	if !successful {
-		kind = JournalEntryFailure
-	}
-	journalEntry := ism.manager.newJournalEntry(kind, ism.operationID)
-	journalEntry.State = step.New()
-	importStep, isImportStep := step.(*deploy.ImportStep)
-	contract.Assertf(isImportStep, "step must be an ImportStep, got %T", step)
-	if importStep.Original() != nil && ism.manager.baseSnapshot != nil {
-		// This is a import replacement, so we need to mark the old resource for deletion.
-		for i, res := range ism.manager.baseSnapshot.Resources {
-			if res == importStep.Original() {
-				index := int64(i)
-				journalEntry.Delete = &index
-				break
+
+	return ism.manager.transaction(func(tx *journalTransaction) {
+		tx.removePendingOperation(ism.sequenceNumber)
+
+		// If this step is a create replacement, we need to mark the old resource for deletion.
+		// The engine marks this in its in-memory representation, but since the snapshot manager
+		// is operating on a copy of the snapshot, we need to explicitly mark the resource.
+		if successful {
+			if original := step.(*deploy.ImportStep).Original(); original != nil {
+				tx.patchState(original, original, false)
 			}
+
+			if old := step.Old(); old != nil && (old.Delete || old.PendingReplacement) {
+				tx.patchState(old, old, false)
+			}
+
+			tx.appendState(nil, step.New())
 		}
-	}
-	ism.manager.newResources.Store(step.New(), ism.operationID)
-	return ism.manager.journal.EndOperation(journalEntry)
+	})
 }
 
 // NewJournalSnapshotManager creates a new SnapshotManager for the given stack name, using the

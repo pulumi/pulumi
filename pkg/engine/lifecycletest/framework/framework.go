@@ -334,7 +334,47 @@ func (op TestOp) runWithContext(
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
 	errs = append(errs, snap.AssertEqual(persister.Snap))
-	errs = append(errs, snap.AssertEqual(journalPersister.Snap))
+
+	journalErr := snap.AssertEqual(journalPersister.Snap)
+	errs = append(errs, journalErr)
+
+	if journalErr != nil {
+		fmt.Println("base snapshot:")
+		if target.Snapshot != nil {
+			for i, r := range target.Snapshot.Resources {
+				fmt.Printf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		fmt.Println()
+		fmt.Println("test journal snapshot:")
+		if target.Snapshot != nil {
+			for i, r := range snap.Resources {
+				fmt.Printf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		fmt.Println()
+		fmt.Println("journal snapshot:")
+		if target.Snapshot != nil {
+			for i, r := range journalPersister.Snap.Resources {
+				fmt.Printf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		fmt.Println()
+		fmt.Println("test journal:")
+		for i, e := range entries {
+			fmt.Printf("%v: %v %v %v\n", i, e.Kind, e.Step.Op(), e.Step.URN())
+		}
+		fmt.Println()
+		fmt.Println("journal:")
+		for _, tx := range journaler.Entries() {
+			for i, e := range tx.Entries {
+				fmt.Printf("%v.%v: %v\n", tx.SequenceNumber, i, e)
+			}
+		}
+	}
 
 	return nil, snap, errors.Join(errs...)
 }
@@ -346,7 +386,10 @@ func (op TestOp) runWithContext(
 // checking the events properly.
 func compareEvents(t TB, expected, actual []engine.Event) {
 	encountered := make(map[int]struct{})
-	require.Len(t, actual, len(expected), "expected and actual event counts differ")
+	//nolint:forbidigo
+	if !assert.Len(t, actual, len(expected), "expected and actual event counts differ") {
+		return
+	}
 	for _, e := range expected {
 		found := false
 		for i, a := range actual {

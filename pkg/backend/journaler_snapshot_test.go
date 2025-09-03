@@ -989,10 +989,7 @@ func TestRecordingSameFailureJournaling(t *testing.T) {
 	require.NoError(t, err)
 
 	// A failed same should leave the resource in the snapshot.
-	snap = sp.LastSnap()
-	require.Len(t, snap.Resources, 1)
-	require.Len(t, snap.PendingOperations, 0)
-	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	require.Len(t, sp.SavedSnapshots, 0)
 }
 
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t *testing.T) {
