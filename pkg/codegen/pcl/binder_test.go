@@ -1159,8 +1159,8 @@ resource "ptfeServiceRecord" "aws:route53/record:Record" {
 }
 	`
 
-	program, diags, error := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
-	require.NoError(t, error)
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "There are no error diagnostics")
 	require.NotNil(t, program)
 
