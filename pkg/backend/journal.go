@@ -211,6 +211,8 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			}
 		case engine.JournalEntryWrite:
 			// Already handled above.
+		case engine.JournalEntrySecretsManager:
+			sj.snapshot.SecretsManager = entry.SecretsManager
 		}
 	}
 

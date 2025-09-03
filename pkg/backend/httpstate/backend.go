@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -1426,6 +1427,7 @@ type updateMetadata struct {
 	version    int
 	leaseToken string
 	messages   []apitype.Message
+	useJournal bool
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -1477,7 +1479,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, useJournal, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1518,6 +1520,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		version:    version,
 		leaseToken: token,
 		messages:   updateDetails.Messages,
+		useJournal: useJournal,
 	}, nil
 }
 
@@ -1600,7 +1603,9 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(
+		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
+		permalink, events, opts.DryRun, updateMeta.useJournal)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1615,7 +1620,7 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, useJournal bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1660,13 +1665,24 @@ func (b *cloudBackend) runEngineAction(
 			}
 		},
 	}
+	persister := b.newSnapshotPersister(ctx, update, tokenSource)
 	if kind != apitype.PreviewUpdate && !dryRun {
-		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
-		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
-		combinedManager = &engine.CombinedManager{
-			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+		if useJournal {
+			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			if err != nil {
+				return nil, nil, fmt.Errorf("creating journaler: %w", err)
+			}
+			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers: []engine.SnapshotManager{journalManager},
+			}
+		} else {
+			journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
+			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+			}
 		}
 	}
 
@@ -1679,6 +1695,9 @@ func (b *cloudBackend) runEngineAction(
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 		FinalizeUpdateFunc: func() {
+			if useJournal {
+				return
+			}
 			if snapshotManager == nil || journalPersister == nil {
 				return
 			}
