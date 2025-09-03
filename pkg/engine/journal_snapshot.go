@@ -70,9 +70,9 @@ type JournalSnapshotManager struct {
 	newResources gsync.Map[*resource.State, int64]
 	// A counter used to generate unique operation IDs for journal entries. Note that we use these
 	// sequential IDs to track the order of operations. This matters for reconstructing the Snapshot,
-	// because we need to know which operations were applied first, so dependencies are resolvedd correctly.
+	// because we need to know which operations were applied first, so dependencies are resolved correctly.
 	//
-	// We can still send the operations to the service in parallel, because the engine will onlyy
+	// We can still send the operations to the service in parallel, because the engine will only
 	// start an operation after all its dependencies have been resolved. However when reconstructing
 	// the snapshot we have all journal entries available, so we need to ensure that we apply them
 	// in the right order.
@@ -96,9 +96,29 @@ const (
 	JournalEntryWrite          JournalEntryKind = 5
 )
 
+func (k JournalEntryKind) String() string {
+	switch k {
+	case JournalEntryBegin:
+		return "Begin"
+	case JournalEntrySuccess:
+		return "Success"
+	case JournalEntryFailure:
+		return "Failure"
+	case JournalEntryRefreshSuccess:
+		return "RefreshSuccess"
+	case JournalEntryOutputs:
+		return "Outputs"
+	case JournalEntryWrite:
+		return "Write"
+	default:
+		return "Unknown"
+	}
+}
+
 type JournalEntry struct {
 	Kind JournalEntryKind
-	// The ID of the operation that this journal entry is associated with.
+	// The ID of the operation that this journal entry is associated with.  Note that operation
+	// IDs start at 1, only Write operations have ID 0.
 	OperationID int64
 	// The index of the resource in the base snapshot to delete, or -1 if no deletion is needed.
 	DeleteOld int64
@@ -152,7 +172,7 @@ func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) erro
 //
 // If we have a new resource that was created in this plan, but then gets deleted by a subsequent step,
 // we record the operation ID of the new resource, so the snapshot generation can skip the earlier operation,
-// and thus the new resource won't be written to the snapshot..
+// and thus the new resource won't be written to the snapshot.
 func (sm *JournalSnapshotManager) markEntryForDeletion(journalEntry *JournalEntry, toDelete *resource.State) {
 	contract.Assertf(journalEntry.DeleteOld == -1, "journalEntry.DeleteOld must be initialized to -1")
 	if sm.baseSnapshot != nil {
@@ -163,13 +183,7 @@ func (sm *JournalSnapshotManager) markEntryForDeletion(journalEntry *JournalEntr
 			}
 		}
 	}
-	sm.newResources.Range(func(res *resource.State, id int64) bool {
-		if res == toDelete {
-			journalEntry.DeleteNew = id
-			return false
-		}
-		return true
-	})
+	journalEntry.DeleteNew, _ = sm.newResources.Load(toDelete)
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
