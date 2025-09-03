@@ -113,7 +113,7 @@ func testProgressEvents(
 func TestProgressEvents(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
-		t.Skip("Skipping tests on Windows and MacOS.")
+		t.Skip("Skipping tests on Windows.")
 	}
 	t.Setenv("TERM", "vt102")
 
