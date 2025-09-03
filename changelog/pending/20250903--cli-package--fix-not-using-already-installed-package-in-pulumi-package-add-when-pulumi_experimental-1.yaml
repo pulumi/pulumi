@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Fix not using already-installed package in 'pulumi package add' when PULUMI_EXPERIMENTAL=1

@@ -918,10 +918,12 @@ func ProviderFromSource(
 	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
+		packageresolution.DefaultWorkspace(),
 		pluginSpec,
 		packageresolution.Options{
-			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
-			Experimental:           env.Experimental.Value(),
+			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
+			Experimental:                env.Experimental.Value(),
+			IncludeInstalledInWorkspace: true,
 		},
 		pctx.Root,
 	)
@@ -939,7 +941,7 @@ func ProviderFromSource(
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult:
 		return setupProviderFromPath(res.LocalPluginPathAbs, pctx)
-	case packageresolution.ExternalSourceResult:
+	case packageresolution.ExternalSourceResult, packageresolution.InstalledInWorkspaceResult:
 		return setupProvider(descriptor, nil)
 	case packageresolution.RegistryResult:
 		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)

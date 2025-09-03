@@ -31,6 +31,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mockWorkspace struct {
+	hasPlugin    func(spec workspace.PluginSpec) bool
+	hasPluginGTE func(spec workspace.PluginSpec) (bool, error)
+}
+
+func (m mockWorkspace) HasPlugin(spec workspace.PluginSpec) bool {
+	if m.hasPlugin != nil {
+		return m.hasPlugin(spec)
+	}
+	return false
+}
+
+func (m mockWorkspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+	if m.hasPluginGTE != nil {
+		return m.hasPluginGTE(spec)
+	}
+	return false, nil
+}
+
+func (m mockWorkspace) IsExternalURL(source string) bool {
+	return workspace.IsExternalURL(source)
+}
+
 func TestResolvePackage(t *testing.T) {
 	t.Parallel()
 
@@ -51,6 +74,7 @@ packages:
 		name             string
 		env              *Options
 		pluginSpec       workspace.PluginSpec
+		workspace        PluginWorkspace
 		registryResponse func() (*backend.MockCloudRegistry, error)
 		setupProject     bool
 		expected         Result
@@ -229,6 +253,77 @@ packages:
 			setupProject: true,
 			expected:     LocalPathResult{LocalPluginPathAbs: "./local-path"},
 		},
+		{
+			name:       "installed in workspace with exact version",
+			env:        &Options{IncludeInstalledInWorkspace: true, Experimental: true},
+			pluginSpec: workspace.PluginSpec{Name: "installed-pkg", Version: &semver.Version{Major: 1, Minor: 2, Patch: 3}},
+			workspace: mockWorkspace{
+				hasPlugin: func(spec workspace.PluginSpec) bool {
+					return spec.Name == "installed-pkg" &&
+						spec.Version != nil &&
+						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3})
+				},
+			},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty
+					},
+				}, nil
+			},
+			expected: InstalledInWorkspaceResult{},
+		},
+		{
+			name:       "installed in workspace without version (GTE check)",
+			env:        &Options{IncludeInstalledInWorkspace: true, Experimental: true},
+			pluginSpec: workspace.PluginSpec{Name: "installed-pkg"},
+			workspace: mockWorkspace{
+				hasPluginGTE: func(spec workspace.PluginSpec) (bool, error) {
+					return spec.Name == "installed-pkg", nil
+				},
+			},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty
+					},
+				}, nil
+			},
+			expected: InstalledInWorkspaceResult{},
+		},
+		{
+			name:       "not installed in workspace, fallback to registry",
+			env:        &Options{IncludeInstalledInWorkspace: true, Experimental: true},
+			pluginSpec: workspace.PluginSpec{Name: "registry-pkg"},
+			workspace: mockWorkspace{
+				hasPlugin:    func(spec workspace.PluginSpec) bool { return false },
+				hasPluginGTE: func(spec workspace.PluginSpec) (bool, error) { return false, nil },
+			},
+			registryResponse: func() (*backend.MockCloudRegistry, error) {
+				return &backend.MockCloudRegistry{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {
+							yield(apitype.PackageMetadata{
+								Name:              "registry-pkg",
+								Publisher:         "pulumi",
+								Source:            "pulumi",
+								Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
+								PluginDownloadURL: "https://example.com/download",
+							}, nil)
+						}
+					},
+				}, nil
+			},
+			expected: RegistryResult{
+				Metadata: apitype.PackageMetadata{
+					Name:              "registry-pkg",
+					Publisher:         "pulumi",
+					Source:            "pulumi",
+					Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
+					PluginDownloadURL: "https://example.com/download",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -257,9 +352,16 @@ packages:
 			if tt.setupProject {
 				projectRootArg = projectRoot
 			}
+
+			ws := tt.workspace
+			if ws == nil {
+				ws = DefaultWorkspace()
+			}
+
 			result, err := Resolve(
 				context.Background(),
 				reg,
+				ws,
 				tt.pluginSpec,
 				env,
 				projectRootArg,
@@ -319,6 +421,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 	result, err := Resolve(
 		context.Background(),
 		reg,
+		DefaultWorkspace(),
 		pluginSpec,
 		Options{
 			DisableRegistryResolve: false,
@@ -358,6 +461,7 @@ packages:
 	result, err := Resolve(
 		context.Background(),
 		reg,
+		DefaultWorkspace(),
 		pluginSpec, // This is both pre-registry AND defined locally
 		Options{
 			DisableRegistryResolve: true,

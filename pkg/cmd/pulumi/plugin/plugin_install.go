@@ -338,7 +338,8 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
 ) (workspace.PluginSpec, error) {
 	resolutionEnv := cmd.packageResolutionOptions
-	result, err := packageresolution.Resolve(ctx, cmd.registry, pluginSpec, resolutionEnv, absProjectDir)
+	result, err := packageresolution.Resolve(
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, absProjectDir)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
 		if errors.As(err, &packageNotFoundErr) {
@@ -353,7 +354,9 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	}
 
 	switch res := result.(type) {
-	case packageresolution.LocalPathResult, packageresolution.ExternalSourceResult:
+	case packageresolution.LocalPathResult,
+		packageresolution.ExternalSourceResult,
+		packageresolution.InstalledInWorkspaceResult:
 		return pluginSpec, nil
 	case packageresolution.RegistryResult:
 		pluginSpec.Name = res.Metadata.Name
