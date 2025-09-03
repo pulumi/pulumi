@@ -14,6 +14,7 @@ import subprocess as sp
 import sys
 import uuid
 import threading
+import psutil
 
 cover_packages = [
     "github.com/pulumi/pulumi/pkg/v3/...",
@@ -69,11 +70,17 @@ def heartbeat():
     if not sys:
         # occurs during interpreter shutdown
         return
-    print(heartbeat_str + " " + str(datetime.now()), file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
+
+    load1, load5, load15 = psutil.getloadavg()
+    # Ensures GitHub receives stdout during long, silent package tests.
+    mem = psutil.virtual_memory()
+    print(heartbeat_str + " " + str(datetime.now()) + f"load: ({load1},{load5},{load15})" , file=sys.stderr)
+    print(f"mem: {mem}%", file=sys.stderr)
+
     sys.stdout.flush()
     sys.stderr.flush()
 
-timer = RepeatTimer(10, heartbeat)
+timer = RepeatTimer(1, heartbeat)
 timer.daemon = True
 timer.start()
 
@@ -100,7 +107,19 @@ else:
 if not dryrun:
     try:
         print("Running: " + ' '.join(args))
-        sp.check_call(args, shell=False)
+        process = sp.Popen(args, shell=False, stdout=sp.PIPE, stderr=sp.STDOUT)
+        sys.stdout.reconfigure(encoding='utf-8')
+        for line in iter(process.stdout.readline, b""):
+            if len(line.decode()) > 500:
+                raise Exception("Test output line exceeded maximum length of 500 characters.")
+            sys.stdout.write(str(len(line.decode())))
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+#            sys.stdout.write(line.decode())
+#            sys.stdout.flush()
+        retcode = process.wait()
+        if retcode != 0:
+            raise sp.CalledProcessError(retcode, args)
         print("Completed: " + ' '.join(args))
     except sp.CalledProcessError as e:
         print("Failed: " + ' '.join(args))
