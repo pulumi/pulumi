@@ -137,7 +137,7 @@ index of the resource that should be marked for deletion.
 
 Whenever we successfully run a resource step, we emit a success journal
 entry. This Journal Entry contains the following information:
-- DeleteOld: If >= 0, the index in the resource list in the snapshot for an entry
+- DeleteOld: If >= 0, the index in the resource list in the old snapshot for an entry
   that should be deleted.
 - DeleteNew: If > 0, the operation ID of a resource that's to be deleted, e.g. if
   a previous operation created a resource, but it's no longer needed/replaced.

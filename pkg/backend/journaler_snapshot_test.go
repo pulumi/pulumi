@@ -16,90 +16,29 @@ package backend
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
-type MockRegisterResourceEvent struct {
-	deploy.SourceEvent
-}
-
-func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
-func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
-
-type MockStackPersister struct {
-	SavedSnapshots []*deploy.Snapshot
-}
-
-func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
-	m.SavedSnapshots = append(m.SavedSnapshots, snap)
-	return nil
-}
-
-func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
-	return m.SavedSnapshots[len(m.SavedSnapshots)-1]
-}
-
-func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotManager, *MockStackPersister) {
 	err := baseSnap.VerifyIntegrity()
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
+	journal := NewSnapshotJournaler(sp, baseSnap.SecretsManager, baseSnap)
+	return engine.NewJournalSnapshotManager(journal, baseSnap), sp
 }
 
-func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
-	return &resource.State{
-		Type:         tokens.Type("test"),
-		URN:          urn,
-		Inputs:       make(resource.PropertyMap),
-		Outputs:      make(resource.PropertyMap),
-		Dependencies: deps,
-	}
-}
-
-func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *resource.State {
-	return &resource.State{
-		Type:         tokens.Type("test"),
-		URN:          urn,
-		Inputs:       inputs,
-		Outputs:      make(resource.PropertyMap),
-		Dependencies: []resource.URN{},
-	}
-}
-
-func NewResource(urn resource.URN, deps ...resource.URN) *resource.State {
-	return NewResourceWithDeps(urn, deps)
-}
-
-func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
-	return deploy.NewSnapshot(deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{})
-}
-
-var (
-	aUniqueUrn          = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn")
-	aUniqueUrnResourceA = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-a")
-	aUniqueUrnResourceB = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-b")
-	aUniqueUrnResourceP = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-p")
-)
-
-func TestIdenticalSames(t *testing.T) {
+func TestIdenticalSamesJournaling(t *testing.T) {
 	t.Parallel()
 
 	sameState := NewResource(aUniqueUrn)
@@ -107,7 +46,7 @@ func TestIdenticalSames(t *testing.T) {
 		sameState,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 
 	// The engine generates a SameStep on sameState.
 	engineGeneratedSame := NewResource(sameState.URN)
@@ -136,14 +75,14 @@ func TestIdenticalSames(t *testing.T) {
 	assert.Equal(t, sameState.URN, inSnapshot.URN)
 }
 
-func TestSamesWithEmptyDependencies(t *testing.T) {
+func TestSamesWithEmptyDependenciesJournaling(t *testing.T) {
 	t.Parallel()
 
 	res := NewResourceWithDeps(aUniqueUrnResourceA, nil)
 	snap := NewSnapshot([]*resource.State{
 		res,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	resUpdated := NewResourceWithDeps(res.URN, []resource.URN{})
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
@@ -153,7 +92,7 @@ func TestSamesWithEmptyDependencies(t *testing.T) {
 	require.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
 }
 
-func TestSamesWithEmptyArraysInInputs(t *testing.T) {
+func TestSamesWithEmptyArraysInInputsJournaling(t *testing.T) {
 	t.Parallel()
 
 	// Model reading from state file
@@ -165,7 +104,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	snap := NewSnapshot([]*resource.State{
 		res,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 
 	// Model passing into and back out of RPC layer (e.g. via `Check`)
 	marshalledInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{})
@@ -188,7 +127,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 // (and in fact is done by the `dependency_steps` integration test as well).
 //
 // The correctness of the `snap` function in snapshot.go is tested here.
-func TestSamesWithDependencyChanges(t *testing.T) {
+func TestSamesWithDependencyChangesJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource(aUniqueUrnResourceA)
@@ -202,7 +141,7 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 		resourceB,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 
 	resourceBUpdated := NewResource(resourceB.URN)
 	// note: no dependencies
@@ -255,7 +194,7 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 // This test checks that we only write the Checkpoint once whether or
 // not there are important changes when asked to via
 // env.SkipCheckpoints.
-func TestWriteCheckpointOnceUnsafe(t *testing.T) {
+func TestWriteCheckpointOnceUnsafeJournaling(t *testing.T) {
 	t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
 
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgUnsafe::provider")
@@ -270,7 +209,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 
 	// Generate a same for the provider.
 	provUpdated := NewResource(provider.URN)
@@ -313,7 +252,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 
 // This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
 // that the snapshot is written.
-func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
+func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	t.Parallel()
 
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
@@ -342,7 +281,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 	// Change the resource outputs.
 	changes = append(changes, NewResource(resourceA.URN))
-	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 
 	snap := NewSnapshot([]*resource.State{
 		provider,
@@ -351,7 +290,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	})
 
 	for _, c := range changes {
-		manager, sp := MockSetup(t, snap)
+		manager, sp := MockJournalSetup(t, snap)
 
 		// Generate a same for the provider.
 		provUpdated := NewResource(provider.URN)
@@ -394,7 +333,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	}
 
 	// Source position is not a meaningful change, and we batch them up for performance reasons
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	sourceUpdated := NewResource(resourceA.URN)
 	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
 	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
@@ -433,7 +372,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
 
 	for _, c := range changes {
-		manager, sp := MockSetup(t, snap)
+		manager, sp := MockJournalSetup(t, snap)
 
 		// Generate sames for the providers.
 		provUpdated := NewResource(provider.URN)
@@ -481,7 +420,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 // This test exercises the merge operation with a particularly vexing deployment
 // state that was useful in shaking out bugs.
-func TestVexingDeployment(t *testing.T) {
+func TestVexingDeploymentJournaling(t *testing.T) {
 	t.Parallel()
 
 	// This is the dependency graph we are going for in the base snapshot:
@@ -518,7 +457,7 @@ func TestVexingDeployment(t *testing.T) {
 		e,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 
 	// This is the sequence of events that come out of the engine:
 	//   B - Same, depends on nothing
@@ -618,7 +557,7 @@ func TestVexingDeployment(t *testing.T) {
 	assert.Equal(t, c.URN, res[5].Dependencies[0])
 }
 
-func TestDeletion(t *testing.T) {
+func TestDeletionJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
@@ -626,7 +565,7 @@ func TestDeletion(t *testing.T) {
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -640,7 +579,7 @@ func TestDeletion(t *testing.T) {
 	require.Len(t, lastSnap.Resources, 0)
 }
 
-func TestFailedDelete(t *testing.T) {
+func TestFailedDeleteJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
@@ -648,7 +587,7 @@ func TestFailedDelete(t *testing.T) {
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -663,12 +602,12 @@ func TestFailedDelete(t *testing.T) {
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
 }
 
-func TestRecordingCreateSuccess(t *testing.T) {
+func TestRecordingCreateSuccessJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
 	snap := NewSnapshot(nil)
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -692,12 +631,12 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
-func TestRecordingCreateFailure(t *testing.T) {
+func TestRecordingCreateFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
 	snap := NewSnapshot(nil)
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -720,18 +659,18 @@ func TestRecordingCreateFailure(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 0)
 }
 
-func TestRecordingUpdateSuccess(t *testing.T) {
+func TestRecordingUpdateSuccessJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -743,7 +682,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
@@ -754,21 +693,21 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("new"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
 }
 
-func TestRecordingUpdateFailure(t *testing.T) {
+func TestRecordingUpdateFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -780,7 +719,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
@@ -791,17 +730,17 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
 }
 
-func TestRecordingDeleteSuccess(t *testing.T) {
+func TestRecordingDeleteSuccessJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -822,14 +761,14 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 0)
 }
 
-func TestRecordingDeleteFailure(t *testing.T) {
+func TestRecordingDeleteFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -851,7 +790,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
-func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
+func TestRecordingReadSuccessNoPreviousResourceJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("b")
@@ -859,7 +798,7 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	resourceA.External = true
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, nil, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -880,24 +819,24 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
-func TestRecordingReadSuccessPreviousResource(t *testing.T) {
+func TestRecordingReadSuccessPreviousResourceJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("c")
 	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("c")
 	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
 
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -909,9 +848,9 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
 
@@ -920,10 +859,10 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("new"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
 }
 
-func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
+func TestRecordingReadFailureNoPreviousResourceJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("d")
@@ -931,7 +870,7 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	resourceA.External = true
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, nil, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -951,24 +890,24 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 0)
 }
 
-func TestRecordingReadFailurePreviousResource(t *testing.T) {
+func TestRecordingReadFailurePreviousResourceJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("e")
 	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("e")
 	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
 
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -980,9 +919,9 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
 
@@ -992,17 +931,17 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
 }
 
-func TestRegisterOutputs(t *testing.T) {
+func TestRegisterOutputsJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 
 	// There should be zero snaps performed at the start.
 	require.Empty(t, sp.SavedSnapshots)
@@ -1017,7 +956,7 @@ func TestRegisterOutputs(t *testing.T) {
 
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
-	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
+	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewStringProperty("world")}
 	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
@@ -1031,14 +970,14 @@ func TestRegisterOutputs(t *testing.T) {
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
 }
 
-func TestRecordingSameFailure(t *testing.T) {
+func TestRecordingSameFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockJournalSetup(t, snap)
 	step := deploy.NewSameStep(nil, nil, resourceA, resourceA.Copy())
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -1056,88 +995,77 @@ func TestRecordingSameFailure(t *testing.T) {
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
-func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T) {
+func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
-	//
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	assert.ErrorContains(t, err, "failed to verify snapshot")
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
-func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) {
+func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
 	r := NewResource("a")
 
 	snap := NewSnapshot([]*resource.State{r})
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
 //nolint:paralleltest // mutates global state
-func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisabled(t *testing.T) {
+func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisabledJournaling(t *testing.T) {
 	old := DisableIntegrityChecking
 	DisableIntegrityChecking = true
 	defer func() { DisableIntegrityChecking = old }()
 
-	// Arrange.
-	//
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	require.NoError(t, err)
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
 //nolint:paralleltest // mutates global state
-func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(t *testing.T) {
+func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJournaling(t *testing.T) {
 	old := DisableIntegrityChecking
 	DisableIntegrityChecking = true
 	defer func() { DisableIntegrityChecking = old }()
 
-	// Arrange.
-	//
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	// Act.
-	err := sm.saveSnapshot()
+	err := sm.Close()
 
-	// Assert.
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }

@@ -37,6 +37,8 @@ import (
 //
 // This function is similar to 'rebuildBaseState' in the engine, but doesn't take care of
 // rebuilding the resource list, since that's already done correctly by the journal.
+//
+// Note that this function assumes that resources are in reverse-dependency order.
 func (sj *snapshotJournaler) rebuildDependencies(resources []*resource.State) {
 	referenceable := make(map[resource.URN]bool)
 	for i := range resources {
@@ -264,6 +266,8 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	}
 
 	if hasRefresh {
+		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
+		// which may cause other resources to have dangling dependencies.
 		sj.rebuildDependencies(resources)
 	}
 
@@ -330,7 +334,7 @@ func (sj *snapshotJournaler) saveSnapshot() error {
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sj *snapshotJournaler) defaultServiceLoop(
-	journalEvents chan ResultJournalEntry, done chan error,
+	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	// True if we have elided writes since the last actual write.
 	hasElidedWrites := true
@@ -368,7 +372,7 @@ serviceLoop:
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
 func (sj *snapshotJournaler) unsafeServiceLoop(
-	journalEvents chan ResultJournalEntry, done chan error,
+	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	for {
 		select {
@@ -388,7 +392,7 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 type snapshotJournaler struct {
 	persister      SnapshotPersister
 	snapshot       *deploy.Snapshot
-	journalEvents  chan ResultJournalEntry
+	journalEvents  chan writeJournalEntryRequest
 	journalEntries []engine.JournalEntry
 	cancel         chan bool
 	done           chan error
@@ -438,7 +442,7 @@ func NewSnapshotJournaler(
 		}
 	}
 
-	journalEvents := make(chan ResultJournalEntry)
+	journalEvents := make(chan writeJournalEntryRequest)
 	done, cancel := make(chan error), make(chan bool)
 
 	journaler := snapshotJournaler{
@@ -462,7 +466,7 @@ func NewSnapshotJournaler(
 	return &journaler
 }
 
-type ResultJournalEntry struct {
+type writeJournalEntryRequest struct {
 	JournalEntry engine.JournalEntry
 	result       chan error
 }
@@ -470,7 +474,9 @@ type ResultJournalEntry struct {
 func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	result := make(chan error)
 	select {
-	case sj.journalEvents <- ResultJournalEntry{JournalEntry: entry, result: result}:
+	case sj.journalEvents <- writeJournalEntryRequest{JournalEntry: entry, result: result}:
+		// We don't need to check for cancellation here, as the service loop guarantees
+		// that it will return a result for every journal entry that it processes.
 		return <-result
 	case <-sj.cancel:
 		return errors.New("snapshot manager closed")
@@ -492,10 +498,6 @@ func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
 		Resources:         make([]*resource.State, 0, len(newBase.Resources)),
 		PendingOperations: make([]resource.Operation, 0, len(newBase.PendingOperations)),
 		Metadata:          newBase.Metadata,
-	}
-	oldResMap := make(map[resource.URN]int, len(sj.snapshot.Resources))
-	for i, res := range sj.snapshot.Resources {
-		oldResMap[res.URN] = i
 	}
 
 	// Copy the resources from the base snapshot to the new snapshot.

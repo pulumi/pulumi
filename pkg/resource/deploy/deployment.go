@@ -339,6 +339,8 @@ type Deployment struct {
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
 // information for these providers is sourced from the snapshot's manifest; inputs parameters are sourced from the
 // stack's configuration.
+//
+// Returns true if the snapshot was modified, false otherwise, and an error if one occurred.
 func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, error) {
 	if prev == nil {
 		return false, nil
@@ -414,6 +416,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 
 // migrateProviders is responsible for adding default providers to old snapshots and filling in output properties for
 // providers that do not have them.
+//
+// Returns true if the snapshot was modified, false otherwise, and an error if one occurred.
 func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, error) {
 	// Add any necessary default provider references to the previous snapshot in order to accommodate stacks that were
 	// created prior to the changes that added first-class providers. We do this here rather than in the migration
