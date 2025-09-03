@@ -379,6 +379,10 @@ export class AnalyzeResponse extends jspb.Message {
     getDiagnosticsList(): Array<AnalyzeDiagnostic>;
     setDiagnosticsList(value: Array<AnalyzeDiagnostic>): AnalyzeResponse;
     addDiagnostics(value?: AnalyzeDiagnostic, index?: number): AnalyzeDiagnostic;
+    clearNotApplicableList(): void;
+    getNotApplicableList(): Array<PolicyNotApplicable>;
+    setNotApplicableList(value: Array<PolicyNotApplicable>): AnalyzeResponse;
+    addNotApplicable(value?: PolicyNotApplicable, index?: number): PolicyNotApplicable;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzeResponse.AsObject;
@@ -393,6 +397,7 @@ export class AnalyzeResponse extends jspb.Message {
 export namespace AnalyzeResponse {
     export type AsObject = {
         diagnosticsList: Array<AnalyzeDiagnostic.AsObject>,
+        notApplicableList: Array<PolicyNotApplicable.AsObject>,
     }
 }
 
@@ -477,6 +482,10 @@ export class RemediateResponse extends jspb.Message {
     getRemediationsList(): Array<Remediation>;
     setRemediationsList(value: Array<Remediation>): RemediateResponse;
     addRemediations(value?: Remediation, index?: number): Remediation;
+    clearNotApplicableList(): void;
+    getNotApplicableList(): Array<PolicyNotApplicable>;
+    setNotApplicableList(value: Array<PolicyNotApplicable>): RemediateResponse;
+    addNotApplicable(value?: PolicyNotApplicable, index?: number): PolicyNotApplicable;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RemediateResponse.AsObject;
@@ -491,6 +500,7 @@ export class RemediateResponse extends jspb.Message {
 export namespace RemediateResponse {
     export type AsObject = {
         remediationsList: Array<Remediation.AsObject>,
+        notApplicableList: Array<PolicyNotApplicable.AsObject>,
     }
 }
 
@@ -549,6 +559,8 @@ export class PolicyInfo extends jspb.Message {
     clearConfigschema(): void;
     getConfigschema(): PolicyConfigSchema | undefined;
     setConfigschema(value?: PolicyConfigSchema): PolicyInfo;
+    getPolicyType(): PolicyType;
+    setPolicyType(value: PolicyType): PolicyInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PolicyInfo.AsObject;
@@ -568,6 +580,7 @@ export namespace PolicyInfo {
         message: string,
         enforcementlevel: EnforcementLevel,
         configschema?: PolicyConfigSchema.AsObject,
+        policyType: PolicyType,
     }
 }
 
@@ -647,9 +660,38 @@ export namespace ConfigureAnalyzerRequest {
     }
 }
 
+export class PolicyNotApplicable extends jspb.Message { 
+    getPolicyName(): string;
+    setPolicyName(value: string): PolicyNotApplicable;
+    getReason(): string;
+    setReason(value: string): PolicyNotApplicable;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PolicyNotApplicable.AsObject;
+    static toObject(includeInstance: boolean, msg: PolicyNotApplicable): PolicyNotApplicable.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PolicyNotApplicable, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PolicyNotApplicable;
+    static deserializeBinaryFromReader(message: PolicyNotApplicable, reader: jspb.BinaryReader): PolicyNotApplicable;
+}
+
+export namespace PolicyNotApplicable {
+    export type AsObject = {
+        policyName: string,
+        reason: string,
+    }
+}
+
 export enum EnforcementLevel {
     ADVISORY = 0,
     MANDATORY = 1,
     DISABLED = 2,
     REMEDIATE = 3,
+}
+
+export enum PolicyType {
+    POLICY_TYPE_UNKNOWN = 0,
+    POLICY_TYPE_RESOURCE = 1,
+    POLICY_TYPE_STACK = 2,
 }
