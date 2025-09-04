@@ -81,10 +81,8 @@ func compileProgram(
 	withDebugFlags bool,
 	stdout, stderr io.Writer,
 ) (string, error) {
-	streamID := int32(0) // rand.Int31() //nolint:gosec
 	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
 		Severity:  pulumirpc.LogSeverity_INFO,
-		StreamId:  streamID,
 		Urn:       "",
 		Message:   "Compiling the program ...",
 		Ephemeral: true,
@@ -136,7 +134,6 @@ func compileProgram(
 	}
 	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
 		Severity:  pulumirpc.LogSeverity_INFO,
-		StreamId:  streamID,
 		Urn:       "",
 		Message:   "Finished compiling",
 		Ephemeral: true,
