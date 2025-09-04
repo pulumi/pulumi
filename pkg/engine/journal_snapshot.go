@@ -183,7 +183,9 @@ func (sm *JournalSnapshotManager) markEntryForDeletion(journalEntry *JournalEntr
 			}
 		}
 	}
-	journalEntry.DeleteNew, _ = sm.newResources.Load(toDelete)
+	var ok bool
+	journalEntry.DeleteNew, ok = sm.newResources.Load(toDelete)
+	contract.Assertf(ok, "could not find resource that's supposed to be deleted %v", toDelete)
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -395,14 +397,14 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		kind = JournalEntryFailure
 	}
 	journalEntry := newJournalEntry(kind, ssm.operationID)
-	if old := step.Old(); old != nil {
-		ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
-	}
 
 	sameStep, isSameStep := step.(*deploy.SameStep)
 	if !isSameStep || !sameStep.IsSkippedCreate() {
 		journalEntry.State = step.New()
 		ssm.manager.newResources.Store(step.New(), ssm.operationID)
+		if old := step.Old(); old != nil {
+			ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
+		}
 	}
 
 	if successful && isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
