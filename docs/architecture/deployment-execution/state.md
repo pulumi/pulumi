@@ -109,6 +109,9 @@ present it always has ID 0. These IDs are used for the following:
   in particular contains the ID of previous journal entries that are no longer
   relevant as they were superseeded.
 
+Journal entries also have a strictly increasing sequence ID, by which they can
+be ordered.
+
 Note that journal entries can arrive out of order at the backend. However the
 engine guarantees a partial order, as operations for dependents of a resource
 will never start being processed before the dependency has finished its
@@ -137,12 +140,14 @@ index of the resource that should be marked for deletion.
 
 Whenever we successfully run a resource step, we emit a success journal
 entry. This Journal Entry contains the following information:
-- DeleteOld: If >= 0, the index in the resource list in the old snapshot for an entry
-  that should be deleted.
-- DeleteNew: If > 0, the operation ID of a resource that's to be deleted, e.g. if
+- RemoveOld: If not nil, the index in the resource list in the old snapshot for an entry
+  that should be removed.
+- RemoveNew: If not nil, the operation ID of a resource that's to be deleted, e.g. if
   a previous operation created a resource, but it's no longer needed/replaced.
-- PendingReplacement: If >= 0, the index of a resource that should be marked as
-  pending replacement.
+- PendingReplacement: If not nil, the index of a resource in the old snapshot that
+  should be marked as pending replacement.
+- Delete: If not nil, the index of a resource in the old snapshot that should be
+  marked as `Delete`.
 - State: The newly created resource state of the journal entry, if any.
 - ElideWrite: True if the write can be elided. This is only used in the local
   implementation. If true, we don't need to send a new snapshot. The journal
@@ -196,59 +201,65 @@ snapshot = find_write_journal_entry_or_use_base(base, journal)
 
 # Track changes
 deletes, snapshot_deletes, mark_deleted, mark_pending = set(), set(), set(), set()
-replacements, snapshot_replacements = {}, {}
-
-# Build change maps
-for entry in journal:
-    if entry.type == SUCCESS and entry.delete_id:
-        deletes.add(entry.delete_id)
-
-    if entry.type in [REFRESH_SUCCESS, OUTPUTS] and entry.state:
-        if entry.delete_id:
-            replacements[entry.delete_id] = entry.state
+operation_id_to_resource_index = {}
 
 # Process operations
 incomplete_ops = {}
 has_refresh = false
 
+index = 0
 for entry in journal:
     match entry.type:
         case BEGIN:
             incomplete_ops[entry.op_id] = entry
-            if entry.old_index >= 0:
-                mark_deleted.add(entry.old_index)
 
         case SUCCESS:
             del incomplete_ops[entry.op_id]
 
-            if entry.op_id in replacements:
-                resources.append(replacements[entry.op_id])
-            elif entry.state and entry.op_id not in deletes:
+            if entry.state and entry.op_id:
                 resources.append(entry.state)
-
-            if entry.old_index >= 0:
-                snapshot_deletes.add(entry.old_index)
+				operation_id_to_resource_index.add(entry.op_id, index)
+				index++
+            if entry.remove_old:
+                snapshot_deletes.add(entry.remove_old)
+			if entry.remove_new:
+				deletes[remove_new] = true
+			if entry.pending_replacement:
+				mark_pending(entry.pending_replacement)
+			if entry.delete:
+			    mark_deleted(entry.delete)
             has_refresh |= entry.is_refresh
 
         case REFRESH_SUCCESS:
             del incomplete_ops[entry.op_id]
             has_refresh = true
-            if entry.old_index >= 0:
+            if entry.remove_old:
                 if entry.state:
-                    snapshot_replacements[entry.old_index] = entry.state
+                    snapshot_replacements[entry.remove_old] = entry.state
                 else:
-                    snapshot_deletes.add(entry.old_index)
-
+                    snapshot_deletes.add(entry.remove_old)
+	        if entry.remove_new:
+			    if entry.state:
+				    deletes[entry.remove_new] = true
+				else:
+				    resources.replace(operation_id_to_resource_index(entry.remove_new), entry.state)
+        case [REFRESH_SUCCESS, OUTPUTS]:
+		    resources.replace(operation_id_to_resource_index(entry.remove_new), entry.state)
         case FAILURE:
-            if entry.op_id in incomplete_ops:
-                old_op = incomplete_ops[entry.op_id]
-                if old_op.old_index in mark_deleted:
-                    mark_deleted.remove(old_op.old_index)
             del incomplete_ops[entry.op_id]
 
         case OUTPUTS:
-            if entry.state and entry.old_index >= 0:
-                snapshot_replacements[entry.old_index] = entry.state
+            if entry.state and entry.remove_old:
+                snapshot_replacements[entry.remove_old] = entry.state
+			if entry.state and entry.remove_new:
+			    resources.replace(operation_id_to_resource_index(entry.remove_new), entry.state)
+
+deletes = deletes.map(|i| => operation_id_to_resource_index[i])
+
+# Remove new resources that should be removed
+for i, res in resources:
+    if i in deletes:
+	    remove_from_resources(resources, i)
 
 # Merge snapshot resources
 for i, res in enumerate(snapshot.resources):
@@ -258,6 +269,8 @@ for i, res in enumerate(snapshot.resources):
         else:
             if i in mark_deleted:
                 res.delete = true
+			if i in mark_pending:
+			    res.pending_replacement = true
             resources.append(res)
 
 # Collect pending operations
