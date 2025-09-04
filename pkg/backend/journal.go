@@ -113,10 +113,11 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 
 	snap := sj.snapshot
 
-	for _, entry := range sj.journalEntries {
-		if entry.Kind == engine.JournalEntryWrite {
-			snap = entry.NewSnapshot
-			contract.Assertf(entry.OperationID == 0, "rebase journal entry must not have an operation ID")
+	if len(sj.journalEntries) != 0 {
+		firstEntry := sj.journalEntries[0]
+		if firstEntry.Kind == engine.JournalEntryWrite {
+			snap = firstEntry.NewSnapshot
+			contract.Assertf(firstEntry.OperationID == 0, "rebase journal entry must not have an operation ID")
 		}
 	}
 
