@@ -67,7 +67,6 @@ func (e PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
 
 type Options struct {
 	DisableRegistryResolve bool
-	Experimental           bool
 }
 
 type Result interface {
@@ -117,7 +116,7 @@ func Resolve(
 	var registryNotFoundErr error
 	var registryQueryErr error
 
-	if !options.DisableRegistryResolve && options.Experimental {
+	if !options.DisableRegistryResolve {
 		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
 		if err == nil {
 			return RegistryResult{Metadata: metadata}, nil

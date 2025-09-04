@@ -1604,14 +1604,13 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
-func TestPulumiInstallInstallsPackagesWithExperimentalRegistry(t *testing.T) {
+func TestPulumiInstallInstallsPackagesFromLocalProjectFile(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
-	e.Env = append(e.Env, "PULUMI_EXPERIMENTAL=true")
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
 	// Manually modify Pulumi.yaml to include a GitHub URL in packages section

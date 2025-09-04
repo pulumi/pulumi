@@ -124,7 +124,7 @@ func (s *Source) getCloudTemplates(
 	ctx context.Context, templateName string,
 	wg *sync.WaitGroup, e env.Env,
 ) {
-	if !e.GetBool(env.DisableRegistryResolve) && e.GetBool(env.Experimental) {
+	if !e.GetBool(env.DisableRegistryResolve) {
 		s.getRegistryTemplates(ctx, e, templateName)
 		return
 	}
@@ -146,6 +146,9 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		return
 	}
 
+	// n.b. name filter is intentionally nil since the template names displayed here differ from the
+	// template names returned from the ListTemplates for VCS backed templates. We fetch all templates
+	// and filter manually.
 	var nameFilter *string
 	for template, err := range r.ListTemplates(ctx, nameFilter) {
 		if err != nil {

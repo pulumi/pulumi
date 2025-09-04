@@ -129,11 +129,8 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 	}()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
-		packageResolutionOptions: packageresolution.Options{
-			DisableRegistryResolve: false,
-			Experimental:           true,
-		},
+		diag:                     diagtest.LogSink(t),
+		packageResolutionOptions: packageresolution.Options{DisableRegistryResolve: false},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
@@ -244,11 +241,8 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 		t.Parallel()
 
 		cmd := &pluginInstallCmd{
-			diag: diagtest.LogSink(t),
-			packageResolutionOptions: packageresolution.Options{
-				DisableRegistryResolve: false,
-				Experimental:           true,
-			},
+			diag:                     diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{DisableRegistryResolve: false},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -271,11 +265,8 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 		t.Parallel()
 
 		cmd := &pluginInstallCmd{
-			diag: diagtest.LogSink(t),
-			packageResolutionOptions: packageresolution.Options{
-				DisableRegistryResolve: false,
-				Experimental:           true,
-			},
+			diag:                     diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{DisableRegistryResolve: false},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -387,11 +378,8 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 	sink := diagtest.MockSink(&stdout, &stderr)
 
 	cmd := &pluginInstallCmd{
-		diag: sink,
-		packageResolutionOptions: packageresolution.Options{
-			DisableRegistryResolve: false,
-			Experimental:           true,
-		},
+		diag:                     sink,
+		packageResolutionOptions: packageresolution.Options{DisableRegistryResolve: false},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil

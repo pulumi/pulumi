@@ -164,7 +164,7 @@ packages:
 		// Environment combination tests for pre-registry packages
 		{
 			name:       "pre-registry package with registry disabled",
-			env:        &Options{DisableRegistryResolve: true, Experimental: false},
+			env:        &Options{DisableRegistryResolve: true},
 			pluginSpec: workspace.PluginSpec{Name: "aws"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -177,7 +177,7 @@ packages:
 		},
 		{
 			name:       "registry disabled ignores available registry package",
-			env:        &Options{DisableRegistryResolve: true, Experimental: true},
+			env:        &Options{DisableRegistryResolve: true},
 			pluginSpec: workspace.PluginSpec{Name: "aws"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
@@ -192,25 +192,12 @@ packages:
 		// Environment combination tests for unknown packages
 		{
 			name:       "unknown package with registry disabled",
-			env:        &Options{DisableRegistryResolve: true, Experimental: false},
+			env:        &Options{DisableRegistryResolve: true},
 			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
 			registryResponse: func() (*backend.MockCloudRegistry, error) {
 				return &backend.MockCloudRegistry{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 						panic("Registry should not be queried when disabled")
-					},
-				}, nil
-			},
-			expectedErr: &PackageNotFoundError{Package: "unknown-package"},
-		},
-		{
-			name:       "unknown package with experimental off",
-			env:        &Options{DisableRegistryResolve: false, Experimental: false},
-			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
-			registryResponse: func() (*backend.MockCloudRegistry, error) {
-				return &backend.MockCloudRegistry{
-					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty
 					},
 				}, nil
 			},
@@ -245,10 +232,7 @@ packages:
 			reg, expectedErr := tt.registryResponse()
 			require.NoError(t, expectedErr)
 
-			env := Options{
-				DisableRegistryResolve: false,
-				Experimental:           true,
-			}
+			env := Options{DisableRegistryResolve: false}
 			if tt.env != nil {
 				env = *tt.env
 			}
@@ -320,10 +304,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 		context.Background(),
 		reg,
 		pluginSpec,
-		Options{
-			DisableRegistryResolve: false,
-			Experimental:           true,
-		},
+		Options{DisableRegistryResolve: false},
 		t.TempDir(),
 	)
 	require.NoError(t, err)
@@ -359,10 +340,7 @@ packages:
 		context.Background(),
 		reg,
 		pluginSpec, // This is both pre-registry AND defined locally
-		Options{
-			DisableRegistryResolve: true,
-			Experimental:           false,
-		},
+		Options{DisableRegistryResolve: true},
 		tmpDir,
 	)
 	require.NoError(t, err)
