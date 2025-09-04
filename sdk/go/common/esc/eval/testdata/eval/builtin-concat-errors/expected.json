@@ -1,0 +1,27 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "the argument to fn::concat must be an array of arrays",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 3,
+                    "Column": 17,
+                    "Byte": 40
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 29,
+                    "Byte": 52
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidInput[\"fn::concat\"]"
+        }
+    ]
+}

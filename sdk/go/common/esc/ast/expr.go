@@ -552,6 +552,28 @@ func Join(delimiter Expr, values *ArrayExpr) *JoinExpr {
 	}
 }
 
+// ConcatExpr concatenates arrays into a single array.
+type ConcatExpr struct {
+	builtinNode
+
+	Arrays Expr
+}
+
+func ConcatSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr) *ConcatExpr {
+	return &ConcatExpr{
+		builtinNode: builtin(node, name, args),
+		Arrays:      args,
+	}
+}
+
+func Concat(arrays *ArrayExpr) *ConcatExpr {
+	name := String("fn::concat")
+	return &ConcatExpr{
+		builtinNode: builtin(nil, name, arrays),
+		Arrays:      arrays,
+	}
+}
+
 type SecretExpr struct {
 	builtinNode
 
@@ -640,6 +662,8 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 
 	var parse func(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics)
 	switch kvp.Key.Value() {
+	case "fn::concat":
+		parse = parseConcat
 	case "fn::fromJSON":
 		parse = parseFromJSON
 	case "fn::fromBase64":
@@ -823,6 +847,16 @@ func parseShortRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Exp
 	}
 
 	return RotateSyntax(node, name, args, provider, inputs, state), diags
+}
+
+func parseConcat(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
+	list, ok := args.(*ArrayExpr)
+	if !ok {
+		diags := syntax.Diagnostics{ExprError(args, "the argument to fn::concat must be an array of arrays")}
+		return ConcatSyntax(node, name, args), diags
+	}
+
+	return ConcatSyntax(node, name, list), nil
 }
 
 func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {

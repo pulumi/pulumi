@@ -175,6 +175,13 @@ func (x *expr) export(environment string) esc.Expr {
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.string.export(environment),
 		}
+	case *concatExpr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Array().Items(schema.Array().Items(schema.Always())).Schema(),
+			Arg:       repr.arrays.export(environment),
+		}
 	case *joinExpr:
 		argRange := convertRange(repr.node.Args().Syntax().Syntax().Range(), environment)
 		ex.Builtin = &esc.BuiltinExpr{
@@ -471,6 +478,17 @@ type joinExpr struct {
 }
 
 func (x *joinExpr) syntax() ast.Expr {
+	return x.node
+}
+
+// concatExpr represents a call to the fn::concat builtin.
+type concatExpr struct {
+	node *ast.ConcatExpr
+
+	arrays *expr
+}
+
+func (x *concatExpr) syntax() ast.Expr {
 	return x.node
 }
 
