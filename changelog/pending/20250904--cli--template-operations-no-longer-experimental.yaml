@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: No longer require the `PULUMI_EXPERIMENTAL` flag for Private Registry template operations (`pulumi template publish`, registry-based template resolution in `pulumi new`), while registry-backed template resolution in `pulumi new` may still be disabled using `PULUMI_DISABLE_REGISTRY_RESOLVE=true pulumi new`
