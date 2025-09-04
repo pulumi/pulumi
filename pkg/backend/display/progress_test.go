@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -109,13 +108,8 @@ func testProgressEvents(
 	}
 }
 
-//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
-		t.Skip("Skipping tests on Windows.")
-	}
-	t.Setenv("TERM", "vt102")
+	t.Parallel()
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -144,6 +138,7 @@ func TestProgressEvents(t *testing.T) {
 					t.Parallel()
 
 					t.Run("raw", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
@@ -151,6 +146,7 @@ func TestProgressEvents(t *testing.T) {
 					})
 
 					t.Run("cooked", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
@@ -158,6 +154,7 @@ func TestProgressEvents(t *testing.T) {
 					})
 
 					t.Run("plain", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 						opts := defaultOpts()
 						opts.ShowResourceChanges = true
@@ -167,6 +164,7 @@ func TestProgressEvents(t *testing.T) {
 			}
 
 			t.Run("no-show-sames", func(t *testing.T) {
+				t.Parallel()
 				opts := defaultOpts()
 				opts.IsInteractive = true
 				opts.ShowSameResources = false
