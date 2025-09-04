@@ -66,8 +66,9 @@ func (e PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
 }
 
 type Options struct {
-	DisableRegistryResolve bool
-	Experimental           bool
+	DisableRegistryResolve      bool
+	Experimental                bool
+	IncludeInstalledInWorkspace bool
 }
 
 type Result interface {
@@ -90,14 +91,30 @@ type ExternalSourceResult struct{}
 
 func (ExternalSourceResult) isResult() {}
 
+type InstalledInWorkspaceResult struct{}
+
+func (InstalledInWorkspaceResult) isResult() {}
+
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
+	ws PluginWorkspace,
 	pluginSpec workspace.PluginSpec,
 	options Options,
 	projectRoot string, // Pass "" for 'not in a project context'
 ) (Result, error) {
 	sourceToCheck := pluginSpec.Name
+
+	if options.IncludeInstalledInWorkspace {
+		if pluginSpec.Version != nil && ws.HasPlugin(pluginSpec) {
+			return InstalledInWorkspaceResult{}, nil
+		}
+
+		has, _ := ws.HasPluginGTE(pluginSpec)
+		if pluginSpec.Version == nil && has {
+			return InstalledInWorkspaceResult{}, nil
+		}
+	}
 
 	if projectRoot != "" {
 		localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name)
@@ -110,7 +127,7 @@ func Resolve(
 		return LocalPathResult{LocalPluginPathAbs: sourceToCheck}, nil
 	}
 
-	if workspace.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
+	if ws.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
 		return ExternalSourceResult{}, nil
 	}
 
@@ -163,4 +180,28 @@ func getLocalProjectPackageSource(
 		return packageSpec.Source
 	}
 	return ""
+}
+
+type PluginWorkspace interface {
+	HasPlugin(spec workspace.PluginSpec) bool
+	HasPluginGTE(spec workspace.PluginSpec) (bool, error)
+	IsExternalURL(source string) bool
+}
+
+type defaultWorkspace struct{}
+
+func (defaultWorkspace) HasPlugin(spec workspace.PluginSpec) bool {
+	return workspace.HasPlugin(spec)
+}
+
+func (defaultWorkspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+	return workspace.HasPluginGTE(spec)
+}
+
+func (defaultWorkspace) IsExternalURL(source string) bool {
+	return workspace.IsExternalURL(source)
+}
+
+func DefaultWorkspace() PluginWorkspace {
+	return defaultWorkspace{}
 }

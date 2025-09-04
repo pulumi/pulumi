@@ -1041,6 +1041,11 @@ func TestImportParameterizedSmokeFreshState(t *testing.T) {
 	testImportParameterizedSmoke(t, false)
 }
 
+func TestImportParameterizedSmokeFreshStateWithExperimental(t *testing.T) {
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
+	testImportParameterizedSmoke(t, false)
+}
+
 // Test for https://github.com/pulumi/pulumi/issues/18814, check that --parallel respects cgroups limits.
 func TestParallelCgroups(t *testing.T) {
 	t.Parallel()
