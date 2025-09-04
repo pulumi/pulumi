@@ -1657,7 +1657,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
+	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
 	engineCtx := &engine.Context{
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
