@@ -49,8 +49,10 @@ type cancellationScopeSource int
 
 var CancellationScopes = CancellationScopeSource(cancellationScopeSource(0))
 
-func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) CancellationScope {
-	cancelContext, cancelSource := cancel.NewContext(context.Background())
+func (cancellationScopeSource) NewScope(
+	ctx context.Context, events chan<- engine.Event, isPreview bool,
+) CancellationScope {
+	cancelContext, cancelSource := cancel.NewContext(ctx)
 
 	c := &cancellationScope{
 		context: cancelContext,

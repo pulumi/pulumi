@@ -12,24 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package templatecmd
+//go:build windows
+// +build windows
+
+package cmdutil
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/spf13/cobra"
+	"context"
 )
 
-func NewTemplateCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "template",
-		Short: "Work with Pulumi templates",
-		Long: `Work with Pulumi templates
-
-Publish and manage Pulumi templates.`,
-		Args: cmdutil.NoArgs,
-	}
-	cmd.AddCommand(
-		newTemplatePublishCmd(),
-	)
-	return cmd
-}
+func InitPprofServer(ctx context.Context) {}

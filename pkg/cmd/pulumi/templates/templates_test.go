@@ -157,7 +157,6 @@ func TestFilterOnName(t *testing.T) {
 		})
 		testFilterOnName(t, env.MapStore{
 			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-			"PULUMI_EXPERIMENTAL":             "true",
 		})
 	})
 }

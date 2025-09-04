@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import (
 	"sync"
 )
 
+// SimpleTerminal is a terminal which ignores terminal codes and writes its
+// output to a buffer.
 type SimpleTerminal struct {
 	m sync.Mutex
 
@@ -38,20 +40,10 @@ func NewSimpleTerminal(dest io.Writer, width, height int) *SimpleTerminal {
 		width:  width,
 		height: height,
 		raw:    true,
-		info:   info{simpleTermInfo(0)},
+		info:   nil,
 		keys:   make(chan string),
 		dest:   dest,
 	}
-}
-
-// A mock terminal info implementation that prints out terminal codes as
-// explicit strings for identification in test outputs.
-type simpleTermInfo int
-
-var _ termInfo = simpleTermInfo(0)
-
-func (ti simpleTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	return "", nil
 }
 
 func (t *SimpleTerminal) IsRaw() bool {
@@ -74,33 +66,13 @@ func (t *SimpleTerminal) Write(b []byte) (int, error) {
 	return t.dest.Write(b)
 }
 
-func (t *SimpleTerminal) ClearLine() {
-	t.info.ClearLine(t)
-}
-
-func (t *SimpleTerminal) ClearEnd() {
-	t.info.ClearEnd(t)
-}
-
-func (t *SimpleTerminal) CarriageReturn() {
-	// No op, as we don't have a cursor to move.
-}
-
-func (t *SimpleTerminal) CursorUp(count int) {
-	t.info.CursorUp(t, count)
-}
-
-func (t *SimpleTerminal) CursorDown(count int) {
-	t.info.CursorDown(t, count)
-}
-
-func (t *SimpleTerminal) HideCursor() {
-	t.info.HideCursor(t)
-}
-
-func (t *SimpleTerminal) ShowCursor() {
-	t.info.ShowCursor(t)
-}
+func (t *SimpleTerminal) ClearLine()           {}
+func (t *SimpleTerminal) ClearEnd()            {}
+func (t *SimpleTerminal) CarriageReturn()      {}
+func (t *SimpleTerminal) CursorUp(count int)   {}
+func (t *SimpleTerminal) CursorDown(count int) {}
+func (t *SimpleTerminal) HideCursor()          {}
+func (t *SimpleTerminal) ShowCursor()          {}
 
 func (t *SimpleTerminal) ReadKey() (string, error) {
 	k, ok := <-t.keys

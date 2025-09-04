@@ -269,11 +269,11 @@ func completePackagePublishPath(source, publisher, name, version string) string 
 }
 
 func publishTemplatePath(source, publisher, name string) string {
-	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions", source, publisher, name)
+	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions", source, publisher, name)
 }
 
 func completeTemplatePublishPath(source, publisher, name string, version semver.Version) string {
-	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
@@ -1679,8 +1679,6 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
-// GetTemplate is a preview API, and should not be used without an approved EOL plan for
-// deprecation.
 func (pc *Client) GetTemplate(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {
@@ -1688,7 +1686,7 @@ func (pc *Client) GetTemplate(
 	if version != nil {
 		v = version.String()
 	}
-	url := fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
+	url := fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
 	var resp apitype.TemplateMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
@@ -1780,10 +1778,8 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
-// ListTemplates is a preview API, and should not be used without an approved EOL plan for
-// deprecation.
 func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-	url := "/api/preview/registry/templates?limit=499"
+	url := "/api/registry/templates?limit=499"
 	if name != nil {
 		url += "&name=" + *name
 	}

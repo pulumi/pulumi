@@ -251,6 +251,13 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
 	})
 
 	args := newArgs{
@@ -273,12 +280,21 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
+	listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+		assert.Nil(t, name)
+		return func(yield func(apitype.TemplateMetadata, error) bool) {}
+	}
+
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		NameF: func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: listTemplates,
+			}
+		},
 	})
 
 	args := newArgs{
@@ -303,8 +319,15 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					assert.Nil(t, name)
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
+		NameF: func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -336,8 +359,15 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					assert.Nil(t, name)
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
+		NameF: func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -406,6 +436,13 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -434,8 +471,15 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					assert.Nil(t, name)
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
+		NameF: func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -561,6 +605,13 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				return nil, fmt.Errorf("invalid stack reference %q", s)
 			}
 		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
 	}
 
 	tests := []struct {
@@ -628,6 +679,13 @@ func TestProjectExists(t *testing.T) {
 			}
 			_, exists := orgProjects[ProjectName(projectName)]
 			return exists, nil
+		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
 		},
 	}
 
@@ -719,6 +777,13 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 				return true, nil
 			}
 			return false, nil
+		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
 		},
 	}
 
@@ -857,6 +922,8 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 
 //nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
+	// Set environment variable to disable registry resolution and use org templates
+	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
 	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -894,6 +961,13 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 				return apitype.ListOrgTemplatesResponse{OrgHasTemplates: false}, nil
 			default:
 				return apitype.ListOrgTemplatesResponse{}, fmt.Errorf("unknown org %q", orgName)
+			}
+		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
 			}
 		},
 	}
@@ -1055,8 +1129,15 @@ Available Templates:
 //nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 	testutil.MockBackendInstance(t, &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					assert.Nil(t, name)
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
+		NameF: func() string { return "mock" },
 	})
 
 	newCmd := NewNewCmd()
@@ -1077,6 +1158,8 @@ Available Templates:
 
 //nolint:paralleltest // Sets a global mock backend, changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
+	// Set environment variable to disable registry resolution and use org templates
+	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	mockBackend := &backend.MockBackend{
@@ -1128,6 +1211,13 @@ resources:
     type: aws:s3:BucketV2
 `},
 			}, nil
+		},
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
 		},
 	}
 	testutil.MockBackendInstance(t, mockBackend)
@@ -1192,8 +1282,15 @@ func TestNoPromptWithYes(t *testing.T) {
 			}
 
 			mockBackend := &backend.MockBackend{
-				SupportsTemplatesF: func() bool { return false },
-				NameF:              func() string { return "mock" },
+				GetReadOnlyCloudRegistryF: func() registry.Registry {
+					return &backend.MockCloudRegistry{
+						ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+							assert.Nil(t, name)
+							return func(yield func(apitype.TemplateMetadata, error) bool) {}
+						},
+					}
+				},
+				NameF: func() string { return "mock" },
 			}
 
 			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
