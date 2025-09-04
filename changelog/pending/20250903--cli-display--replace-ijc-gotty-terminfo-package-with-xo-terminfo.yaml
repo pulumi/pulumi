@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/display
-  description: Replace ijc/Gotty terminfo package with xo/terminfo
