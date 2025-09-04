@@ -148,7 +148,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			// If this is a success, we need to add the resource to the list of resources.
 			if entry.State != nil {
 				newResources = append(newResources, entry.State)
-				operationIDToResourceIndex[entry.OperationID] = int64(index)
+				operationIDToResourceIndex[entry.OperationID] = index
 				index++
 			}
 			if entry.RemoveOld != nil {
