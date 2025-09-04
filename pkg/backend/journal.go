@@ -162,9 +162,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		switch entry.Kind {
 		case engine.JournalEntryBegin:
 			incompleteOps[entry.OperationID] = entry
-			if entry.RemoveOld >= 0 {
-				markAsDeletion[entry.RemoveOld] = struct{}{}
-			}
 		case engine.JournalEntrySuccess:
 			delete(incompleteOps, entry.OperationID)
 			// If this is a success, we need to add the resource to the list of resources.
@@ -177,6 +174,9 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			}
 			if entry.RemoveOld >= 0 {
 				toDeleteInSnapshot[entry.RemoveOld] = struct{}{}
+			}
+			if entry.Delete >= 0 {
+				markAsDeletion[entry.Delete] = struct{}{}
 			}
 			if entry.PendingReplacement >= 0 {
 				markAsPendingReplacement[entry.PendingReplacement] = struct{}{}
@@ -195,15 +195,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				}
 			}
 		case engine.JournalEntryFailure:
-			op := incompleteOps[entry.OperationID]
-			if op.Kind == engine.JournalEntryBegin {
-				// If we marked this resource for deletion earlier, we need to
-				// undo that if the operation failed.
-				if _, ok := markAsDeletion[op.RemoveOld]; ok {
-					delete(markAsDeletion, op.RemoveOld)
-					sj.snapshot.Resources[op.RemoveOld].Delete = false
-				}
-			}
 			delete(incompleteOps, entry.OperationID)
 		case engine.JournalEntryOutputs:
 			if entry.State != nil && !entry.ElideWrite && entry.RemoveOld >= 0 {

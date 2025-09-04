@@ -127,6 +127,9 @@ type JournalEntry struct {
 	// The index of the resource in the base snapshot that should be marked as pending
 	// replacement, or -1 if no pending replacement is needed.
 	PendingReplacement int64
+	// The index of the resource in the base snapshot that should be marked as deleted,
+	// or -1 if no deletion is needed.
+	Delete int64
 	// The resource state associated with this journal entry.
 	State *resource.State
 	// The operation associated with this journal entry, if any.
@@ -146,6 +149,7 @@ func newJournalEntry(kind JournalEntryKind, operationID int64) JournalEntry {
 		OperationID:        operationID,
 		RemoveOld:          -1, // Default to -1, which means no deletion.
 		PendingReplacement: -1, // Default to -1, which means no pending replacement.
+		Delete:             -1, // Default to -1, which means no deletion.
 	}
 }
 
@@ -420,12 +424,6 @@ func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) 
 
 	journalEntry := newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
-	// If this step is a create replacement, we need to mark the old resource for deletion.
-	// The engine marks this in its in-memory representation, but since the snapshot manager
-	// is operating on a copy of the snapshot, we need to explicitly mark the resource.
-	if step.Old() != nil {
-		sm.markEntryForRemoval(&journalEntry, step.Old())
-	}
 	err := sm.journal.BeginOperation(journalEntry)
 	if err != nil {
 		return nil, err
@@ -450,7 +448,19 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	journalEntry.State = step.New()
 	csm.manager.newResources.Store(step.New(), csm.operationID)
 	if old := step.Old(); old != nil && old.PendingReplacement {
-		csm.manager.markEntryForRemoval(&journalEntry, step.Old())
+		csm.manager.markEntryForRemoval(&journalEntry, old)
+	}
+
+	// If this step is a create replacement, we need to mark the old resource for deletion.
+	// The engine marks this in its in-memory representation, but since the snapshot manager
+	// is operating on a copy of the snapshot, we need to explicitly mark the resource.
+	if step.Old() != nil && !step.Old().PendingReplacement && csm.manager.baseSnapshot != nil {
+		for i, res := range csm.manager.baseSnapshot.Resources {
+			if res == step.Old() {
+				journalEntry.Delete = int64(i)
+				break
+			}
+		}
 	}
 
 	return csm.manager.journal.EndOperation(journalEntry)
@@ -673,12 +683,6 @@ func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) 
 	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
 	journalEntry := newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
-	importStep, isImportStep := step.(*deploy.ImportStep)
-	contract.Assertf(isImportStep, "step must be an ImportStep, got %T", step)
-	if importStep.Original() != nil {
-		// This is a import replacement, so we need to mark the old resource for deletion.
-		sm.markEntryForRemoval(&journalEntry, importStep.Original())
-	}
 	err := sm.journal.BeginOperation(journalEntry)
 	if err != nil {
 		return nil, err
@@ -702,6 +706,17 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	}
 	journalEntry := newJournalEntry(kind, ism.operationID)
 	journalEntry.State = step.New()
+	importStep, isImportStep := step.(*deploy.ImportStep)
+	contract.Assertf(isImportStep, "step must be an ImportStep, got %T", step)
+	if importStep.Original() != nil && ism.manager.baseSnapshot != nil {
+		// This is a import replacement, so we need to mark the old resource for deletion.
+		for i, res := range ism.manager.baseSnapshot.Resources {
+			if res == importStep.Original() {
+				journalEntry.Delete = int64(i)
+				break
+			}
+		}
+	}
 	ism.manager.newResources.Store(step.New(), ism.operationID)
 	return ism.manager.journal.EndOperation(journalEntry)
 }
