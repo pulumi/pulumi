@@ -121,15 +121,15 @@ type JournalEntry struct {
 	// IDs start at 1, only Write operations have ID 0.
 	OperationID int64
 	// The index of the resource in the base snapshot to delete, or -1 if no deletion is needed.
-	RemoveOld int64
+	RemoveOld *int64
 	// The operation ID of a new resource that should be deleted.
-	RemoveNew int64
+	RemoveNew *int64
 	// The index of the resource in the base snapshot that should be marked as pending
 	// replacement, or -1 if no pending replacement is needed.
-	PendingReplacement int64
+	PendingReplacement *int64
 	// The index of the resource in the base snapshot that should be marked as deleted,
 	// or -1 if no deletion is needed.
-	Delete int64
+	Delete *int64
 	// The resource state associated with this journal entry.
 	State *resource.State
 	// The operation associated with this journal entry, if any.
@@ -145,11 +145,8 @@ type JournalEntry struct {
 
 func newJournalEntry(kind JournalEntryKind, operationID int64) JournalEntry {
 	return JournalEntry{
-		Kind:               kind,
-		OperationID:        operationID,
-		RemoveOld:          -1, // Default to -1, which means no deletion.
-		PendingReplacement: -1, // Default to -1, which means no pending replacement.
-		Delete:             -1, // Default to -1, which means no deletion.
+		Kind:        kind,
+		OperationID: operationID,
 	}
 }
 
@@ -178,17 +175,17 @@ func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) erro
 // we record the operation ID of the new resource, so the snapshot generation can skip the earlier operation,
 // and thus the new resource won't be written to the snapshot.
 func (sm *JournalSnapshotManager) markEntryForRemoval(journalEntry *JournalEntry, toRemove *resource.State) {
-	contract.Assertf(journalEntry.RemoveOld == -1, "journalEntry.RemoveOld must be initialized to -1")
 	if sm.baseSnapshot != nil {
 		for i, res := range sm.baseSnapshot.Resources {
 			if res == toRemove {
-				journalEntry.RemoveOld = int64(i)
+				index := int64(i)
+				journalEntry.RemoveOld = &index
 				return
 			}
 		}
 	}
-	var ok bool
-	journalEntry.RemoveNew, ok = sm.newResources.Load(toRemove)
+	rm, ok := sm.newResources.Load(toRemove)
+	journalEntry.RemoveNew = &rm
 	contract.Assertf(ok, "could not find resource that's supposed to be deleted %v", toRemove)
 }
 
@@ -457,7 +454,8 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	if step.Old() != nil && !step.Old().PendingReplacement && csm.manager.baseSnapshot != nil {
 		for i, res := range csm.manager.baseSnapshot.Resources {
 			if res == step.Old() {
-				journalEntry.Delete = int64(i)
+				index := int64(i)
+				journalEntry.Delete = &index
 				break
 			}
 		}
@@ -538,7 +536,8 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			if dsm.manager.baseSnapshot != nil {
 				for i, res := range dsm.manager.baseSnapshot.Resources {
 					if res == step.Old() {
-						journalEntry.PendingReplacement = int64(i)
+						index := int64(i)
+						journalEntry.PendingReplacement = &index
 						break
 					}
 				}
@@ -712,7 +711,8 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 		// This is a import replacement, so we need to mark the old resource for deletion.
 		for i, res := range ism.manager.baseSnapshot.Resources {
 			if res == importStep.Original() {
-				journalEntry.Delete = int64(i)
+				index := int64(i)
+				journalEntry.Delete = &index
 				break
 			}
 		}

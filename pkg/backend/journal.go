@@ -151,17 +151,17 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				operationIDToResourceIndex[entry.OperationID] = int64(index)
 				index++
 			}
-			if entry.RemoveOld >= 0 {
-				toDeleteInSnapshot[entry.RemoveOld] = struct{}{}
+			if entry.RemoveOld != nil {
+				toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
 			}
-			if entry.Delete >= 0 {
-				markAsDeletion[entry.Delete] = struct{}{}
+			if entry.Delete != nil {
+				markAsDeletion[*entry.Delete] = struct{}{}
 			}
-			if entry.RemoveNew > 0 {
-				toRemove[entry.RemoveNew] = struct{}{}
+			if entry.RemoveNew != nil {
+				toRemove[*entry.RemoveNew] = struct{}{}
 			}
-			if entry.PendingReplacement >= 0 {
-				markAsPendingReplacement[entry.PendingReplacement] = struct{}{}
+			if entry.PendingReplacement != nil {
+				markAsPendingReplacement[*entry.PendingReplacement] = struct{}{}
 			}
 
 			if entry.IsRefresh {
@@ -170,28 +170,28 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		case engine.JournalEntryRefreshSuccess:
 			delete(incompleteOps, entry.OperationID)
 			hasRefresh = true
-			if entry.RemoveOld >= 0 {
+			if entry.RemoveOld != nil {
 				if entry.State == nil {
-					toDeleteInSnapshot[entry.RemoveOld] = struct{}{}
+					toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
 				} else {
-					toReplaceInSnapshot[entry.RemoveOld] = entry.State
+					toReplaceInSnapshot[*entry.RemoveOld] = entry.State
 				}
 			}
-			if entry.RemoveNew > 0 {
+			if entry.RemoveNew != nil {
 				if entry.State == nil {
-					toRemove[entry.RemoveNew] = struct{}{}
+					toRemove[*entry.RemoveNew] = struct{}{}
 				} else {
-					newResources[operationIDToResourceIndex[entry.RemoveNew]] = entry.State
+					newResources[operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
 				}
 			}
 		case engine.JournalEntryFailure:
 			delete(incompleteOps, entry.OperationID)
 		case engine.JournalEntryOutputs:
-			if entry.State != nil && !entry.ElideWrite && entry.RemoveOld >= 0 {
-				toReplaceInSnapshot[entry.RemoveOld] = entry.State
+			if entry.State != nil && !entry.ElideWrite && entry.RemoveOld != nil {
+				toReplaceInSnapshot[*entry.RemoveOld] = entry.State
 			}
-			if entry.State != nil && !entry.ElideWrite && entry.RemoveNew > 0 {
-				newResources[operationIDToResourceIndex[entry.RemoveNew]] = entry.State
+			if entry.State != nil && !entry.ElideWrite && entry.RemoveNew != nil {
+				newResources[operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
 			}
 		case engine.JournalEntryWrite:
 			// Already handled above.
