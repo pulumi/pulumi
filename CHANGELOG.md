@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.193.0 (2025-09-04)
+
+
+### Bug Fixes
+
+- [cli] Use "Private Registry", not cloud or Pulumi registry, in CLI output
+  [#20436](https://github.com/pulumi/pulumi/pull/20436)
+
+- [cli/display] Avoid printing a double new line when showing secrets in the outputs
+  [#20435](https://github.com/pulumi/pulumi/pull/20435)
+
+- [cli/display] Fix coloring of cobra error messages on windows
+
+- [cli/{install,package}] Fix local package resolution when PULUMI_EXPERIMENTAL=true by including local packages in registry fallback logic
+  [#20413](https://github.com/pulumi/pulumi/pull/20413)
+
+- [cli/new] Fail when running with --language without --ai in non-interactive mode
+  [#20415](https://github.com/pulumi/pulumi/pull/20415)
+
+- [cli/package] Fix not using already-installed package in 'pulumi package add' when PULUMI_EXPERIMENTAL=1
+
+
+### Miscellaneous
+
+- [cli] Start the pprof server when receving SIGUSR1
+  [#20392](https://github.com/pulumi/pulumi/pull/20392)
+
+- [cli/display] Replace ijc/Gotty terminfo package with xo/terminfo
+  [#20446](https://github.com/pulumi/pulumi/pull/20446)
+
+- [cli/display] Use the passed through writer in ShowProgressOutput instead of loading a new terminfo
+
 ## 3.192.0 (2025-08-29)
 
 

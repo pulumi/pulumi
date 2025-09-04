@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/display
-  description: Use the passed through writer in ShowProgressOutput instead of loading a new terminfo
