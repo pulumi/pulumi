@@ -1252,7 +1252,7 @@ func (host *goLanguageHost) RunPlugin(
 	defer contract.IgnoreClose(closer)
 
 	program, err := compileProgram(
-		context.TODO(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
