@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -351,7 +351,14 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 // getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func getResourceOutputsPropertiesString(
-	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames, showSecrets bool,
+	step engine.StepEventMetadata,
+	indent int,
+	planning,
+	debug,
+	refresh,
+	showSames,
+	showSecrets,
+	truncateOutput bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
 	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
@@ -431,12 +438,13 @@ func getResourceOutputsPropertiesString(
 
 	b := &bytes.Buffer{}
 	p := propertyPrinter{
-		dest:        b,
-		planning:    planning,
-		indent:      indent,
-		op:          op,
-		debug:       debug,
-		showSecrets: showSecrets,
+		dest:           b,
+		planning:       planning,
+		indent:         indent,
+		op:             op,
+		debug:          debug,
+		showSecrets:    showSecrets,
+		truncateOutput: truncateOutput,
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
@@ -1349,12 +1357,13 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 
 	lines := strings.Split(propertyString, "\n")
 	numLines := len(lines)
+	isTruncated := false
 	if numLines > contextLines {
+		isTruncated = true
 		numLines = contextLines
 	}
 
-	isTruncated := false
-	for i := 0; i < numLines; i++ {
+	for i := range numLines {
 		if len(lines[i]) > maxLineLength {
 			lines[i] = lines[i][:maxLineLength] + "..."
 			isTruncated = true

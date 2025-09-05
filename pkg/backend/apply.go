@@ -241,7 +241,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		}
 
 		if response == string(details) {
-			diff, err := display.CreateDiff(events, opts.Display)
+			displayOpts := opts.Display
+			displayOpts.TruncateOutput = false // We want to always show the full details
+			diff, err := display.CreateDiff(events, displayOpts)
 			if err != nil {
 				return nil, err
 			}
