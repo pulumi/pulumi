@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Log diagnostics to stderr instead of stdout
