@@ -173,7 +173,7 @@ func TestJsonYamlDiff(t *testing.T) {
 	}
 }
 
-func assertExpectedCreateDiff(t *testing.T, path string, accept bool) {
+func assertExpectedCreateDiff(t *testing.T, path string, accept, truncateOutput bool) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 
@@ -190,6 +190,7 @@ func assertExpectedCreateDiff(t *testing.T, path string, accept bool) {
 		ShowReplacementSteps: true,
 		ShowSameResources:    true,
 		ShowReads:            true,
+		TruncateOutput:       truncateOutput,
 		Color:                colors.Never,
 	})
 	require.NoError(t, err)
@@ -218,7 +219,7 @@ func TestDiffEventsCreateDiff(t *testing.T) {
 		path := filepath.Join("testdata/not-truncated", entry.Name())
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
-			assertExpectedCreateDiff(t, path, accept)
+			assertExpectedCreateDiff(t, path, accept, false /* truncateOutput */)
 		})
 	}
 
@@ -233,7 +234,7 @@ func TestDiffEventsCreateDiff(t *testing.T) {
 		path := filepath.Join("testdata/truncated", entry.Name())
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
-			assertExpectedCreateDiff(t, path, accept)
+			assertExpectedCreateDiff(t, path, accept, true /* truncateOutput */)
 		})
 	}
 }
@@ -254,7 +255,7 @@ func TestJsonYamlCreateDiff(t *testing.T) {
 		path := filepath.Join("testdata/json-yaml", entry.Name())
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
-			assertExpectedCreateDiff(t, path, accept)
+			assertExpectedCreateDiff(t, path, accept, false /* truncateOutput */)
 		})
 	}
 }

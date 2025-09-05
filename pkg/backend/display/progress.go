@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1012,8 +1012,14 @@ func (display *ProgressDisplay) printOutputs() {
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
 	props := getResourceOutputsPropertiesString(
-		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources, display.opts.ShowSecrets)
+		stackStep,
+		1, /* indent */
+		display.isPreview,
+		display.opts.Debug,
+		false, /* refresh */
+		display.opts.ShowSameResources,
+		display.opts.ShowSecrets,
+		display.opts.TruncateOutput)
 	if props != "" {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)

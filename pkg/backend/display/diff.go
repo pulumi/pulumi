@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -473,9 +473,15 @@ func renderDiffResourceOutputsEvent(
 		indent := getIndent(payload.Metadata, seen)
 
 		text := getResourceOutputsPropertiesString(
-			payload.Metadata, indent+1, payload.Planning,
-			payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
-
+			payload.Metadata,
+			indent+1,
+			payload.Planning,
+			payload.Debug,
+			refresh,
+			opts.ShowSameResources,
+			opts.ShowSecrets,
+			opts.TruncateOutput,
+		)
 		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
 			// We would not have rendered the summary yet in this case, so do it now.
 			summary := getResourcePropertiesSummary(payload.Metadata, indent)
