@@ -26,6 +26,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1216,42 +1217,48 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 				}
 			}
 
+			info, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
+			}
+
 			if remediate {
 				// During the first pass, perform remediations. This ensures subsequent analyzers run
 				// against the transformed properties, ensuring nothing circumvents the analysis checks.
-				tresults, err := analyzer.Remediate(r)
+				response, err := analyzer.Remediate(r)
 				if err != nil {
 					return nil, false, fmt.Errorf("failed to run remediation: %w", err)
-				} else if len(tresults) > 0 {
-					for _, tresult := range tresults {
-						if tresult.Diagnostic != "" {
-							// If there is a diagnostic, we have a warning to display.
-							sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
-								PolicyName:        tresult.PolicyName,
-								PolicyPackName:    tresult.PolicyPackName,
-								PolicyPackVersion: tresult.PolicyPackVersion,
-								Description:       tresult.Description,
-								Message:           tresult.Diagnostic,
-								EnforcementLevel:  apitype.Advisory,
-								URN:               new.URN,
-							})
-						} else if tresult.Properties != nil {
-							// Emit a nice message so users know what was remediated.
-							sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
-							// Use the transformed inputs rather than the old ones from this point onwards.
-							inputs = tresult.Properties
-							new.Inputs = tresult.Properties
-						}
+				}
+				for _, tresult := range response.Remediations {
+					if tresult.Diagnostic != "" {
+						// If there is a diagnostic, we have a warning to display.
+						sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
+							PolicyName:        tresult.PolicyName,
+							PolicyPackName:    tresult.PolicyPackName,
+							PolicyPackVersion: tresult.PolicyPackVersion,
+							Description:       tresult.Description,
+							Message:           tresult.Diagnostic,
+							EnforcementLevel:  apitype.Advisory,
+							URN:               new.URN,
+						})
+					} else if tresult.Properties != nil {
+						// Emit a nice message so users know what was remediated.
+						sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
+						// Use the transformed inputs rather than the old ones from this point onwards.
+						inputs = tresult.Properties
+						new.Inputs = tresult.Properties
 					}
 				}
+				summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
+				sg.deployment.events.OnPolicyRemediateSummary(summary)
 			} else {
 				// During the second pass, perform analysis. This happens after remediations so that
 				// analyzers see properties as they were after the transformations have occurred.
-				diagnostics, err := analyzer.Analyze(r)
+				response, err := analyzer.Analyze(r)
 				if err != nil {
 					return nil, false, fmt.Errorf("failed to run policy: %w", err)
 				}
-				for _, d := range diagnostics {
+				for _, d := range response.Diagnostics {
 					if d.EnforcementLevel == apitype.Remediate {
 						// If we ran a remediation, but we are still somehow triggering a violation,
 						// "downgrade" the level we report from remediate to mandatory.
@@ -1267,6 +1274,9 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
 					sg.deployment.events.OnPolicyViolation(new.URN, d)
 				}
+
+				summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
+				sg.deployment.events.OnPolicyAnalyzeSummary(summary)
 			}
 		}
 	}
@@ -3035,11 +3045,16 @@ func (sg *stepGenerator) AnalyzeResources() error {
 	}
 
 	for _, analyzer := range analyzers {
-		diagnostics, err := analyzer.AnalyzeStack(resources)
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return fmt.Errorf("failed to get analyzer info: %w", err)
+		}
+
+		response, err := analyzer.AnalyzeStack(resources)
 		if err != nil {
 			return err
 		}
-		for _, d := range diagnostics {
+		for _, d := range response.Diagnostics {
 			if d.EnforcementLevel == apitype.Remediate {
 				// Stack policies cannot be remediated, so treat the level as mandatory.
 				d.EnforcementLevel = apitype.Mandatory
@@ -3060,6 +3075,9 @@ func (sg *stepGenerator) AnalyzeResources() error {
 			}
 			sg.deployment.events.OnPolicyViolation(urn, d)
 		}
+
+		summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
+		sg.deployment.events.OnPolicyAnalyzeStackSummary(summary)
 	}
 
 	return nil

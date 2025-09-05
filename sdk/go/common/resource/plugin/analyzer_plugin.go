@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,6 +52,9 @@ type analyzer struct {
 	plug    *Plugin
 	client  pulumirpc.AnalyzerClient
 	version string
+
+	// Cached result of the first call to GetAnalyzerInfo, which will be returned from subsequent calls.
+	info *AnalyzerInfo
 }
 
 var _ Analyzer = (*analyzer)(nil)
@@ -288,7 +291,7 @@ func (a *analyzer) label() string {
 }
 
 // Analyze analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
@@ -296,12 +299,12 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	mprops, err := MarshalProperties(props,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
-		return nil, err
+		return AnalyzeResponse{}, err
 	}
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
-		return nil, err
+		return AnalyzeResponse{}, err
 	}
 
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
@@ -315,7 +318,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return nil, rpcError
+		return AnalyzeResponse{}, rpcError
 	}
 
 	failures := resp.GetDiagnostics()
@@ -323,13 +326,16 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 
 	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
-		return nil, fmt.Errorf("converting analysis results: %w", err)
+		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
-	return diags, nil
+	return AnalyzeResponse{
+		Diagnostics:   diags,
+		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+	}, nil
 }
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
-func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeResponse, error) {
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -337,12 +343,12 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		props, err := MarshalProperties(resource.Properties,
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
-			return nil, fmt.Errorf("marshalling properties: %w", err)
+			return AnalyzeResponse{}, fmt.Errorf("marshalling properties: %w", err)
 		}
 
 		provider, err := marshalProvider(resource.Provider)
 		if err != nil {
-			return nil, err
+			return AnalyzeResponse{}, err
 		}
 
 		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
@@ -384,11 +390,11 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		// just means the analyzer isn't capable of this specific type of check.
 		if rpcError.Code() == codes.Unimplemented {
 			logging.V(7).Infof("%s.AnalyzeStack(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
-			return nil, nil
+			return AnalyzeResponse{}, nil
 		}
 
 		logging.V(7).Infof("%s.AnalyzeStack(...) failed: err=%v", a.label(), rpcError)
-		return nil, rpcError
+		return AnalyzeResponse{}, rpcError
 	}
 
 	failures := resp.GetDiagnostics()
@@ -396,13 +402,16 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 
 	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
-		return nil, fmt.Errorf("converting analysis results: %w", err)
+		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
-	return diags, nil
+	return AnalyzeResponse{
+		Diagnostics:   diags,
+		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+	}, nil
 }
 
 // Remediate is given the opportunity to transform a single resource, and returns its new properties.
-func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
+func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
@@ -410,12 +419,12 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 	mprops, err := MarshalProperties(props,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 	if err != nil {
-		return nil, err
+		return RemediateResponse{}, err
 	}
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
-		return nil, err
+		return RemediateResponse{}, err
 	}
 
 	resp, err := a.client.Remediate(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
@@ -432,11 +441,11 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 		// Handle the case where we the policy pack doesn't implement a recent enough to implement Transform.
 		if rpcError.Code() == codes.Unimplemented {
 			logging.V(7).Infof("%s.Transform(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
-			return nil, nil
+			return RemediateResponse{}, nil
 		}
 
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return nil, rpcError
+		return RemediateResponse{}, rpcError
 	}
 
 	remediations := resp.GetRemediations()
@@ -445,7 +454,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 		tprops, err := UnmarshalProperties(r.GetProperties(),
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 		if err != nil {
-			return nil, err
+			return RemediateResponse{}, err
 		}
 
 		// The version from PulumiPolicy.yaml is used, if set, over the version from the diagnostic.
@@ -465,11 +474,19 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 	}
 
 	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))
-	return results, nil
+	return RemediateResponse{
+		Remediations:  results,
+		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+	}, nil
 }
 
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
+	// Return the cached result, if available.
+	if a.info != nil {
+		return *a.info, nil
+	}
+
 	label := a.label() + ".GetAnalyzerInfo()"
 	logging.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &emptypb.Empty{})
@@ -511,6 +528,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 			EnforcementLevel: enforcementLevel,
 			Message:          p.GetMessage(),
 			ConfigSchema:     schema,
+			Type:             convertPolicyType(p.PolicyType),
 		}
 	}
 	sort.Slice(policies, func(i, j int) bool {
@@ -536,14 +554,17 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		logging.V(7).Infof("Using version %q from PulumiPolicy.yaml", version)
 	}
 
-	return AnalyzerInfo{
+	// Cache the result for subsequent calls.
+	info := AnalyzerInfo{
 		Name:           resp.GetName(),
 		DisplayName:    resp.GetDisplayName(),
 		Version:        version,
 		SupportsConfig: resp.GetSupportsConfig(),
 		Policies:       policies,
 		InitialConfig:  initialConfig,
-	}, nil
+	}
+	a.info = &info
+	return info, nil
 }
 
 // GetPluginInfo returns this plugin's information.
@@ -609,6 +630,16 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
 		return rpcError
 	}
+
+	// Update the cached analyzer info with updated enforcement level from config.
+	if a.info != nil {
+		for i, p := range a.info.Policies {
+			if newConfig, ok := policyConfig[p.Name]; ok {
+				a.info.Policies[i].EnforcementLevel = newConfig.EnforcementLevel
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -756,6 +787,18 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 	}
 }
 
+func convertPolicyType(t pulumirpc.PolicyType) AnalyzerPolicyType {
+	switch t {
+	case pulumirpc.PolicyType_POLICY_TYPE_UNKNOWN:
+		return AnalyzerPolicyTypeUnknown
+	case pulumirpc.PolicyType_POLICY_TYPE_RESOURCE:
+		return AnalyzerPolicyTypeResource
+	case pulumirpc.PolicyType_POLICY_TYPE_STACK:
+		return AnalyzerPolicyTypeStack
+	}
+	return AnalyzerPolicyTypeUnknown
+}
+
 func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyConfigSchema {
 	if schema == nil {
 		return nil
@@ -801,6 +844,15 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic, version
 	}
 
 	return diagnostics, nil
+}
+
+func convertNotApplicable(protoNotApplicable []*pulumirpc.PolicyNotApplicable) []PolicyNotApplicable {
+	return slice.Map(protoNotApplicable, func(p *pulumirpc.PolicyNotApplicable) PolicyNotApplicable {
+		return PolicyNotApplicable{
+			PolicyName: p.PolicyName,
+			Reason:     p.Reason,
+		}
+	})
 }
 
 // constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
