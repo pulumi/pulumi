@@ -15,8 +15,6 @@
 package engine
 
 import (
-	"context"
-
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -40,7 +38,6 @@ type UpdateInfo struct {
 // Context provides cancellation, termination, and eventing options for an engine operation. It also provides
 // a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
-	BaseCtx         context.Context
 	Cancel          *cancel.Context
 	Events          chan<- Event
 	SnapshotManager SnapshotManager
