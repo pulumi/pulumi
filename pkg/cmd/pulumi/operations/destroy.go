@@ -430,7 +430,7 @@ func NewDestroyCmd() *cobra.Command {
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVar(
 		&showFullOutput, "show-full-output", true,
-		"Display full length of stack outputs")
+		"Display full length of inputs & outputs")
 	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
