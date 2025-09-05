@@ -1,10 +1,10 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=4465e385-2610-48bb-8b75-e8aba470bd0b]
+<{%reset%}>    [id=2ba9dfc3-49d5-4b0e-b3c4-5569eee266b8]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%reset%}><{%reset%}>cannot ignore changes to the following properties because one or more elements of the path are missing: "qux[1]"<{%reset%}>
-<{%reset%}>cannot ignore changes to the following properties because one or more elements of the path are missing: "qux[1]"<{%reset%}>
+<{%reset%}><{%reset%}><{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[1]"<{%reset%}>
+<{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[1]"<{%reset%}>
 <{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>    [id=865ee614-2cba-4fe9-810f-019823859cc7]
+<{%reset%}>    [id=e430826f-f293-4faa-9951-b6ceda29af1d]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>{
 <{%reset%}><{%fg 1%}>      - bar: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
