@@ -360,11 +360,6 @@ func getResourceOutputsPropertiesString(
 	showSecrets,
 	truncateOutput bool,
 ) string {
-	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
-	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
-		showSames = true
-	}
-
 	// We should only print outputs for normal resources if the outputs are known to be complete.
 	// This will be the case if we are:
 	//
