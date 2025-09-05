@@ -109,6 +109,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,

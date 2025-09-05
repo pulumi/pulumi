@@ -917,7 +917,19 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		programExecutions++
 
-		_, state, err := monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
+		_, state, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
 		require.NoError(t, err)
 		assert.Equal(t, readOutputs, state)
 

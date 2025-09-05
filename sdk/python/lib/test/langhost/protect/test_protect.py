@@ -45,6 +45,7 @@ class ProtectTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual("foo", name)
         self.assertTrue(protect)

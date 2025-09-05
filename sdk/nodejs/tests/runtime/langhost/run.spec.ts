@@ -88,6 +88,7 @@ interface RunCase {
         replaceOnChanges?: string[],
         providers?: any,
         sourcePosition?: runtime.SourcePosition,
+        stackTrace?: (runtime.SourcePosition | undefined)[],
     ) => {
         urn: URN | undefined;
         id: ID | undefined;
@@ -1584,16 +1585,23 @@ describe("rpc", () => {
                 replaceOnChanges?: string[],
                 providers?: any,
                 sourcePosition?: runtime.SourcePosition,
+                stackTrace?: (runtime.SourcePosition | undefined)[],
             ) => {
                 assert(sourcePosition !== undefined);
                 assert(sourcePosition.uri.endsWith("index.js"));
 
+                assert(stackTrace !== undefined);
+                assert.notStrictEqual(stackTrace.length, 0);
+                assert.deepStrictEqual(stackTrace[0], sourcePosition);
+
                 switch (name) {
                     case "custom":
                         assert.strictEqual(sourcePosition.line, 2);
+                        assert(sourcePosition.column !== undefined && sourcePosition.column !== 0);
                         break;
                     case "component":
                         assert.strictEqual(sourcePosition.line, 2);
+                        assert(sourcePosition.column !== undefined && sourcePosition.column !== 0);
                         break;
                     default:
                         throw new Error(`unexpected resource ${name}`);
@@ -1827,6 +1835,20 @@ describe("rpc", () => {
                                         column: rpcSourcePosition.getColumn(),
                                     };
                                 }
+                                const rpcStackTrace = req.getStacktrace();
+                                let stackTrace: (runtime.SourcePosition | undefined)[] | undefined;
+                                if (rpcStackTrace) {
+                                    stackTrace = rpcStackTrace.getFramesList().map((f: any) => {
+                                        const pc = f.getPc();
+                                        return pc === undefined
+                                            ? undefined
+                                            : {
+                                                  uri: pc.getUri(),
+                                                  line: pc.getLine(),
+                                                  column: pc.getColumn(),
+                                              };
+                                    });
+                                }
                                 const { urn, id, props } = opts.registerResource(
                                     ctx,
                                     dryrun,
@@ -1845,6 +1867,7 @@ describe("rpc", () => {
                                     replaceOnChanges,
                                     providers,
                                     sourcePosition,
+                                    stackTrace,
                                 );
                                 resp.setUrn(urn);
                                 resp.setId(id);

@@ -44,6 +44,7 @@ class InputTypeMismatchTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual("test:index:MyResource", ty)
 

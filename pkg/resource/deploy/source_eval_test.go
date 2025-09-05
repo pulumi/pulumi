@@ -206,6 +206,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					Created:                 nil,
 					Modified:                nil,
 					SourcePosition:          "",
+					StackTrace:              nil,
 					IgnoreChanges:           nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
@@ -345,6 +346,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -371,6 +373,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -396,6 +399,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -425,6 +429,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -450,6 +455,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -519,6 +525,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
+				StackTrace:              nil,
 				IgnoreChanges:           nil,
 				ReplaceOnChanges:        nil,
 				RefreshBeforeUpdate:     false,
@@ -578,6 +585,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -604,6 +612,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -629,6 +638,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -655,6 +665,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -680,6 +691,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
+				StackTrace:              nil,
 				ResourceHooks:           nil,
 			}.Make(),
 		},
@@ -760,6 +772,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
+				StackTrace:              nil,
 				IgnoreChanges:           nil,
 				ReplaceOnChanges:        nil,
 				RefreshBeforeUpdate:     false,
@@ -823,11 +836,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
-		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", "")
+		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
+		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", "")
+		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
 
 		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
@@ -884,6 +897,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
+				StackTrace:              nil,
 				IgnoreChanges:           nil,
 				ReplaceOnChanges:        nil,
 				RefreshBeforeUpdate:     false,
@@ -928,11 +942,11 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
-		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", "")
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", nil, "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", "")
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", nil, "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", nil, "", "")
 		require.NoError(t, err)
 
 		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
@@ -1008,6 +1022,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					Created:                 nil,
 					Modified:                nil,
 					SourcePosition:          "",
+					StackTrace:              nil,
 					IgnoreChanges:           nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
@@ -1046,6 +1061,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					Created:                 nil,
 					Modified:                nil,
 					SourcePosition:          "",
+					StackTrace:              nil,
 					IgnoreChanges:           nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
@@ -1173,11 +1189,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 					aPkgProvider = providerARef.String()
 				}
 				// Perform some reads and invokes with explicit provider references.
-				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", "")
+				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", nil, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
+				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", nil, "", "")
 				require.NoError(t, perr)
-				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
+				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", nil, "", "")
 				require.NoError(t, perr)
 
 				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")
@@ -1233,6 +1249,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							Created:                 nil,
 							Modified:                nil,
 							SourcePosition:          "",
+							StackTrace:              nil,
 							IgnoreChanges:           nil,
 							ReplaceOnChanges:        nil,
 							RefreshBeforeUpdate:     false,
@@ -1270,6 +1287,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							Created:                 nil,
 							Modified:                nil,
 							SourcePosition:          "",
+							StackTrace:              nil,
 							IgnoreChanges:           nil,
 							ReplaceOnChanges:        nil,
 							RefreshBeforeUpdate:     false,
@@ -2149,9 +2167,9 @@ func TestParseSourcePosition(t *testing.T) {
 		},
 		{
 			name:        "InvalidLine",
-			input:       &pulumirpc.SourcePosition{Line: 0},
+			input:       &pulumirpc.SourcePosition{Line: -1},
 			expected:    "",
-			errContains: "invalid line number 0",
+			errContains: "invalid line number -1",
 		},
 		{
 			name:        "InvalidColumn",

@@ -659,16 +659,35 @@ def _translate_replace_on_changes(
     return replace_on_changes
 
 
-def _get_source_position() -> Optional[source_pb2.SourcePosition]:
+def _get_source_position_for_frame(
+    frame: traceback.FrameSummary,
+) -> Optional[source_pb2.SourcePosition]:
     """
-    Returns the source position of the first stack frame in user code. This should look up to find what called into the
-    core sdk (i.e. Resource.__init__) and then skip that caller type if it is a Resource or ComponentResource.
+    Returns the source position for a stack frame. Returns None if the frame summary does not contain valid position
+    information.
+    """
 
-    This is used to compute the source position of the user code that instantiated a resource.
+    if frame.filename == "" or frame.lineno is None:
+        return None
+
+    # Convert the frame info to a source position URI by converting the filename to a URI and appending
+    # the line and column fragment.
+    try:
+        uri = pathlib.Path(frame.filename).as_uri()
+    except BaseException:  # noqa: BLE001 catch blind exception
+        return None
+
+    return source_pb2.SourcePosition(uri=uri, line=frame.lineno)
+
+
+def _get_stack_trace() -> source_pb2.StackTrace:
+    """
+    Returns an RPC stack trace that corresponds to the frames on the stack at the time of the call. The top of the stack
+    is the first frame that is not in runtime or SDK code.
     """
 
     # This is somewhat brittle in that it expects a call stack of the form:
-    # - register_resource/read_resource
+    # - runtime frames...
     # - Resource class constructor
     # - abstract Resource subclass constructor (CustomResource or ComponentResource)
     # - concrete Resource subclass constructor (this maybe split into __internal_init__)
@@ -676,8 +695,7 @@ def _get_source_position() -> Optional[source_pb2.SourcePosition]:
     #
     # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
 
-    # Capture a stack that includes the last 7 frames, this should be enough to cover the above.
-    stack = traceback.extract_stack(limit=7)
+    stack = traceback.extract_stack()
 
     # Look up the stack to find the third __init__ frame (the first is Resource, the second is
     # CustomResource/ComponentResource, the third should be the concrete resource, including skipping any __internal_init__ function)
@@ -685,27 +703,34 @@ def _get_source_position() -> Optional[source_pb2.SourcePosition]:
     for i in range(len(stack) - 1, -1, -1):
         f = stack[i]
         if f.name == "__init__":
-            n = n + 1
+            n += 1
             if n == 3:
                 break
 
     # If we didn't find the third init frame before the end then just return None
     if i < 1:
-        return None
+        return source_pb2.StackTrace()
 
-    # Extract the Ith stack frame. If that frame is missing file or line information, return the empty string.
-    caller = stack[i - 1]
-    if caller.filename == "" or caller.lineno is None:
-        return None
+    def rpc_frame(frame: traceback.FrameSummary) -> source_pb2.StackFrame:
+        pos = _get_source_position_for_frame(frame)
+        return source_pb2.StackFrame(pc=pos)
 
-    try:
-        uri = pathlib.Path(caller.filename).as_uri()
-    except BaseException:  # noqa: BLE001 catch blind exception
-        return None
+    # Reverse the stack before returning it. RPC stack traces put the topmost frame at index 0.
+    frames = list(map(rpc_frame, reversed(stack[:i])))
+    return source_pb2.StackTrace(frames=frames)
 
-    # Convert the Ith source position to a source position URI by converting the filename to a URI and appending
-    # the line and column fragment.
-    return source_pb2.SourcePosition(uri=uri, line=caller.lineno)
+
+def _get_source_position(
+    stack: source_pb2.StackTrace,
+) -> Optional[source_pb2.SourcePosition]:
+    """
+    Returns the source position of the first stack frame in user code. This should look up to find what called into the
+    core sdk (i.e. Resource.__init__) and then skip that caller type if it is a Resource or ComponentResource.
+
+    This is used to compute the source position of the user code that instantiated a resource.
+    """
+
+    return None if len(stack.frames) < 1 else stack.frames[0].pc
 
 
 def read_resource(
@@ -746,8 +771,12 @@ def read_resource(
     custom = True  # Reads are always for custom resources (non-components)
     resolvers = rpc.transfer_properties(res, props, custom)
 
-    # Get the source position.
-    source_position = _get_source_position()
+    # Get the stack trace and source position.
+    stack_trace = _get_stack_trace()
+    source_position = _get_source_position(stack_trace)
+
+    # Get the stack trace.
+    stack_trace = _get_stack_trace()
 
     async def do_read():
         try:
@@ -796,6 +825,7 @@ def read_resource(
                 acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
                 sourcePosition=source_position,
+                stackTrace=stack_trace,
                 packageRef=package_ref_str or "",
             )
 
@@ -910,8 +940,9 @@ def register_resource(
     # passed to.  However, those futures won't actually resolve until the RPC returns
     resolvers = rpc.transfer_properties(res, props, custom)
 
-    # Get the source position.
-    source_position = _get_source_position()
+    # Get the stack trace and source position.
+    stack_trace = _get_stack_trace()
+    source_position = _get_source_position(stack_trace)
 
     async def do_register() -> None:
         try:
@@ -1029,6 +1060,7 @@ def register_resource(
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
+                stackTrace=stack_trace,
                 transforms=callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",

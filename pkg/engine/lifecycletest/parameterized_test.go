@@ -291,7 +291,19 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		}, result)
 
 		// Test reading a resource on the replacement provider
-		_, _, err = monitor.ReadResource("pkgExt:m:typA", "resC", "id", "", resource.PropertyMap{}, "", "", "", extRef)
+		_, _, err = monitor.ReadResource(
+			"pkgExt:m:typA",
+			"resC",
+			"id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			extRef,
+		)
 		require.NoError(t, err)
 
 		// Test calling a function on the replacement provider
@@ -306,6 +318,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			"", /*provider*/
 			"", /*version*/
 			extRef,
+			"",
+			nil,
+			"",
 		)
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{

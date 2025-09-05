@@ -467,6 +467,8 @@ export class CallRequest extends jspb.Message {
     setOrganization(value: string): CallRequest;
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): CallRequest;
+    getStackTraceHandle(): string;
+    setStackTraceHandle(value: string): CallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallRequest.AsObject;
@@ -494,6 +496,7 @@ export namespace CallRequest {
         monitorendpoint: string,
         organization: string,
         acceptsOutputValues: boolean,
+        stackTraceHandle: string,
     }
 
 
@@ -1244,6 +1247,8 @@ export class ConstructRequest extends jspb.Message {
     clearResourceHooks(): void;
     getResourceHooks(): ConstructRequest.ResourceHooksBinding | undefined;
     setResourceHooks(value?: ConstructRequest.ResourceHooksBinding): ConstructRequest;
+    getStackTraceHandle(): string;
+    setStackTraceHandle(value: string): ConstructRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
@@ -1286,6 +1291,7 @@ export namespace ConstructRequest {
         retainondelete?: boolean,
         acceptsOutputValues: boolean,
         resourceHooks?: ConstructRequest.ResourceHooksBinding.AsObject,
+        stackTraceHandle: string,
     }
 
 

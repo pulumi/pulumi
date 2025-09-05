@@ -132,6 +132,8 @@ class ReadResourceRequest(google.protobuf.message.Message):
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    STACKTRACE_FIELD_NUMBER: builtins.int
+    PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to read."""
@@ -151,6 +153,8 @@ class ReadResourceRequest(google.protobuf.message.Message):
     """when true operations should return resource references as strongly typed."""
     pluginDownloadURL: builtins.str
     """the server url of the provider to use when servicing this request."""
+    parentStackTraceHandle: builtins.str
+    """the optional parent stack trace handle for the request. Supports stitching stack traces across plugins."""
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
     @property
@@ -173,6 +177,10 @@ class ReadResourceRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the read."""
 
+    @property
+    def stackTrace(self) -> pulumi.source_pb2.StackTrace:
+        """the optional stack trace at the time of the request."""
+
     def __init__(
         self,
         *,
@@ -190,10 +198,12 @@ class ReadResourceRequest(google.protobuf.message.Message):
         pluginDownloadURL: builtins.str = ...,
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        stackTrace: pulumi.source_pb2.StackTrace | None = ...,
+        parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["properties", b"properties", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["properties", b"properties", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ReadResourceRequest = ReadResourceRequest
 
@@ -384,6 +394,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     DELETEDWITH_FIELD_NUMBER: builtins.int
     ALIASSPECS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    STACKTRACE_FIELD_NUMBER: builtins.int
+    PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     TRANSFORMS_FIELD_NUMBER: builtins.int
     SUPPORTSRESULTREPORTING_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
@@ -431,6 +443,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     Other SDKs that are correctly specifying alias specs could set this to
     true, but it's not necessary.
     """
+    parentStackTraceHandle: builtins.str
+    """the optional parent stack trace handle for the request. Supports stitching stack traces across plugins."""
     supportsResultReporting: builtins.bool
     """true if the request is from an SDK that supports the result field in the response."""
     packageRef: builtins.str
@@ -484,6 +498,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """the optional source position of the user code that initiated the register."""
 
     @property
+    def stackTrace(self) -> pulumi.source_pb2.StackTrace:
+        """the optional stack trace at the time of the request."""
+
+    @property
     def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]:
         """a list of transforms to apply to the resource before registering it."""
 
@@ -524,13 +542,15 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         deletedWith: builtins.str = ...,
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        stackTrace: pulumi.source_pb2.StackTrace | None = ...,
+        parentStackTraceHandle: builtins.str = ...,
         transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
         supportsResultReporting: builtins.bool = ...,
         packageRef: builtins.str = ...,
         hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_hooks", b"_hooks"]) -> typing.Literal["hooks"] | None: ...
     @typing.overload
@@ -680,6 +700,8 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    STACKTRACE_FIELD_NUMBER: builtins.int
+    PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
@@ -691,6 +713,8 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     """when true operations should return resource references as strongly typed."""
     pluginDownloadURL: builtins.str
     """an optional reference to the provider url to use for this invoke."""
+    parentStackTraceHandle: builtins.str
+    """the optional parent stack trace handle for the request. Supports stitching stack traces across plugins."""
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
     @property
@@ -705,6 +729,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the invoke."""
 
+    @property
+    def stackTrace(self) -> pulumi.source_pb2.StackTrace:
+        """the optional stack trace at the time of the request."""
+
     def __init__(
         self,
         *,
@@ -716,10 +744,12 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         pluginDownloadURL: builtins.str = ...,
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        stackTrace: pulumi.source_pb2.StackTrace | None = ...,
+        parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 
@@ -787,6 +817,8 @@ class ResourceCallRequest(google.protobuf.message.Message):
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    STACKTRACE_FIELD_NUMBER: builtins.int
+    PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
@@ -796,6 +828,8 @@ class ResourceCallRequest(google.protobuf.message.Message):
     """the version of the provider to use when servicing this request."""
     pluginDownloadURL: builtins.str
     """the pluginDownloadURL of the provider to use when servicing this request."""
+    parentStackTraceHandle: builtins.str
+    """the optional parent stack trace handle for the request. Supports stitching stack traces across plugins."""
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
     @property
@@ -814,6 +848,10 @@ class ResourceCallRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the call."""
 
+    @property
+    def stackTrace(self) -> pulumi.source_pb2.StackTrace:
+        """the optional stack trace at the time of the request."""
+
     def __init__(
         self,
         *,
@@ -825,10 +863,12 @@ class ResourceCallRequest(google.protobuf.message.Message):
         pluginDownloadURL: builtins.str = ...,
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        stackTrace: pulumi.source_pb2.StackTrace | None = ...,
+        parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceCallRequest = ResourceCallRequest
 

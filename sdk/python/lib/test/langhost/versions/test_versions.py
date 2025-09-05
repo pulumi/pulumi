@@ -41,6 +41,7 @@ class TestVersions(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "testres":
             self.assertEqual(_version, "0.19.1")
