@@ -100,7 +100,13 @@ else:
 if not dryrun:
     try:
         print("Running: " + ' '.join(args))
-        sp.check_call(args, shell=False)
+        process = sp.Popen(args, shell=False, stdout=sp.PIPE, stderr=sp.STDOUT)
+        for line in iter(process.stdout.readline, b""):
+            sys.stdout.write(line.decode())
+            sys.stdout.flush()
+        retcode = process.wait()
+        if retcode != 0:
+            raise sp.CalledProcessError(retcode, args)
         print("Completed: " + ' '.join(args))
     except sp.CalledProcessError as e:
         print("Failed: " + ' '.join(args))
