@@ -2649,8 +2649,8 @@ func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resou
 		}
 	}
 	if len(invalidPaths) != 0 {
-		d.Infof(diag.Message(urn, "cannot ignore changes to the following properties because one or more elements of "+
-			"the path are missing: %q"), strings.Join(invalidPaths, ", "))
+		d.Infof(diag.Message(urn, "cannot ignore changes in added or removed elements of the path: %q"),
+			strings.Join(invalidPaths, ", "))
 	}
 	return ignoredInputs
 }
