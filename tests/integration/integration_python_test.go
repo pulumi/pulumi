@@ -1332,9 +1332,10 @@ func TestAboutPython(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
+	e.RunCommand("pulumi", "install")
 	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "pulumi-kubernetes")
+	assert.Contains(t, stdout, "pulumi_kubernetes")
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
