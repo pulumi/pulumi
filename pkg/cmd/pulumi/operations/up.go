@@ -749,7 +749,7 @@ func NewUpCmd() *cobra.Command {
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().BoolVar(
-		&showFullOutput, "show-full-output", true,
+		&showFullOutput, "show-full-output", false,
 		"Display full length of inputs & outputs")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
