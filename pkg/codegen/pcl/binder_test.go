@@ -1129,3 +1129,56 @@ resource "name" "random:index/randomString:RandomString" {
 	require.Equal(t, 1, len(diags), "There is one node")
 	require.Equal(t, hcl.DiagWarning, diags[0].Severity, "The diagnostic is a warning")
 }
+
+type nameInfo int
+
+func (nameInfo) Format(name string) string {
+	return name
+}
+
+func TestRewriteAppliesDoesNotPanicInNonStrictMode(t *testing.T) {
+	t.Parallel()
+
+	source := `
+config "vpcId" "string" {
+  description = "The ID of the VPC"
+}
+
+resource "ptfeService" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+  __logicalName     = "ptfe_service"
+  vpcId             = vpcId
+  vpcEndpointType   = "Interface"
+  privateDnsEnabled = false
+}
+
+resource "ptfeServiceRecord" "aws:route53/record:Record" {
+  __logicalName = "ptfe_service"
+  zoneId        = "example_zone_id"
+  name          = "example"
+  type          = "CNAME"
+  ttl           = "300"
+  records       = [ptfeService.dnsEntries[0]["dns_name"]]
+}
+	`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, n := range program.Nodes {
+		if r, ok := n.(*pcl.Resource); ok && r.Name() == "ptfeServiceRecord" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "there is a resource named ptfeServiceRecord")
+
+	for _, attr := range resource.Inputs {
+		value := attr.Value
+		expr, diags := pcl.RewriteApplies(value, nameInfo(0), false)
+		require.False(t, diags.HasErrors(), "there are no diagnostics")
+		require.NotNil(t, expr, "the expression is not nil")
+	}
+}
