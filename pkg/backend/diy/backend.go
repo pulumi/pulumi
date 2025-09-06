@@ -1195,18 +1195,18 @@ func (b *diyBackend) apply(
 		close(eventsDone)
 	}()
 
+	engineCtx := &engine.Context{
+		Cancel:        scope.Context(),
+		Events:        engineEvents,
+		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
 		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
-	}
-	engineCtx := &engine.Context{
-		Cancel:          scope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
+		engineCtx.SnapshotManager = manager
 	}
 
 	// Perform the update

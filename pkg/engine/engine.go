@@ -44,4 +44,7 @@ type Context struct {
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
 	PluginManager   PluginManager
+	// FinalizeUpdateFunc is an optional function that is called at the end of an update. It can be used to
+	// perform any finalization steps, including sending engine events.
+	FinalizeUpdateFunc func()
 }

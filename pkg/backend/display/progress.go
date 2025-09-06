@@ -1177,6 +1177,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
 		return
+	case engine.ErrorEvent:
+		return
 	}
 
 	// At this point, all events should relate to resources.

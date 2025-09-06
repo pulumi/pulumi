@@ -538,7 +538,7 @@ func update(
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if opts.DryRun {
-		actions = newPreviewActions(opts)
+		actions = newPreviewActions(ctx, opts)
 	} else {
 		actions = newUpdateActions(ctx, info.Update, opts)
 	}
@@ -551,7 +551,13 @@ func update(
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx)
+	plan, changes, err := deployment.run(ctx)
+
+	if ctx.FinalizeUpdateFunc != nil {
+		ctx.FinalizeUpdateFunc()
+	}
+
+	return plan, changes, err
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
@@ -603,7 +609,11 @@ func newUpdateActions(context *Context, u UpdateInfo, opts *deploymentOptions) *
 	}
 }
 
-func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
+	return acts.Context.SnapshotManager.Write(step)
+}
+
+func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
@@ -766,6 +776,7 @@ func (acts *updateActions) Changes() display.ResourceChanges {
 }
 
 type previewActions struct {
+	Context *Context
 	Ops     map[display.StepOp]int
 	Opts    *deploymentOptions
 	Seen    map[resource.URN]deploy.Step
@@ -789,12 +800,17 @@ func shouldRecordReadStep(step deploy.Step) bool {
 		step.Old().Outputs.Diff(step.New().Outputs) != nil
 }
 
-func newPreviewActions(opts *deploymentOptions) *previewActions {
+func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 	return &previewActions{
-		Ops:  make(map[display.StepOp]int),
-		Opts: opts,
-		Seen: make(map[resource.URN]deploy.Step),
+		Context: ctx,
+		Ops:     make(map[display.StepOp]int),
+		Opts:    opts,
+		Seen:    make(map[resource.URN]deploy.Step),
 	}
+}
+
+func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
+	return acts.Context.SnapshotManager.Write(base)
 }
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {

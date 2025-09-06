@@ -104,7 +104,6 @@ type SummaryEvent struct {
 // ErrorEvent is emitted when an internal error occurs in the engine. This is not meant
 // to be used for user facing errors, but rather for internal errors, where an event
 // can help with debugging.
-
 type ErrorEvent struct {
 	// Error is the error message.
 	Error string `json:"error"`
