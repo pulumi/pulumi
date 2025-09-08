@@ -293,7 +293,7 @@ the server), in order of their operation IDs.
 
 ### REST API
 
-The service will get a now api `createjournalentry`, that will get the serialized
+The service will get a new api `createjournalentry`, that will get the serialized
 journal entry and persist it for later replay. The service is expected
 to reconstruct the snapshot itself after the operation finished, and the API for
 getting the snapshot stays the same as it is currently.
