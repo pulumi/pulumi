@@ -17,8 +17,10 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"runtime/debug"
 
+	"github.com/go-test/deep"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -253,6 +255,91 @@ func (snap *Snapshot) Toposort() error {
 	}
 
 	snap.Resources = sorted
+	return nil
+}
+
+// Assert that the snapshot is equal to the expected snapshot. If not, return an error describing the difference.
+func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
+	// Just want to check the same operations and resources are counted, but order might be slightly different.
+	if snap == nil && expected == nil {
+		return nil
+	}
+	if snap == nil {
+		return errors.New("actual snapshot is nil")
+	}
+	if expected == nil {
+		return errors.New("expected snapshot is nil")
+	}
+
+	if len(snap.PendingOperations) != len(expected.PendingOperations) {
+		return errors.New("actual and expected pending operations differ")
+	}
+
+	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+
+	for _, mop := range expected.PendingOperations {
+		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
+	}
+	for _, jop := range snap.PendingOperations {
+		found := false
+		for _, mop := range pendingOpsMap[jop.Resource.URN] {
+			if reflect.DeepEqual(jop, mop) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("actual and expected pending operations differ, %v not found in expected", jop)
+		}
+	}
+
+	if len(snap.Resources) != len(expected.Resources) {
+		var snapResources string
+		for _, r := range snap.Resources {
+			snapResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		var expectedResources string
+		for _, r := range expected.Resources {
+			expectedResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		return fmt.Errorf("actual and expected resources differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.Resources), snapResources, len(expected.Resources), expectedResources)
+	}
+
+	resourcesMap := make(map[resource.URN][]*resource.State)
+
+	for _, mr := range expected.Resources {
+		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
+	}
+
+	for _, jr := range snap.Resources {
+		found := false
+		var diffStr string
+		for _, mr := range resourcesMap[jr.URN] {
+			if diff := deep.Equal(jr, mr); diff != nil {
+				if jr.URN == mr.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var snapResources string
+			for _, jr := range snap.Resources {
+				snapResources += fmt.Sprintf("Actual resource: %v\n", jr)
+			}
+			var expectedResources string
+			for _, mr := range expected.Resources {
+				expectedResources += fmt.Sprintf("Expected resource: %v\n", mr)
+			}
+			return fmt.Errorf("actual and expected resources differ, %v not found in expected.\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jr, snapResources, expectedResources, diffStr)
+		}
+	}
+
 	return nil
 }
 
