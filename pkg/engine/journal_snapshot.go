@@ -115,6 +115,8 @@ func (k JournalEntryKind) String() string {
 		return "Outputs"
 	case JournalEntryWrite:
 		return "Write"
+	case JournalEntrySecretsManager:
+		return "SecretsManager"
 	default:
 		return "Unknown"
 	}
