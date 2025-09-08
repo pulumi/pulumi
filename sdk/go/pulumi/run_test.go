@@ -265,6 +265,35 @@ func TestRegisterResource(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetRegisteredResources(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var first testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{}, &first)
+		require.NoError(t, err)
+
+		_, known, _, _, err := await(first.URN())
+		require.NoError(t, err)
+		assert.True(t, known)
+
+		var second testResource2
+		err = ctx.RegisterResource("test:resource:type", "resB", Map{}, &second)
+		require.NoError(t, err)
+
+		_, known, _, _, err = await(second.URN())
+		require.NoError(t, err)
+		assert.True(t, known)
+
+		resources := ctx.state.monitor.(*mockMonitor).GetRegisteredResources()
+		assert.Contains(t, resources, "urn:pulumi:stack::project::test:resource:type::resA")
+		assert.Contains(t, resources, "urn:pulumi:stack::project::test:resource:type::resB")
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}
+
 func TestReadResource(t *testing.T) {
 	t.Parallel()
 

@@ -328,6 +328,16 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	}, nil
 }
 
+// Return the currently registered resources in the mock monitor.
+func (m *mockMonitor) GetRegisteredResources() map[string]resource.PropertyMap {
+	resources := make(map[string]resource.PropertyMap)
+	m.resources.Range(func(key, value any) bool {
+		resources[key.(string)] = value.(resource.PropertyMap)
+		return true
+	})
+	return resources
+}
+
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
