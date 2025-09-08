@@ -284,8 +284,8 @@ if has_refresh:
 
 As mentioned above, Journal Entries need to be stored before the
 BeginOperation/EndOperation calls finish, so the engine only starts the next step
-after the journal entry for the dependents is saved before we work on any of the
-dependencies. That's the main ordering requirement.
+after the journal entry for the dependencies is saved before we work on any of the
+dependents. That's the main ordering requirement.
 
 On the service side this is easiest to reproduce by replaying all journal entries
 we have (the CLI will wait to start with dependencies until we got a reply from
