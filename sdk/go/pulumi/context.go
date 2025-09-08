@@ -1833,6 +1833,12 @@ func (ctx *Context) RegisterComponentResource(
 	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
+func (ctx *Context) RegisterComponentResourceWithProps(
+	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
+}
+
 func (ctx *Context) RegisterRemoteComponentResource(
 	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
 ) error {
