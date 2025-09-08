@@ -2703,6 +2703,11 @@ func (ctx *Context) Export(name string, value Input) {
 	ctx.state.exports[name] = value
 }
 
+// Get a copy of the current export map. Primarily useful for testing.
+func (ctx *Context) GetCurrentExportMap() map[string]Input {
+	return maps.Clone(ctx.state.exports)
+}
+
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
 	ctx.state.stack.addTransformation(t)
