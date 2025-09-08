@@ -302,7 +302,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
-	// We need to persist the changes if CustomTimes have changed
+	// We need to persist the changes if CustomTimeouts have changed
 	if old.CustomTimeouts != new.CustomTimeouts {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CustomTimeouts")
 		return true
