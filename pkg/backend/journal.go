@@ -404,7 +404,7 @@ type snapshotJournaler struct {
 //
 // Currently the backend only supports saving full snapshots, in which case only one journal
 // entry is allowed to be processed at a time. In the future journal entries will be processed
-// asynchronously in the cloud backend, allowing for better throughput for independent operations..
+// asynchronously in the cloud backend, allowing for better throughput for independent operations.
 //
 // Serialization is performed by pushing the journal entries onto a channel, where another
 // goroutine is polling the channel and creating new snapshots using the entries as they come.
