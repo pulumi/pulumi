@@ -325,17 +325,11 @@ func GenerateProject(
 		}
 	}
 
-	var options map[string]interface{}
-	if _, ok := localDependencies["pulumi"]; ok {
-		options = map[string]interface{}{
-			"virtualenv": "venv",
-		}
+	options := map[string]interface{}{
+		"virtualenv": "venv",
 	}
 
 	if typechecker != "" {
-		if options == nil {
-			options = map[string]interface{}{}
-		}
 		options["typechecker"] = typechecker
 	}
 
