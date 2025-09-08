@@ -33,9 +33,9 @@ type JournalEntry struct {
 	// ID of the operation this journal entry is associated with.
 	OperationID int64 `json:"operationID"`
 	// ID for the delete Operation that this journal entry is associated with.
-	RemoveOld *int64 `json:"deleteOld"`
+	RemoveOld *int64 `json:"removeOld"`
 	// ID for the delete Operation that this journal entry is associated with.
-	RemoveNew *int64 `json:"deleteNew"`
+	RemoveNew *int64 `json:"removeNew"`
 	// PendingReplacement is the index of the resource that's to be marked as pending replacement
 	PendingReplacement *int64 `json:"pendingReplacement,omitempty"`
 	// Delete is the index of the resource that's to be marked as deleted.
