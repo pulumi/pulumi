@@ -193,3 +193,6 @@ without using the system itself, or show that the validation is too strict. Over
 removed and enforced to be validated.`)
 
 var DisableRegistryResolve = env.Bool("DISABLE_REGISTRY_RESOLVE", "Use the Pulumi Registry to resolve package names")
+
+var EnableJournaling = env.Bool("ENABLE_JOURNALING",
+	"Enable journaling of engine operations to the backend (if the backend supports it)")
