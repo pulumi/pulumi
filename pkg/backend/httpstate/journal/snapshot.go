@@ -80,13 +80,15 @@ func SerializeJournalEntry(
 
 	serializedEntry := apitype.JournalEntry{
 		Kind:               apitype.JournalEntryKind(je.Kind),
+		SequenceID:         je.SequenceID,
 		OperationID:        je.OperationID,
-		DeleteOld:          je.DeleteOld,
-		DeleteNew:          je.DeleteNew,
+		RemoveOld:          je.RemoveOld,
+		RemoveNew:          je.RemoveNew,
 		State:              state,
 		Operation:          operation,
 		SecretsProvider:    secretsManager,
 		PendingReplacement: je.PendingReplacement,
+		Delete:             je.Delete,
 		IsRefresh:          je.IsRefresh,
 		NewSnapshot:        snapshot,
 	}
