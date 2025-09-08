@@ -1667,14 +1667,16 @@ func (b *cloudBackend) runEngineAction(
 	}
 	persister := b.newSnapshotPersister(ctx, update, tokenSource)
 	if kind != apitype.PreviewUpdate && !dryRun {
-		if useJournal {
+		if useJournal && env.EnableJournaling.Value() {
 			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("creating journaler: %w", err)
 			}
 			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+			noopPersister := backend.ValidatingPersister{}
+			snapshotManager = backend.NewSnapshotManager(&noopPersister, op.SecretsManager, u.Target.Snapshot)
 			combinedManager = &engine.CombinedManager{
-				Managers: []engine.SnapshotManager{journalManager},
+				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
 			}
 		} else {
 			journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
@@ -1695,9 +1697,6 @@ func (b *cloudBackend) runEngineAction(
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 		FinalizeUpdateFunc: func() {
-			if useJournal {
-				return
-			}
 			if snapshotManager == nil || journalPersister == nil {
 				return
 			}

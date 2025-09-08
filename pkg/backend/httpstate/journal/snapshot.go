@@ -121,9 +121,7 @@ func (j *cloudJournaler) Write(*deploy.Snapshot) error {
 }
 
 func (j *cloudJournaler) Close() error {
-	// No resources to close in the cloud journaler.
 	j.wg.Wait() // Wait for all operations to complete before closing.
-	// TODO: do we need to wait for all begin/end operations to complete here?
 	return nil
 }
 
