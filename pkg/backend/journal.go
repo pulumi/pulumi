@@ -116,7 +116,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 		firstEntry := sj.journalEntries[0]
 		if firstEntry.Kind == engine.JournalEntryWrite {
 			snap = firstEntry.NewSnapshot
-			contract.Assertf(firstEntry.OperationID == 0, "rebase journal entry must not have an operation ID")
+			contract.Assertf(firstEntry.SequenceNumber == 0, "write must be the first journal entry")
 		}
 	}
 
@@ -131,9 +131,9 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	// markAsPendingReplacement tracks indices of resources in the snapshot that are to be marked for pending replacement.
 	markAsPendingReplacement := make(map[int64]struct{})
 
-	// operationIDToResourceIndex maps operation IDs to resource indices in the new resource list.
+	// sequenceNumberToResourceIndex maps sequence numbers to resource indices in the new resource list.
 	// This is used to replace resources that are being replaced, and remove new resources that are being deleted.
-	operationIDToResourceIndex := make(map[int64]int64)
+	sequenceNumberToResourceIndex := make(map[int64]int64)
 
 	incompleteOps := make(map[int64]engine.JournalEntry)
 	hasRefresh := false
@@ -142,13 +142,15 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	for _, entry := range sj.journalEntries {
 		switch entry.Kind {
 		case engine.JournalEntryBegin:
-			incompleteOps[entry.OperationID] = entry
+			incompleteOps[entry.SequenceNumber] = entry
 		case engine.JournalEntrySuccess:
-			delete(incompleteOps, entry.OperationID)
+			if entry.EndOperation != nil {
+				delete(incompleteOps, *entry.EndOperation)
+			}
 			// If this is a success, we need to add the resource to the list of resources.
 			if entry.State != nil {
 				newResources = append(newResources, entry.State)
-				operationIDToResourceIndex[entry.OperationID] = index
+				sequenceNumberToResourceIndex[entry.SequenceNumber] = index
 				index++
 			}
 			if entry.RemoveOld != nil {
@@ -168,7 +170,6 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				hasRefresh = true
 			}
 		case engine.JournalEntryRefreshSuccess:
-			delete(incompleteOps, entry.OperationID)
 			hasRefresh = true
 			if entry.RemoveOld != nil {
 				if entry.State == nil {
@@ -181,17 +182,17 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 				if entry.State == nil {
 					toRemove[*entry.RemoveNew] = struct{}{}
 				} else {
-					newResources[operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
+					newResources[sequenceNumberToResourceIndex[*entry.RemoveNew]] = entry.State
 				}
 			}
 		case engine.JournalEntryFailure:
-			delete(incompleteOps, entry.OperationID)
+			delete(incompleteOps, *entry.EndOperation)
 		case engine.JournalEntryOutputs:
 			if entry.State != nil && !entry.ElideWrite && entry.RemoveOld != nil {
 				toReplaceInSnapshot[*entry.RemoveOld] = entry.State
 			}
 			if entry.State != nil && !entry.ElideWrite && entry.RemoveNew != nil {
-				newResources[operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
+				newResources[sequenceNumberToResourceIndex[*entry.RemoveNew]] = entry.State
 			}
 		case engine.JournalEntryWrite:
 			// Already handled above.
@@ -200,7 +201,7 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 
 	removeIndices := make(map[int64]struct{})
 	for k := range toRemove {
-		removeIndices[operationIDToResourceIndex[k]] = struct{}{}
+		removeIndices[sequenceNumberToResourceIndex[k]] = struct{}{}
 	}
 
 	resources := make([]*resource.State, 0)
@@ -479,11 +480,7 @@ func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	}
 }
 
-func (sj *snapshotJournaler) BeginOperation(entry engine.JournalEntry) error {
-	return sj.journalMutation(entry)
-}
-
-func (sj *snapshotJournaler) EndOperation(entry engine.JournalEntry) error {
+func (sj *snapshotJournaler) Append(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
 }
 
