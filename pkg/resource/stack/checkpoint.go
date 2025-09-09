@@ -209,6 +209,7 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
+		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
 		RefreshBeforeUpdate:     false,

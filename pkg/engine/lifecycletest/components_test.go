@@ -319,7 +319,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "", "")
+		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "", "", "", nil, "")
 		require.NoError(t, err)
 
 		return nil
@@ -444,7 +444,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "", "")
+			}, nil, "", "", "", "", nil, "")
 			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -598,7 +598,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "", "")
+			}, nil, "", "", "", "", nil, "")
 			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -762,7 +762,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "", "")
+			}, nil, "", "", "", "", nil, "")
 			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -932,7 +932,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 				}),
 			}, map[resource.PropertyKey][]resource.URN{
 				"arg": {urn},
-			}, "", "", "")
+			}, "", "", "", "", nil, "")
 			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -1034,7 +1034,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 			"foo": resource.NewProperty("bar"),
 		}, resp.Outputs)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "", "")
+		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "", "", "", nil, "")
 		require.NoError(t, err)
 		return nil
 	})
@@ -1129,7 +1129,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 			"name": resource.NewProperty("Alice"),
-		}, nil, "", "", "")
+		}, nil, "", "", "", "", nil, "")
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"message": resource.NewProperty("Alice, bar!"),
@@ -1442,10 +1442,12 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 							resource.PropertyMap{
 								"foo": resource.NewProperty("bar"),
 							},
-							"", /*provider*/
-							"", /*version*/
-							"", /*sourcePosition*/
-							"", /*packageRef*/
+							"",  /*provider*/
+							"",  /*version*/
+							"",  /*sourcePosition*/
+							nil, /*stackTrace*/
+							"",  /*parentStackTraceHandle*/
+							"",  /*packageRef*/
 						)
 						require.NoError(t, err)
 
@@ -1565,10 +1567,12 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 							resource.PropertyMap{
 								"foo": resource.NewProperty("bar"),
 							},
-							"", /*provider*/
-							"", /*version*/
-							"", /*sourcePosition*/
-							"", /*packageRef*/
+							"",  /*provider*/
+							"",  /*version*/
+							"",  /*sourcePosition*/
+							nil, /*stackTrace*/
+							"",  /*parentStackTraceHandle*/
+							"",  /*packageRef*/
 						)
 						require.NoError(t, err)
 

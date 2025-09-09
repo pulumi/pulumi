@@ -50,6 +50,7 @@ class InheritDefaultsTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if _custom and not ty.startswith("pulumi:providers:"):
             expect_protect = False

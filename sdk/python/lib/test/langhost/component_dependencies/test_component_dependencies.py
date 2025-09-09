@@ -45,6 +45,7 @@ class ComponentDependenciesTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "resD":
             self.assertListEqual(_dependencies, ["resA"], msg=f"{name}._dependencies")

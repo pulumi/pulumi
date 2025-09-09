@@ -54,6 +54,7 @@ class TestInvoke(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual("test:index:MyResource", ty)
         self.assertEqual(_resource["value"], 42)

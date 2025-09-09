@@ -90,8 +90,20 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         dependencies = sorted(list(request.dependencies))
         provider = request.provider
         version = request.version
+        source_position = request.sourcePosition
+        stack_trace = request.stackTrace
         outs = self.langhost_test.read_resource(
-            context, type_, name, id_, parent, state, dependencies, provider, version
+            context,
+            type_,
+            name,
+            id_,
+            parent,
+            state,
+            dependencies,
+            provider,
+            version,
+            source_position,
+            stack_trace,
         )
         if "properties" in outs:
             loop = asyncio.new_event_loop()
@@ -119,6 +131,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         replace_on_changes = sorted(list(request.replaceOnChanges))
         providers = request.providers
         source_position = request.sourcePosition
+        stack_trace = request.stackTrace
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -144,6 +157,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
                 replace_on_changes,
                 providers,
                 source_position,
+                stack_trace,
             )
             if outs.get("urn"):
                 urn = outs["urn"]
@@ -333,7 +347,18 @@ class LanghostTest(unittest.TestCase):
         return ([], {})
 
     def read_resource(
-        self, ctx, ty, name, _id, parent, state, dependencies, provider, version
+        self,
+        ctx,
+        ty,
+        name,
+        _id,
+        parent,
+        state,
+        dependencies,
+        provider,
+        version,
+        source_position,
+        stack_trace,
     ):
         """
         Method corresponding to the `ReadResource` resource monitor RPC call.
@@ -363,6 +388,7 @@ class LanghostTest(unittest.TestCase):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         """
         Method corresponding to the `RegisterResource` resource monitor RPC call.

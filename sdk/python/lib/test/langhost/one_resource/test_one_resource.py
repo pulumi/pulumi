@@ -42,6 +42,7 @@ class OneResourceTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "testResource1")

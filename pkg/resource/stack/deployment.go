@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 
+	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -462,6 +464,10 @@ func SerializeResource(
 		outputs = soutp
 	}
 
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame resource.StackFrame) apitype.StackFrameV1 {
+		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
+	}))
+
 	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
 		Custom:                  res.Custom,
@@ -487,6 +493,7 @@ func SerializeResource(
 		Created:                 res.Created,
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
+		StackTrace:              stackTrace,
 		IgnoreChanges:           res.IgnoreChanges,
 		ReplaceOnChanges:        res.ReplaceOnChanges,
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
@@ -652,6 +659,11 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	if !res.Custom && res.ID != "" {
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
+
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) resource.StackFrame {
+		return resource.StackFrame{SourcePosition: frame.SourcePosition}
+	}))
+
 	return resource.NewState{
 			Type:                    res.Type,
 			URN:                     res.URN,
@@ -678,6 +690,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			Created:                 res.Created,
 			Modified:                res.Modified,
 			SourcePosition:          res.SourcePosition,
+			StackTrace:              stackTrace,
 			IgnoreChanges:           res.IgnoreChanges,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,

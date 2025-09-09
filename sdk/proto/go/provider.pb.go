@@ -1081,8 +1081,10 @@ type CallRequest struct {
 	MonitorEndpoint     string                                       `protobuf:"bytes,12,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`                                                                          // the address for communicating back to the resource monitor.
 	Organization        string                                       `protobuf:"bytes,14,opt,name=organization,proto3" json:"organization,omitempty"`                                                                                // the organization of the stack being deployed into.
 	AcceptsOutputValues bool                                         `protobuf:"varint,17,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`                                    // the engine can be passed output values back, returnDependencies can be left blank if returning output values.
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The stack trace handle for the call. Supports stitching stack traces together across plugins.
+	StackTraceHandle string `protobuf:"bytes,18,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CallRequest) Reset() {
@@ -1197,6 +1199,13 @@ func (x *CallRequest) GetAcceptsOutputValues() bool {
 		return x.AcceptsOutputValues
 	}
 	return false
+}
+
+func (x *CallRequest) GetStackTraceHandle() string {
+	if x != nil {
+		return x.StackTraceHandle
+	}
+	return ""
 }
 
 type CallResponse struct {
@@ -2602,8 +2611,10 @@ type ConstructRequest struct {
 	// [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
 	AcceptsOutputValues bool                                   `protobuf:"varint,25,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`
 	ResourceHooks       *ConstructRequest_ResourceHooksBinding `protobuf:"bytes,26,opt,name=resource_hooks,json=resourceHooks,proto3,oneof" json:"resource_hooks,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
+	StackTraceHandle string `protobuf:"bytes,27,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ConstructRequest) Reset() {
@@ -2816,6 +2827,13 @@ func (x *ConstructRequest) GetResourceHooks() *ConstructRequest_ResourceHooksBin
 		return x.ResourceHooks
 	}
 	return nil
+}
+
+func (x *ConstructRequest) GetStackTraceHandle() string {
+	if x != nil {
+		return x.StackTraceHandle
+	}
+	return ""
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
@@ -3910,7 +3928,7 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04argsJ\x04\b\x03\x10\aR\bproviderR\aversionR\x0facceptResourcesR\x11pluginDownloadURL\"v\n" +
 	"\x0eInvokeResponse\x12/\n" +
 	"\x06return\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06return\x123\n" +
-	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"\xae\x06\n" +
+	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"\xdc\x06\n" +
 	"\vCallRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12U\n" +
@@ -3924,7 +3942,8 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\bparallel\x18\v \x01(\x05R\bparallel\x12(\n" +
 	"\x0fmonitorEndpoint\x18\f \x01(\tR\x0fmonitorEndpoint\x12\"\n" +
 	"\forganization\x18\x0e \x01(\tR\forganization\x122\n" +
-	"\x15accepts_output_values\x18\x11 \x01(\bR\x13acceptsOutputValues\x1a*\n" +
+	"\x15accepts_output_values\x18\x11 \x01(\bR\x13acceptsOutputValues\x12,\n" +
+	"\x12stack_trace_handle\x18\x12 \x01(\tR\x10stackTraceHandle\x1a*\n" +
 	"\x14ArgumentDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1ao\n" +
 	"\x14ArgDependenciesEntry\x12\x10\n" +
@@ -4075,7 +4094,7 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x17resource_status_address\x18\b \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\t \x01(\tR\x13resourceStatusToken\x12,\n" +
 	"\told_views\x18\n" +
-	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xd5\x0e\n" +
+	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\x83\x0f\n" +
 	"\x10ConstructRequest\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12\x14\n" +
 	"\x05stack\x18\x02 \x01(\tR\x05stack\x12?\n" +
@@ -4103,7 +4122,8 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x10replaceOnChanges\x18\x17 \x03(\tR\x10replaceOnChanges\x12+\n" +
 	"\x0eretainOnDelete\x18\x18 \x01(\bH\x02R\x0eretainOnDelete\x88\x01\x01\x122\n" +
 	"\x15accepts_output_values\x18\x19 \x01(\bR\x13acceptsOutputValues\x12\\\n" +
-	"\x0eresource_hooks\x18\x1a \x01(\v20.pulumirpc.ConstructRequest.ResourceHooksBindingH\x03R\rresourceHooks\x88\x01\x01\x1a*\n" +
+	"\x0eresource_hooks\x18\x1a \x01(\v20.pulumirpc.ConstructRequest.ResourceHooksBindingH\x03R\rresourceHooks\x88\x01\x01\x12,\n" +
+	"\x12stack_trace_handle\x18\x1b \x01(\tR\x10stackTraceHandle\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1aX\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +

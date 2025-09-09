@@ -536,7 +536,19 @@ func TestBadResourceType(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
 		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
 
-		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err = mon.ReadResource(
+			"very:bad",
+			"someResource",
+			"someId",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
 		assert.Error(t, err)
 		rpcerr, ok = rpcerror.FromError(err)
 		assert.True(t, ok)
@@ -1068,7 +1080,7 @@ func TestStackReference(t *testing.T) {
 		_, state, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
-			}), "", "", "", "")
+			}), "", "", "", nil, "", "")
 		require.NoError(t, err)
 		if !info.DryRun {
 			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
@@ -1142,7 +1154,7 @@ func TestStackReference(t *testing.T) {
 		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "rehto",
-			}), "", "", "", "")
+			}), "", "", "", nil, "", "")
 		assert.Error(t, err)
 		return err
 	})
@@ -1160,7 +1172,7 @@ func TestStackReference(t *testing.T) {
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
 				"foo":  "bar",
-			}), "", "", "", "")
+			}), "", "", "", nil, "", "")
 		assert.Error(t, err)
 		return err
 	})
@@ -2116,7 +2128,19 @@ func TestMissingRead(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"resA-some-id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
 		assert.Error(t, err)
 		return nil
 	})
@@ -2468,14 +2492,14 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		var outs resource.PropertyMap
 		if preview {
 			// We can't send any args or dependencies in preview because the RegisterResource call above failed.
-			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "", "")
+			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "", "", "", nil, "")
 			require.NoError(t, err)
 		} else {
 			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 				"name": respC.Outputs["foo"],
 			}, map[resource.PropertyKey][]resource.URN{
 				"name": {respC.URN},
-			}, provRef.String(), "", "")
+			}, provRef.String(), "", "", "", nil, "")
 			require.NoError(t, err)
 		}
 		if preview {
@@ -3006,7 +3030,7 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "", nil, "", "")
 		assert.Error(t, err)
 		return nil
 	})
@@ -3981,9 +4005,77 @@ func TestResourceNames(t *testing.T) {
 func TestSourcePositions(t *testing.T) {
 	t.Parallel()
 
+	inputs := resource.PropertyMap{}
+
+	fileURL := func(path string) string { return "file://" + path }
+
+	const providerPos = "/test/provider/main#1,1"
+	const providerRegPos = "/test/provider/positions#1,2"
+	const providerCallPos = "/test/provider/positions#3,4"
+	const providerReadPos = "/test/provider/positions#5,6"
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
+				ConstructF: func(
+					ctx context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"/resA", true, deploytest.ResourceOptions{
+						Inputs:         inputs,
+						SourcePosition: fileURL(providerRegPos),
+						StackTrace: []resource.StackFrame{
+							{SourcePosition: fileURL(providerPos)},
+							{SourcePosition: fileURL(providerRegPos)},
+						},
+						ParentStackTraceHandle: req.Info.StackTraceHandle,
+					})
+					require.NoError(t, err)
+
+					callInputs := resource.PropertyMap{"name": resource.NewProperty(req.Name)}
+					_, _, _, err = monitor.Call(
+						"pkgA:m:callA",
+						callInputs,
+						nil,
+						"",
+						"",
+						"",
+						fileURL(providerCallPos),
+						[]resource.StackFrame{
+							{SourcePosition: fileURL(providerPos)},
+							{SourcePosition: fileURL(providerCallPos)},
+						}, req.Info.StackTraceHandle,
+					)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN}, nil
+				},
+				CallF: func(
+					ctx context.Context,
+					req plugin.CallRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
+					_, _, err := monitor.ReadResource(
+						"pkgA:m:typA",
+						req.Args["name"].StringValue()+"/resB",
+						"id",
+						"",
+						inputs,
+						"",
+						"",
+						fileURL(providerReadPos),
+						[]resource.StackFrame{
+							{SourcePosition: fileURL(providerPos)},
+							{SourcePosition: fileURL(providerReadPos)},
+						},
+						req.Info.StackTraceHandle,
+						"",
+					)
+					require.NoError(t, err)
+
+					return plugin.CallResponse{}, nil
+				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
@@ -4004,17 +4096,57 @@ func TestSourcePositions(t *testing.T) {
 		}),
 	}
 
+	const progPos = "/test/source/main#1,1"
 	const regPos = "/test/source/positions#1,2"
 	const readPos = "/test/source/positions#3,4"
-	inputs := resource.PropertyMap{}
+	const constructPos = "/test/source/positions#5,6"
+	const callPos = "/test/source/poitions#7,8"
+
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:         inputs,
-			SourcePosition: "file://" + regPos,
+			SourcePosition: fileURL(regPos),
+			StackTrace: []resource.StackFrame{
+				{SourcePosition: fileURL(progPos)},
+				{SourcePosition: fileURL(regPos)},
+			},
 		})
 		require.NoError(t, err)
 
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resB", "id", "", inputs, "", "", "file://"+readPos, "")
+		_, _, err = monitor.ReadResource(
+			"pkgA:m:typA",
+			"resB",
+			"id",
+			"",
+			inputs,
+			"",
+			"",
+			fileURL(readPos),
+			[]resource.StackFrame{
+				{SourcePosition: fileURL(progPos)},
+				{SourcePosition: fileURL(readPos)},
+			},
+			"",
+			"",
+		)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typB", "resC", false, deploytest.ResourceOptions{
+			Remote:         true,
+			Inputs:         inputs,
+			SourcePosition: fileURL(constructPos),
+			StackTrace: []resource.StackFrame{
+				{SourcePosition: fileURL(progPos)},
+				{SourcePosition: fileURL(constructPos)},
+			},
+		})
+		require.NoError(t, err)
+
+		callInputs := resource.PropertyMap{"name": resource.NewProperty("progCall")}
+		_, _, _, err = monitor.Call("pkgA:m:callA", callInputs, nil, "", "", "", fileURL(callPos), []resource.StackFrame{
+			{SourcePosition: fileURL(progPos)},
+			{SourcePosition: fileURL(callPos)},
+		}, "")
 		require.NoError(t, err)
 
 		return nil
@@ -4026,21 +4158,66 @@ func TestSourcePositions(t *testing.T) {
 	}
 	regURN := p.NewURN("pkgA:m:typA", "resA", "")
 	readURN := p.NewURN("pkgA:m:typA", "resB", "")
+	reg2URN := p.NewURN("pkgA:m:typA", "resC/resA", "")
+	read2URN := p.NewURN("pkgA:m:typA", "resC/resB", "")
+	read3URN := p.NewURN("pkgA:m:typA", "progCall/resB", "")
 
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	require.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 6)
+
+	projURL := func(path string) string { return "project://" + path }
 
 	reg := snap.Resources[1]
 	assert.Equal(t, regURN, reg.URN)
-	assert.Equal(t, "project://"+regPos, reg.SourcePosition)
+	assert.Equal(t, projURL(regPos), reg.SourcePosition)
+	assert.Equal(t, []resource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(regPos)},
+	}, reg.StackTrace)
 
 	read := snap.Resources[2]
 	assert.Equal(t, readURN, read.URN)
-	assert.Equal(t, "project://"+readPos, read.SourcePosition)
+	assert.Equal(t, projURL(readPos), read.SourcePosition)
+	assert.Equal(t, []resource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(readPos)},
+	}, read.StackTrace)
+
+	reg2 := snap.Resources[3]
+	assert.Equal(t, reg2URN, reg2.URN)
+	assert.Equal(t, projURL(providerRegPos), reg2.SourcePosition)
+	assert.Equal(t, []resource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(constructPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerRegPos)},
+	}, reg2.StackTrace)
+
+	read2 := snap.Resources[4]
+	assert.Equal(t, read2URN, read2.URN)
+	assert.Equal(t, projURL(providerReadPos), read2.SourcePosition)
+	assert.Equal(t, []resource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(constructPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerCallPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerReadPos)},
+	}, read2.StackTrace)
+
+	read3 := snap.Resources[5]
+	assert.Equal(t, read3URN, read3.URN)
+	assert.Equal(t, projURL(providerReadPos), read3.SourcePosition)
+	assert.Equal(t, []resource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(callPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerReadPos)},
+	}, read3.StackTrace)
 }
 
 func TestBadResourceOptionURNs(t *testing.T) {

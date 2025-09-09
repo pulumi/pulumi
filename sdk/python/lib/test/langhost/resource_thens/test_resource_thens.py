@@ -51,6 +51,7 @@ class ResourceThensTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
