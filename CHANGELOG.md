@@ -1,5 +1,39 @@
 # Changelog
 
+## 3.194.0 (2025-09-08)
+
+
+### Features
+
+- [cli] Log diagnostics to stderr instead of stdout
+  [#20461](https://github.com/pulumi/pulumi/pull/20461)
+
+- [cli/display] Change the default for --show-full-output from true to false
+  [#20467](https://github.com/pulumi/pulumi/pull/20467)
+
+- [cli/display] Fix the --show-full-output the flag
+  [#20464](https://github.com/pulumi/pulumi/pull/20464)
+
+- [sdk/go] Show a message that the Go program is being compiled
+  [#20460](https://github.com/pulumi/pulumi/pull/20460)
+
+
+### Bug Fixes
+
+- [engine] Make ignoreChanges work better for arrays
+  [#20465](https://github.com/pulumi/pulumi/pull/20465)
+
+- [programgen] Fix panic in RewriteApplies when encountering warning diagnostics
+  [#20453](https://github.com/pulumi/pulumi/pull/20453)
+
+
+### Miscellaneous
+
+- [cli] No longer require the `PULUMI_EXPERIMENTAL` flag for Private Registry template operations (`pulumi template publish`, registry-based template resolution in `pulumi new`), while registry-backed template resolution in `pulumi new` may still be disabled using `PULUMI_DISABLE_REGISTRY_RESOLVE=true pulumi new`
+  [#20458](https://github.com/pulumi/pulumi/pull/20458)
+
+- [sdk/yaml] Bump pulumi-yaml to 1.23.1
+
 ## 3.193.0 (2025-09-04)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/yaml
-  description: Bump pulumi-yaml to 1.23.1
