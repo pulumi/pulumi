@@ -631,6 +631,26 @@ func TestWithValue(t *testing.T) {
 	assert.Equal(t, newCtx.state, testCtx.state)
 }
 
+func TestExportMap(t *testing.T) {
+	t.Parallel()
+
+	var output map[string]Input
+	err := RunErr(func(ctx *Context) error {
+		ctx.Export("first", String("hello"))
+		ctx.Export("second", String("world"))
+
+		output = ctx.GetCurrentExportMap()
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+
+	expected := map[string]Input{
+		"first":  String("hello"),
+		"second": String("world"),
+	}
+	assert.Equal(t, expected, output)
+}
+
 func TestInvokeOutput(t *testing.T) {
 	t.Parallel()
 
