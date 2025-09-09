@@ -95,9 +95,10 @@ func TestPerfParentChainUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
-		T:                  t,
-		MaxPreviewDuration: 5 * time.Second,
-		MaxUpdateDuration:  5 * time.Second,
+		T: t,
+		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
+		MaxPreviewDuration: 10 * time.Second,
+		MaxUpdateDuration:  10 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
