@@ -116,6 +116,9 @@ type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
 	// set of tags associated with the stack.
 	Tags map[StackTagName]string `json:"tags,omitempty"`
+
+	// SupportsJournal tells the service whether the client supports using a journal for this update.
+	SupportsJournal bool `json:"supportsJournal,omitempty"`
 }
 
 // StartUpdateResponse is the result of the command to start an update.
