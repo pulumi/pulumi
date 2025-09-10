@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Change the default for --show-full-output from true to false

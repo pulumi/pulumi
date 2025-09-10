@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Make ignoreChanges work better for arrays

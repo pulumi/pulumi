@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Fix the --show-full-output the flag
