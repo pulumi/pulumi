@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ import (
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -201,7 +201,7 @@ func runConvert(
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packagecmd.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -549,7 +549,7 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, _, err := packagecmd.SchemaFromSchemaSource(
+		pkgSchema, _, err := packages.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
@@ -559,7 +559,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packagecmd.GenSDK(
+		err = packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
@@ -571,7 +571,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
-		err = packagecmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
@@ -597,7 +597,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
+		err = packages.LinkPackage(&packages.LinkPackageContext{
 			Workspace: ws,
 			Language:  language,
 			Root:      "./",

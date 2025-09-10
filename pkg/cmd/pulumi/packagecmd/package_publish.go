@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -92,7 +93,7 @@ func newPackagePublishCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
-			pkgPublishCmd.extractSchema = SchemaFromSchemaSource
+			pkgPublishCmd.extractSchema = packages.SchemaFromSchemaSource
 			parameters := &plugin.ParameterizeArgs{Args: cliArgs[1:]}
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},

@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -40,7 +41,7 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, error) {
-	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkg, specOverride, err := packages.SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -62,7 +63,7 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
 	pkg.SupportPack = true
 
-	err = GenSDK(
+	err = packages.GenSDK(
 		language,
 		tempOut,
 		pkg,
@@ -92,13 +93,13 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		}
 	}
 
-	err = CopyAll(out, filepath.Join(tempOut, language))
+	err = packages.CopyAll(out, filepath.Join(tempOut, language))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
 	// Link the package to the project
-	if err := LinkPackage(&LinkPackageContext{
+	if err := packages.LinkPackage(&packages.LinkPackageContext{
 		Workspace: ws,
 		Language:  language,
 		Root:      root,
