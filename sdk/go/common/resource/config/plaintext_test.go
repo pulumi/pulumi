@@ -30,44 +30,44 @@ func TestPlaintextReserved(t *testing.T) {
 	t.Parallel()
 
 	assert.Panics(t, func() {
-		NewPlaintext(map[string]Plaintext{
-			"secure": NewPlaintext("hello"),
+		newPlaintext(map[string]plaintext{
+			"secure": newPlaintext("hello"),
 		})
 	})
 
-	NewPlaintext(map[string]Plaintext{
-		"secure": NewPlaintext(int64(42)),
+	newPlaintext(map[string]plaintext{
+		"secure": newPlaintext(int64(42)),
 	})
 }
 
 func TestPlaintextSecure(t *testing.T) {
 	t.Parallel()
 
-	plain := NewPlaintext("hello")
+	plain := newPlaintext("hello")
 	assert.False(t, plain.Secure())
 
-	plain = NewSecurePlaintext("hello")
+	plain = newSecurePlaintext("hello")
 	assert.True(t, plain.Secure())
 
-	plain = NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
-			NewPlaintext(uint64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+	plain = newPlaintext(map[string]plaintext{
+		"hello": newPlaintext([]plaintext{
+			newPlaintext(true),
+			newPlaintext(int64(42)),
+			newPlaintext(uint64(math.MaxUint64)),
+			newPlaintext(float64(3.14159)),
+			newPlaintext("world"),
+			newSecurePlaintext("moon"),
 		}),
 	})
 	assert.True(t, plain.Secure())
 
-	plain = NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
-			NewPlaintext(uint64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
+	plain = newPlaintext(map[string]plaintext{
+		"hello": newPlaintext([]plaintext{
+			newPlaintext(true),
+			newPlaintext(int64(42)),
+			newPlaintext(uint64(math.MaxUint64)),
+			newPlaintext(float64(3.14159)),
+			newPlaintext("world"),
 		}),
 	})
 	assert.False(t, plain.Secure())
@@ -76,14 +76,14 @@ func TestPlaintextSecure(t *testing.T) {
 func TestPlaintextEncrypt(t *testing.T) {
 	t.Parallel()
 
-	plain := NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
-			NewPlaintext(uint64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+	plain := newPlaintext(map[string]plaintext{
+		"hello": newPlaintext([]plaintext{
+			newPlaintext(true),
+			newPlaintext(int64(42)),
+			newPlaintext(uint64(math.MaxUint64)),
+			newPlaintext(float64(3.14159)),
+			newPlaintext("world"),
+			newSecurePlaintext("moon"),
 		}),
 	})
 	actual, err := plain.encrypt(context.Background(), nil, NopEncrypter)
@@ -105,31 +105,31 @@ func TestPlaintextEncrypt(t *testing.T) {
 func TestPlaintextRoundtrip(t *testing.T) {
 	t.Parallel()
 
-	plain := NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
-			NewPlaintext(uint64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+	plain := newPlaintext(map[string]plaintext{
+		"hello": newPlaintext([]plaintext{
+			newPlaintext(true),
+			newPlaintext(int64(42)),
+			newPlaintext(uint64(math.MaxUint64)),
+			newPlaintext(float64(3.14159)),
+			newPlaintext("world"),
+			newSecurePlaintext("moon"),
 		}),
 	})
-	value, err := plain.Encrypt(context.Background(), NopEncrypter)
+	obj, err := plain.Encrypt(context.Background(), NopEncrypter)
 	require.NoError(t, err)
 
-	actual, err := value.Decrypt(context.Background(), NopDecrypter)
+	actual, err := obj.Decrypt(context.Background(), NopDecrypter)
 	require.NoError(t, err)
 
-	rt := NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
+	rt := newPlaintext(map[string]plaintext{
+		"hello": newPlaintext([]plaintext{
+			newPlaintext(true),
+			newPlaintext(int64(42)),
 			// uint64 can't roundtrip through JSON
-			NewPlaintext(float64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			newPlaintext(float64(math.MaxUint64)),
+			newPlaintext(float64(3.14159)),
+			newPlaintext("world"),
+			newSecurePlaintext("moon"),
 		}),
 	})
 
@@ -139,7 +139,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 func TestMarshalPlaintext(t *testing.T) {
 	t.Parallel()
 
-	plain := NewPlaintext(int64(42))
+	plain := newPlaintext(int64(42))
 
 	assert.Panics(t, func() {
 		_, err := json.Marshal(plain)

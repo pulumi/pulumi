@@ -152,6 +152,11 @@ func getStackConfigurationFromProjectStack(
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
+
+	// TODO: Checking pulumiEnv here feels strange. Is it because of openEnv vs. checkEnv? What happens if
+	//	stackCrypter != envCrypter?
+	//	-> pulumiEnv should always be decrypted if openEnv
+
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
 			EnvironmentImports: workspaceStack.Environment.Imports(),

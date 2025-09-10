@@ -28,6 +28,16 @@ type Key struct {
 	name      string
 }
 
+func ParseConfigKey(defaultNamespace string, key string) (Key, error) {
+	if strings.Contains(key, ":") {
+		// key is already namespaced
+		return ParseKey(key)
+	}
+	// key is not namespaced
+	// use the default namespace
+	return MustMakeKey(defaultNamespace, key), nil
+}
+
 // MustMakeKey constructs a config.Key for a given namespace and name. The namespace may not contain a `:`
 func MustMakeKey(namespace string, name string) Key {
 	contract.Requiref(!strings.Contains(namespace, ":"), "namespace", "may not contain a colon")

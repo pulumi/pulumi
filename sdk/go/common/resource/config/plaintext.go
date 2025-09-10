@@ -23,44 +23,44 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// PlaintextType describes the allowed types for a Plaintext.
-type PlaintextType interface {
-	bool | int64 | uint64 | float64 | string | []Plaintext | map[string]Plaintext
+// plaintextType describes the allowed types for a plaintext.
+type plaintextType interface {
+	bool | int64 | uint64 | float64 | string | []plaintext | map[string]plaintext
 }
 
-// Plaintext is a single plaintext config value.
-type Plaintext struct {
+// plaintext is a single plaintext config value.
+type plaintext struct {
 	value  any
 	secure bool
 }
 
-// NewPlaintext creates a new plaintext config value.
-func NewPlaintext[T PlaintextType](v T) Plaintext {
-	if m, ok := any(v).(map[string]Plaintext); ok && len(m) == 1 {
+// newPlaintext creates a new plaintext config value.
+func newPlaintext[T plaintextType](v T) plaintext {
+	if m, ok := any(v).(map[string]plaintext); ok && len(m) == 1 {
 		if _, ok := m["secure"].Value().(string); ok {
 			contract.Failf("%s", errSecureReprReserved.Error())
 		}
 	}
 
-	return Plaintext{value: v}
+	return plaintext{value: v}
 }
 
-// NewSecurePlaintext creates a new secure string with the given plaintext.
-func NewSecurePlaintext(plaintext string) Plaintext {
-	return Plaintext{value: plaintext, secure: true}
+// newSecurePlaintext creates a new secure string with the given plaintext.
+func newSecurePlaintext(value string) plaintext {
+	return plaintext{value: value, secure: true}
 }
 
 // Secure returns true if the receiver is a secure string or a composite value that contains a secure string.
-func (c Plaintext) Secure() bool {
+func (c plaintext) Secure() bool {
 	switch v := c.Value().(type) {
-	case []Plaintext:
+	case []plaintext:
 		for _, v := range v {
 			if v.Secure() {
 				return true
 			}
 		}
 		return false
-	case map[string]Plaintext:
+	case map[string]plaintext:
 		for _, v := range v {
 			if v.Secure() {
 				return true
@@ -76,25 +76,25 @@ func (c Plaintext) Secure() bool {
 
 // Value returns the inner plaintext value.
 //
-// The returned value satisfies the PlaintextType constraint.
-func (c Plaintext) Value() any {
+// The returned value satisfies the plaintextType constraint.
+func (c plaintext) Value() any {
 	return c.value
 }
 
 // GoValue returns the inner plaintext value as a plain Go value:
 //
 //   - secure strings are mapped to their plaintext
-//   - []Plaintext values are mapped to []any values
-//   - map[string]Plaintext values are mapped to map[string]any values
-func (c Plaintext) GoValue() any {
+//   - []plaintext values are mapped to []any values
+//   - map[string]plaintext values are mapped to map[string]any values
+func (c plaintext) GoValue() any {
 	switch v := c.Value().(type) {
-	case []Plaintext:
+	case []plaintext:
 		vs := make([]any, len(v))
 		for i, v := range v {
 			vs[i] = v.GoValue()
 		}
 		return vs
-	case map[string]Plaintext:
+	case map[string]plaintext:
 		vs := make(map[string]any, len(v))
 		for k, v := range v {
 			vs[k] = v.GoValue()
@@ -105,7 +105,7 @@ func (c Plaintext) GoValue() any {
 	}
 }
 
-func (c Plaintext) PropertyValue() resource.PropertyValue {
+func (c plaintext) PropertyValue() resource.PropertyValue {
 	var prop resource.PropertyValue
 	switch v := c.Value().(type) {
 	case bool:
@@ -118,13 +118,13 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 		prop = resource.NewProperty(v)
 	case string:
 		prop = resource.NewProperty(v)
-	case []Plaintext:
+	case []plaintext:
 		vs := make([]resource.PropertyValue, len(v))
 		for i, v := range v {
 			vs[i] = v.PropertyValue()
 		}
 		prop = resource.NewProperty(vs)
-	case map[string]Plaintext:
+	case map[string]plaintext:
 		vs := make(resource.PropertyMap, len(v))
 		for k, v := range v {
 			vs[resource.PropertyKey(k)] = v.PropertyValue()
@@ -142,17 +142,54 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 	return prop
 }
 
-// Encrypt converts the receiver as a Value. All secure strings in the result are encrypted using encrypter.
-func (c Plaintext) Encrypt(ctx context.Context, encrypter Encrypter) (Value, error) {
-	obj, err := c.encrypt(ctx, nil, encrypter)
-	if err != nil {
-		return Value{}, err
+func encryptMap(ctx context.Context, plaintextMap map[Key]plaintext, encrypter Encrypter) (map[Key]object, error) {
+	// Collect all secure values
+	var locationRefs []secureLocationRef
+	var values []string
+	collectSecureFromPlaintextKeyMap(plaintextMap, &locationRefs, &values)
+
+	// Encrypt objects in a batch
+	if len(values) > 0 {
+		// TODO: Consider limiting the batch size to avoid overwhelming the pulumi-service batch endpoint.
+		encrypted, err := encrypter.BatchEncrypt(ctx, values)
+		if err != nil {
+			return nil, err
+		}
+		// Assign encrypted values back into original structure
+		// We are accepting that a secure plaintext now has a ciphertext value
+		for i, locationRef := range locationRefs {
+			switch container := locationRef.container.(type) {
+			case map[Key]plaintext:
+				container[locationRef.key.(Key)] = newSecurePlaintext(encrypted[i])
+			case map[string]plaintext:
+				container[locationRef.key.(string)] = newSecurePlaintext(encrypted[i])
+			case []plaintext:
+				container[locationRef.key.(int)] = newSecurePlaintext(encrypted[i])
+			}
+		}
 	}
-	return obj.marshalValue()
+
+	// Marshal each top-level object back into an object value.
+	// Note that at this point, all secure values have been encrypted.
+	// So we can use the NopEncrypter here.
+	result := map[Key]object{}
+	for k, obj := range plaintextMap {
+		obj, err := obj.Encrypt(ctx, NopEncrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = obj
+	}
+	return result, nil
+}
+
+// Encrypt converts the receiver as an object. All secure strings in the result are encrypted using encrypter.
+func (c plaintext) Encrypt(ctx context.Context, encrypter Encrypter) (object, error) {
+	return c.encrypt(ctx, nil, encrypter)
 }
 
 // encrypt converts the receiver to an object. All secure strings in the result are encrypted using encrypter.
-func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encrypter Encrypter) (object, error) {
+func (c plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encrypter Encrypter) (object, error) {
 	switch v := c.Value().(type) {
 	case nil:
 		return object{}, nil
@@ -173,7 +210,7 @@ func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encr
 			return object{}, fmt.Errorf("%v: %w", path, err)
 		}
 		return newSecureObject(ciphertext), nil
-	case []Plaintext:
+	case []plaintext:
 		vs := make([]object, len(v))
 		for i, v := range v {
 			ev, err := v.encrypt(ctx, append(path, i), encrypter)
@@ -183,7 +220,7 @@ func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encr
 			vs[i] = ev
 		}
 		return newObject(vs), nil
-	case map[string]Plaintext:
+	case map[string]plaintext:
 		vs := make(map[string]object, len(v))
 		for k, v := range v {
 			ev, err := v.encrypt(ctx, append(path, k), encrypter)
@@ -200,7 +237,7 @@ func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encr
 }
 
 // marshalText returns the text representation of the plaintext.
-func (c Plaintext) marshalText() (string, error) {
+func (c plaintext) marshalText() (string, error) {
 	if str, ok := c.Value().(string); ok {
 		return str, nil
 	}
@@ -211,22 +248,22 @@ func (c Plaintext) marshalText() (string, error) {
 	return string(bytes), nil
 }
 
-func (c Plaintext) MarshalJSON() ([]byte, error) {
+func (c plaintext) MarshalJSON() ([]byte, error) {
 	contract.Failf("plaintext must be encrypted before marshaling")
 	return nil, nil
 }
 
-func (c *Plaintext) UnmarshalJSON(b []byte) error {
+func (c *plaintext) UnmarshalJSON(b []byte) error {
 	contract.Failf("plaintext cannot be unmarshaled")
 	return nil
 }
 
-func (c Plaintext) MarshalYAML() (any, error) {
+func (c plaintext) MarshalYAML() (any, error) {
 	contract.Failf("plaintext must be encrypted before marshaling")
 	return nil, nil
 }
 
-func (c *Plaintext) UnmarshalYAML(unmarshal func(any) error) error {
+func (c *plaintext) UnmarshalYAML(unmarshal func(any) error) error {
 	contract.Failf("plaintext cannot be unmarshaled")
 	return nil
 }

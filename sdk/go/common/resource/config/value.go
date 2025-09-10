@@ -59,27 +59,16 @@ func NewObjectValue(v string) Value {
 // Value fetches the value of this configuration entry, using decrypter to decrypt if necessary.  If the value
 // is a secret and decrypter is nil, or if decryption fails for any reason, a non-nil error is returned.
 func (c Value) Value(decrypter Decrypter) (string, error) {
-	if decrypter == NopDecrypter {
-		return c.value, nil
-	}
-
+	ctx := context.TODO()
 	obj, err := c.unmarshalObject()
 	if err != nil {
 		return "", err
 	}
-	plaintext, err := obj.Decrypt(context.TODO(), decrypter)
+	pt, err := obj.Decrypt(ctx, decrypter)
 	if err != nil {
 		return "", err
 	}
-	return plaintext.marshalText()
-}
-
-func (c Value) Decrypt(ctx context.Context, decrypter Decrypter) (Plaintext, error) {
-	obj, err := c.unmarshalObject()
-	if err != nil {
-		return Plaintext{}, err
-	}
-	return obj.Decrypt(ctx, decrypter)
+	return pt.marshalText()
 }
 
 func (c Value) Merge(base Value) (Value, error) {
@@ -95,23 +84,31 @@ func (c Value) Merge(base Value) (Value, error) {
 }
 
 func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
+	ctx := context.TODO()
 	obj, err := c.unmarshalObject()
 	if err != nil {
 		return Value{}, err
 	}
-	plaintext, err := obj.Decrypt(context.TODO(), decrypter)
+	pt, err := obj.Decrypt(ctx, decrypter)
 	if err != nil {
 		return Value{}, err
 	}
-	return plaintext.Encrypt(context.TODO(), encrypter)
+	ct, err := pt.Encrypt(ctx, encrypter)
+	if err != nil {
+		return Value{}, err
+	}
+	return ct.marshalValue()
 }
 
 func (c Value) SecureValues(decrypter Decrypter) ([]string, error) {
+	ctx := context.TODO()
 	obj, err := c.unmarshalObject()
 	if err != nil {
 		return nil, err
 	}
-	return obj.SecureValues(decrypter)
+	encryptedValues := obj.EncryptedValues()
+	// TODO: Consider limiting the batch size to avoid overwhelming the pulumi-service batch endpoint.
+	return decrypter.BatchDecrypt(ctx, encryptedValues)
 }
 
 func (c Value) Secure() bool {
