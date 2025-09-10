@@ -378,49 +378,25 @@ export abstract class Resource {
         }
     }
 
-    /**
-     * Returns the source position of the user code that instantiated this
-     * resource.
-     *
-     * This is somewhat brittle in that it expects a call stack of the form:
-     *
-     * - {@link Resource} class constructor
-     * - abstract {@link Resource} subclass constructor
-     * - concrete {@link Resource} subclass constructor
-     * - user code
-     *
-     * This stack reflects the expected class hierarchy of:
-     *
-     * Resource > Custom/Component resource > Cloud/Component resource
-     *
-     * For example, consider the AWS S3 Bucket resource. When user code
-     * instantiates a Bucket, the stack will look like this:
-     *
-     *     new Resource (/path/to/resource.ts:123:45)
-     *     new CustomResource (/path/to/resource.ts:678:90)
-     *     new Bucket (/path/to/bucket.ts:987:65)
-     *     <user code> (/path/to/index.ts:4:3)
-     *
-     */
-    private static sourcePosition(): SourcePosition | undefined {
-        // Skip the first four frames: sourcePosition(), new Resource, new CustomResource, new Bucket
-        const stack = Resource.callsites();
-        if (stack.length < 5) {
-            return undefined;
+    private static stackTrace(skip: number): (SourcePosition | undefined)[] {
+        let stack = Resource.callsites();
+        if (stack.length < skip + 1) {
+            return [];
         }
-        const userFrame = stack[4];
+        stack = stack.slice(skip + 1);
 
-        // If any part of the position is missing, return undefined.
-        const { file, line, column } = userFrame;
-        if (!file || !line || !column) {
-            return undefined;
-        }
+        return stack.map((frame) => {
+            const { file, line, column } = frame;
+            if (!file || !line || !column) {
+                return undefined;
+            }
 
-        return {
-            uri: url.pathToFileURL(file).toString(),
-            line,
-            column,
-        };
+            return {
+                uri: url.pathToFileURL(file).toString(),
+                line,
+                column,
+            };
+        });
     }
 
     /**
@@ -579,7 +555,26 @@ export abstract class Resource {
             }
         }
 
-        const sourcePosition = Resource.sourcePosition();
+        // This is somewhat brittle in that it expects a call stack of the form:
+        //
+        // - {@link Resource} class constructor
+        // - abstract {@link Resource} subclass constructor
+        // - concrete {@link Resource} subclass constructor
+        // - user code
+        //
+        // This stack reflects the expected class hierarchy of:
+        //
+        // Resource > Custom/Component resource > Cloud/Component resource
+        //
+        // For example, consider the AWS S3 Bucket resource. When user code
+        // instantiates a Bucket, the stack will look like this:
+        //
+        //     new Resource (/path/to/resource.ts:123:45)
+        //     new CustomResource (/path/to/resource.ts:678:90)
+        //     new Bucket (/path/to/bucket.ts:987:65)
+        //     <user code> (/path/to/index.ts:4:3)
+        const stackTrace = Resource.stackTrace(4);
+        const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
 
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
@@ -592,7 +587,7 @@ export abstract class Resource {
                     opts.parent,
                 );
             }
-            readResource(this, parent, t, name, props, opts, sourcePosition, packageRef);
+            readResource(this, parent, t, name, props, opts, sourcePosition, stackTrace, packageRef);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
@@ -609,6 +604,7 @@ export abstract class Resource {
                 props,
                 opts,
                 sourcePosition,
+                stackTrace,
                 packageRef,
             );
         }

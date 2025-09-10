@@ -1357,8 +1357,9 @@ func (ctx *Context) readPackageResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
-	// between the this function and user code.
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there is an
+	// intermediate frame between the this function and user code.
+	stackTrace := ctx.getStackTrace(3)
 	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
@@ -1396,6 +1397,7 @@ func (ctx *Context) readPackageResource(
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
+			StackTrace:              stackTrace,
 			PackageRef:              packageRef,
 		})
 		if err != nil {
@@ -1645,8 +1647,9 @@ func (ctx *Context) registerResource(
 	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
-	// frames between this function and user code.
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
+	// intermediate frames between this function and user code.
+	stackTrace := ctx.getStackTrace(4)
 	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
@@ -1753,6 +1756,7 @@ func (ctx *Context) registerResource(
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
 				SourcePosition:             sourcePosition,
+				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
@@ -2703,6 +2707,11 @@ func (ctx *Context) Export(name string, value Input) {
 	ctx.state.exports[name] = value
 }
 
+// Get a copy of the current export map. Primarily useful for testing.
+func (ctx *Context) GetCurrentExportMap() map[string]Input {
+	return maps.Clone(ctx.state.exports)
+}
+
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
 	ctx.state.stack.addTransformation(t)
@@ -2799,6 +2808,34 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 	return &pulumirpc.SourcePosition{
 		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
 		Line: line,
+	}
+}
+
+// getStackTrace returns an RPC stack trace that corresponds to the set of Go frames on the stack at the time of the
+// call. The number of frames to skip is parameterized in order to account for differing call stacks for different
+// operations.
+func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
+	// Skip this frame as well.
+	skip = max(skip+1, 2)
+
+	trace := &pulumirpc.StackTrace{}
+
+	var pcs [256]uintptr
+	for {
+		callers := runtime.Callers(skip, pcs[:])
+		if callers == 0 {
+			return trace
+		}
+		skip += callers
+
+		frames := runtime.CallersFrames(pcs[:])
+		for {
+			frame, more := frames.Next()
+			trace.Frames = append(trace.Frames, &pulumirpc.StackFrame{Pc: ctx.getSourcePositionForFrame(frame)})
+			if !more {
+				break
+			}
+		}
 	}
 }
 

@@ -50,6 +50,7 @@ class FirstClassProviderTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "testprov":
             # Provider resource.

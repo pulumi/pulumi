@@ -167,6 +167,50 @@ func TestIgnoreChanges(t *testing.T) {
 			expected:      map[string]interface{}{},
 			ignoreChanges: []string{"a.b"},
 		},
+		{
+			name: "Arrays with different lengths",
+			oldInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+					map[string]string{"b": "bar", "c": "baz"},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "bar", "c": "bar"},
+					map[string]string{"b": "qux", "c": "baz"},
+					map[string]string{"b": "baz", "c": "qux"},
+				},
+			},
+			expected: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+					map[string]string{"b": "bar", "c": "baz"},
+					map[string]string{"b": "baz", "c": "qux"},
+				},
+			},
+			ignoreChanges: []string{"a[*].b"},
+		},
+		{
+			name: "Shorter new array",
+			oldInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+					map[string]string{"b": "bar", "c": "baz"},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "bar", "c": "bar"},
+				},
+			},
+			expected: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+				},
+			},
+			ignoreChanges: []string{"a[*].b"},
+		},
 	}
 
 	for _, c := range cases {

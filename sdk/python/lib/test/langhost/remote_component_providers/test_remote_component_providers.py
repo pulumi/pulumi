@@ -43,6 +43,7 @@ class RemoteComponentProvidersTest(LanghostTest):
         _replace_on_changes,
         providers,
         source_position,
+        stack_trace,
     ):
         if name == "singular" or name == "map" or name == "array":
             self.assertEqual(provider, "myprovider::myprovider")

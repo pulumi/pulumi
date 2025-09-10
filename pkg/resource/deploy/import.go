@@ -109,7 +109,8 @@ func NewImportDeployment(
 
 	prev := target.Snapshot
 	source := NewErrorSource(projectName)
-	if err := migrateProviders(target, prev, source); err != nil {
+	needsWrite, err := migrateProviders(target, prev, source)
+	if err != nil {
 		return nil, err
 	}
 
@@ -137,6 +138,7 @@ func NewImportDeployment(
 		ctx:                             ctx,
 		opts:                            opts,
 		events:                          events,
+		writeSnapshot:                   needsWrite,
 		target:                          target,
 		prev:                            prev,
 		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
@@ -245,6 +247,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
+		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
 		RefreshBeforeUpdate:     false,
@@ -383,6 +386,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			Created:                 nil,
 			Modified:                nil,
 			SourcePosition:          "",
+			StackTrace:              nil,
 			IgnoreChanges:           nil,
 			ReplaceOnChanges:        nil,
 			RefreshBeforeUpdate:     false,
@@ -510,6 +514,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			Created:                 nil,
 			Modified:                nil,
 			SourcePosition:          "",
+			StackTrace:              nil,
 			IgnoreChanges:           nil,
 			ReplaceOnChanges:        nil,
 			RefreshBeforeUpdate:     false,

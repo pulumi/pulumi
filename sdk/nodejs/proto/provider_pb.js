@@ -4122,7 +4122,8 @@ dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
 parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
 monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
 organization: jspb.Message.getFieldWithDefault(msg, 14, ""),
-acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 17, false)
+acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 17, false),
+stackTraceHandle: jspb.Message.getFieldWithDefault(msg, 18, "")
   };
 
   if (includeInstance) {
@@ -4211,6 +4212,10 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 17:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsOutputValues(value);
+      break;
+    case 18:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setStackTraceHandle(value);
       break;
     default:
       reader.skipField();
@@ -4317,6 +4322,13 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
   if (f) {
     writer.writeBool(
       17,
+      f
+    );
+  }
+  f = message.getStackTraceHandle();
+  if (f.length > 0) {
+    writer.writeString(
+      18,
       f
     );
   }
@@ -4740,6 +4752,24 @@ proto.pulumirpc.CallRequest.prototype.getAcceptsOutputValues = function() {
  */
 proto.pulumirpc.CallRequest.prototype.setAcceptsOutputValues = function(value) {
   return jspb.Message.setProto3BooleanField(this, 17, value);
+};
+
+
+/**
+ * optional string stack_trace_handle = 18;
+ * @return {string}
+ */
+proto.pulumirpc.CallRequest.prototype.getStackTraceHandle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 18, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.setStackTraceHandle = function(value) {
+  return jspb.Message.setProto3StringField(this, 18, value);
 };
 
 
@@ -9664,7 +9694,8 @@ ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefi
 replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
 retainondelete: (f = jspb.Message.getBooleanField(msg, 24)) == null ? undefined : f,
 acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
-resourceHooks: (f = msg.getResourceHooks()) && proto.pulumirpc.ConstructRequest.ResourceHooksBinding.toObject(includeInstance, f)
+resourceHooks: (f = msg.getResourceHooks()) && proto.pulumirpc.ConstructRequest.ResourceHooksBinding.toObject(includeInstance, f),
+stackTraceHandle: jspb.Message.getFieldWithDefault(msg, 27, "")
   };
 
   if (includeInstance) {
@@ -9813,6 +9844,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
       var value = new proto.pulumirpc.ConstructRequest.ResourceHooksBinding;
       reader.readMessage(value,proto.pulumirpc.ConstructRequest.ResourceHooksBinding.deserializeBinaryFromReader);
       msg.setResourceHooks(value);
+      break;
+    case 27:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setStackTraceHandle(value);
       break;
     default:
       reader.skipField();
@@ -10017,6 +10052,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
       26,
       f,
       proto.pulumirpc.ConstructRequest.ResourceHooksBinding.serializeBinaryToWriter
+    );
+  }
+  f = message.getStackTraceHandle();
+  if (f.length > 0) {
+    writer.writeString(
+      27,
+      f
     );
   }
 };
@@ -11474,6 +11516,24 @@ proto.pulumirpc.ConstructRequest.prototype.clearResourceHooks = function() {
  */
 proto.pulumirpc.ConstructRequest.prototype.hasResourceHooks = function() {
   return jspb.Message.getField(this, 26) != null;
+};
+
+
+/**
+ * optional string stack_trace_handle = 27;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getStackTraceHandle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 27, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setStackTraceHandle = function(value) {
+  return jspb.Message.setProto3StringField(this, 27, value);
 };
 
 

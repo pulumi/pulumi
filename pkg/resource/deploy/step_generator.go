@@ -287,6 +287,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          event.SourcePosition(),
+		StackTrace:              event.StackTrace(),
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
 		RefreshBeforeUpdate:     false,
@@ -705,6 +706,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		Created:                 createdAt,
 		Modified:                modifiedAt,
 		SourcePosition:          goal.SourcePosition,
+		StackTrace:              goal.StackTrace,
 		IgnoreChanges:           goal.IgnoreChanges,
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
@@ -960,6 +962,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					Created:                 new.Created,
 					Modified:                new.Modified,
 					SourcePosition:          goal.SourcePosition,
+					StackTrace:              goal.StackTrace,
 					IgnoreChanges:           goal.IgnoreChanges,
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
@@ -2649,8 +2652,8 @@ func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resou
 		}
 	}
 	if len(invalidPaths) != 0 {
-		d.Infof(diag.Message(urn, "cannot ignore changes to the following properties because one or more elements of "+
-			"the path are missing: %q"), strings.Join(invalidPaths, ", "))
+		d.Infof(diag.Message(urn, "cannot ignore changes in added or removed elements of the path: %q"),
+			strings.Join(invalidPaths, ", "))
 	}
 	return ignoredInputs
 }

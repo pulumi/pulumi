@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package display
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -181,12 +182,13 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
-		name        string
-		oldState    engine.StepEventStateMetadata
-		newState    engine.StepEventStateMetadata
-		showSames   bool
-		showSecrets bool
-		expected    string
+		name           string
+		oldState       engine.StepEventStateMetadata
+		newState       engine.StepEventStateMetadata
+		showSames      bool
+		showSecrets    bool
+		truncateOutput bool
+		expected       string
 	}{
 		{
 			name: "stack outputs are with showSames = true",
@@ -357,6 +359,39 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				"<{%fg 2%}>    }<{%reset%}>" +
 				"<{%fg 2%}>\n<{%reset%}>",
 		},
+		{
+			name: "truncates with truncateOutput=true",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"truncate_this":        strings.Repeat("a", 300), // max 150 characters
+					"dont_truncate_this":   strings.Repeat("a", 150),
+					"truncate_this_also":   "1\n2\n3\n4\n5\n6", // max 3 lines
+					"dont_truncate_either": "1\n2\n3\n",
+				}),
+			},
+			showSames:      false,
+			truncateOutput: true,
+			expected: "<{%fg 3%}>    dont_truncate_either: <{%reset%}>" +
+				"<{%fg 3%}>\"1\\n2\\n3\\n...\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>" +
+				"<{%fg 3%}>    dont_truncate_this  : <{%reset%}>" +
+				//nolint:lll
+				"<{%fg 3%}>\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>" +
+				"<{%fg 3%}>    truncate_this       : <{%reset%}>" +
+				//nolint:lll
+				"<{%fg 3%}>\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>" +
+				"<{%fg 3%}>    truncate_this_also  : <{%reset%}>" +
+				"<{%fg 3%}>\"1\\n2\\n3\\n...\"<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -370,12 +405,13 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			}
 			s := getResourceOutputsPropertiesString(
 				step,
-				1,              /*indent */
-				false,          /* planning */
-				false,          /* debug */
-				false,          /* refresh */
-				tt.showSames,   /* showSames */
-				tt.showSecrets, /* showSecrets */
+				1,                 /*indent */
+				false,             /* planning */
+				false,             /* debug */
+				false,             /* refresh */
+				tt.showSames,      /* showSames */
+				tt.showSecrets,    /* showSecrets */
+				tt.truncateOutput, /* truncateOutput */
 			)
 			require.Equal(t, tt.expected, s)
 		})

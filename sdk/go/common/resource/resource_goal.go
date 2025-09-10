@@ -44,6 +44,7 @@ type Goal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
 	SourcePosition string                // If set, the source location of the resource registration
+	StackTrace     []StackFrame          // If set, the stack trace at time of registration
 	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
 }
 
@@ -112,6 +113,9 @@ type NewGoal struct {
 	// If set, the source location of the resource registration
 	SourcePosition string // required
 
+	// If set, the stack trace at time of registration
+	StackTrace []StackFrame // required
+
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[HookType][]string // required
 }
@@ -143,6 +147,7 @@ func (g NewGoal) Make() *Goal {
 		RetainOnDelete:          g.RetainOnDelete,
 		DeletedWith:             g.DeletedWith,
 		SourcePosition:          g.SourcePosition,
+		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,7 +73,23 @@ const preferredDebugPort = 57134
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
-func compileProgram(programDirectory string, outfile string, withDebugFlags bool) (string, error) {
+func compileProgram(
+	ctx context.Context,
+	engineClient pulumirpc.EngineClient,
+	programDirectory string,
+	outfile string,
+	withDebugFlags bool,
+	stdout, stderr io.Writer,
+) (string, error) {
+	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Severity:  pulumirpc.LogSeverity_INFO,
+		Urn:       "",
+		Message:   "Compiling the program ...",
+		Ephemeral: true,
+	}); err != nil {
+		logging.V(6).Infof("Failed to log message: %v", err)
+	}
+
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
@@ -103,7 +119,7 @@ func compileProgram(programDirectory string, outfile string, withDebugFlags bool
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
-	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
+	buildCmd.Stdout, buildCmd.Stderr = stdout, stderr
 
 	if err := buildCmd.Run(); err != nil {
 		return "", fmt.Errorf("unable to run `go build`: %w", err)
@@ -115,6 +131,14 @@ func compileProgram(programDirectory string, outfile string, withDebugFlags bool
 	}
 	if !isExecutable {
 		return "", errors.New("go program is not executable, does your program have a 'main' package?")
+	}
+	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Severity:  pulumirpc.LogSeverity_INFO,
+		Urn:       "",
+		Message:   "Finished compiling",
+		Ephemeral: true,
+	}); err != nil {
+		logging.V(6).Infof("Failed to log message: %v", err)
 	}
 
 	return outfile, nil
@@ -1017,7 +1041,8 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger())
+	program, err := compileProgram(
+		ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1223,7 +1248,8 @@ func (host *goLanguageHost) RunPlugin(
 	}
 	defer contract.IgnoreClose(closer)
 
-	program, err := compileProgram(req.Info.ProgramDirectory, "", false)
+	program, err := compileProgram(
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}

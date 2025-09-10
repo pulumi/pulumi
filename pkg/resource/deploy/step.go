@@ -1536,14 +1536,15 @@ func (s *ImportStep) Op() display.StepOp {
 	return OpImport
 }
 
-func (s *ImportStep) Deployment() *Deployment { return s.deployment }
-func (s *ImportStep) Type() tokens.Type       { return s.new.Type }
-func (s *ImportStep) Provider() string        { return s.new.Provider }
-func (s *ImportStep) URN() resource.URN       { return s.new.URN }
-func (s *ImportStep) Old() *resource.State    { return s.old }
-func (s *ImportStep) New() *resource.State    { return s.new }
-func (s *ImportStep) Res() *resource.State    { return s.new }
-func (s *ImportStep) Logical() bool           { return !s.replacing }
+func (s *ImportStep) Deployment() *Deployment   { return s.deployment }
+func (s *ImportStep) Type() tokens.Type         { return s.new.Type }
+func (s *ImportStep) Provider() string          { return s.new.Provider }
+func (s *ImportStep) URN() resource.URN         { return s.new.URN }
+func (s *ImportStep) Old() *resource.State      { return s.old }
+func (s *ImportStep) Original() *resource.State { return s.original }
+func (s *ImportStep) New() *resource.State      { return s.new }
+func (s *ImportStep) Res() *resource.State      { return s.new }
+func (s *ImportStep) Logical() bool             { return !s.replacing }
 
 func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) {
 	defer func() {
@@ -1675,6 +1676,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          s.new.SourcePosition,
+		StackTrace:              s.new.StackTrace,
 		IgnoreChanges:           s.new.IgnoreChanges,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,

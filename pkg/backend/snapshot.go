@@ -175,6 +175,14 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	return nil, nil
 }
 
+func (sm *SnapshotManager) Write(_ *deploy.Snapshot) error {
+	// We don't need to do anything here. The snapshot manager uses the in-memory snapshot to
+	// produce a new snapshot whenever a mutation occurs. This method is only used by the
+	// journaling snapshot manager, which doesn't have access to the same in-memory state that
+	// gets modified by the engine.
+	return nil
+}
+
 // All SnapshotMutation implementations in this file follow the same basic formula:
 // mark the "old" state as done and mark the "new" state as new. The two special
 // cases are Create (where the "old" state does not exist) and Delete (where the "new" state
@@ -614,7 +622,7 @@ func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sm *SnapshotManager) snap() *deploy.Snapshot {
+func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -715,7 +723,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap, err := sm.snap().NormalizeURNReferences()
+	snap, err := sm.Snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
