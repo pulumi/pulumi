@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Send new policy fields when publishing a policy pack

@@ -170,19 +170,36 @@ type PolicySummary struct {
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
-	Name           string
-	DisplayName    string
-	Version        string
+	// The name of the policy pack.
+	Name string
+	// An optional pretty name for the policy pack.
+	DisplayName string
+	// The version of the policy pack.
+	Version string
+	// Whether the policy pack supports configuration.
 	SupportsConfig bool
-	Policies       []AnalyzerPolicyInfo
-	InitialConfig  map[string]AnalyzerPolicyConfig
+	// The policies defined in the policy pack.
+	Policies []AnalyzerPolicyInfo
+	// The initial configuration for the policy pack.
+	InitialConfig map[string]AnalyzerPolicyConfig
+	// A brief description of the policy pack. This will override the description in PulumiPolicy.yaml.
+	Description string
+	// README text about the policy pack.
+	Readme string
+	// The cloud provider/platform this policy pack is associated with, e.g. AWS, Azure, etc.
+	Provider string
+	// Tags for this policy pack.
+	Tags []string
+	// A URL to the repository where the policy pack is defined.
+	Repository string
 }
 
 // AnalyzerPolicyInfo defines the metadata for an individual Policy within a Policy Pack.
 type AnalyzerPolicyInfo struct {
 	// Unique URL-safe name for the policy.  This is unique to a specific version
 	// of a Policy Pack.
-	Name        string
+	Name string
+	// An optional pretty name for the policy.
 	DisplayName string
 
 	// Description is used to provide more context about the purpose of the policy.
@@ -198,6 +215,16 @@ type AnalyzerPolicyInfo struct {
 
 	// Type of the policy.
 	Type AnalyzerPolicyType
+	// Severity is the severity level of the policy.
+	Severity apitype.PolicySeverity
+	// The compliance framework that this policy belongs to.
+	Framework *AnalyzerPolicyComplianceFramework
+	// Tags associated with the policy
+	Tags []string
+	// A description of the steps to take to remediate a policy violation.
+	RemediationSteps string
+	// An optional URL to more information about the policy.
+	URL string
 }
 
 // JSONSchema represents a JSON schema.
@@ -218,4 +245,16 @@ type AnalyzerPolicyConfig struct {
 	EnforcementLevel apitype.EnforcementLevel
 	// Configured properties of the policy.
 	Properties map[string]interface{}
+}
+
+// AnalyzerPolicyComplianceFramework represents a compliance framework that a policy belongs to.
+type AnalyzerPolicyComplianceFramework struct {
+	// The compliance framework name.
+	Name string
+	// The compliance framework version.
+	Version string
+	// The compliance framework reference.
+	Reference string
+	// The compliance framework specification.
+	Specification string
 }

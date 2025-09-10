@@ -906,6 +906,11 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 			EnforcementLevel: policy.EnforcementLevel,
 			Message:          policy.Message,
 			ConfigSchema:     configSchema,
+			Severity:         policy.Severity,
+			Framework:        convertPolicyComplianceFramework(policy.Framework),
+			Tags:             policy.Tags,
+			RemediationSteps: policy.RemediationSteps,
+			URL:              policy.URL,
 		}
 	}
 
@@ -914,6 +919,11 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		DisplayName: analyzerInfo.DisplayName,
 		VersionTag:  analyzerInfo.Version,
 		Policies:    policies,
+		Description: analyzerInfo.Description,
+		Readme:      analyzerInfo.Readme,
+		Provider:    analyzerInfo.Provider,
+		Tags:        analyzerInfo.Tags,
+		Repository:  analyzerInfo.Repository,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -988,6 +998,19 @@ func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apit
 		Properties: properties,
 		Required:   schema.Required,
 	}, nil
+}
+
+// convertPolicyComplianceFramework converts a policy compliance framework from the analyzer to the apitype.
+func convertPolicyComplianceFramework(f *plugin.AnalyzerPolicyComplianceFramework) *apitype.PolicyComplianceFramework {
+	if f == nil {
+		return nil
+	}
+	return &apitype.PolicyComplianceFramework{
+		Name:          f.Name,
+		Version:       f.Version,
+		Reference:     f.Reference,
+		Specification: f.Specification,
+	}
 }
 
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
