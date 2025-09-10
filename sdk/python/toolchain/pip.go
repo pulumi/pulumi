@@ -24,7 +24,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -63,6 +65,32 @@ func (p *pip) InstallDependencies(ctx context.Context, cwd string, useLanguageVe
 		showOutput,
 		infoWriter,
 		errorWriter)
+}
+
+func (p *pip) LinkPackages(ctx context.Context, packages []string) error {
+	logging.V(9).Infof("pip linking %s", packages)
+	fPath := filepath.Join(p.root, "requirements.txt")
+	fBytes, err := os.ReadFile(fPath)
+	if err != nil {
+		return fmt.Errorf("error opening requirements.txt: %w", err)
+	}
+	lines := regexp.MustCompile("\r?\n").Split(string(fBytes), -1)
+	for _, packageSpecifier := range packages {
+		if !slices.Contains(lines, packageSpecifier) {
+			// Match the file's line endings when adding the package specifier.
+			usesCRLF := strings.Contains(string(fBytes), "\r\n")
+			lineEnding := "\n"
+			if usesCRLF {
+				lineEnding = "\r\n"
+			}
+			fBytes = []byte(packageSpecifier + lineEnding + string(fBytes))
+			err = os.WriteFile(fPath, fBytes, 0o600)
+			if err != nil {
+				return fmt.Errorf("could not write requirements.txt: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
