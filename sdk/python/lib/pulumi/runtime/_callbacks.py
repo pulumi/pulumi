@@ -29,6 +29,7 @@ from collections.abc import Awaitable, Mapping
 import grpc
 from google.protobuf.message import Message
 from grpc import aio
+from grpc.experimental.aio import init_grpc_aio
 
 from .. import log
 from ..invoke import InvokeOptions, InvokeTransform
@@ -54,6 +55,10 @@ if TYPE_CHECKING:
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
+# Workaround for https://github.com/grpc/grpc/issues/38679,
+# https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
+# This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
+init_grpc_aio()
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
 
@@ -85,7 +90,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     @classmethod
     async def shutdown(cls):
         for servicer in cls._servicers:
-            await servicer._server.wait_for_termination(timeout=0)
+            await servicer._server.stop(grace=0)
 
     async def Invoke(
         self,

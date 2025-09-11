@@ -2032,6 +2032,31 @@ func TestRegress18176(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStuckEventLoop(t *testing.T) {
+	timeout := 3 * time.Minute
+	done := make(chan bool)
+	go func() {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python", "stuck-eventloop"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python"),
+			},
+			LocalProviders: []integration.LocalDependency{
+				{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			},
+			Quick:         true,
+			ExpectFailure: true, // We expect a failure, but the program shouldn't hang indefinitely.
+		})
+		done <- true
+	}()
+	select {
+	case <-time.After(timeout):
+		t.Fatalf("Test didn't finish after %s", timeout)
+	case <-done:
+	}
+}
+
 // Tests that we can run a Python component provider using component_provider_host
 func TestPythonComponentProviderRun(t *testing.T) {
 	t.Parallel()
