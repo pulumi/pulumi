@@ -25,6 +25,11 @@
 import asyncio
 import pulumi
 
+import sys
+
+for line in sys.path:
+    pulumi.log.info(line)
+
 from echo import Echo
 
 

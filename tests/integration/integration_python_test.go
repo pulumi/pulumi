@@ -2036,6 +2036,14 @@ func TestRegress18176(t *testing.T) {
 func TestStuckEventLoop(t *testing.T) {
 	timeout := 3 * time.Minute
 	done := make(chan bool)
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+
+	cb := filepath.Join("..", "..", "sdk", "python", "lib", "pulumi", "runtime", "_callbacks.py")
+	b, err := os.ReadFile(cb)
+	require.NoError(t, err)
+	t.Logf("_callbacks.py = %s", b)
+
 	go func() {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python", "stuck-eventloop"),
@@ -2047,13 +2055,23 @@ func TestStuckEventLoop(t *testing.T) {
 			},
 			Quick:         true,
 			ExpectFailure: true, // We expect a failure, but the program shouldn't hang indefinitely.
+			Stdout:        stdout,
+			Stderr:        stderr,
+			Verbose:       true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.NotContains(t, stdout.String()+stderr.String(), "banana")
+			},
 		})
 		done <- true
 	}()
 	select {
 	case <-time.After(timeout):
+		t.Logf("stdout: %s", stdout.String())
+		t.Logf("stderr: %s", stderr.String())
 		t.Fatalf("Test didn't finish after %s", timeout)
 	case <-done:
+		t.Logf("stdout: %s", stdout.String())
+		t.Logf("stderr: %s", stderr.String())
 	}
 }
 
