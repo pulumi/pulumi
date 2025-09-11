@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.195.0 (2025-09-10)
+
+
+### Features
+
+- [engine] Add support for capturing program stack traces as part of resource registration
+  [#20430](https://github.com/pulumi/pulumi/pull/20430)
+
+- [sdk/go] Registered resources can now be retrieved from the mock monitor for test assertions
+  [#20472](https://github.com/pulumi/pulumi/pull/20472)
+
+- [sdk/go] The current exports map is now available for unit testing through `GetCurrentExportMap`
+  [#20471](https://github.com/pulumi/pulumi/pull/20471)
+
+
+### Bug Fixes
+
+- [pkg/go] Fix an issue where v3.194.0 of the `github.com/pulumi/pulumi/pkg/v3` module depends on APIs from `github.com/pulumi/pulumi/sdk/v3` that haven't been released
+  [#20487](https://github.com/pulumi/pulumi/issues/20487)
+
+
 ## 3.194.0 (2025-09-08)
 
 
