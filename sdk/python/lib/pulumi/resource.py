@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 import asyncio
 import copy
+import contextvars
 import warnings
 from typing import (
     Optional,
@@ -38,7 +39,7 @@ from .runtime.resource import (
     collapse_alias_to_urn,
     create_urn as create_urn_internal,
 )
-from .runtime.settings import get_root_resource
+from .runtime.settings import get_root_resource, _get_rpc_manager, ambient_parent
 from .output import _is_prompt, _map_input, _map2_input, Output
 from . import urn as urn_util
 from . import log
@@ -883,7 +884,13 @@ class Resource:
         # provided properties and options assigned to this resource.
         parent = opts.parent
         if parent is None:
-            parent = get_root_resource()
+            # If the ambient parent context is set use that
+            parent = ambient_parent.get()
+            if parent is None:
+                parent = get_root_resource()
+        opts = opts._copy()
+        opts.parent = parent
+
         parent_transformations = (
             (parent._transformations or []) if parent is not None else []
         )
@@ -1185,6 +1192,26 @@ class ComponentResource(Resource):
         if not remote:
             self.__dict__["id"] = None
         self._remote = remote
+        self._registered = False
+
+        async def do_initialize():
+            async def do_initialize_inner():
+                ambient_parent.set(self)
+                try:
+                    awaitable = self.initialize(name, props, opts)
+                    if awaitable is not None:
+                        await awaitable
+                    # Register outputs to mark the component as finished.
+                    self.register_outputs({})
+                except NotImplementedError:
+                    pass
+
+            ctx = contextvars.copy_context()
+            return await ctx.run(do_initialize_inner)
+
+        asyncio.ensure_future(
+            _get_rpc_manager().do_rpc("initialize resource", do_initialize)()
+        )
 
     def register_outputs(self, outputs: "Inputs"):
         """
@@ -1193,7 +1220,24 @@ class ComponentResource(Resource):
 
         :param dict output: A dictionary of outputs to associate with this resource.
         """
+        if self._registered:
+            return
+        self._registered = True
         register_resource_outputs(self, outputs)
+
+    def initialize(
+        self,
+        name: str,
+        props: Optional["Inputs"],
+        opts: Optional[ResourceOptions],
+    ) -> Optional[Awaitable[None]]:
+        """
+        Initialize the component resource, this can be used instead of the constructor to set up child resources. It has
+        the advantage that it runs in an async context, the parent resource option will be automatically set to the
+        component resource for all resources created in this context, and register_outputs will always be called to mark
+        the component as done.
+        """
+        raise NotImplementedError()
 
 
 class ProviderResource(CustomResource):
