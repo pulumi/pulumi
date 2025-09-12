@@ -61,6 +61,30 @@ REMEDIATE: EnforcementLevel.ValueType  # 3
 """Remediated policies actually fixes problems instead of issuing diagnostics."""
 global___EnforcementLevel = EnforcementLevel
 
+class _PolicyType:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _PolicyTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_PolicyType.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    POLICY_TYPE_UNKNOWN: _PolicyType.ValueType  # 0
+    """Unknown policy type."""
+    POLICY_TYPE_RESOURCE: _PolicyType.ValueType  # 1
+    """A policy that validates a resource."""
+    POLICY_TYPE_STACK: _PolicyType.ValueType  # 2
+    """A policy that validates a stack."""
+
+class PolicyType(_PolicyType, metaclass=_PolicyTypeEnumTypeWrapper):
+    """PolicyType indicates the type of a policy."""
+
+POLICY_TYPE_UNKNOWN: PolicyType.ValueType  # 0
+"""Unknown policy type."""
+POLICY_TYPE_RESOURCE: PolicyType.ValueType  # 1
+"""A policy that validates a resource."""
+POLICY_TYPE_STACK: PolicyType.ValueType  # 2
+"""A policy that validates a stack."""
+global___PolicyType = PolicyType
+
 @typing.final
 class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
     """`AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed."""
@@ -483,16 +507,22 @@ class AnalyzeResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
+    NOT_APPLICABLE_FIELD_NUMBER: builtins.int
     @property
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___AnalyzeDiagnostic]:
         """information about policy violations."""
+
+    @property
+    def not_applicable(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PolicyNotApplicable]:
+        """information about policies that were not applicable."""
 
     def __init__(
         self,
         *,
         diagnostics: collections.abc.Iterable[global___AnalyzeDiagnostic] | None = ...,
+        not_applicable: collections.abc.Iterable[global___PolicyNotApplicable] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "not_applicable", b"not_applicable"]) -> None: ...
 
 global___AnalyzeResponse = AnalyzeResponse
 
@@ -584,16 +614,22 @@ class RemediateResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     REMEDIATIONS_FIELD_NUMBER: builtins.int
+    NOT_APPLICABLE_FIELD_NUMBER: builtins.int
     @property
     def remediations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Remediation]:
         """the list of remediations that were applied."""
+
+    @property
+    def not_applicable(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PolicyNotApplicable]:
+        """information about policies that were not applicable."""
 
     def __init__(
         self,
         *,
         remediations: collections.abc.Iterable[global___Remediation] | None = ...,
+        not_applicable: collections.abc.Iterable[global___PolicyNotApplicable] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["remediations", b"remediations"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["not_applicable", b"not_applicable", "remediations", b"remediations"]) -> None: ...
 
 global___RemediateResponse = RemediateResponse
 
@@ -669,6 +705,7 @@ class PolicyInfo(google.protobuf.message.Message):
     MESSAGE_FIELD_NUMBER: builtins.int
     ENFORCEMENTLEVEL_FIELD_NUMBER: builtins.int
     CONFIGSCHEMA_FIELD_NUMBER: builtins.int
+    POLICY_TYPE_FIELD_NUMBER: builtins.int
     name: builtins.str
     """Name of the policy."""
     displayName: builtins.str
@@ -679,6 +716,8 @@ class PolicyInfo(google.protobuf.message.Message):
     """Message to display on policy violation, e.g., remediation steps."""
     enforcementLevel: global___EnforcementLevel.ValueType
     """Severity of the policy violation."""
+    policy_type: global___PolicyType.ValueType
+    """Type of the policy."""
     @property
     def configSchema(self) -> global___PolicyConfigSchema:
         """Config schema for the policy."""
@@ -692,9 +731,10 @@ class PolicyInfo(google.protobuf.message.Message):
         message: builtins.str = ...,
         enforcementLevel: global___EnforcementLevel.ValueType = ...,
         configSchema: global___PolicyConfigSchema | None = ...,
+        policy_type: global___PolicyType.ValueType = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["configSchema", b"configSchema"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["configSchema", b"configSchema", "description", b"description", "displayName", b"displayName", "enforcementLevel", b"enforcementLevel", "message", b"message", "name", b"name"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["configSchema", b"configSchema", "description", b"description", "displayName", b"displayName", "enforcementLevel", b"enforcementLevel", "message", b"message", "name", b"name", "policy_type", b"policy_type"]) -> None: ...
 
 global___PolicyInfo = PolicyInfo
 
@@ -787,3 +827,25 @@ class ConfigureAnalyzerRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["policyConfig", b"policyConfig"]) -> None: ...
 
 global___ConfigureAnalyzerRequest = ConfigureAnalyzerRequest
+
+@typing.final
+class PolicyNotApplicable(google.protobuf.message.Message):
+    """PolicyNotApplicable describes a policy that was not applicable, including an optional reason why."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    POLICY_NAME_FIELD_NUMBER: builtins.int
+    REASON_FIELD_NUMBER: builtins.int
+    policy_name: builtins.str
+    """The name of the policy that was not applicable."""
+    reason: builtins.str
+    """An optional reason why the policy was not applicable."""
+    def __init__(
+        self,
+        *,
+        policy_name: builtins.str = ...,
+        reason: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["policy_name", b"policy_name", "reason", b"reason"]) -> None: ...
+
+global___PolicyNotApplicable = PolicyNotApplicable
