@@ -85,6 +85,38 @@ POLICY_TYPE_STACK: PolicyType.ValueType  # 2
 """A policy that validates a stack."""
 global___PolicyType = PolicyType
 
+class _PolicySeverity:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _PolicySeverityEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_PolicySeverity.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    POLICY_SEVERITY_UNSPECIFIED: _PolicySeverity.ValueType  # 0
+    """Unspecified severity."""
+    POLICY_SEVERITY_LOW: _PolicySeverity.ValueType  # 1
+    """Low severity."""
+    POLICY_SEVERITY_MEDIUM: _PolicySeverity.ValueType  # 2
+    """Medium severity."""
+    POLICY_SEVERITY_HIGH: _PolicySeverity.ValueType  # 3
+    """High severity."""
+    POLICY_SEVERITY_CRITICAL: _PolicySeverity.ValueType  # 4
+    """Critical severity."""
+
+class PolicySeverity(_PolicySeverity, metaclass=_PolicySeverityEnumTypeWrapper):
+    """PolicySeverity indicates the severity of a policy."""
+
+POLICY_SEVERITY_UNSPECIFIED: PolicySeverity.ValueType  # 0
+"""Unspecified severity."""
+POLICY_SEVERITY_LOW: PolicySeverity.ValueType  # 1
+"""Low severity."""
+POLICY_SEVERITY_MEDIUM: PolicySeverity.ValueType  # 2
+"""Medium severity."""
+POLICY_SEVERITY_HIGH: PolicySeverity.ValueType  # 3
+"""High severity."""
+POLICY_SEVERITY_CRITICAL: PolicySeverity.ValueType  # 4
+"""Critical severity."""
+global___PolicySeverity = PolicySeverity
+
 @typing.final
 class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
     """`AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed."""
@@ -663,6 +695,11 @@ class AnalyzerInfo(google.protobuf.message.Message):
     VERSION_FIELD_NUMBER: builtins.int
     SUPPORTSCONFIG_FIELD_NUMBER: builtins.int
     INITIALCONFIG_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    README_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    TAGS_FIELD_NUMBER: builtins.int
+    REPOSITORY_FIELD_NUMBER: builtins.int
     name: builtins.str
     """Name of the PolicyPack."""
     displayName: builtins.str
@@ -671,6 +708,14 @@ class AnalyzerInfo(google.protobuf.message.Message):
     """Version of the Policy Pack."""
     supportsConfig: builtins.bool
     """Whether the Policy Pack supports config."""
+    description: builtins.str
+    """Description of the policy pack."""
+    readme: builtins.str
+    """README text for the policy pack."""
+    provider: builtins.str
+    """Cloud provider/platform associated with the policy pack."""
+    repository: builtins.str
+    """A URL to the repository where the policy pack is defined."""
     @property
     def policies(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PolicyInfo]:
         """Metadata about policies contained in PolicyPack."""
@@ -678,6 +723,10 @@ class AnalyzerInfo(google.protobuf.message.Message):
     @property
     def initialConfig(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PolicyConfig]:
         """Map of policy name to config."""
+
+    @property
+    def tags(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Tags for this policy pack."""
 
     def __init__(
         self,
@@ -688,8 +737,13 @@ class AnalyzerInfo(google.protobuf.message.Message):
         version: builtins.str = ...,
         supportsConfig: builtins.bool = ...,
         initialConfig: collections.abc.Mapping[builtins.str, global___PolicyConfig] | None = ...,
+        description: builtins.str = ...,
+        readme: builtins.str = ...,
+        provider: builtins.str = ...,
+        tags: collections.abc.Iterable[builtins.str] | None = ...,
+        repository: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["displayName", b"displayName", "initialConfig", b"initialConfig", "name", b"name", "policies", b"policies", "supportsConfig", b"supportsConfig", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["description", b"description", "displayName", b"displayName", "initialConfig", b"initialConfig", "name", b"name", "policies", b"policies", "provider", b"provider", "readme", b"readme", "repository", b"repository", "supportsConfig", b"supportsConfig", "tags", b"tags", "version", b"version"]) -> None: ...
 
 global___AnalyzerInfo = AnalyzerInfo
 
@@ -706,6 +760,11 @@ class PolicyInfo(google.protobuf.message.Message):
     ENFORCEMENTLEVEL_FIELD_NUMBER: builtins.int
     CONFIGSCHEMA_FIELD_NUMBER: builtins.int
     POLICY_TYPE_FIELD_NUMBER: builtins.int
+    SEVERITY_FIELD_NUMBER: builtins.int
+    FRAMEWORK_FIELD_NUMBER: builtins.int
+    TAGS_FIELD_NUMBER: builtins.int
+    REMEDIATION_STEPS_FIELD_NUMBER: builtins.int
+    URL_FIELD_NUMBER: builtins.int
     name: builtins.str
     """Name of the policy."""
     displayName: builtins.str
@@ -718,9 +777,23 @@ class PolicyInfo(google.protobuf.message.Message):
     """Severity of the policy violation."""
     policy_type: global___PolicyType.ValueType
     """Type of the policy."""
+    severity: global___PolicySeverity.ValueType
+    """Severity of the policy."""
+    remediation_steps: builtins.str
+    """A description of the steps to take to remediate a policy violation."""
+    url: builtins.str
+    """A URL to more information about the policy."""
     @property
     def configSchema(self) -> global___PolicyConfigSchema:
         """Config schema for the policy."""
+
+    @property
+    def framework(self) -> global___PolicyComplianceFramework:
+        """Compliance framework that this policy belongs to."""
+
+    @property
+    def tags(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Tags associated with the policy."""
 
     def __init__(
         self,
@@ -732,9 +805,14 @@ class PolicyInfo(google.protobuf.message.Message):
         enforcementLevel: global___EnforcementLevel.ValueType = ...,
         configSchema: global___PolicyConfigSchema | None = ...,
         policy_type: global___PolicyType.ValueType = ...,
+        severity: global___PolicySeverity.ValueType = ...,
+        framework: global___PolicyComplianceFramework | None = ...,
+        tags: collections.abc.Iterable[builtins.str] | None = ...,
+        remediation_steps: builtins.str = ...,
+        url: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["configSchema", b"configSchema"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["configSchema", b"configSchema", "description", b"description", "displayName", b"displayName", "enforcementLevel", b"enforcementLevel", "message", b"message", "name", b"name", "policy_type", b"policy_type"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["configSchema", b"configSchema", "framework", b"framework"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["configSchema", b"configSchema", "description", b"description", "displayName", b"displayName", "enforcementLevel", b"enforcementLevel", "framework", b"framework", "message", b"message", "name", b"name", "policy_type", b"policy_type", "remediation_steps", b"remediation_steps", "severity", b"severity", "tags", b"tags", "url", b"url"]) -> None: ...
 
 global___PolicyInfo = PolicyInfo
 
@@ -827,6 +905,36 @@ class ConfigureAnalyzerRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["policyConfig", b"policyConfig"]) -> None: ...
 
 global___ConfigureAnalyzerRequest = ConfigureAnalyzerRequest
+
+@typing.final
+class PolicyComplianceFramework(google.protobuf.message.Message):
+    """PolicyComplianceFramework provides information about the compliance framework that a policy belongs to."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    REFERENCE_FIELD_NUMBER: builtins.int
+    SPECIFICATION_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """The compliance framework name."""
+    version: builtins.str
+    """The compliance framework version."""
+    reference: builtins.str
+    """The compliance framework reference."""
+    specification: builtins.str
+    """The compliance framework specification."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        reference: builtins.str = ...,
+        specification: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "reference", b"reference", "specification", b"specification", "version", b"version"]) -> None: ...
+
+global___PolicyComplianceFramework = PolicyComplianceFramework
 
 @typing.final
 class PolicyNotApplicable(google.protobuf.message.Message):
