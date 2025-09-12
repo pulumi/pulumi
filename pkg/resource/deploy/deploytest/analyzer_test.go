@@ -49,9 +49,9 @@ func TestAnalyzer(t *testing.T) {
 
 			var called bool
 			a := &Analyzer{
-				AnalyzeF: func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 					called = true
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}
 			res, err := a.Analyze(plugin.AnalyzerResource{})
@@ -75,9 +75,9 @@ func TestAnalyzer(t *testing.T) {
 
 			var called bool
 			a := &Analyzer{
-				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					called = true
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}
 			res, err := a.AnalyzeStack(nil)
@@ -101,9 +101,9 @@ func TestAnalyzer(t *testing.T) {
 
 			var called bool
 			a := &Analyzer{
-				RemediateF: func(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+				RemediateF: func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 					called = true
-					return nil, nil
+					return plugin.RemediateResponse{}, nil
 				},
 			}
 			res, err := a.Remediate(plugin.AnalyzerResource{})

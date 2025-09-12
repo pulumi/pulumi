@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ import (
 type Analyzer struct {
 	Info plugin.AnalyzerInfo
 
-	AnalyzeF      func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
-	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
-	RemediateF    func(r plugin.AnalyzerResource) ([]plugin.Remediation, error)
+	AnalyzeF      func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error)
+	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error)
+	RemediateF    func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
 	CancelF    func() error
@@ -44,25 +44,25 @@ func (a *Analyzer) Name() tokens.QName {
 	return tokens.QName(a.Info.Name)
 }
 
-func (a *Analyzer) Analyze(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
+func (a *Analyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeF != nil {
 		return a.AnalyzeF(r)
 	}
-	return nil, nil
+	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeStackF != nil {
 		return a.AnalyzeStackF(resources)
 	}
-	return nil, nil
+	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *Analyzer) Remediate(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+func (a *Analyzer) Remediate(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	if a.RemediateF != nil {
 		return a.RemediateF(r)
 	}
-	return nil, nil
+	return plugin.RemediateResponse{}, nil
 }
 
 func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {

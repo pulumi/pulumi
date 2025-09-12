@@ -4755,7 +4755,7 @@ func TestUntargetedResourceAnalyzer(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader(analyzerPath, func(*plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					// We expect to see resA and resB in the analysis.
 					var foundA, foundB bool
 					for _, res := range resources {
@@ -4767,7 +4767,7 @@ func TestUntargetedResourceAnalyzer(t *testing.T) {
 					}
 					assert.True(t, foundA, "Expected to find resA in analysis")
 					assert.True(t, foundB, "Expected to find resB in analysis")
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}, nil
 		}),
@@ -4846,7 +4846,7 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader(analyzerPath, func(*plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					// We expect to see resA and resB in the analysis. resA should have the new provider and
 					// resB should have the old provider.
 					var foundA, foundB bool
@@ -4862,7 +4862,7 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 					}
 					assert.True(t, foundA, "Expected to find resA in analysis")
 					assert.True(t, foundB, "Expected to find resB in analysis")
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}, nil
 		}),
