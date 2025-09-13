@@ -45,13 +45,11 @@ func init() {
 
 					component := RequireSingleResource(l, snap.Resources, "components:index:MyComponent")
 
-					// TODO(https://github.com/pulumi/pulumi/issues/10533): Languages are inconsistent in whether they
-					// send inputs for components.
-					// want := resource.NewPropertyMapFromMap(map[string]any{
-					// 	"input": true,
-					// })
-					// assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
 					want := resource.NewPropertyMapFromMap(map[string]any{
+						"input": true,
+					})
+					assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
+					want = resource.NewPropertyMapFromMap(map[string]any{
 						"output": true,
 					})
 					assert.Equal(l, want, component.Outputs, "expected component outputs to be %v", want)
