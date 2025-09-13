@@ -129,6 +129,7 @@ python_version = "3.9"
 module = [
     "dill",
     "google.protobuf.pyext._message",
+    "grpc.experimental.aio",
     "google.protobuf.pyext",
     "pulumi.runtime.proto.*",
 ]
