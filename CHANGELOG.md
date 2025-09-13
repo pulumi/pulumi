@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.196.0 (2025-09-12)
+
+
+### Miscellaneous
+
+- [sdk] Add policy summary events apitypes
+  [#20443](https://github.com/pulumi/pulumi/pull/20443)
+
+- [sdk] Add new policy fields apitypes
+  [#20491](https://github.com/pulumi/pulumi/pull/20491)
+
+- [protobuf] Add support for indicating "not applicable" policies
+  [#20492](https://github.com/pulumi/pulumi/pull/20492)
+
+- [protobuf] Add new analyzer policy fields
+  [#20494](https://github.com/pulumi/pulumi/pull/20494)
+
 ## 3.195.0 (2025-09-10)
 
 
