@@ -323,7 +323,7 @@ func (c *base64Crypter) EncryptValue(ctx context.Context, s string) (string, err
 }
 
 func (c *base64Crypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
-	return nil, errors.New("BatchEncrypt not supported for base64Crypter")
+	return DefaultBatchEncrypt(ctx, c, secrets)
 }
 
 func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, error) {

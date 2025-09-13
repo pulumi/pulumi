@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/nbutton23/zxcvbn-go"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -911,11 +912,13 @@ func listConfig(
 	}
 
 	var pulumiEnv esc.Value
+	var secretsManager secrets.Manager
 	var envCrypter config.Encrypter
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
+		var state cmdStack.SecretsManagerState
+		secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps)
 		if err != nil {
 			return err
 		}
@@ -925,7 +928,10 @@ func listConfig(
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
-		envCrypter = stackEncrypter
+		// secretsManager has a cache for crypto operations. As we are encrypting all environment secrets with the
+		// secretManager's encrypter ensure to use secretManager's decrypter later on when reading the merged config.
+		// TODO: This is not true!!! Think about cache sharing in this case.
+		envCrypter = secretsManager.Encrypter()
 	}
 
 	stackName := stack.Ref().Name().String()
@@ -945,17 +951,19 @@ func listConfig(
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		stackDecrypter, state, err := ssml.GetDecrypter(ctx, stack, ps)
-		if err != nil {
-			return err
-		}
-		// This may have setup the stack's secrets provider, so save the stack if needed.
-		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
-				return fmt.Errorf("save stack config: %w", err)
+		if secretsManager == nil {
+			var state cmdStack.SecretsManagerState
+			if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
+				return err
+			}
+			// This may have setup the stack's secrets provider, so save the stack if needed.
+			if state != cmdStack.SecretsManagerUnchanged {
+				if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
+					return fmt.Errorf("save stack config: %w", err)
+				}
 			}
 		}
-		decrypter = stackDecrypter
+		decrypter = secretsManager.Decrypter()
 	}
 
 	var keys config.KeyArray
@@ -966,6 +974,11 @@ func listConfig(
 	}
 	sort.Sort(keys)
 
+	decryptedCfg, err := cfg.Decrypt(decrypter)
+	if err != nil {
+		return fmt.Errorf("could not decrypt configuration values: %w", err)
+	}
+
 	if jsonOut {
 		configValues := make(map[string]configValueJSON)
 		for _, key := range keys {
@@ -973,10 +986,7 @@ func listConfig(
 				Secret: cfg[key].Secure(),
 			}
 
-			decrypted, err := cfg[key].Value(decrypter)
-			if err != nil {
-				return fmt.Errorf("could not decrypt configuration value: %w", err)
-			}
+			decrypted := decryptedCfg[key]
 			entry.Value = &decrypted
 
 			if cfg[key].Object() {
@@ -1004,11 +1014,7 @@ func listConfig(
 	} else {
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
-			decrypted, err := cfg[key].Value(decrypter)
-			if err != nil {
-				return fmt.Errorf("could not decrypt configuration value: %w", err)
-			}
-
+			decrypted := decryptedCfg[key]
 			rows = append(rows, cmdutil.TableRow{Columns: []string{PrettyKey(key), decrypted}})
 		}
 
@@ -1088,12 +1094,13 @@ func getConfig(
 	}
 
 	var pulumiEnv esc.Value
+	var secretsManager secrets.Manager
 	var envCrypter config.Encrypter
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
-		if err != nil {
+		var state cmdStack.SecretsManagerState
+		if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
 			return err
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
@@ -1102,7 +1109,10 @@ func getConfig(
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
-		envCrypter = stackEncrypter
+		// secretsManager has a cache for crypto operations. As we are encrypting all environment secrets with the
+		// secretManager's encrypter ensure to use secretManager's decrypter later on when reading the merged config.
+		// TODO: This is not true!!! Think about cache sharing in this case.
+		envCrypter = secretsManager.Encrypter()
 	}
 
 	stackName := stack.Ref().Name().String()
@@ -1125,17 +1135,19 @@ func getConfig(
 	if ok {
 		var d config.Decrypter
 		if v.Secure() {
-			var err error
-			var state cmdStack.SecretsManagerState
-			if d, state, err = ssml.GetDecrypter(ctx, stack, ps); err != nil {
-				return fmt.Errorf("could not create a decrypter: %w", err)
-			}
-			// This may have setup the stack's secrets provider, so save the stack if needed.
-			if state != cmdStack.SecretsManagerUnchanged {
-				if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
-					return fmt.Errorf("save stack config: %w", err)
+			if secretsManager == nil {
+				var state cmdStack.SecretsManagerState
+				if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
+					return err
+				}
+				// This may have setup the stack's secrets provider, so save the stack if needed.
+				if state != cmdStack.SecretsManagerUnchanged {
+					if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
+						return fmt.Errorf("save stack config: %w", err)
+					}
 				}
 			}
+			d = secretsManager.Decrypter()
 		} else {
 			d = config.NewPanicCrypter()
 		}

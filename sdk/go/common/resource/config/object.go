@@ -74,61 +74,103 @@ func (c object) Secure() bool {
 	}
 }
 
-// Decrypt decrypts any ciphertexts within the object and returns appropriately-shaped Plaintext values.
-func (c object) Decrypt(ctx context.Context, decrypter Decrypter) (Plaintext, error) {
+func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypter) (map[Key]plaintext, error) {
+	// Collect all secure values
+	var locationRefs []secureLocationRef
+	var values []string
+	collectSecureFromKeyMap(objectMap, &locationRefs, &values)
+
+	// Decrypt objects in a batch
+	if len(values) > 0 {
+		// TODO: Consider limiting the batch size to avoid overwhelming the pulumi-service batch endpoint.
+		decrypted, err := decrypter.BatchDecrypt(ctx, values)
+		if err != nil {
+			return nil, err
+		}
+		// Assign decrypted values back into original structure
+		// We are accepting that a secure object now has a plaintext value
+		for i, locationRef := range locationRefs {
+			switch container := locationRef.container.(type) {
+			case map[Key]object:
+				container[locationRef.key.(Key)] = newSecureObject(decrypted[i])
+			case map[string]object:
+				container[locationRef.key.(string)] = newSecureObject(decrypted[i])
+			case []object:
+				container[locationRef.key.(int)] = newSecureObject(decrypted[i])
+			}
+		}
+	}
+
+	// Marshal each top-level object back into a plaintext value.
+	// Note that at this point, all secure values have been decrypted.
+	// So we can use the NopDecrypter here.
+	result := map[Key]plaintext{}
+	for k, obj := range objectMap {
+		pt, err := obj.Decrypt(ctx, NopDecrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = pt
+	}
+	return result, nil
+}
+
+// Decrypt decrypts any ciphertexts within the object and returns appropriately-shaped plaintext values.
+func (c object) Decrypt(ctx context.Context, decrypter Decrypter) (plaintext, error) {
 	return c.decrypt(ctx, nil, decrypter)
 }
 
-func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypter Decrypter) (Plaintext, error) {
+func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypter Decrypter) (plaintext, error) {
 	switch v := c.value.(type) {
 	case bool:
-		return NewPlaintext(v), nil
+		return newPlaintext(v), nil
 	case int64:
-		return NewPlaintext(v), nil
+		return newPlaintext(v), nil
 	case uint64:
-		return NewPlaintext(v), nil
+		return newPlaintext(v), nil
 	case float64:
-		return NewPlaintext(v), nil
+		return newPlaintext(v), nil
 	case string:
 		if !c.secure {
-			return NewPlaintext(v), nil
+			return newPlaintext(v), nil
 		}
-		plaintext, err := decrypter.DecryptValue(ctx, v)
+		decrypted, err := decrypter.DecryptValue(ctx, v)
 		if err != nil {
-			return Plaintext{}, fmt.Errorf("%v: %w", path, err)
+			return plaintext{}, fmt.Errorf("%v: %w", path, err)
 		}
-		return NewSecurePlaintext(plaintext), nil
+		return newSecurePlaintext(decrypted), nil
 	case []object:
-		vs := make([]Plaintext, len(v))
+		vs := make([]plaintext, len(v))
 		for i, v := range v {
 			pv, err := v.decrypt(ctx, append(path, i), decrypter)
 			if err != nil {
-				return Plaintext{}, err
+				return plaintext{}, err
 			}
 			vs[i] = pv
 		}
-		return NewPlaintext(vs), nil
+		return newPlaintext(vs), nil
 	case map[string]object:
-		vs := make(map[string]Plaintext, len(v))
+		vs := make(map[string]plaintext, len(v))
 		for k, v := range v {
 			pv, err := v.decrypt(ctx, append(path, k), decrypter)
 			if err != nil {
-				return Plaintext{}, err
+				return plaintext{}, err
 			}
 			vs[k] = pv
 		}
-		return NewPlaintext(vs), nil
+		return newPlaintext(vs), nil
 	case nil:
-		return Plaintext{}, nil
+		return plaintext{}, nil
 	default:
 		contract.Failf("unexpected value of type %T", v)
-		return Plaintext{}, nil
+		return plaintext{}, nil
 	}
 }
 
 // Merge merges the receiver onto the given base using JSON merge patch semantics. Merge does not modify the receiver or
 // the base.
 func (c object) Merge(base object) object {
+	// TODO: Merge arrays?
 	if co, ok := c.value.(map[string]object); ok {
 		if bo, ok := base.value.(map[string]object); ok {
 			mo := make(map[string]object, len(co))
@@ -315,40 +357,30 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 	}
 }
 
-// SecureValues returns the plaintext values for any secure strings contained in the receiver.
-func (c object) SecureValues(dec Decrypter) ([]string, error) {
+// SecureObjects returns the plaintext values for any secure strings contained in the receiver.
+func (c object) EncryptedValues() []string {
 	switch v := c.value.(type) {
 	case []object:
 		var values []string
 		for _, v := range v {
-			vs, err := v.SecureValues(dec)
-			if err != nil {
-				return nil, err
-			}
+			vs := v.EncryptedValues()
 			values = append(values, vs...)
 		}
-		return values, nil
+		return values
 	case map[string]object:
 		var values []string
 		for _, v := range v {
-			vs, err := v.SecureValues(dec)
-			if err != nil {
-				return nil, err
-			}
+			vs := v.EncryptedValues()
 			values = append(values, vs...)
 		}
-		return values, nil
+		return values
 	case string:
 		if c.secure {
-			plaintext, err := dec.DecryptValue(context.TODO(), v)
-			if err != nil {
-				return nil, err
-			}
-			return []string{plaintext}, nil
+			return []string{v}
 		}
-		return nil, nil
+		return nil
 	default:
-		return nil, nil
+		return nil
 	}
 }
 

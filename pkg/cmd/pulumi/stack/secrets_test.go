@@ -63,7 +63,7 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		DecrypterF: func() config.Decrypter {
-			return &secrets.MockDecrypter{DecryptValueF: func() string { return "defaulted plaintext" }}
+			return &secrets.MockDecrypter{DecryptValueF: func(_ string) string { return "defaulted plaintext" }}
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -134,7 +134,7 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		DecrypterF: func() config.Decrypter {
-			return &secrets.MockDecrypter{DecryptValueF: func() string { return "defaulted plaintext" }}
+			return &secrets.MockDecrypter{DecryptValueF: func(_ string) string { return "defaulted plaintext" }}
 		},
 	}
 
@@ -171,7 +171,7 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
-			return &secrets.MockEncrypter{EncryptValueF: func() string { return "defaulted ciphertext" }}
+			return &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "defaulted ciphertext" }}
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -242,7 +242,7 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
-			return &secrets.MockEncrypter{EncryptValueF: func() string { return "defaulted ciphertext" }}
+			return &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "defaulted ciphertext" }}
 		},
 	}
 
