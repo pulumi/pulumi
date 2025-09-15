@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "pulumi"
 version = "3.197.0"
 license = "Apache-2.0"
-license-files = ["../..LICENSE"]
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 description = "Pulumi's Python SDK"
 readme = "README.md"
