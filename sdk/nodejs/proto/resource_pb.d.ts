@@ -273,6 +273,11 @@ export class RegisterResourceRequest extends jspb.Message {
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): RegisterResourceRequest;
 
+    hasCustomretries(): boolean;
+    clearCustomretries(): void;
+    getCustomretries(): RegisterResourceRequest.CustomRetries | undefined;
+    setCustomretries(value?: RegisterResourceRequest.CustomRetries): RegisterResourceRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResourceRequest): RegisterResourceRequest.AsObject;
@@ -324,6 +329,7 @@ export namespace RegisterResourceRequest {
         supportsresultreporting: boolean,
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        customretries?: RegisterResourceRequest.CustomRetries.AsObject,
     }
 
 
@@ -419,6 +425,76 @@ export namespace RegisterResourceRequest {
             afterUpdateList: Array<string>,
             beforeDeleteList: Array<string>,
             afterDeleteList: Array<string>,
+        }
+    }
+
+    export class RetryPolicy extends jspb.Message { 
+        getMaxattempts(): number;
+        setMaxattempts(value: number): RetryPolicy;
+        getDelay(): number;
+        setDelay(value: number): RetryPolicy;
+        clearRetriableerrorsList(): void;
+        getRetriableerrorsList(): Array<string>;
+        setRetriableerrorsList(value: Array<string>): RetryPolicy;
+        addRetriableerrors(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): RetryPolicy.AsObject;
+        static toObject(includeInstance: boolean, msg: RetryPolicy): RetryPolicy.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: RetryPolicy, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): RetryPolicy;
+        static deserializeBinaryFromReader(message: RetryPolicy, reader: jspb.BinaryReader): RetryPolicy;
+    }
+
+    export namespace RetryPolicy {
+        export type AsObject = {
+            maxattempts: number,
+            delay: number,
+            retriableerrorsList: Array<string>,
+        }
+    }
+
+    export class CustomRetries extends jspb.Message { 
+        clearCreateList(): void;
+        getCreateList(): Array<RegisterResourceRequest.RetryPolicy>;
+        setCreateList(value: Array<RegisterResourceRequest.RetryPolicy>): CustomRetries;
+        addCreate(value?: RegisterResourceRequest.RetryPolicy, index?: number): RegisterResourceRequest.RetryPolicy;
+        clearUpdateList(): void;
+        getUpdateList(): Array<RegisterResourceRequest.RetryPolicy>;
+        setUpdateList(value: Array<RegisterResourceRequest.RetryPolicy>): CustomRetries;
+        addUpdate(value?: RegisterResourceRequest.RetryPolicy, index?: number): RegisterResourceRequest.RetryPolicy;
+        clearDeleteList(): void;
+        getDeleteList(): Array<RegisterResourceRequest.RetryPolicy>;
+        setDeleteList(value: Array<RegisterResourceRequest.RetryPolicy>): CustomRetries;
+        addDelete(value?: RegisterResourceRequest.RetryPolicy, index?: number): RegisterResourceRequest.RetryPolicy;
+        clearReadList(): void;
+        getReadList(): Array<RegisterResourceRequest.RetryPolicy>;
+        setReadList(value: Array<RegisterResourceRequest.RetryPolicy>): CustomRetries;
+        addRead(value?: RegisterResourceRequest.RetryPolicy, index?: number): RegisterResourceRequest.RetryPolicy;
+        clearReplaceList(): void;
+        getReplaceList(): Array<RegisterResourceRequest.RetryPolicy>;
+        setReplaceList(value: Array<RegisterResourceRequest.RetryPolicy>): CustomRetries;
+        addReplace(value?: RegisterResourceRequest.RetryPolicy, index?: number): RegisterResourceRequest.RetryPolicy;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): CustomRetries.AsObject;
+        static toObject(includeInstance: boolean, msg: CustomRetries): CustomRetries.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: CustomRetries, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): CustomRetries;
+        static deserializeBinaryFromReader(message: CustomRetries, reader: jspb.BinaryReader): CustomRetries;
+    }
+
+    export namespace CustomRetries {
+        export type AsObject = {
+            createList: Array<RegisterResourceRequest.RetryPolicy.AsObject>,
+            updateList: Array<RegisterResourceRequest.RetryPolicy.AsObject>,
+            pb_deleteList: Array<RegisterResourceRequest.RetryPolicy.AsObject>,
+            readList: Array<RegisterResourceRequest.RetryPolicy.AsObject>,
+            replaceList: Array<RegisterResourceRequest.RetryPolicy.AsObject>,
         }
     }
 
@@ -728,6 +804,11 @@ export class TransformResourceOptions extends jspb.Message {
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): TransformResourceOptions;
 
+    hasCustomRetries(): boolean;
+    clearCustomRetries(): void;
+    getCustomRetries(): RegisterResourceRequest.CustomRetries | undefined;
+    setCustomRetries(value?: RegisterResourceRequest.CustomRetries): TransformResourceOptions;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
     static toObject(includeInstance: boolean, msg: TransformResourceOptions): TransformResourceOptions.AsObject;
@@ -758,6 +839,7 @@ export namespace TransformResourceOptions {
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        customRetries?: RegisterResourceRequest.CustomRetries.AsObject,
     }
 }
 
