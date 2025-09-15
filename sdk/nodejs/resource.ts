@@ -813,6 +813,11 @@ export interface ResourceOptions {
     customTimeouts?: CustomTimeouts;
 
     /**
+     * Retry policies for this resource registration.
+     */
+    customRetries?: CustomRetries
+
+    /**
      * Optional list of transformations to apply to this resource during construction. The
      * transformations are applied in order, and are applied prior to transformation applied to
      * parents walking from the resource up to the stack.
@@ -876,6 +881,26 @@ export interface CustomTimeouts {
      * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
     delete?: string;
+}
+
+/**
+ * {@link RetryPolicy} is the policy for retrying a resource operation.
+ */
+export interface RetryPolicy {
+    maxAttempts?: number;
+    delay?: number;
+    retriableErrors?: string[];
+}
+
+/**
+ * {@link CustomRetries} the retry policies associated with a resource registration.
+ */
+export interface CustomRetries {
+    create?: RetryPolicy[];
+    update?: RetryPolicy[];
+    delete?: RetryPolicy[];
+    read?: RetryPolicy[];
+    replace?: RetryPolicy[];
 }
 
 /**

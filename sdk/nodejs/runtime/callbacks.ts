@@ -26,6 +26,7 @@ import * as resproto from "../proto/resource_pb";
 import {
     Alias,
     ComponentResourceOptions,
+    CustomRetries,
     CustomResourceOptions,
     DependencyProviderResource,
     DependencyResource,
@@ -260,6 +261,36 @@ export class CallbackServer implements ICallbackServer {
                     delete: timeouts.getDelete(),
                 };
             }
+            const retries = opts.getCustomRetries();
+            if (retries !== undefined) {
+              ropts.customRetries = { create: [], update: [], delete: [], read: [], replace: [] } as CustomRetries;
+              ropts.customRetries.create = retries.getCreateList().map((retry) => ({
+                maxAttempts: retry.getMaxattempts(),
+                delay: retry.getDelay(),
+                retriableErrors: retry.getRetriableerrorsList(),
+              }));
+              ropts.customRetries.update = retries.getUpdateList().map((retry) => ({
+                maxAttempts: retry.getMaxattempts(),
+                delay: retry.getDelay(),
+                retriableErrors: retry.getRetriableerrorsList(),
+              }));
+              ropts.customRetries.delete = retries.getDeleteList().map((retry) => ({
+                maxAttempts: retry.getMaxattempts(),
+                delay: retry.getDelay(),
+                retriableErrors: retry.getRetriableerrorsList(),
+              }));
+              ropts.customRetries.read = retries.getReadList().map((retry) => ({
+                maxAttempts: retry.getMaxattempts(),
+                delay: retry.getDelay(),
+                retriableErrors: retry.getRetriableerrorsList(),
+              }));
+              ropts.customRetries.replace = retries.getReplaceList().map((retry) => ({
+                maxAttempts: retry.getMaxattempts(),
+                delay: retry.getDelay(),
+                retriableErrors: retry.getRetriableerrorsList(),
+              }));
+            }
+
             ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;

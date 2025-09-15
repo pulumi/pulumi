@@ -637,6 +637,56 @@ export function registerResource(
                 }
                 req.setCustomtimeouts(customTimeouts);
 
+                const customRetries = new resproto.RegisterResourceRequest.CustomRetries();
+                if (opts.customRetries !== undefined) {
+                    if (opts.customRetries.create !== undefined) {
+                        for (const retry of opts.customRetries.create) {
+                            const retryPolicy = new resproto.RegisterResourceRequest.RetryPolicy();
+                            retryPolicy.setMaxattempts(retry.maxAttempts || 0);
+                            retryPolicy.setDelay(retry.delay || 0);
+                            retryPolicy.setRetriableerrorsList(retry.retriableErrors || []);
+                            customRetries.addCreate(retryPolicy);
+                        }
+                    }
+                    if (opts.customRetries.update !== undefined) {
+                        for (const retry of opts.customRetries.update) {
+                            const retryPolicy = new resproto.RegisterResourceRequest.RetryPolicy();
+                            retryPolicy.setMaxattempts(retry.maxAttempts || 0);
+                            retryPolicy.setDelay(retry.delay || 0);
+                            retryPolicy.setRetriableerrorsList(retry.retriableErrors || []);
+                            customRetries.addUpdate(retryPolicy);
+                        }
+                    }
+                    if (opts.customRetries.delete !== undefined) {
+                        for (const retry of opts.customRetries.delete) {
+                            const retryPolicy = new resproto.RegisterResourceRequest.RetryPolicy();
+                            retryPolicy.setMaxattempts(retry.maxAttempts || 0);
+                            retryPolicy.setDelay(retry.delay || 0);
+                            retryPolicy.setRetriableerrorsList(retry.retriableErrors || []);
+                            customRetries.addDelete(retryPolicy);
+                        }
+                    }
+                    if (opts.customRetries.read !== undefined) {
+                        for (const retry of opts.customRetries.read) {
+                            const retryPolicy = new resproto.RegisterResourceRequest.RetryPolicy();
+                            retryPolicy.setMaxattempts(retry.maxAttempts || 0);
+                            retryPolicy.setDelay(retry.delay || 0);
+                            retryPolicy.setRetriableerrorsList(retry.retriableErrors || []);
+                            customRetries.addRead(retryPolicy);
+                        }
+                    }
+                    if (opts.customRetries.replace !== undefined) {
+                        for (const retry of opts.customRetries.replace) {
+                            const retryPolicy = new resproto.RegisterResourceRequest.RetryPolicy();
+                            retryPolicy.setMaxattempts(retry.maxAttempts || 0);
+                            retryPolicy.setDelay(retry.delay || 0);
+                            retryPolicy.setRetriableerrorsList(retry.retriableErrors || []);
+                            customRetries.addReplace(retryPolicy);
+                        }
+                    }
+                }
+                req.setCustomretries(customRetries);
+
                 const propertyDependencies = req.getPropertydependenciesMap();
                 for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
                     const deps = new resproto.RegisterResourceRequest.PropertyDependencies();
