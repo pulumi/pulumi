@@ -1,0 +1,6 @@
+name: pulumi-stuck-eventloop
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
