@@ -822,7 +822,7 @@ func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 }
 
 func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
-	return acts.Context.SnapshotManager.Write(base)
+	return nil
 }
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
