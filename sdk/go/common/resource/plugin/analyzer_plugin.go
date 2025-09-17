@@ -153,14 +153,9 @@ func NewPolicyAnalyzer(
 
 	var plug *Plugin
 	if !foundLanguagePlugin {
-		// Couldn't get a language plugin, fall back to the old behavior
-
-		// For historical reasons, the Node.js plugin name is just "policy".
-		// All other languages have the runtime appended, e.g. "policy-<runtime>".
-		policyAnalyzerName := "policy"
-		if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-			policyAnalyzerName = "policy-" + proj.Runtime.Name()
-		}
+		// Couldn't get a language plugin, fall back to the old behavior, of trying to run
+		// "pulumi-analyzer-policy-<runtime>".
+		policyAnalyzerName := "policy-" + proj.Runtime.Name()
 
 		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 		var pluginPath string
