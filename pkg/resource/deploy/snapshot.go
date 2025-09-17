@@ -319,6 +319,12 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 			}
 			mr.PropertyDependencies = newPropDeps
 		}
+		if len(mr.Outputs) == 0 {
+			mr.Outputs = make(resource.PropertyMap)
+		}
+		if len(mr.Inputs) == 0 {
+			mr.Inputs = make(resource.PropertyMap)
+		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
 
@@ -336,6 +342,12 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 
 		found := false
 		var diffStr string
+		if len(jr.Outputs) == 0 {
+			jr.Outputs = make(resource.PropertyMap)
+		}
+		if len(jr.Inputs) == 0 {
+			jr.Inputs = make(resource.PropertyMap)
+		}
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {

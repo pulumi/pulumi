@@ -133,8 +133,8 @@ func validateSupportedFeatures(features []string) error {
 	return nil
 }
 
-// applyFeatures applies the features used by a resource to the feature map.
-func applyFeatures(res apitype.ResourceV3, features map[string]bool) {
+// ApplyFeatures applies the features used by a resource to the feature map.
+func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	if res.RefreshBeforeUpdate {
 		features[refreshBeforeUpdateFeature] = true
 	}
@@ -205,7 +205,7 @@ func SerializeDeploymentWithMetadata(
 		if err != nil {
 			return nil, 0, nil, fmt.Errorf("serializing resources: %w", err)
 		}
-		applyFeatures(sres, featureMap)
+		ApplyFeatures(sres, featureMap)
 		resources = append(resources, sres)
 	}
 

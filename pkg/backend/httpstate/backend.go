@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -1662,7 +1663,11 @@ func (b *cloudBackend) runEngineAction(
 	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
+		journal, err := backend.NewSnapshotJournaler(
+			journalPersister, op.SecretsManager, stack.DefaultSecretsProvider, u.Target.Snapshot)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
 		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 		combinedManager = &engine.CombinedManager{
