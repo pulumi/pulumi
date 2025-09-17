@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix a panic in preview, that could happen in some cases when default providers get updated
