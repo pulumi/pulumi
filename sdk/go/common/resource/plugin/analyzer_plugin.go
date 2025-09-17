@@ -53,6 +53,9 @@ type analyzer struct {
 	client  pulumirpc.AnalyzerClient
 	version string
 
+	// The description from the policy pack's PulumiPolicy.yaml file (if present).
+	description string
+
 	// Cached result of the first call to GetAnalyzerInfo, which will be returned from subsequent calls.
 	info *AnalyzerInfo
 }
@@ -274,12 +277,18 @@ func NewPolicyAnalyzer(
 		logging.V(7).Infof("StackConfigure: success [%v]", name)
 	}
 
+	var description string
+	if proj.Description != nil {
+		description = *proj.Description
+	}
+
 	return &analyzer{
-		ctx:     ctx,
-		name:    name,
-		plug:    plug,
-		client:  client,
-		version: proj.Version,
+		ctx:         ctx,
+		name:        name,
+		plug:        plug,
+		client:      client,
+		version:     proj.Version,
+		description: description,
 	}, nil
 }
 
@@ -529,6 +538,11 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 			Message:          p.GetMessage(),
 			ConfigSchema:     schema,
 			Type:             convertPolicyType(p.PolicyType),
+			Severity:         convertSeverity(p.GetSeverity()),
+			Framework:        convertComplianceFramework(p.GetFramework()),
+			Tags:             p.GetTags(),
+			RemediationSteps: p.GetRemediationSteps(),
+			URL:              p.GetUrl(),
 		}
 	}
 	sort.Slice(policies, func(i, j int) bool {
@@ -554,6 +568,13 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		logging.V(7).Infof("Using version %q from PulumiPolicy.yaml", version)
 	}
 
+	// The description from the gRPC call is preferred, but if it's not set, fall back to the
+	// description from PulumiPolicy.yaml.
+	description := resp.GetDescription()
+	if description == "" {
+		description = a.description
+	}
+
 	// Cache the result for subsequent calls.
 	info := AnalyzerInfo{
 		Name:           resp.GetName(),
@@ -562,6 +583,11 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		SupportsConfig: resp.GetSupportsConfig(),
 		Policies:       policies,
 		InitialConfig:  initialConfig,
+		Description:    description,
+		Readme:         resp.GetReadme(),
+		Provider:       resp.GetProvider(),
+		Tags:           resp.GetTags(),
+		Repository:     resp.GetRepository(),
 	}
 	a.info = &info
 	return info, nil
@@ -799,6 +825,23 @@ func convertPolicyType(t pulumirpc.PolicyType) AnalyzerPolicyType {
 	return AnalyzerPolicyTypeUnknown
 }
 
+func convertSeverity(s pulumirpc.PolicySeverity) apitype.PolicySeverity {
+	switch s {
+	case pulumirpc.PolicySeverity_POLICY_SEVERITY_LOW:
+		return apitype.PolicySeverityLow
+	case pulumirpc.PolicySeverity_POLICY_SEVERITY_MEDIUM:
+		return apitype.PolicySeverityMedium
+	case pulumirpc.PolicySeverity_POLICY_SEVERITY_HIGH:
+		return apitype.PolicySeverityHigh
+	case pulumirpc.PolicySeverity_POLICY_SEVERITY_CRITICAL:
+		return apitype.PolicySeverityCritical
+	case pulumirpc.PolicySeverity_POLICY_SEVERITY_UNSPECIFIED:
+		fallthrough
+	default:
+		return apitype.PolicySeverityUnspecified
+	}
+}
+
 func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyConfigSchema {
 	if schema == nil {
 		return nil
@@ -813,6 +856,19 @@ func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyCo
 	return &AnalyzerPolicyConfigSchema{
 		Properties: props,
 		Required:   schema.GetRequired(),
+	}
+}
+
+func convertComplianceFramework(framework *pulumirpc.PolicyComplianceFramework) *AnalyzerPolicyComplianceFramework {
+	if framework == nil {
+		return nil
+	}
+
+	return &AnalyzerPolicyComplianceFramework{
+		Name:          framework.GetName(),
+		Version:       framework.GetVersion(),
+		Reference:     framework.GetReference(),
+		Specification: framework.GetSpecification(),
 	}
 }
 
