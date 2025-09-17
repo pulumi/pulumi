@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// AnalyzerPolicyType indicates the type of a policy.
+type AnalyzerPolicyType int
+
+const (
+	// Unknown policy type.
+	AnalyzerPolicyTypeUnknown AnalyzerPolicyType = iota
+	// A policy that validates a resource.
+	AnalyzerPolicyTypeResource
+	// A policy that validates a stack.
+	AnalyzerPolicyTypeStack
+)
+
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or
 // individual resources, for arbitrary issues.  These might be style, policy, correctness, security, or performance
 // related.  This interface hides the messiness of the underlying machinery, since providers are behind an RPC boundary.
@@ -34,12 +46,12 @@ type Analyzer interface {
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	// Is called before the resource is modified.
-	Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error)
+	Analyze(r AnalyzerResource) (AnalyzeResponse, error)
 	// AnalyzeStack analyzes all resources after a successful preview or update.
 	// Is called after all resources have been processed, and all changes applied.
-	AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error)
+	AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeResponse, error)
 	// Remediate is given the opportunity to optionally transform a single resource's properties.
-	Remediate(r AnalyzerResource) ([]Remediation, error)
+	Remediate(r AnalyzerResource) (RemediateResponse, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
@@ -103,6 +115,14 @@ type AnalyzeDiagnostic struct {
 	URN               resource.URN
 }
 
+// AnalyzeResponse is the response from the Analyze method, containing violations.
+type AnalyzeResponse struct {
+	// Information about policy violations.
+	Diagnostics []AnalyzeDiagnostic
+	// Information about policies that were not applicable.
+	NotApplicable []PolicyNotApplicable
+}
+
 // Remediation indicates that a resource remediation took place, and contains the resulting
 // transformed properties and associated metadata.
 type Remediation struct {
@@ -113,6 +133,14 @@ type Remediation struct {
 	URN               resource.URN
 	Properties        resource.PropertyMap
 	Diagnostic        string
+}
+
+// RemediateResponse is the response from the Remediate method, containing a sequence of remediations applied, in order.
+type RemediateResponse struct {
+	// The remediations that were applied.
+	Remediations []Remediation
+	// Information about policies that were not applicable.
+	NotApplicable []PolicyNotApplicable
 }
 
 // PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
@@ -167,6 +195,9 @@ type AnalyzerPolicyInfo struct {
 
 	// ConfigSchema is optional config schema for the policy.
 	ConfigSchema *AnalyzerPolicyConfigSchema
+
+	// Type of the policy.
+	Type AnalyzerPolicyType
 }
 
 // JSONSchema represents a JSON schema.
