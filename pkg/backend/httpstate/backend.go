@@ -1679,7 +1679,7 @@ func (b *cloudBackend) runEngineAction(
 				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
 			}
 		} else {
-			journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
+			journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot, op.SecretsProvider)
 			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 			combinedManager = &engine.CombinedManager{

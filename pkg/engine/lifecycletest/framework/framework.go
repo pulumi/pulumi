@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -232,7 +233,8 @@ func (op TestOp) runWithContext(
 		},
 	}
 	secretsManager := b64.NewBase64SecretsManager()
-	journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot)
+	secretsProvider := stack.DefaultSecretsProvider
+	journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot, secretsProvider)
 	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
 	journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
 
