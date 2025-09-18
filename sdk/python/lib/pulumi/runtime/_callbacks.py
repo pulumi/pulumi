@@ -479,6 +479,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         )
         from .resource import (
             _create_custom_timeouts,
+            _create_custom_retries,
             _create_provider_ref,
             create_alias_spec,
             _prepare_resource_hooks,
@@ -505,6 +506,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         custom_timeouts = None
         if opts.custom_timeouts is not None:
             custom_timeouts = _create_custom_timeouts(opts.custom_timeouts)
+
+        custom_retries = None
+        if opts.custom_retries is not None:
+            custom_retries = _create_custom_retries(opts.custom_retries)
 
         depends_on = await _resolve_depends_on_urns(opts._depends_on_list())
 

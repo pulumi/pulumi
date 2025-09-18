@@ -383,6 +383,45 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 				return Alias{}
 			})
+			if rpcReq.Options.CustomRetries != nil {
+				opts.CustomRetries = &CustomRetries{
+					Create: slice.Map(rpcReq.Options.CustomRetries.Create, func(r *pulumirpc.RegisterResourceRequest_RetryPolicy) RetryPolicy {
+						return RetryPolicy{
+							MaxAttempts:     int(r.MaxAttempts),
+							Delay:           float64(r.Delay),
+							RetriableErrors: r.RetriableErrors,
+						}
+					}),
+					Update: slice.Map(rpcReq.Options.CustomRetries.Update, func(r *pulumirpc.RegisterResourceRequest_RetryPolicy) RetryPolicy {
+						return RetryPolicy{
+							MaxAttempts:     int(r.MaxAttempts),
+							Delay:           float64(r.Delay),
+							RetriableErrors: r.RetriableErrors,
+						}
+					}),
+					Delete: slice.Map(rpcReq.Options.CustomRetries.Delete, func(r *pulumirpc.RegisterResourceRequest_RetryPolicy) RetryPolicy {
+						return RetryPolicy{
+							MaxAttempts:     int(r.MaxAttempts),
+							Delay:           float64(r.Delay),
+							RetriableErrors: r.RetriableErrors,
+						}
+					}),
+					Read: slice.Map(rpcReq.Options.CustomRetries.Read, func(r *pulumirpc.RegisterResourceRequest_RetryPolicy) RetryPolicy {
+						return RetryPolicy{
+							MaxAttempts:     int(r.MaxAttempts),
+							Delay:           float64(r.Delay),
+							RetriableErrors: r.RetriableErrors,
+						}
+					}),
+					Replace: slice.Map(rpcReq.Options.CustomRetries.Replace, func(r *pulumirpc.RegisterResourceRequest_RetryPolicy) RetryPolicy {
+						return RetryPolicy{
+							MaxAttempts:     int(r.MaxAttempts),
+							Delay:           float64(r.Delay),
+							RetriableErrors: r.RetriableErrors,
+						}
+					}),
+				}
+			}
 			if rpcReq.Options.CustomTimeouts != nil {
 				opts.CustomTimeouts = &CustomTimeouts{
 					Create: rpcReq.Options.CustomTimeouts.Create,
@@ -2212,6 +2251,7 @@ type resourceInputs struct {
 	deleteBeforeReplace     *bool
 	importID                string
 	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
+	customRetries           *pulumirpc.RegisterResourceRequest_CustomRetries
 	ignoreChanges           []string
 	aliases                 []*pulumirpc.Alias
 	additionalSecretOutputs []string
@@ -2485,6 +2525,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		deleteBeforeReplace:     resOpts.deleteBeforeReplace,
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
+		customRetries:           getCustomRetries(opts.CustomRetries),
 		ignoreChanges:           resOpts.ignoreChanges,
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
@@ -2494,6 +2535,48 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		retainOnDelete:          opts.RetainOnDelete,
 		deletedWith:             string(deletedWithURN),
 	}, nil
+}
+
+func getCustomRetries(custom *CustomRetries) *pulumirpc.RegisterResourceRequest_CustomRetries {
+	var retries pulumirpc.RegisterResourceRequest_CustomRetries
+	if custom != nil {
+		retries.Create = slice.Map(custom.Create, func(r RetryPolicy) *pulumirpc.RegisterResourceRequest_RetryPolicy {
+			return &pulumirpc.RegisterResourceRequest_RetryPolicy{
+				MaxAttempts:     int32(r.MaxAttempts),
+				Delay:           float64(r.Delay),
+				RetriableErrors: r.RetriableErrors,
+			}
+		})
+		retries.Update = slice.Map(custom.Update, func(r RetryPolicy) *pulumirpc.RegisterResourceRequest_RetryPolicy {
+			return &pulumirpc.RegisterResourceRequest_RetryPolicy{
+				MaxAttempts:     int32(r.MaxAttempts),
+				Delay:           float64(r.Delay),
+				RetriableErrors: r.RetriableErrors,
+			}
+		})
+		retries.Delete = slice.Map(custom.Delete, func(r RetryPolicy) *pulumirpc.RegisterResourceRequest_RetryPolicy {
+			return &pulumirpc.RegisterResourceRequest_RetryPolicy{
+				MaxAttempts:     int32(r.MaxAttempts),
+				Delay:           float64(r.Delay),
+				RetriableErrors: r.RetriableErrors,
+			}
+		})
+		retries.Read = slice.Map(custom.Read, func(r RetryPolicy) *pulumirpc.RegisterResourceRequest_RetryPolicy {
+			return &pulumirpc.RegisterResourceRequest_RetryPolicy{
+				MaxAttempts:     int32(r.MaxAttempts),
+				Delay:           float64(r.Delay),
+				RetriableErrors: r.RetriableErrors,
+			}
+		})
+		retries.Replace = slice.Map(custom.Replace, func(r RetryPolicy) *pulumirpc.RegisterResourceRequest_RetryPolicy {
+			return &pulumirpc.RegisterResourceRequest_RetryPolicy{
+				MaxAttempts:     int32(r.MaxAttempts),
+				Delay:           float64(r.Delay),
+				RetriableErrors: r.RetriableErrors,
+			}
+		})
+	}
+	return &retries
 }
 
 func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_CustomTimeouts {

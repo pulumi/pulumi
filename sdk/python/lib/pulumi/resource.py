@@ -48,6 +48,22 @@ if TYPE_CHECKING:
     from .runtime.stack import Stack
 
 
+class RetryPolicy:
+    max_attempts: Optional[int] = None
+    delay: Optional[str] = None
+    retriable_errors: Optional[list[str]] = None
+
+    def __init__(
+        self,
+        max_attempts: Optional[int] = None,
+        delay: Optional[str] = None,
+        retriable_errors: Optional[list[str]] = None
+    ) -> None:
+        self.max_attempts = max_attempts
+        self.delay = delay
+        self.retriable_errors = retriable_errors
+
+
 class CustomTimeouts:
     create: Optional[str]
     """
@@ -73,6 +89,28 @@ class CustomTimeouts:
         self.create = create
         self.update = update
         self.delete = delete
+
+
+class CustomRetries:
+    create: Optional[list[RetryPolicy]] = None
+    update: Optional[list[RetryPolicy]] = None
+    delete: Optional[list[RetryPolicy]] = None
+    read: Optional[list[RetryPolicy]] = None
+    replace: Optional[list[RetryPolicy]] = None
+
+    def __init__(
+        self,
+        create: Optional[list[RetryPolicy]] = None,
+        update: Optional[list[RetryPolicy]] = None,
+        delete: Optional[list[RetryPolicy]] = None,
+        read: Optional[list[RetryPolicy]] = None,
+        replace: Optional[list[RetryPolicy]] = None
+    ) -> None:
+        self.create = create
+        self.update = update
+        self.delete = delete
+        self.read = read
+        self.replace = replace
 
 
 ROOT_STACK_RESOURCE = None
@@ -408,6 +446,11 @@ class ResourceOptions:
     An optional customTimeouts config block.
     """
 
+    custom_retries: Optional["CustomRetries"]
+    """
+    An optional customRetries config block.
+    """
+
     transformations: Optional[list[ResourceTransformation]]
     """
     Optional list of transformations to apply to this resource during construction. The
@@ -552,6 +595,7 @@ class ResourceOptions:
         self.aliases = aliases
         self.additional_secret_outputs = additional_secret_outputs
         self.custom_timeouts = custom_timeouts
+        self.custom_retries = custom_retries
         self.id = id
         self.import_ = import_
         self.transformations = transformations

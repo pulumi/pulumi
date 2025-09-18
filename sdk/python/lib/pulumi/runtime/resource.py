@@ -50,6 +50,7 @@ if TYPE_CHECKING:
         Inputs,
         ProviderResource,
         Resource,
+        CustomRetries,
         CustomTimeouts,
     )
     from ..resource import ResourceOptions
@@ -896,6 +897,23 @@ def _create_custom_timeouts(
     return result
 
 
+def _create_custom_retries(
+    custom_retries: "CustomRetries",
+) -> "resource_pb2.RegisterResourceRequest.CustomRetries":
+    result = resource_pb2.RegisterResourceRequest.CustomRetries()
+    if custom_retries.create is not None:
+        result.create = custom_retries.create
+    if custom_retries.update is not None:
+        result.update = custom_retries.update
+    if custom_retries.delete is not None:
+        result.delete = custom_retries.delete
+    if custom_retries.read is not None:
+        result.read = custom_retries.read
+    if custom_retries.replace is not None:
+        result.replace = custom_retries.replace
+    return result
+
+
 def register_resource(
     res: "Resource",
     ty: str,
@@ -1009,6 +1027,11 @@ def register_resource(
             if opts.custom_timeouts is not None:
                 custom_timeouts = _create_custom_timeouts(opts.custom_timeouts)
 
+            # Translate the CustomRetries object.
+            custom_retries = None
+            if opts.custom_retries is not None:
+                custom_retries = _create_custom_retries(opts.custom_retries)
+
             if (
                 resolver.deleted_with_urn
                 and not await settings.monitor_supports_deleted_with()
@@ -1052,6 +1075,7 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_ or "",
                 customTimeouts=custom_timeouts,
+                customRetries=custom_retries,
                 aliases=full_aliases_specs,
                 aliasURNs=alias_urns,
                 supportsPartialValues=True,

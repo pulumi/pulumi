@@ -2750,59 +2750,61 @@ func file_pulumi_resource_proto_rawDescGZIP() []byte {
 	return file_pulumi_resource_proto_rawDescData
 }
 
-var file_pulumi_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
-var file_pulumi_resource_proto_goTypes = []any{
-	(Result)(0),                                          // 0: pulumirpc.Result
-	(*SupportsFeatureRequest)(nil),                       // 1: pulumirpc.SupportsFeatureRequest
-	(*SupportsFeatureResponse)(nil),                      // 2: pulumirpc.SupportsFeatureResponse
-	(*ReadResourceRequest)(nil),                          // 3: pulumirpc.ReadResourceRequest
-	(*ReadResourceResponse)(nil),                         // 4: pulumirpc.ReadResourceResponse
-	(*RegisterResourceRequest)(nil),                      // 5: pulumirpc.RegisterResourceRequest
-	(*RegisterResourceResponse)(nil),                     // 6: pulumirpc.RegisterResourceResponse
-	(*RegisterResourceOutputsRequest)(nil),               // 7: pulumirpc.RegisterResourceOutputsRequest
-	(*ResourceInvokeRequest)(nil),                        // 8: pulumirpc.ResourceInvokeRequest
-	(*ResourceCallRequest)(nil),                          // 9: pulumirpc.ResourceCallRequest
-	(*TransformResourceOptions)(nil),                     // 10: pulumirpc.TransformResourceOptions
-	(*TransformRequest)(nil),                             // 11: pulumirpc.TransformRequest
-	(*TransformResponse)(nil),                            // 12: pulumirpc.TransformResponse
-	(*TransformInvokeRequest)(nil),                       // 13: pulumirpc.TransformInvokeRequest
-	(*TransformInvokeResponse)(nil),                      // 14: pulumirpc.TransformInvokeResponse
-	(*TransformInvokeOptions)(nil),                       // 15: pulumirpc.TransformInvokeOptions
-	(*ResourceHookRequest)(nil),                          // 16: pulumirpc.ResourceHookRequest
-	(*ResourceHookResponse)(nil),                         // 17: pulumirpc.ResourceHookResponse
-	(*RegisterPackageRequest)(nil),                       // 18: pulumirpc.RegisterPackageRequest
-	(*RegisterPackageResponse)(nil),                      // 19: pulumirpc.RegisterPackageResponse
-	(*Parameterization)(nil),                             // 20: pulumirpc.Parameterization
-	(*RegisterResourceHookRequest)(nil),                  // 21: pulumirpc.RegisterResourceHookRequest
-	nil,                                                  // 22: pulumirpc.ReadResourceRequest.PluginChecksumsEntry
-	(*RegisterResourceRequest_PropertyDependencies)(nil), // 23: pulumirpc.RegisterResourceRequest.PropertyDependencies
-	(*RegisterResourceRequest_CustomTimeouts)(nil),       // 24: pulumirpc.RegisterResourceRequest.CustomTimeouts
-	nil, // 25: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	nil, // 26: pulumirpc.RegisterResourceRequest.ProvidersEntry
-	nil, // 27: pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
-	(*RegisterResourceRequest_ResourceHooksBinding)(nil),  // 28: pulumirpc.RegisterResourceRequest.ResourceHooksBinding
-	(*RegisterResourceRequest_RetryPolicy)(nil),           // 29: pulumirpc.RegisterResourceRequest.RetryPolicy
-	(*RegisterResourceRequest_CustomRetries)(nil),         // 30: pulumirpc.RegisterResourceRequest.CustomRetries
-	(*RegisterResourceResponse_PropertyDependencies)(nil), // 31: pulumirpc.RegisterResourceResponse.PropertyDependencies
-	nil, // 32: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
-	nil, // 33: pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
-	(*ResourceCallRequest_ArgumentDependencies)(nil), // 34: pulumirpc.ResourceCallRequest.ArgumentDependencies
-	nil,                     // 35: pulumirpc.ResourceCallRequest.ArgDependenciesEntry
-	nil,                     // 36: pulumirpc.ResourceCallRequest.PluginChecksumsEntry
-	nil,                     // 37: pulumirpc.TransformResourceOptions.ProvidersEntry
-	nil,                     // 38: pulumirpc.TransformResourceOptions.PluginChecksumsEntry
-	nil,                     // 39: pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
-	nil,                     // 40: pulumirpc.RegisterPackageRequest.ChecksumsEntry
-	(*structpb.Struct)(nil), // 41: google.protobuf.Struct
-	(*SourcePosition)(nil),  // 42: pulumirpc.SourcePosition
-	(*StackTrace)(nil),      // 43: pulumirpc.StackTrace
-	(*Alias)(nil),           // 44: pulumirpc.Alias
-	(*Callback)(nil),        // 45: pulumirpc.Callback
-	(*emptypb.Empty)(nil),   // 46: google.protobuf.Empty
-	(*InvokeResponse)(nil),  // 47: pulumirpc.InvokeResponse
-	(*CallResponse)(nil),    // 48: pulumirpc.CallResponse
-}
+var (
+	file_pulumi_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+	file_pulumi_resource_proto_msgTypes  = make([]protoimpl.MessageInfo, 40)
+	file_pulumi_resource_proto_goTypes   = []any{
+		(Result)(0),                                          // 0: pulumirpc.Result
+		(*SupportsFeatureRequest)(nil),                       // 1: pulumirpc.SupportsFeatureRequest
+		(*SupportsFeatureResponse)(nil),                      // 2: pulumirpc.SupportsFeatureResponse
+		(*ReadResourceRequest)(nil),                          // 3: pulumirpc.ReadResourceRequest
+		(*ReadResourceResponse)(nil),                         // 4: pulumirpc.ReadResourceResponse
+		(*RegisterResourceRequest)(nil),                      // 5: pulumirpc.RegisterResourceRequest
+		(*RegisterResourceResponse)(nil),                     // 6: pulumirpc.RegisterResourceResponse
+		(*RegisterResourceOutputsRequest)(nil),               // 7: pulumirpc.RegisterResourceOutputsRequest
+		(*ResourceInvokeRequest)(nil),                        // 8: pulumirpc.ResourceInvokeRequest
+		(*ResourceCallRequest)(nil),                          // 9: pulumirpc.ResourceCallRequest
+		(*TransformResourceOptions)(nil),                     // 10: pulumirpc.TransformResourceOptions
+		(*TransformRequest)(nil),                             // 11: pulumirpc.TransformRequest
+		(*TransformResponse)(nil),                            // 12: pulumirpc.TransformResponse
+		(*TransformInvokeRequest)(nil),                       // 13: pulumirpc.TransformInvokeRequest
+		(*TransformInvokeResponse)(nil),                      // 14: pulumirpc.TransformInvokeResponse
+		(*TransformInvokeOptions)(nil),                       // 15: pulumirpc.TransformInvokeOptions
+		(*ResourceHookRequest)(nil),                          // 16: pulumirpc.ResourceHookRequest
+		(*ResourceHookResponse)(nil),                         // 17: pulumirpc.ResourceHookResponse
+		(*RegisterPackageRequest)(nil),                       // 18: pulumirpc.RegisterPackageRequest
+		(*RegisterPackageResponse)(nil),                      // 19: pulumirpc.RegisterPackageResponse
+		(*Parameterization)(nil),                             // 20: pulumirpc.Parameterization
+		(*RegisterResourceHookRequest)(nil),                  // 21: pulumirpc.RegisterResourceHookRequest
+		nil,                                                  // 22: pulumirpc.ReadResourceRequest.PluginChecksumsEntry
+		(*RegisterResourceRequest_PropertyDependencies)(nil), // 23: pulumirpc.RegisterResourceRequest.PropertyDependencies
+		(*RegisterResourceRequest_CustomTimeouts)(nil),       // 24: pulumirpc.RegisterResourceRequest.CustomTimeouts
+		nil, // 25: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+		nil, // 26: pulumirpc.RegisterResourceRequest.ProvidersEntry
+		nil, // 27: pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
+		(*RegisterResourceRequest_ResourceHooksBinding)(nil),  // 28: pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+		(*RegisterResourceRequest_RetryPolicy)(nil),           // 29: pulumirpc.RegisterResourceRequest.RetryPolicy
+		(*RegisterResourceRequest_CustomRetries)(nil),         // 30: pulumirpc.RegisterResourceRequest.CustomRetries
+		(*RegisterResourceResponse_PropertyDependencies)(nil), // 31: pulumirpc.RegisterResourceResponse.PropertyDependencies
+		nil, // 32: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+		nil, // 33: pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
+		(*ResourceCallRequest_ArgumentDependencies)(nil), // 34: pulumirpc.ResourceCallRequest.ArgumentDependencies
+		nil,                     // 35: pulumirpc.ResourceCallRequest.ArgDependenciesEntry
+		nil,                     // 36: pulumirpc.ResourceCallRequest.PluginChecksumsEntry
+		nil,                     // 37: pulumirpc.TransformResourceOptions.ProvidersEntry
+		nil,                     // 38: pulumirpc.TransformResourceOptions.PluginChecksumsEntry
+		nil,                     // 39: pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
+		nil,                     // 40: pulumirpc.RegisterPackageRequest.ChecksumsEntry
+		(*structpb.Struct)(nil), // 41: google.protobuf.Struct
+		(*SourcePosition)(nil),  // 42: pulumirpc.SourcePosition
+		(*StackTrace)(nil),      // 43: pulumirpc.StackTrace
+		(*Alias)(nil),           // 44: pulumirpc.Alias
+		(*Callback)(nil),        // 45: pulumirpc.Callback
+		(*emptypb.Empty)(nil),   // 46: google.protobuf.Empty
+		(*InvokeResponse)(nil),  // 47: pulumirpc.InvokeResponse
+		(*CallResponse)(nil),    // 48: pulumirpc.CallResponse
+	}
+)
 var file_pulumi_resource_proto_depIdxs = []int32{
 	41, // 0: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
 	22, // 1: pulumirpc.ReadResourceRequest.pluginChecksums:type_name -> pulumirpc.ReadResourceRequest.PluginChecksumsEntry

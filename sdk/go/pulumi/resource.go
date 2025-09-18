@@ -329,6 +329,22 @@ type CustomTimeouts struct {
 	Delete string
 }
 
+// RetryPolicy is the policy for retrying a resource operation.
+type RetryPolicy struct {
+	MaxAttempts     int
+	Delay           float64
+	RetriableErrors []string
+}
+
+// CustomRetries contains the retry policies associated with a resource registration.
+type CustomRetries struct {
+	Create  []RetryPolicy
+	Update  []RetryPolicy
+	Delete  []RetryPolicy
+	Read    []RetryPolicy
+	Replace []RetryPolicy
+}
+
 // ResourceHookOptions are the options for registering a resource hook.
 type ResourceHookOptions struct {
 	OnDryRun bool // Run the hook during dry run (preview) operations. Defaults to false.
@@ -415,6 +431,10 @@ type ResourceOptions struct {
 	// Aliases lists aliases for this resource
 	// that are used to find and use existing resources.
 	Aliases []Alias
+
+	// CustomRetries, if set, overrides the default retry policies
+	// for resource CRUD operations.
+	CustomRetries *CustomRetries
 
 	// CustomTimeouts, if set, overrides the default timeouts
 	// for resource CRUD operations.
@@ -514,6 +534,7 @@ func NewResourceOptions(opts ...ResourceOption) (*ResourceOptions, error) {
 type resourceOptions struct {
 	AdditionalSecretOutputs []string
 	Aliases                 []Alias
+	CustomRetries           *CustomRetries
 	CustomTimeouts          *CustomTimeouts
 	DeleteBeforeReplace     *bool
 	DependsOn               []dependencySet
@@ -578,6 +599,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 	return &ResourceOptions{
 		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
 		Aliases:                 ro.Aliases,
+		CustomRetries:           ro.CustomRetries,
 		CustomTimeouts:          ro.CustomTimeouts,
 		DeleteBeforeReplace:     flatten(ro.DeleteBeforeReplace),
 		DependsOn:               dependsOn,
@@ -1009,6 +1031,13 @@ func Providers(o ...ProviderResource) ResourceOption {
 func ReplaceOnChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, o...)
+	})
+}
+
+// Retries is an optional configuration block used for CRUD operation
+func Retries(o *CustomRetries) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.CustomRetries = o
 	})
 }
 
