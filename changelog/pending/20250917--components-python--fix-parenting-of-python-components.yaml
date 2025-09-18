@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: components/python
-  description: Fix parenting of python components
