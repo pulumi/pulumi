@@ -724,6 +724,46 @@ func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
 	return result, nil
 }
 
+// DeserializeSecret deserializes a secret value from its SecretV1 representation.
+func DeserializeSecret(ctx context.Context, secret *apitype.SecretV1, dec config.Decrypter) (resource.PropertyValue, error) {
+	prop := resource.MakeSecret(resource.NewNullProperty())
+	propSecret := prop.SecretValue()
+
+	if (secret.Plaintext == "" && secret.Ciphertext == "") ||
+		(secret.Plaintext != "" && secret.Ciphertext != "") {
+		return resource.PropertyValue{}, errors.New(
+			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
+	}
+
+	if secret.Plaintext != "" {
+		propertyValue, err := secretPropertyValueFromPlaintext(secret.Plaintext)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		propSecret.Element = propertyValue
+	} else {
+		// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
+		if batchDecrypter, ok := dec.(BatchDecrypter); ok {
+			err := batchDecrypter.Enqueue(ctx, secret.Ciphertext, propSecret)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
+			}
+		} else {
+			unencryptedText, err := dec.DecryptValue(ctx, secret.Ciphertext)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
+			}
+			ev, err := secretPropertyValueFromPlaintext(unencryptedText)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			propSecret.Element = ev
+		}
+	}
+
+	return prop, nil
+}
+
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
 func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 ) (resource.PropertyValue, error) {
@@ -774,42 +814,18 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					contract.Assertf(isarchive, "resource with archive signature is not an archive")
 					return resource.NewProperty(archive), nil
 				case resource.SecretSig:
-					prop := resource.MakeSecret(resource.NewNullProperty())
-					secret := prop.SecretValue()
 					ciphertext, cipherOk := objmap["ciphertext"].(string)
 					plaintext, plainOk := objmap["plaintext"].(string)
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
 						return resource.PropertyValue{}, errors.New(
 							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
 					}
-
-					if plainOk {
-						propertyValue, err := secretPropertyValueFromPlaintext(plaintext)
-						if err != nil {
-							return resource.PropertyValue{}, err
-						}
-						secret.Element = propertyValue
-					} else {
-						// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
-						if batchDecrypter, ok := dec.(BatchDecrypter); ok {
-							err := batchDecrypter.Enqueue(ctx, ciphertext, secret)
-							if err != nil {
-								return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
-							}
-						} else {
-							unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
-							if err != nil {
-								return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
-							}
-							ev, err := secretPropertyValueFromPlaintext(unencryptedText)
-							if err != nil {
-								return resource.PropertyValue{}, err
-							}
-							secret.Element = ev
-						}
+					secret := &apitype.SecretV1{
+						Sig:        resource.SecretSig,
+						Plaintext:  plaintext,
+						Ciphertext: ciphertext,
 					}
-
-					return prop, nil
+					return DeserializeSecret(ctx, secret, dec)
 				case resource.ResourceReferenceSig:
 					var packageVersion string
 					if packageVersionV, ok := objmap["packageVersion"]; ok {
@@ -871,43 +887,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			// Otherwise, it's just a weakly typed object map.
 			return resource.NewProperty(obj), nil
 		case *apitype.SecretV1:
-			prop := resource.MakeSecret(resource.NewNullProperty())
-			secret := prop.SecretValue()
-
-			if (w.Plaintext == "" && w.Ciphertext == "") ||
-				(w.Plaintext != "" && w.Ciphertext != "") {
-				return resource.PropertyValue{}, errors.New(
-					"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
-			}
-
-			if w.Plaintext != "" {
-				propertyValue, err := secretPropertyValueFromPlaintext(w.Plaintext)
-				if err != nil {
-					return resource.PropertyValue{}, err
-				}
-				secret.Element = propertyValue
-			} else {
-				// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
-				if batchDecrypter, ok := dec.(BatchDecrypter); ok {
-					err := batchDecrypter.Enqueue(ctx, w.Ciphertext, secret)
-					if err != nil {
-						return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
-					}
-				} else {
-					unencryptedText, err := dec.DecryptValue(ctx, w.Ciphertext)
-					if err != nil {
-						return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
-					}
-					ev, err := secretPropertyValueFromPlaintext(unencryptedText)
-					if err != nil {
-						return resource.PropertyValue{}, err
-					}
-					secret.Element = ev
-				}
-			}
-
-			return prop, nil
-
+			return DeserializeSecret(ctx, w, dec)
 		default:
 			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}
