@@ -965,3 +965,30 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 	}
 	return rapid.OneOf(choices...)
 }
+
+func TestSecretInputRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	res := &resource.State{
+		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
+		Type: "pkg:index:type",
+		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			"normal": "hello",
+			"secret": resource.MakeSecret(resource.NewProperty("there")),
+		}),
+	}
+
+	sm := b64.NewBase64SecretsManager()
+
+	serialized, err := SerializeResource(ctx, res, sm.Encrypter(), false /* showSecrets */)
+	require.NoError(t, err)
+
+	deserialized, err := DeserializeResource(serialized, sm.Decrypter())
+	require.NoError(t, err)
+	require.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"normal": "hello",
+		"secret": resource.MakeSecret(resource.NewProperty("there")),
+	}), deserialized.Inputs)
+}
