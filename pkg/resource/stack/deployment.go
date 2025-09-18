@@ -724,8 +724,10 @@ func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
 	return result, nil
 }
 
-// DeserializeSecret deserializes a secret value from its SecretV1 representation.
-func DeserializeSecret(ctx context.Context, secret *apitype.SecretV1, dec config.Decrypter) (resource.PropertyValue, error) {
+// deserializeSecret deserializes a secret value from its SecretV1 representation.
+func deserializeSecret(
+	ctx context.Context, secret *apitype.SecretV1, dec config.Decrypter,
+) (resource.PropertyValue, error) {
 	prop := resource.MakeSecret(resource.NewNullProperty())
 	propSecret := prop.SecretValue()
 
@@ -825,7 +827,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						Plaintext:  plaintext,
 						Ciphertext: ciphertext,
 					}
-					return DeserializeSecret(ctx, secret, dec)
+					return deserializeSecret(ctx, secret, dec)
 				case resource.ResourceReferenceSig:
 					var packageVersion string
 					if packageVersionV, ok := objmap["packageVersion"]; ok {
@@ -887,7 +889,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			// Otherwise, it's just a weakly typed object map.
 			return resource.NewProperty(obj), nil
 		case *apitype.SecretV1:
-			return DeserializeSecret(ctx, w, dec)
+			return deserializeSecret(ctx, w, dec)
 		default:
 			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}
