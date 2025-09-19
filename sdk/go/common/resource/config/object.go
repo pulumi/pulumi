@@ -362,29 +362,22 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 }
 
 // EncryptedValues returns the ciphertext values for any secure strings contained in the receiver.
-func (c object) EncryptedValues() []string {
+func (c object) EncryptedValues(valuesChunks *[][]string) {
 	switch v := c.value.(type) {
 	case []object:
-		var values []string
 		for _, v := range v {
-			vs := v.EncryptedValues()
-			values = append(values, vs...)
+			v.EncryptedValues(valuesChunks)
 		}
-		return values
 	case map[string]object:
-		var values []string
 		for _, v := range v {
-			vs := v.EncryptedValues()
-			values = append(values, vs...)
+			v.EncryptedValues(valuesChunks)
 		}
-		return values
 	case string:
 		if c.secure {
-			return []string{v}
+			addStringToChunks(valuesChunks, v, defaultMaxChunkSize)
 		}
-		return nil
 	default:
-		return nil
+		return
 	}
 }
 

@@ -59,6 +59,10 @@ func NewObjectValue(v string) Value {
 // Value fetches the value of this configuration entry, using decrypter to decrypt if necessary.  If the value
 // is a secret and decrypter is nil, or if decryption fails for any reason, a non-nil error is returned.
 func (c Value) Value(decrypter Decrypter) (string, error) {
+	if decrypter == NopDecrypter {
+		return c.value, nil
+	}
+
 	ctx := context.TODO()
 	obj, err := c.unmarshalObject()
 	if err != nil {
@@ -106,9 +110,22 @@ func (c Value) SecureValues(decrypter Decrypter) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	encryptedValues := obj.EncryptedValues()
-	// TODO: Consider limiting the batch size to avoid overwhelming the pulumi-service batch endpoint.
-	return decrypter.BatchDecrypt(ctx, encryptedValues)
+
+	var valuesChunks [][]string
+	obj.EncryptedValues(&valuesChunks)
+
+	var result []string
+	for _, valuesChunk := range valuesChunks {
+		if len(valuesChunk) == 0 {
+			continue
+		}
+		decryptedChunk, err := decrypter.BatchDecrypt(ctx, valuesChunk)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, decryptedChunk...)
+	}
+	return result, nil
 }
 
 func (c Value) Secure() bool {
