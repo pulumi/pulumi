@@ -215,7 +215,8 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
-	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	publishedVersion, err := pack.cl.PublishPolicyPack(
+		ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return err
 	}

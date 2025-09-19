@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -130,12 +131,20 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
+	// Get optional data about the environment performing the publish operation,
+	// e.g. the current source code control commit information.
+	m := metadata.GetPolicyPublishMetadata(root)
+
 	//
 	// Attempt to publish the PolicyPack.
 	//
 
 	err = policyPack.Publish(ctx, backend.PublishOperation{
-		Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: backend.CancellationScopes,
+		Root:       root,
+		PlugCtx:    plugctx,
+		PolicyPack: proj,
+		Scopes:     backend.CancellationScopes,
+		Metadata:   m,
 	})
 	if err != nil {
 		return err

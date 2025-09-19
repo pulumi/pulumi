@@ -28,6 +28,10 @@ type PublishOperation struct {
 	PlugCtx    *plugin.Context
 	PolicyPack *workspace.PolicyPackProject
 	Scopes     CancellationScopeSource
+
+	// Metadata contains optional data about the environment performing the publish operation,
+	// e.g. the current source code control commit information.
+	Metadata map[string]string
 }
 
 // PolicyPackOperation is used to make various operations against a Policy Pack.
