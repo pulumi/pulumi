@@ -767,6 +767,18 @@ func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remedi
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
 
+func (acts *updateActions) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeSummaryEvent(s)
+}
+
+func (acts *updateActions) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyRemediateSummaryEvent(s)
+}
+
+func (acts *updateActions) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeStackSummaryEvent(s)
+}
+
 func (acts *updateActions) MaybeCorrupt() bool {
 	return acts.maybeCorrupt
 }
@@ -810,7 +822,7 @@ func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 }
 
 func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
-	return acts.Context.SnapshotManager.Write(base)
+	return nil
 }
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
@@ -910,6 +922,18 @@ func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remed
 	before resource.PropertyMap, after resource.PropertyMap,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
+}
+
+func (acts *previewActions) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeSummaryEvent(s)
+}
+
+func (acts *previewActions) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyRemediateSummaryEvent(s)
+}
+
+func (acts *previewActions) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeStackSummaryEvent(s)
 }
 
 func (acts *previewActions) MaybeCorrupt() bool {

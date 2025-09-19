@@ -90,6 +90,112 @@ func (EnforcementLevel) EnumDescriptor() ([]byte, []int) {
 	return file_pulumi_analyzer_proto_rawDescGZIP(), []int{0}
 }
 
+// PolicyType indicates the type of a policy.
+type PolicyType int32
+
+const (
+	PolicyType_POLICY_TYPE_UNKNOWN  PolicyType = 0 // Unknown policy type.
+	PolicyType_POLICY_TYPE_RESOURCE PolicyType = 1 // A policy that validates a resource.
+	PolicyType_POLICY_TYPE_STACK    PolicyType = 2 // A policy that validates a stack.
+)
+
+// Enum value maps for PolicyType.
+var (
+	PolicyType_name = map[int32]string{
+		0: "POLICY_TYPE_UNKNOWN",
+		1: "POLICY_TYPE_RESOURCE",
+		2: "POLICY_TYPE_STACK",
+	}
+	PolicyType_value = map[string]int32{
+		"POLICY_TYPE_UNKNOWN":  0,
+		"POLICY_TYPE_RESOURCE": 1,
+		"POLICY_TYPE_STACK":    2,
+	}
+)
+
+func (x PolicyType) Enum() *PolicyType {
+	p := new(PolicyType)
+	*p = x
+	return p
+}
+
+func (x PolicyType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PolicyType) Descriptor() protoreflect.EnumDescriptor {
+	return file_pulumi_analyzer_proto_enumTypes[1].Descriptor()
+}
+
+func (PolicyType) Type() protoreflect.EnumType {
+	return &file_pulumi_analyzer_proto_enumTypes[1]
+}
+
+func (x PolicyType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PolicyType.Descriptor instead.
+func (PolicyType) EnumDescriptor() ([]byte, []int) {
+	return file_pulumi_analyzer_proto_rawDescGZIP(), []int{1}
+}
+
+// PolicySeverity indicates the severity of a policy.
+type PolicySeverity int32
+
+const (
+	PolicySeverity_POLICY_SEVERITY_UNSPECIFIED PolicySeverity = 0 // Unspecified severity.
+	PolicySeverity_POLICY_SEVERITY_LOW         PolicySeverity = 1 // Low severity.
+	PolicySeverity_POLICY_SEVERITY_MEDIUM      PolicySeverity = 2 // Medium severity.
+	PolicySeverity_POLICY_SEVERITY_HIGH        PolicySeverity = 3 // High severity.
+	PolicySeverity_POLICY_SEVERITY_CRITICAL    PolicySeverity = 4 // Critical severity.
+)
+
+// Enum value maps for PolicySeverity.
+var (
+	PolicySeverity_name = map[int32]string{
+		0: "POLICY_SEVERITY_UNSPECIFIED",
+		1: "POLICY_SEVERITY_LOW",
+		2: "POLICY_SEVERITY_MEDIUM",
+		3: "POLICY_SEVERITY_HIGH",
+		4: "POLICY_SEVERITY_CRITICAL",
+	}
+	PolicySeverity_value = map[string]int32{
+		"POLICY_SEVERITY_UNSPECIFIED": 0,
+		"POLICY_SEVERITY_LOW":         1,
+		"POLICY_SEVERITY_MEDIUM":      2,
+		"POLICY_SEVERITY_HIGH":        3,
+		"POLICY_SEVERITY_CRITICAL":    4,
+	}
+)
+
+func (x PolicySeverity) Enum() *PolicySeverity {
+	p := new(PolicySeverity)
+	*p = x
+	return p
+}
+
+func (x PolicySeverity) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PolicySeverity) Descriptor() protoreflect.EnumDescriptor {
+	return file_pulumi_analyzer_proto_enumTypes[2].Descriptor()
+}
+
+func (PolicySeverity) Type() protoreflect.EnumType {
+	return &file_pulumi_analyzer_proto_enumTypes[2]
+}
+
+func (x PolicySeverity) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PolicySeverity.Descriptor instead.
+func (PolicySeverity) EnumDescriptor() ([]byte, []int) {
+	return file_pulumi_analyzer_proto_rawDescGZIP(), []int{2}
+}
+
 // `AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed.
 type AnalyzerStackConfigureRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -790,7 +896,8 @@ func (x *AnalyzeStackRequest) GetResources() []*AnalyzerResource {
 
 type AnalyzeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Diagnostics   []*AnalyzeDiagnostic   `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"` // information about policy violations.
+	Diagnostics   []*AnalyzeDiagnostic   `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`                          // information about policy violations.
+	NotApplicable []*PolicyNotApplicable `protobuf:"bytes,3,rep,name=not_applicable,json=notApplicable,proto3" json:"not_applicable,omitempty"` // information about policies that were not applicable.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -828,6 +935,13 @@ func (*AnalyzeResponse) Descriptor() ([]byte, []int) {
 func (x *AnalyzeResponse) GetDiagnostics() []*AnalyzeDiagnostic {
 	if x != nil {
 		return x.Diagnostics
+	}
+	return nil
+}
+
+func (x *AnalyzeResponse) GetNotApplicable() []*PolicyNotApplicable {
+	if x != nil {
+		return x.NotApplicable
 	}
 	return nil
 }
@@ -1012,7 +1126,8 @@ func (x *Remediation) GetDiagnostic() string {
 // RemediateResponse contains a sequence of remediations applied, in order.
 type RemediateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Remediations  []*Remediation         `protobuf:"bytes,1,rep,name=remediations,proto3" json:"remediations,omitempty"` // the list of remediations that were applied.
+	Remediations  []*Remediation         `protobuf:"bytes,1,rep,name=remediations,proto3" json:"remediations,omitempty"`                        // the list of remediations that were applied.
+	NotApplicable []*PolicyNotApplicable `protobuf:"bytes,2,rep,name=not_applicable,json=notApplicable,proto3" json:"not_applicable,omitempty"` // information about policies that were not applicable.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1054,6 +1169,13 @@ func (x *RemediateResponse) GetRemediations() []*Remediation {
 	return nil
 }
 
+func (x *RemediateResponse) GetNotApplicable() []*PolicyNotApplicable {
+	if x != nil {
+		return x.NotApplicable
+	}
+	return nil
+}
+
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
 	state          protoimpl.MessageState   `protogen:"open.v1"`
@@ -1063,6 +1185,11 @@ type AnalyzerInfo struct {
 	Version        string                   `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`                                                                                       // Version of the Policy Pack.
 	SupportsConfig bool                     `protobuf:"varint,5,opt,name=supportsConfig,proto3" json:"supportsConfig,omitempty"`                                                                        // Whether the Policy Pack supports config.
 	InitialConfig  map[string]*PolicyConfig `protobuf:"bytes,6,rep,name=initialConfig,proto3" json:"initialConfig,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Map of policy name to config.
+	Description    string                   `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`                                                                               // Description of the policy pack.
+	Readme         string                   `protobuf:"bytes,8,opt,name=readme,proto3" json:"readme,omitempty"`                                                                                         // README text for the policy pack.
+	Provider       string                   `protobuf:"bytes,9,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                     // Cloud provider/platform associated with the policy pack.
+	Tags           []string                 `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`                                                                                            // Tags for this policy pack.
+	Repository     string                   `protobuf:"bytes,11,opt,name=repository,proto3" json:"repository,omitempty"`                                                                                // A URL to the repository where the policy pack is defined.
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1139,15 +1266,56 @@ func (x *AnalyzerInfo) GetInitialConfig() map[string]*PolicyConfig {
 	return nil
 }
 
+func (x *AnalyzerInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AnalyzerInfo) GetReadme() string {
+	if x != nil {
+		return x.Readme
+	}
+	return ""
+}
+
+func (x *AnalyzerInfo) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *AnalyzerInfo) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *AnalyzerInfo) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
 // PolicyInfo provides metadata about a policy within a Policy Pack.
 type PolicyInfo struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                                          // Name of the policy.
-	DisplayName      string                 `protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`                                            // Pretty name for the policy.
-	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`                                            // Description of policy rule. e.g., "encryption enabled."
-	Message          string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`                                                    // Message to display on policy violation, e.g., remediation steps.
-	EnforcementLevel EnforcementLevel       `protobuf:"varint,5,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Severity of the policy violation.
-	ConfigSchema     *PolicyConfigSchema    `protobuf:"bytes,6,opt,name=configSchema,proto3" json:"configSchema,omitempty"`                                          // Config schema for the policy.
+	state            protoimpl.MessageState     `protogen:"open.v1"`
+	Name             string                     `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                                          // Name of the policy.
+	DisplayName      string                     `protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`                                            // Pretty name for the policy.
+	Description      string                     `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`                                            // Description of policy rule. e.g., "encryption enabled."
+	Message          string                     `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`                                                    // Message to display on policy violation, e.g., remediation steps.
+	EnforcementLevel EnforcementLevel           `protobuf:"varint,5,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Severity of the policy violation.
+	ConfigSchema     *PolicyConfigSchema        `protobuf:"bytes,6,opt,name=configSchema,proto3" json:"configSchema,omitempty"`                                          // Config schema for the policy.
+	PolicyType       PolicyType                 `protobuf:"varint,7,opt,name=policy_type,json=policyType,proto3,enum=pulumirpc.PolicyType" json:"policy_type,omitempty"` // Type of the policy.
+	Severity         PolicySeverity             `protobuf:"varint,8,opt,name=severity,proto3,enum=pulumirpc.PolicySeverity" json:"severity,omitempty"`                   // Severity of the policy.
+	Framework        *PolicyComplianceFramework `protobuf:"bytes,9,opt,name=framework,proto3" json:"framework,omitempty"`                                                // Compliance framework that this policy belongs to.
+	Tags             []string                   `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`                                                         // Tags associated with the policy.
+	RemediationSteps string                     `protobuf:"bytes,11,opt,name=remediation_steps,json=remediationSteps,proto3" json:"remediation_steps,omitempty"`         // A description of the steps to take to remediate a policy violation.
+	Url              string                     `protobuf:"bytes,12,opt,name=url,proto3" json:"url,omitempty"`                                                           // A URL to more information about the policy.
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1222,6 +1390,48 @@ func (x *PolicyInfo) GetConfigSchema() *PolicyConfigSchema {
 		return x.ConfigSchema
 	}
 	return nil
+}
+
+func (x *PolicyInfo) GetPolicyType() PolicyType {
+	if x != nil {
+		return x.PolicyType
+	}
+	return PolicyType_POLICY_TYPE_UNKNOWN
+}
+
+func (x *PolicyInfo) GetSeverity() PolicySeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return PolicySeverity_POLICY_SEVERITY_UNSPECIFIED
+}
+
+func (x *PolicyInfo) GetFramework() *PolicyComplianceFramework {
+	if x != nil {
+		return x.Framework
+	}
+	return nil
+}
+
+func (x *PolicyInfo) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *PolicyInfo) GetRemediationSteps() string {
+	if x != nil {
+		return x.RemediationSteps
+	}
+	return ""
+}
+
+func (x *PolicyInfo) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
 }
 
 // PolicyConfigSchema provides the schema for a policy's configuration.
@@ -1375,6 +1585,128 @@ func (x *ConfigureAnalyzerRequest) GetPolicyConfig() map[string]*PolicyConfig {
 	return nil
 }
 
+// PolicyComplianceFramework provides information about the compliance framework that a policy belongs to.
+type PolicyComplianceFramework struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                   // The compliance framework name.
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`             // The compliance framework version.
+	Reference     string                 `protobuf:"bytes,3,opt,name=reference,proto3" json:"reference,omitempty"`         // The compliance framework reference.
+	Specification string                 `protobuf:"bytes,4,opt,name=specification,proto3" json:"specification,omitempty"` // The compliance framework specification.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PolicyComplianceFramework) Reset() {
+	*x = PolicyComplianceFramework{}
+	mi := &file_pulumi_analyzer_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyComplianceFramework) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyComplianceFramework) ProtoMessage() {}
+
+func (x *PolicyComplianceFramework) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_analyzer_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyComplianceFramework.ProtoReflect.Descriptor instead.
+func (*PolicyComplianceFramework) Descriptor() ([]byte, []int) {
+	return file_pulumi_analyzer_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *PolicyComplianceFramework) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PolicyComplianceFramework) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *PolicyComplianceFramework) GetReference() string {
+	if x != nil {
+		return x.Reference
+	}
+	return ""
+}
+
+func (x *PolicyComplianceFramework) GetSpecification() string {
+	if x != nil {
+		return x.Specification
+	}
+	return ""
+}
+
+// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
+type PolicyNotApplicable struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PolicyName    string                 `protobuf:"bytes,1,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"` // The name of the policy that was not applicable.
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`                           // An optional reason why the policy was not applicable.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PolicyNotApplicable) Reset() {
+	*x = PolicyNotApplicable{}
+	mi := &file_pulumi_analyzer_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyNotApplicable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyNotApplicable) ProtoMessage() {}
+
+func (x *PolicyNotApplicable) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_analyzer_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyNotApplicable.ProtoReflect.Descriptor instead.
+func (*PolicyNotApplicable) Descriptor() ([]byte, []int) {
+	return file_pulumi_analyzer_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *PolicyNotApplicable) GetPolicyName() string {
+	if x != nil {
+		return x.PolicyName
+	}
+	return ""
+}
+
+func (x *PolicyNotApplicable) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 // CustomTimeouts allows a user to be able to create a set of custom timeout parameters.
 type AnalyzerResourceOptions_CustomTimeouts struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1387,7 +1719,7 @@ type AnalyzerResourceOptions_CustomTimeouts struct {
 
 func (x *AnalyzerResourceOptions_CustomTimeouts) Reset() {
 	*x = AnalyzerResourceOptions_CustomTimeouts{}
-	mi := &file_pulumi_analyzer_proto_msgTypes[22]
+	mi := &file_pulumi_analyzer_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1399,7 +1731,7 @@ func (x *AnalyzerResourceOptions_CustomTimeouts) String() string {
 func (*AnalyzerResourceOptions_CustomTimeouts) ProtoMessage() {}
 
 func (x *AnalyzerResourceOptions_CustomTimeouts) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_analyzer_proto_msgTypes[22]
+	mi := &file_pulumi_analyzer_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1510,9 +1842,10 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\x1cAnalyzerPropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\"P\n" +
 	"\x13AnalyzeStackRequest\x129\n" +
-	"\tresources\x18\x01 \x03(\v2\x1b.pulumirpc.AnalyzerResourceR\tresources\"Q\n" +
+	"\tresources\x18\x01 \x03(\v2\x1b.pulumirpc.AnalyzerResourceR\tresources\"\x98\x01\n" +
 	"\x0fAnalyzeResponse\x12>\n" +
-	"\vdiagnostics\x18\x02 \x03(\v2\x1c.pulumirpc.AnalyzeDiagnosticR\vdiagnostics\"\xac\x02\n" +
+	"\vdiagnostics\x18\x02 \x03(\v2\x1c.pulumirpc.AnalyzeDiagnosticR\vdiagnostics\x12E\n" +
+	"\x0enot_applicable\x18\x03 \x03(\v2\x1e.pulumirpc.PolicyNotApplicableR\rnotApplicable\"\xac\x02\n" +
 	"\x11AnalyzeDiagnostic\x12\x1e\n" +
 	"\n" +
 	"policyName\x18\x01 \x01(\tR\n" +
@@ -1535,19 +1868,28 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"properties\x12\x1e\n" +
 	"\n" +
 	"diagnostic\x18\x06 \x01(\tR\n" +
-	"diagnostic\"O\n" +
+	"diagnostic\"\x96\x01\n" +
 	"\x11RemediateResponse\x12:\n" +
-	"\fremediations\x18\x01 \x03(\v2\x16.pulumirpc.RemediationR\fremediations\"\xe6\x02\n" +
+	"\fremediations\x18\x01 \x03(\v2\x16.pulumirpc.RemediationR\fremediations\x12E\n" +
+	"\x0enot_applicable\x18\x02 \x03(\v2\x1e.pulumirpc.PolicyNotApplicableR\rnotApplicable\"\xf0\x03\n" +
 	"\fAnalyzerInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdisplayName\x18\x02 \x01(\tR\vdisplayName\x121\n" +
 	"\bpolicies\x18\x03 \x03(\v2\x15.pulumirpc.PolicyInfoR\bpolicies\x12\x18\n" +
 	"\aversion\x18\x04 \x01(\tR\aversion\x12&\n" +
 	"\x0esupportsConfig\x18\x05 \x01(\bR\x0esupportsConfig\x12P\n" +
-	"\rinitialConfig\x18\x06 \x03(\v2*.pulumirpc.AnalyzerInfo.InitialConfigEntryR\rinitialConfig\x1aY\n" +
+	"\rinitialConfig\x18\x06 \x03(\v2*.pulumirpc.AnalyzerInfo.InitialConfigEntryR\rinitialConfig\x12 \n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\x12\x16\n" +
+	"\x06readme\x18\b \x01(\tR\x06readme\x12\x1a\n" +
+	"\bprovider\x18\t \x01(\tR\bprovider\x12\x12\n" +
+	"\x04tags\x18\n" +
+	" \x03(\tR\x04tags\x12\x1e\n" +
+	"\n" +
+	"repository\x18\v \x01(\tR\n" +
+	"repository\x1aY\n" +
 	"\x12InitialConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.pulumirpc.PolicyConfigR\x05value:\x028\x01\"\x8a\x02\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.pulumirpc.PolicyConfigR\x05value:\x028\x01\"\x90\x04\n" +
 	"\n" +
 	"PolicyInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
@@ -1555,7 +1897,15 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x12G\n" +
 	"\x10enforcementLevel\x18\x05 \x01(\x0e2\x1b.pulumirpc.EnforcementLevelR\x10enforcementLevel\x12A\n" +
-	"\fconfigSchema\x18\x06 \x01(\v2\x1d.pulumirpc.PolicyConfigSchemaR\fconfigSchema\"i\n" +
+	"\fconfigSchema\x18\x06 \x01(\v2\x1d.pulumirpc.PolicyConfigSchemaR\fconfigSchema\x126\n" +
+	"\vpolicy_type\x18\a \x01(\x0e2\x15.pulumirpc.PolicyTypeR\n" +
+	"policyType\x125\n" +
+	"\bseverity\x18\b \x01(\x0e2\x19.pulumirpc.PolicySeverityR\bseverity\x12B\n" +
+	"\tframework\x18\t \x01(\v2$.pulumirpc.PolicyComplianceFrameworkR\tframework\x12\x12\n" +
+	"\x04tags\x18\n" +
+	" \x03(\tR\x04tags\x12+\n" +
+	"\x11remediation_steps\x18\v \x01(\tR\x10remediationSteps\x12\x10\n" +
+	"\x03url\x18\f \x01(\tR\x03url\"i\n" +
 	"\x12PolicyConfigSchema\x127\n" +
 	"\n" +
 	"properties\x18\x01 \x01(\v2\x17.google.protobuf.StructR\n" +
@@ -1570,12 +1920,32 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\fpolicyConfig\x18\x01 \x03(\v25.pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntryR\fpolicyConfig\x1aX\n" +
 	"\x11PolicyConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.pulumirpc.PolicyConfigR\x05value:\x028\x01*L\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.pulumirpc.PolicyConfigR\x05value:\x028\x01\"\x8d\x01\n" +
+	"\x19PolicyComplianceFramework\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1c\n" +
+	"\treference\x18\x03 \x01(\tR\treference\x12$\n" +
+	"\rspecification\x18\x04 \x01(\tR\rspecification\"N\n" +
+	"\x13PolicyNotApplicable\x12\x1f\n" +
+	"\vpolicy_name\x18\x01 \x01(\tR\n" +
+	"policyName\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason*L\n" +
 	"\x10EnforcementLevel\x12\f\n" +
 	"\bADVISORY\x10\x00\x12\r\n" +
 	"\tMANDATORY\x10\x01\x12\f\n" +
 	"\bDISABLED\x10\x02\x12\r\n" +
-	"\tREMEDIATE\x10\x032\xb7\x05\n" +
+	"\tREMEDIATE\x10\x03*V\n" +
+	"\n" +
+	"PolicyType\x12\x17\n" +
+	"\x13POLICY_TYPE_UNKNOWN\x10\x00\x12\x18\n" +
+	"\x14POLICY_TYPE_RESOURCE\x10\x01\x12\x15\n" +
+	"\x11POLICY_TYPE_STACK\x10\x02*\x9e\x01\n" +
+	"\x0ePolicySeverity\x12\x1f\n" +
+	"\x1bPOLICY_SEVERITY_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13POLICY_SEVERITY_LOW\x10\x01\x12\x1a\n" +
+	"\x16POLICY_SEVERITY_MEDIUM\x10\x02\x12\x18\n" +
+	"\x14POLICY_SEVERITY_HIGH\x10\x03\x12\x1c\n" +
+	"\x18POLICY_SEVERITY_CRITICAL\x10\x042\xb7\x05\n" +
 	"\bAnalyzer\x12B\n" +
 	"\aAnalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n" +
 	"\fAnalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12F\n" +
@@ -1599,90 +1969,99 @@ func file_pulumi_analyzer_proto_rawDescGZIP() []byte {
 	return file_pulumi_analyzer_proto_rawDescData
 }
 
-var file_pulumi_analyzer_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pulumi_analyzer_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_pulumi_analyzer_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_pulumi_analyzer_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_pulumi_analyzer_proto_goTypes = []any{
 	(EnforcementLevel)(0),                          // 0: pulumirpc.EnforcementLevel
-	(*AnalyzerStackConfigureRequest)(nil),          // 1: pulumirpc.AnalyzerStackConfigureRequest
-	(*AnalyzerStackConfigureResponse)(nil),         // 2: pulumirpc.AnalyzerStackConfigureResponse
-	(*AnalyzerHandshakeRequest)(nil),               // 3: pulumirpc.AnalyzerHandshakeRequest
-	(*AnalyzerHandshakeResponse)(nil),              // 4: pulumirpc.AnalyzerHandshakeResponse
-	(*AnalyzeRequest)(nil),                         // 5: pulumirpc.AnalyzeRequest
-	(*AnalyzerResource)(nil),                       // 6: pulumirpc.AnalyzerResource
-	(*AnalyzerResourceOptions)(nil),                // 7: pulumirpc.AnalyzerResourceOptions
-	(*AnalyzerProviderResource)(nil),               // 8: pulumirpc.AnalyzerProviderResource
-	(*AnalyzerPropertyDependencies)(nil),           // 9: pulumirpc.AnalyzerPropertyDependencies
-	(*AnalyzeStackRequest)(nil),                    // 10: pulumirpc.AnalyzeStackRequest
-	(*AnalyzeResponse)(nil),                        // 11: pulumirpc.AnalyzeResponse
-	(*AnalyzeDiagnostic)(nil),                      // 12: pulumirpc.AnalyzeDiagnostic
-	(*Remediation)(nil),                            // 13: pulumirpc.Remediation
-	(*RemediateResponse)(nil),                      // 14: pulumirpc.RemediateResponse
-	(*AnalyzerInfo)(nil),                           // 15: pulumirpc.AnalyzerInfo
-	(*PolicyInfo)(nil),                             // 16: pulumirpc.PolicyInfo
-	(*PolicyConfigSchema)(nil),                     // 17: pulumirpc.PolicyConfigSchema
-	(*PolicyConfig)(nil),                           // 18: pulumirpc.PolicyConfig
-	(*ConfigureAnalyzerRequest)(nil),               // 19: pulumirpc.ConfigureAnalyzerRequest
-	nil,                                            // 20: pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
-	nil,                                            // 21: pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
-	nil,                                            // 22: pulumirpc.AnalyzerResource.PropertyDependenciesEntry
-	(*AnalyzerResourceOptions_CustomTimeouts)(nil), // 23: pulumirpc.AnalyzerResourceOptions.CustomTimeouts
-	nil,                     // 24: pulumirpc.AnalyzerInfo.InitialConfigEntry
-	nil,                     // 25: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
-	(*structpb.Struct)(nil), // 26: google.protobuf.Struct
-	(*emptypb.Empty)(nil),   // 27: google.protobuf.Empty
-	(*PluginInfo)(nil),      // 28: pulumirpc.PluginInfo
+	(PolicyType)(0),                                // 1: pulumirpc.PolicyType
+	(PolicySeverity)(0),                            // 2: pulumirpc.PolicySeverity
+	(*AnalyzerStackConfigureRequest)(nil),          // 3: pulumirpc.AnalyzerStackConfigureRequest
+	(*AnalyzerStackConfigureResponse)(nil),         // 4: pulumirpc.AnalyzerStackConfigureResponse
+	(*AnalyzerHandshakeRequest)(nil),               // 5: pulumirpc.AnalyzerHandshakeRequest
+	(*AnalyzerHandshakeResponse)(nil),              // 6: pulumirpc.AnalyzerHandshakeResponse
+	(*AnalyzeRequest)(nil),                         // 7: pulumirpc.AnalyzeRequest
+	(*AnalyzerResource)(nil),                       // 8: pulumirpc.AnalyzerResource
+	(*AnalyzerResourceOptions)(nil),                // 9: pulumirpc.AnalyzerResourceOptions
+	(*AnalyzerProviderResource)(nil),               // 10: pulumirpc.AnalyzerProviderResource
+	(*AnalyzerPropertyDependencies)(nil),           // 11: pulumirpc.AnalyzerPropertyDependencies
+	(*AnalyzeStackRequest)(nil),                    // 12: pulumirpc.AnalyzeStackRequest
+	(*AnalyzeResponse)(nil),                        // 13: pulumirpc.AnalyzeResponse
+	(*AnalyzeDiagnostic)(nil),                      // 14: pulumirpc.AnalyzeDiagnostic
+	(*Remediation)(nil),                            // 15: pulumirpc.Remediation
+	(*RemediateResponse)(nil),                      // 16: pulumirpc.RemediateResponse
+	(*AnalyzerInfo)(nil),                           // 17: pulumirpc.AnalyzerInfo
+	(*PolicyInfo)(nil),                             // 18: pulumirpc.PolicyInfo
+	(*PolicyConfigSchema)(nil),                     // 19: pulumirpc.PolicyConfigSchema
+	(*PolicyConfig)(nil),                           // 20: pulumirpc.PolicyConfig
+	(*ConfigureAnalyzerRequest)(nil),               // 21: pulumirpc.ConfigureAnalyzerRequest
+	(*PolicyComplianceFramework)(nil),              // 22: pulumirpc.PolicyComplianceFramework
+	(*PolicyNotApplicable)(nil),                    // 23: pulumirpc.PolicyNotApplicable
+	nil,                                            // 24: pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
+	nil,                                            // 25: pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
+	nil,                                            // 26: pulumirpc.AnalyzerResource.PropertyDependenciesEntry
+	(*AnalyzerResourceOptions_CustomTimeouts)(nil), // 27: pulumirpc.AnalyzerResourceOptions.CustomTimeouts
+	nil,                     // 28: pulumirpc.AnalyzerInfo.InitialConfigEntry
+	nil,                     // 29: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
+	(*structpb.Struct)(nil), // 30: google.protobuf.Struct
+	(*emptypb.Empty)(nil),   // 31: google.protobuf.Empty
+	(*PluginInfo)(nil),      // 32: pulumirpc.PluginInfo
 }
 var file_pulumi_analyzer_proto_depIdxs = []int32{
-	20, // 0: pulumirpc.AnalyzerStackConfigureRequest.config:type_name -> pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
-	21, // 1: pulumirpc.AnalyzerStackConfigureRequest.tags:type_name -> pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
-	26, // 2: pulumirpc.AnalyzeRequest.properties:type_name -> google.protobuf.Struct
-	7,  // 3: pulumirpc.AnalyzeRequest.options:type_name -> pulumirpc.AnalyzerResourceOptions
-	8,  // 4: pulumirpc.AnalyzeRequest.provider:type_name -> pulumirpc.AnalyzerProviderResource
-	26, // 5: pulumirpc.AnalyzerResource.properties:type_name -> google.protobuf.Struct
-	7,  // 6: pulumirpc.AnalyzerResource.options:type_name -> pulumirpc.AnalyzerResourceOptions
-	8,  // 7: pulumirpc.AnalyzerResource.provider:type_name -> pulumirpc.AnalyzerProviderResource
-	22, // 8: pulumirpc.AnalyzerResource.propertyDependencies:type_name -> pulumirpc.AnalyzerResource.PropertyDependenciesEntry
-	23, // 9: pulumirpc.AnalyzerResourceOptions.customTimeouts:type_name -> pulumirpc.AnalyzerResourceOptions.CustomTimeouts
-	26, // 10: pulumirpc.AnalyzerProviderResource.properties:type_name -> google.protobuf.Struct
-	6,  // 11: pulumirpc.AnalyzeStackRequest.resources:type_name -> pulumirpc.AnalyzerResource
-	12, // 12: pulumirpc.AnalyzeResponse.diagnostics:type_name -> pulumirpc.AnalyzeDiagnostic
-	0,  // 13: pulumirpc.AnalyzeDiagnostic.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	26, // 14: pulumirpc.Remediation.properties:type_name -> google.protobuf.Struct
-	13, // 15: pulumirpc.RemediateResponse.remediations:type_name -> pulumirpc.Remediation
-	16, // 16: pulumirpc.AnalyzerInfo.policies:type_name -> pulumirpc.PolicyInfo
-	24, // 17: pulumirpc.AnalyzerInfo.initialConfig:type_name -> pulumirpc.AnalyzerInfo.InitialConfigEntry
-	0,  // 18: pulumirpc.PolicyInfo.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	17, // 19: pulumirpc.PolicyInfo.configSchema:type_name -> pulumirpc.PolicyConfigSchema
-	26, // 20: pulumirpc.PolicyConfigSchema.properties:type_name -> google.protobuf.Struct
-	0,  // 21: pulumirpc.PolicyConfig.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	26, // 22: pulumirpc.PolicyConfig.properties:type_name -> google.protobuf.Struct
-	25, // 23: pulumirpc.ConfigureAnalyzerRequest.policyConfig:type_name -> pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
-	9,  // 24: pulumirpc.AnalyzerResource.PropertyDependenciesEntry.value:type_name -> pulumirpc.AnalyzerPropertyDependencies
-	18, // 25: pulumirpc.AnalyzerInfo.InitialConfigEntry.value:type_name -> pulumirpc.PolicyConfig
-	18, // 26: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry.value:type_name -> pulumirpc.PolicyConfig
-	5,  // 27: pulumirpc.Analyzer.Analyze:input_type -> pulumirpc.AnalyzeRequest
-	10, // 28: pulumirpc.Analyzer.AnalyzeStack:input_type -> pulumirpc.AnalyzeStackRequest
-	5,  // 29: pulumirpc.Analyzer.Remediate:input_type -> pulumirpc.AnalyzeRequest
-	27, // 30: pulumirpc.Analyzer.GetAnalyzerInfo:input_type -> google.protobuf.Empty
-	27, // 31: pulumirpc.Analyzer.GetPluginInfo:input_type -> google.protobuf.Empty
-	19, // 32: pulumirpc.Analyzer.Configure:input_type -> pulumirpc.ConfigureAnalyzerRequest
-	3,  // 33: pulumirpc.Analyzer.Handshake:input_type -> pulumirpc.AnalyzerHandshakeRequest
-	1,  // 34: pulumirpc.Analyzer.ConfigureStack:input_type -> pulumirpc.AnalyzerStackConfigureRequest
-	27, // 35: pulumirpc.Analyzer.Cancel:input_type -> google.protobuf.Empty
-	11, // 36: pulumirpc.Analyzer.Analyze:output_type -> pulumirpc.AnalyzeResponse
-	11, // 37: pulumirpc.Analyzer.AnalyzeStack:output_type -> pulumirpc.AnalyzeResponse
-	14, // 38: pulumirpc.Analyzer.Remediate:output_type -> pulumirpc.RemediateResponse
-	15, // 39: pulumirpc.Analyzer.GetAnalyzerInfo:output_type -> pulumirpc.AnalyzerInfo
-	28, // 40: pulumirpc.Analyzer.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	27, // 41: pulumirpc.Analyzer.Configure:output_type -> google.protobuf.Empty
-	4,  // 42: pulumirpc.Analyzer.Handshake:output_type -> pulumirpc.AnalyzerHandshakeResponse
-	2,  // 43: pulumirpc.Analyzer.ConfigureStack:output_type -> pulumirpc.AnalyzerStackConfigureResponse
-	27, // 44: pulumirpc.Analyzer.Cancel:output_type -> google.protobuf.Empty
-	36, // [36:45] is the sub-list for method output_type
-	27, // [27:36] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	24, // 0: pulumirpc.AnalyzerStackConfigureRequest.config:type_name -> pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
+	25, // 1: pulumirpc.AnalyzerStackConfigureRequest.tags:type_name -> pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
+	30, // 2: pulumirpc.AnalyzeRequest.properties:type_name -> google.protobuf.Struct
+	9,  // 3: pulumirpc.AnalyzeRequest.options:type_name -> pulumirpc.AnalyzerResourceOptions
+	10, // 4: pulumirpc.AnalyzeRequest.provider:type_name -> pulumirpc.AnalyzerProviderResource
+	30, // 5: pulumirpc.AnalyzerResource.properties:type_name -> google.protobuf.Struct
+	9,  // 6: pulumirpc.AnalyzerResource.options:type_name -> pulumirpc.AnalyzerResourceOptions
+	10, // 7: pulumirpc.AnalyzerResource.provider:type_name -> pulumirpc.AnalyzerProviderResource
+	26, // 8: pulumirpc.AnalyzerResource.propertyDependencies:type_name -> pulumirpc.AnalyzerResource.PropertyDependenciesEntry
+	27, // 9: pulumirpc.AnalyzerResourceOptions.customTimeouts:type_name -> pulumirpc.AnalyzerResourceOptions.CustomTimeouts
+	30, // 10: pulumirpc.AnalyzerProviderResource.properties:type_name -> google.protobuf.Struct
+	8,  // 11: pulumirpc.AnalyzeStackRequest.resources:type_name -> pulumirpc.AnalyzerResource
+	14, // 12: pulumirpc.AnalyzeResponse.diagnostics:type_name -> pulumirpc.AnalyzeDiagnostic
+	23, // 13: pulumirpc.AnalyzeResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
+	0,  // 14: pulumirpc.AnalyzeDiagnostic.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	30, // 15: pulumirpc.Remediation.properties:type_name -> google.protobuf.Struct
+	15, // 16: pulumirpc.RemediateResponse.remediations:type_name -> pulumirpc.Remediation
+	23, // 17: pulumirpc.RemediateResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
+	18, // 18: pulumirpc.AnalyzerInfo.policies:type_name -> pulumirpc.PolicyInfo
+	28, // 19: pulumirpc.AnalyzerInfo.initialConfig:type_name -> pulumirpc.AnalyzerInfo.InitialConfigEntry
+	0,  // 20: pulumirpc.PolicyInfo.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	19, // 21: pulumirpc.PolicyInfo.configSchema:type_name -> pulumirpc.PolicyConfigSchema
+	1,  // 22: pulumirpc.PolicyInfo.policy_type:type_name -> pulumirpc.PolicyType
+	2,  // 23: pulumirpc.PolicyInfo.severity:type_name -> pulumirpc.PolicySeverity
+	22, // 24: pulumirpc.PolicyInfo.framework:type_name -> pulumirpc.PolicyComplianceFramework
+	30, // 25: pulumirpc.PolicyConfigSchema.properties:type_name -> google.protobuf.Struct
+	0,  // 26: pulumirpc.PolicyConfig.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	30, // 27: pulumirpc.PolicyConfig.properties:type_name -> google.protobuf.Struct
+	29, // 28: pulumirpc.ConfigureAnalyzerRequest.policyConfig:type_name -> pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
+	11, // 29: pulumirpc.AnalyzerResource.PropertyDependenciesEntry.value:type_name -> pulumirpc.AnalyzerPropertyDependencies
+	20, // 30: pulumirpc.AnalyzerInfo.InitialConfigEntry.value:type_name -> pulumirpc.PolicyConfig
+	20, // 31: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry.value:type_name -> pulumirpc.PolicyConfig
+	7,  // 32: pulumirpc.Analyzer.Analyze:input_type -> pulumirpc.AnalyzeRequest
+	12, // 33: pulumirpc.Analyzer.AnalyzeStack:input_type -> pulumirpc.AnalyzeStackRequest
+	7,  // 34: pulumirpc.Analyzer.Remediate:input_type -> pulumirpc.AnalyzeRequest
+	31, // 35: pulumirpc.Analyzer.GetAnalyzerInfo:input_type -> google.protobuf.Empty
+	31, // 36: pulumirpc.Analyzer.GetPluginInfo:input_type -> google.protobuf.Empty
+	21, // 37: pulumirpc.Analyzer.Configure:input_type -> pulumirpc.ConfigureAnalyzerRequest
+	5,  // 38: pulumirpc.Analyzer.Handshake:input_type -> pulumirpc.AnalyzerHandshakeRequest
+	3,  // 39: pulumirpc.Analyzer.ConfigureStack:input_type -> pulumirpc.AnalyzerStackConfigureRequest
+	31, // 40: pulumirpc.Analyzer.Cancel:input_type -> google.protobuf.Empty
+	13, // 41: pulumirpc.Analyzer.Analyze:output_type -> pulumirpc.AnalyzeResponse
+	13, // 42: pulumirpc.Analyzer.AnalyzeStack:output_type -> pulumirpc.AnalyzeResponse
+	16, // 43: pulumirpc.Analyzer.Remediate:output_type -> pulumirpc.RemediateResponse
+	17, // 44: pulumirpc.Analyzer.GetAnalyzerInfo:output_type -> pulumirpc.AnalyzerInfo
+	32, // 45: pulumirpc.Analyzer.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	31, // 46: pulumirpc.Analyzer.Configure:output_type -> google.protobuf.Empty
+	6,  // 47: pulumirpc.Analyzer.Handshake:output_type -> pulumirpc.AnalyzerHandshakeResponse
+	4,  // 48: pulumirpc.Analyzer.ConfigureStack:output_type -> pulumirpc.AnalyzerStackConfigureResponse
+	31, // 49: pulumirpc.Analyzer.Cancel:output_type -> google.protobuf.Empty
+	41, // [41:50] is the sub-list for method output_type
+	32, // [32:41] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_analyzer_proto_init() }
@@ -1697,8 +2076,8 @@ func file_pulumi_analyzer_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_analyzer_proto_rawDesc), len(file_pulumi_analyzer_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   25,
+			NumEnums:      3,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

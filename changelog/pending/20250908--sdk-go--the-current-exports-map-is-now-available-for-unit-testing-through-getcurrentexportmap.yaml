@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: The current exports map is now available for unit testing through `GetCurrentExportMap`

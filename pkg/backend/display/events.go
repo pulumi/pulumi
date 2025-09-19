@@ -133,6 +133,53 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			After:                after,
 		}
 
+	case engine.PolicyAnalyzeSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyAnalyzeSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyAnalyzeSummaryEvent = &apitype.PolicyAnalyzeSummaryEvent{
+			ResourceURN:          string(p.ResourceURN),
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Disabled:             p.Disabled,
+			NotApplicable:        p.NotApplicable,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
+	case engine.PolicyRemediateSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyRemediateSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyRemediateSummaryEvent = &apitype.PolicyRemediateSummaryEvent{
+			ResourceURN:          string(p.ResourceURN),
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Disabled:             p.Disabled,
+			NotApplicable:        p.NotApplicable,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
+	case engine.PolicyAnalyzeStackSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyAnalyzeStackSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyAnalyzeStackSummaryEvent = &apitype.PolicyAnalyzeStackSummaryEvent{
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Disabled:             p.Disabled,
+			NotApplicable:        p.NotApplicable,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
 	case engine.PreludeEvent:
 		p, ok := e.Payload().(engine.PreludeEventPayload)
 		if !ok {
@@ -383,6 +430,41 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackVersion: p.PolicyPackVersion,
 			Before:            before,
 			After:             after,
+		})
+
+	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
+		p := apiEvent.PolicyAnalyzeSummaryEvent
+		event = engine.NewEvent(engine.PolicyAnalyzeSummaryEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Disabled:          p.Disabled,
+			NotApplicable:     p.NotApplicable,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
+	case apiEvent.PolicyRemediateSummaryEvent != nil:
+		p := apiEvent.PolicyRemediateSummaryEvent
+		event = engine.NewEvent(engine.PolicyRemediateSummaryEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Disabled:          p.Disabled,
+			NotApplicable:     p.NotApplicable,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
+	case apiEvent.PolicyAnalyzeStackSummaryEvent != nil:
+		p := apiEvent.PolicyAnalyzeStackSummaryEvent
+		event = engine.NewEvent(engine.PolicyAnalyzeStackSummaryEventPayload{
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Disabled:          p.Disabled,
+			NotApplicable:     p.NotApplicable,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
 		})
 
 	case apiEvent.PreludeEvent != nil:
