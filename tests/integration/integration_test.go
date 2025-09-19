@@ -1851,6 +1851,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		Cols: 80,
 	})
 	require.NoError(t, err)
+	defer ptmx.Close()
 
 	timeout := 3 * time.Minute
 	wait := 100 * time.Millisecond
@@ -1872,9 +1873,10 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	}()
 
 	processFinished := make(chan error, 1)
-	var output strings.Builder
+	out := make(chan string, 1)
 
 	go func() {
+		var output strings.Builder
 		buf := make([]byte, 1024)
 		for {
 			n, err := ptmx.Read(buf)
@@ -1885,21 +1887,32 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 				break
 			}
 		}
+		out <- output.String()
 	}()
 
 	go func() {
-		processFinished <- cmd.Wait()
+		err := cmd.Wait()
+		// The provider might not have exited yet when the pulumi command exits,
+		// wait for interrupted.txt to be created by the provider after it
+		// received SIGINT.
+		end := time.Now().Add(timeout)
+		found := false
+		for time.Now().Before(end) {
+			if _, err := os.Stat(filepath.Join(programPath, "interrupted.txt")); err == nil {
+				t.Logf("Found `interrupted.txt`")
+				found = true
+				break
+			}
+			time.Sleep(wait)
+		}
+		require.True(t, found, "interrupted.txt should exist - did the provider not get SIGINT?")
+		processFinished <- err
 	}()
 
 	select {
 	case err := <-processFinished:
-		ptmx.Close()
-		t.Logf("Process finished with error: %s, output: %s", err, output.String())
+		t.Logf("Process finished with error: %s, output: %s", err, <-out)
 		require.ErrorContains(t, err, "exit status 1")
-		// The provider should have received a SIGINT as well, and written
-		// out the `interrupted.txt` file.
-		_, err = os.Stat(filepath.Join(programPath, "interrupted.txt"))
-		require.NoError(t, err, "interrupted.txt file should exist")
 
 	case <-time.After(timeout):
 		// This is the bug - process hung trying to control terminal
@@ -1907,10 +1920,9 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		}
-		ptmx.Close()
 
 		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
-			" Output so far: %s", timeout.String(), output.String())
+			" Output so far: %s", timeout.String(), <-out)
 	}
 }
 
