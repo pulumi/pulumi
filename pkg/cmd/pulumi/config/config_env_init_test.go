@@ -98,7 +98,7 @@ runtime: yaml`
 
 		plaintext := map[string]config.Plaintext{
 			"aws:region":   config.NewPlaintext("us-west-2"),
-			"app:password": config.NewSecurePlaintext("hunter2"),
+			"app:password": config.NewPlaintext(config.PlaintextSecret("hunter2")),
 			"app:tags": config.NewPlaintext(map[string]config.Plaintext{
 				"env": config.NewPlaintext("testing"),
 				"owners": config.NewPlaintext([]config.Plaintext{
@@ -175,7 +175,7 @@ runtime: yaml`
 
 		plaintext := map[string]config.Plaintext{
 			"aws:region":   config.NewPlaintext("us-west-2"),
-			"app:password": config.NewSecurePlaintext("hunter2"),
+			"app:password": config.NewPlaintext(config.PlaintextSecret("hunter2")),
 			"app:tags": config.NewPlaintext(map[string]config.Plaintext{
 				"env": config.NewPlaintext("testing"),
 				"owners": config.NewPlaintext([]config.Plaintext{
@@ -251,7 +251,7 @@ runtime: yaml`
 
 		plaintext := map[string]config.Plaintext{
 			"aws:region":   config.NewPlaintext("us-west-2"),
-			"app:password": config.NewSecurePlaintext("hunter2"),
+			"app:password": config.NewPlaintext(config.PlaintextSecret("hunter2")),
 			"app:tags": config.NewPlaintext(map[string]config.Plaintext{
 				"env": config.NewPlaintext("testing"),
 				"owners": config.NewPlaintext([]config.Plaintext{
