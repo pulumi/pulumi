@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/install,package
+  description: Add support for package references in plugins

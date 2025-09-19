@@ -2474,6 +2474,46 @@ func TestPythonComponentProviderResourceReference(t *testing.T) {
 	}
 }
 
+// Test that a component provider can use a package reference to another component provider
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderInComponentProvider(t *testing.T) {
+	pulumiHome := t.TempDir()
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PulumiHomeDir:   pulumiHome,
+		Dir:             filepath.Join("component_provider", "python", "component-in-component"),
+		RelativeWorkDir: "program",
+		PrepareProject: func(info *engine.Projinfo) error {
+			// Install the dependencies for the two providers: `provider-nested`
+			// which is used within `provider`, which in turn is used by the
+			// program.
+			providerNestedPath := filepath.Join(info.Root, "..", "provider-nested")
+			cmd := exec.Command("pulumi", "install")
+			cmd.Dir = providerNestedPath
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerNestedPath, out, err)
+
+			providerPath := filepath.Join(info.Root, "..", "provider")
+			cmd = exec.Command("pulumi", "install")
+			cmd.Dir = providerPath
+			out, err = cmd.CombinedOutput()
+			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerPath, out, err)
+
+			// Install the dependencies for the program
+			cmd = exec.Command("pulumi", "install")
+			cmd.Dir = info.Root
+			out, err = cmd.CombinedOutput()
+			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerPath, out, err)
+
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Logf("outputs = %+v\n", stack.Outputs)
+			require.Equal(t, "HELLO, PULUMI!", stack.Outputs["str_output"].(string))
+		},
+	})
+}
+
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
 
