@@ -77,28 +77,33 @@ func (c object) Secure() bool {
 func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypter) (map[Key]plaintext, error) {
 	// Collect all secure values
 	var locationRefs []secureLocationRef
-	var values []string
-	collectSecureFromKeyMap(objectMap, &locationRefs, &values)
+	var valuesChunks [][]string
+	collectSecureFromKeyMap(objectMap, &locationRefs, &valuesChunks)
 
-	// Decrypt objects in a batch
-	if len(values) > 0 {
-		// TODO: Consider limiting the batch size to avoid overwhelming the pulumi-service batch endpoint.
-		decrypted, err := decrypter.BatchDecrypt(ctx, values)
+	// Decrypt objects in batches
+	offset := 0
+	for _, valuesChunk := range valuesChunks {
+		if len(valuesChunk) == 0 {
+			continue
+		}
+		decryptedChunk, err := decrypter.BatchDecrypt(ctx, valuesChunk)
 		if err != nil {
 			return nil, err
 		}
 		// Assign decrypted values back into original structure
 		// We are accepting that a secure object now has a plaintext value
-		for i, locationRef := range locationRefs {
+		for i, decrypted := range decryptedChunk {
+			locationRef := locationRefs[offset+i]
 			switch container := locationRef.container.(type) {
 			case map[Key]object:
-				container[locationRef.key.(Key)] = newSecureObject(decrypted[i])
+				container[locationRef.key.(Key)] = newSecureObject(decrypted)
 			case map[string]object:
-				container[locationRef.key.(string)] = newSecureObject(decrypted[i])
+				container[locationRef.key.(string)] = newSecureObject(decrypted)
 			case []object:
-				container[locationRef.key.(int)] = newSecureObject(decrypted[i])
+				container[locationRef.key.(int)] = newSecureObject(decrypted)
 			}
 		}
+		offset += len(valuesChunk)
 	}
 
 	// Marshal each top-level object back into a plaintext value.
@@ -170,7 +175,6 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 // Merge merges the receiver onto the given base using JSON merge patch semantics. Merge does not modify the receiver or
 // the base.
 func (c object) Merge(base object) object {
-	// TODO: Merge arrays?
 	if co, ok := c.value.(map[string]object); ok {
 		if bo, ok := base.value.(map[string]object); ok {
 			mo := make(map[string]object, len(co))
@@ -357,7 +361,7 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 	}
 }
 
-// SecureObjects returns the plaintext values for any secure strings contained in the receiver.
+// EncryptedValues returns the ciphertext values for any secure strings contained in the receiver.
 func (c object) EncryptedValues() []string {
 	switch v := c.value.(type) {
 	case []object:

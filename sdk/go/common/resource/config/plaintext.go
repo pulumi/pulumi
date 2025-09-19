@@ -145,28 +145,33 @@ func (c plaintext) PropertyValue() resource.PropertyValue {
 func encryptMap(ctx context.Context, plaintextMap map[Key]plaintext, encrypter Encrypter) (map[Key]object, error) {
 	// Collect all secure values
 	var locationRefs []secureLocationRef
-	var values []string
-	collectSecureFromPlaintextKeyMap(plaintextMap, &locationRefs, &values)
+	var valuesChunks [][]string
+	collectSecureFromPlaintextKeyMap(plaintextMap, &locationRefs, &valuesChunks)
 
-	// Encrypt objects in a batch
-	if len(values) > 0 {
-		// TODO: Consider limiting the batch size to avoid overwhelming the pulumi-service batch endpoint.
-		encrypted, err := encrypter.BatchEncrypt(ctx, values)
+	// Encrypt objects in batches
+	offset := 0
+	for _, valuesChunk := range valuesChunks {
+		if len(valuesChunk) == 0 {
+			continue
+		}
+		encryptedChunk, err := encrypter.BatchEncrypt(ctx, valuesChunk)
 		if err != nil {
 			return nil, err
 		}
 		// Assign encrypted values back into original structure
 		// We are accepting that a secure plaintext now has a ciphertext value
-		for i, locationRef := range locationRefs {
+		for i, encrypted := range encryptedChunk {
+			locationRef := locationRefs[offset+i]
 			switch container := locationRef.container.(type) {
 			case map[Key]plaintext:
-				container[locationRef.key.(Key)] = newSecurePlaintext(encrypted[i])
+				container[locationRef.key.(Key)] = newSecurePlaintext(encrypted)
 			case map[string]plaintext:
-				container[locationRef.key.(string)] = newSecurePlaintext(encrypted[i])
+				container[locationRef.key.(string)] = newSecurePlaintext(encrypted)
 			case []plaintext:
-				container[locationRef.key.(int)] = newSecurePlaintext(encrypted[i])
+				container[locationRef.key.(int)] = newSecurePlaintext(encrypted)
 			}
 		}
+		offset += len(valuesChunk)
 	}
 
 	// Marshal each top-level object back into an object value.

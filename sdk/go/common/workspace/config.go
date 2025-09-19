@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"github.com/pulumi/esc"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -195,6 +196,8 @@ func mergeConfig(
 		if !foundOnStack {
 			err = stackConfig.Set(key, envValue, false)
 		} else {
+			// Uses JSON merge patch semantics: https://datatracker.ietf.org/doc/html/rfc7386
+			// Prefers stack values over env values.
 			merged, mergeErr := stackValue.Merge(envValue)
 			if mergeErr != nil {
 				return fmt.Errorf("merging environment config for key '%v': %w", key.String(), err)

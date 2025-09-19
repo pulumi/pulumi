@@ -1,119 +1,152 @@
 package config
 
+var defaultMaxChunkSize = 100 * 1024 * 1024 // 100MB
+
 // A "reference" to where a secure value is located
 type secureLocationRef struct {
 	container any // pointer to slice or map
 	key       any // string (for map) or int (for slice)
 }
 
-func collectSecureFromKeyMap(objectMap map[Key]object, locationRefs *[]secureLocationRef, values *[]string) {
+// addStringToChunks adds a value to the last values chunk or creates a new chunk if needed.
+func addStringToChunks(valuesChunks *[][]string, value string, maxChunkSize int) {
+	valueLength := len(value)
+	if len(*valuesChunks) == 0 {
+		*valuesChunks = append(*valuesChunks, []string{value})
+		return
+	}
+	lastChunk := &(*valuesChunks)[len(*valuesChunks)-1]
+	currentSize := 0
+	for _, lastChunkValue := range *lastChunk {
+		currentSize += len(lastChunkValue)
+	}
+	if currentSize+valueLength <= maxChunkSize {
+		*lastChunk = append(*lastChunk, value)
+	} else {
+		*valuesChunks = append(*valuesChunks, []string{value})
+	}
+}
+
+func collectSecureFromKeyMap(
+	objectMap map[Key]object, locationRefs *[]secureLocationRef, valuesChunks *[][]string,
+) {
 	for k, obj := range objectMap {
 		switch value := obj.value.(type) {
 		case map[Key]object:
-			collectSecureFromKeyMap(value, locationRefs, values)
+			collectSecureFromKeyMap(value, locationRefs, valuesChunks)
 		case map[string]object:
-			collectSecureFromStringMap(value, locationRefs, values)
+			collectSecureFromStringMap(value, locationRefs, valuesChunks)
 		case []object:
-			collectSecureFromArray(value, locationRefs, values)
+			collectSecureFromArray(value, locationRefs, valuesChunks)
 		case string:
 			if obj.secure {
 				*locationRefs = append(*locationRefs, secureLocationRef{container: objectMap, key: k})
-				*values = append(*values, value)
+				addStringToChunks(valuesChunks, value, defaultMaxChunkSize)
 			}
 			continue
 		}
 	}
 }
 
-func collectSecureFromStringMap(objectMap map[string]object, locationRefs *[]secureLocationRef, values *[]string) {
+func collectSecureFromStringMap(
+	objectMap map[string]object, locationRefs *[]secureLocationRef, valuesChunks *[][]string,
+) {
 	for k, obj := range objectMap {
 		switch value := obj.value.(type) {
 		case map[Key]object:
-			collectSecureFromKeyMap(value, locationRefs, values)
+			collectSecureFromKeyMap(value, locationRefs, valuesChunks)
 		case map[string]object:
-			collectSecureFromStringMap(value, locationRefs, values)
+			collectSecureFromStringMap(value, locationRefs, valuesChunks)
 		case []object:
-			collectSecureFromArray(value, locationRefs, values)
+			collectSecureFromArray(value, locationRefs, valuesChunks)
 		case string:
 			if obj.secure {
 				*locationRefs = append(*locationRefs, secureLocationRef{container: objectMap, key: k})
-				*values = append(*values, value)
+				addStringToChunks(valuesChunks, value, defaultMaxChunkSize)
 			}
 			continue
 		}
 	}
 }
 
-func collectSecureFromArray(objectArray []object, locationRefs *[]secureLocationRef, values *[]string) {
+func collectSecureFromArray(
+	objectArray []object, locationRefs *[]secureLocationRef, valuesChunks *[][]string,
+) {
 	for i, obj := range objectArray {
 		switch value := obj.value.(type) {
 		case map[Key]object:
-			collectSecureFromKeyMap(value, locationRefs, values)
+			collectSecureFromKeyMap(value, locationRefs, valuesChunks)
 		case map[string]object:
-			collectSecureFromStringMap(value, locationRefs, values)
+			collectSecureFromStringMap(value, locationRefs, valuesChunks)
 		case []object:
-			collectSecureFromArray(value, locationRefs, values)
+			collectSecureFromArray(value, locationRefs, valuesChunks)
 		case string:
 			if obj.secure {
 				*locationRefs = append(*locationRefs, secureLocationRef{container: objectArray, key: i})
-				*values = append(*values, value)
+				addStringToChunks(valuesChunks, value, defaultMaxChunkSize)
 			}
 			continue
 		}
 	}
 }
 
-func collectSecureFromPlaintextKeyMap(plaintextMap map[Key]plaintext, locationRefs *[]secureLocationRef, values *[]string) {
+func collectSecureFromPlaintextKeyMap(
+	plaintextMap map[Key]plaintext, locationRefs *[]secureLocationRef, valuesChunks *[][]string,
+) {
 	for k, pt := range plaintextMap {
 		switch value := pt.value.(type) {
 		case map[Key]plaintext:
-			collectSecureFromPlaintextKeyMap(value, locationRefs, values)
+			collectSecureFromPlaintextKeyMap(value, locationRefs, valuesChunks)
 		case map[string]plaintext:
-			collectSecureFromPlaintextStringMap(value, locationRefs, values)
+			collectSecureFromPlaintextStringMap(value, locationRefs, valuesChunks)
 		case []plaintext:
-			collectSecureFromPlaintextArray(value, locationRefs, values)
+			collectSecureFromPlaintextArray(value, locationRefs, valuesChunks)
 		case string:
 			if pt.secure {
 				*locationRefs = append(*locationRefs, secureLocationRef{container: plaintextMap, key: k})
-				*values = append(*values, value)
+				addStringToChunks(valuesChunks, value, defaultMaxChunkSize)
 			}
 			continue
 		}
 	}
 }
 
-func collectSecureFromPlaintextStringMap(plaintextMap map[string]plaintext, locationRefs *[]secureLocationRef, values *[]string) {
+func collectSecureFromPlaintextStringMap(
+	plaintextMap map[string]plaintext, locationRefs *[]secureLocationRef, valuesChunks *[][]string,
+) {
 	for k, pt := range plaintextMap {
 		switch value := pt.value.(type) {
 		case map[Key]plaintext:
-			collectSecureFromPlaintextKeyMap(value, locationRefs, values)
+			collectSecureFromPlaintextKeyMap(value, locationRefs, valuesChunks)
 		case map[string]plaintext:
-			collectSecureFromPlaintextStringMap(value, locationRefs, values)
+			collectSecureFromPlaintextStringMap(value, locationRefs, valuesChunks)
 		case []plaintext:
-			collectSecureFromPlaintextArray(value, locationRefs, values)
+			collectSecureFromPlaintextArray(value, locationRefs, valuesChunks)
 		case string:
 			if pt.secure {
 				*locationRefs = append(*locationRefs, secureLocationRef{container: plaintextMap, key: k})
-				*values = append(*values, value)
+				addStringToChunks(valuesChunks, value, defaultMaxChunkSize)
 			}
 			continue
 		}
 	}
 }
 
-func collectSecureFromPlaintextArray(plaintextArray []plaintext, locationRefs *[]secureLocationRef, values *[]string) {
+func collectSecureFromPlaintextArray(
+	plaintextArray []plaintext, locationRefs *[]secureLocationRef, valuesChunks *[][]string,
+) {
 	for i, pt := range plaintextArray {
 		switch value := pt.value.(type) {
 		case map[Key]plaintext:
-			collectSecureFromPlaintextKeyMap(value, locationRefs, values)
+			collectSecureFromPlaintextKeyMap(value, locationRefs, valuesChunks)
 		case map[string]plaintext:
-			collectSecureFromPlaintextStringMap(value, locationRefs, values)
+			collectSecureFromPlaintextStringMap(value, locationRefs, valuesChunks)
 		case []plaintext:
-			collectSecureFromPlaintextArray(value, locationRefs, values)
+			collectSecureFromPlaintextArray(value, locationRefs, valuesChunks)
 		case string:
 			if pt.secure {
 				*locationRefs = append(*locationRefs, secureLocationRef{container: plaintextArray, key: i})
-				*values = append(*values, value)
+				addStringToChunks(valuesChunks, value, defaultMaxChunkSize)
 			}
 			continue
 		}

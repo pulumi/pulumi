@@ -20,10 +20,11 @@ import (
 	"math"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func TestPlaintextReserved(t *testing.T) {
@@ -159,5 +160,68 @@ func TestMarshalPlaintext(t *testing.T) {
 	assert.Panics(t, func() {
 		err := yaml.Unmarshal([]byte("42"), &plain)
 		contract.IgnoreError(err)
+	})
+}
+
+func TestEncryptMap(t *testing.T) {
+	t.Run("empty map", func(t *testing.T) {
+		result, err := encryptMap(t.Context(), map[Key]plaintext{}, nopCrypter{})
+		assert.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("plaintext values", func(t *testing.T) {
+		input := map[Key]plaintext{
+			MustParseKey("ns:foo"): newPlaintext("bar"),
+			MustParseKey("ns:num"): newPlaintext(int64(42)),
+		}
+		result, err := encryptMap(t.Context(), input, nopCrypter{})
+		assert.NoError(t, err)
+		assert.Equal(t, "bar", result[MustParseKey("ns:foo")].value)
+		assert.Equal(t, int64(42), result[MustParseKey("ns:num")].value)
+	})
+
+	t.Run("secure values", func(t *testing.T) {
+		input := map[Key]plaintext{
+			MustParseKey("ns:secret"): newSecurePlaintext("plaintext"),
+		}
+		result, err := encryptMap(t.Context(), input, nopCrypter{})
+		assert.NoError(t, err)
+		assert.Equal(t, "plaintext", result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].secure)
+	})
+
+	t.Run("mixed values", func(t *testing.T) {
+		input := map[Key]plaintext{
+			MustParseKey("ns:plain"):  newPlaintext("value"),
+			MustParseKey("ns:secret"): newSecurePlaintext("plaintext"),
+		}
+		result, err := encryptMap(t.Context(), input, nopCrypter{})
+		assert.NoError(t, err)
+		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
+		assert.Equal(t, "plaintext", result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].secure)
+	})
+
+	t.Run("chunking", func(t *testing.T) {
+		origChunkSize := defaultMaxChunkSize
+		defaultMaxChunkSize = 2 // force batching for test
+		defer func() { defaultMaxChunkSize = origChunkSize }()
+
+		input := map[Key]plaintext{
+			MustParseKey("ns:a"): newSecurePlaintext("s1"),
+			MustParseKey("ns:b"): newSecurePlaintext("s2"),
+			MustParseKey("ns:c"): newSecurePlaintext("s3"),
+			MustParseKey("ns:d"): newPlaintext("plain"),
+		}
+		result, err := encryptMap(t.Context(), input, nopCrypter{})
+		assert.NoError(t, err)
+		assert.Equal(t, "s1", result[MustParseKey("ns:a")].value)
+		assert.Equal(t, "s2", result[MustParseKey("ns:b")].value)
+		assert.Equal(t, "s3", result[MustParseKey("ns:c")].value)
+		assert.Equal(t, "plain", result[MustParseKey("ns:d")].value)
+		assert.True(t, result[MustParseKey("ns:a")].secure)
+		assert.True(t, result[MustParseKey("ns:b")].secure)
+		assert.True(t, result[MustParseKey("ns:c")].secure)
 	})
 }

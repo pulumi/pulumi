@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -152,11 +153,6 @@ func getStackConfigurationFromProjectStack(
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
-
-	// TODO: Checking pulumiEnv here feels strange. Is it because of openEnv vs. checkEnv? What happens if
-	//	stackCrypter != envCrypter?
-	//	-> pulumiEnv should always be decrypted if openEnv
-
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
 			EnvironmentImports: workspaceStack.Environment.Imports(),
@@ -195,6 +191,9 @@ func getAndSaveSecretsManager(
 	return sm, nil
 }
 
+// needsCrypter returns true if either the config or the env contains secrets.
+// We need to check if env contains secrets because later we need to encrypt these secrets with the stack's crypter
+// to bring them into the stack's config format and merge the stack config and env.
 func needsCrypter(cfg config.Map, env esc.Value) bool {
 	var hasSecrets func(v esc.Value) bool
 	hasSecrets = func(v esc.Value) bool {
