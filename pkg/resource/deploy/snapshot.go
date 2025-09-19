@@ -309,10 +309,29 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	resourcesMap := make(map[resource.URN][]*resource.State)
 
 	for _, mr := range expected.Resources {
+		if len(mr.PropertyDependencies) > 0 {
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range mr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			mr.PropertyDependencies = newPropDeps
+		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
 
 	for _, jr := range snap.Resources {
+		if len(jr.PropertyDependencies) > 0 {
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range jr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			jr.PropertyDependencies = newPropDeps
+		}
+
 		found := false
 		var diffStr string
 		for _, mr := range resourcesMap[jr.URN] {
