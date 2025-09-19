@@ -65,13 +65,13 @@ func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 }
 
 type MockEncrypter struct {
-	EncryptValueF func() string
-	BatchEncryptF func() []string
+	EncryptValueF func(plaintext string) string
+	BatchEncryptF func(secrets []string) []string
 }
 
 func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
 	if me.EncryptValueF != nil {
-		return me.EncryptValueF(), nil
+		return me.EncryptValueF(plaintext), nil
 	}
 
 	return "", errors.New("mock value not provided")
@@ -79,19 +79,19 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 
 func (me *MockEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
 	if me.BatchEncryptF != nil {
-		return me.BatchEncryptF(), nil
+		return me.BatchEncryptF(secrets), nil
 	}
 	return nil, errors.New("batch encrypt mock not provided")
 }
 
 type MockDecrypter struct {
-	DecryptValueF func() string
-	BatchDecryptF func() []string
+	DecryptValueF func(ciphertext string) string
+	BatchDecryptF func(ciphertexts []string) []string
 }
 
 func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
 	if md.DecryptValueF != nil {
-		return md.DecryptValueF(), nil
+		return md.DecryptValueF(ciphertext), nil
 	}
 
 	return "", errors.New("mock value not provided")
@@ -99,7 +99,7 @@ func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (s
 
 func (md *MockDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	if md.BatchDecryptF != nil {
-		return md.BatchDecryptF(), nil
+		return md.BatchDecryptF(ciphertexts), nil
 	}
 
 	return nil, errors.New("mock value not provided")

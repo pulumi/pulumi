@@ -306,15 +306,15 @@ func TestStackEnvConfig(t *testing.T) {
 
 	mockSecretsManager := &secrets.MockSecretsManager{
 		EncrypterF: func() config.Encrypter {
-			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "ciphertext" }}
 			return encrypter
 		},
 		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
-				DecryptValueF: func() string {
+				DecryptValueF: func(_ string) string {
 					return "plaintext"
 				},
-				BatchDecryptF: func() []string {
+				BatchDecryptF: func(_ []string) []string {
 					return []string{
 						"whatiamdoing",
 					}
@@ -391,15 +391,15 @@ func TestCopyConfig(t *testing.T) {
 
 	mockSecretsManager := &secrets.MockSecretsManager{
 		EncrypterF: func() config.Encrypter {
-			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "ciphertext" }}
 			return encrypter
 		},
 		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
-				DecryptValueF: func() string {
+				DecryptValueF: func(_ string) string {
 					return "plaintext"
 				},
-				BatchDecryptF: func() []string {
+				BatchDecryptF: func(_ []string) []string {
 					return []string{
 						"whatiamdoing",
 					}
