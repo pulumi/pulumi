@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
@@ -88,10 +89,42 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 				pluginPath, err := workspace.DetectPluginPathFrom(cwd)
 				if err == nil && pluginPath != "" {
+					// We're in a plugin. First install the packages specified
+					// in the plugin project file, and then install the plugin's
+					// dependencies.
+
 					proj, err := workspace.LoadPluginProject(pluginPath)
 					if err != nil {
 						return err
 					}
+
+					pctx, err := plugin.NewContextWithRoot(ctx,
+						cmdutil.Diag(),
+						cmdutil.Diag(),
+						nil, // host
+						cwd, // pwd
+						cwd, // rot
+						proj.Runtime.Options(),
+						false, // disableProviderPreview
+						nil,   // tracingSpan
+						nil,   // Plugins
+						proj.GetPackageSpecs(),
+						nil, // config
+						nil, // debugging
+					)
+					if err != nil {
+						return err
+					}
+
+					// Cloud registry is linked to a backend, but we don't have
+					// one available in a plugin. Use the unauthenticated
+					// registry.
+					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
+
+					if err := installPackagesFromProject(pctx, proj, cwd, reg); err != nil {
+						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
+					}
+
 					return policy.InstallPluginDependencies(ctx, filepath.Dir(pluginPath), proj.Runtime)
 				}
 			}
@@ -186,14 +219,14 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 // installPackagesFromProject processes packages specified in the Pulumi.yaml file
 // and installs them using similar logic to the 'pulumi package add' command
 func installPackagesFromProject(
-	pctx *plugin.Context, proj *workspace.Project, root string, registry registry.Registry,
+	pctx *plugin.Context, proj workspace.BaseProject, root string, registry registry.Registry,
 ) error {
 	packages := proj.GetPackageSpecs()
 	if len(packages) == 0 {
 		return nil
 	}
 
-	fmt.Println("Installing packages defined in Pulumi.yaml...")
+	fmt.Println("Installing packages...")
 
 	for name, packageSpec := range packages {
 		fmt.Printf("Installing package '%s'...\n", name)
@@ -205,7 +238,7 @@ func installPackagesFromProject(
 
 		parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
 		_, _, err := packagecmd.InstallPackage(
-			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, parameters, registry)
+			proj, pctx, proj.RuntimeInfo().Name(), root, installSource, parameters, registry)
 		if err != nil {
 			return fmt.Errorf("failed to install package '%s': %w", name, err)
 		}

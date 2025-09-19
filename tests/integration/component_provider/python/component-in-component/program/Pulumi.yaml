@@ -1,0 +1,8 @@
+name: component-in-component
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+packages:
+  provider: ../provider@0.0.0
