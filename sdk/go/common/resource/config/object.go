@@ -32,23 +32,17 @@ var errSecureReprReserved = errors.New(`maps with the single key "secure" are re
 // object is the internal object representation of a single config value. All operations on Value first decode the
 // Value's string representation into its object representation. Secure strings are stored in objects as ciphertext.
 type object struct {
-	value  any
-	secure bool
+	value any
 }
 
 // objectType describes the types of values that may be stored in the value field of an object
 type objectType interface {
-	bool | int64 | uint64 | float64 | string | []object | map[string]object
+	bool | int64 | uint64 | float64 | string | CiphertextSecret | []object | map[string]object
 }
 
 // newObject creates a new object with the given representation.
 func newObject[T objectType](v T) object {
 	return object{value: v}
-}
-
-// newSecureObject creates a new secure object with the given ciphertext.
-func newSecureObject(ciphertext string) object {
-	return object{value: ciphertext, secure: true}
 }
 
 // Secure returns true if the receiver is a secure string or a composite value that contains a secure string.
@@ -68,8 +62,8 @@ func (c object) Secure() bool {
 			}
 		}
 		return false
-	case string:
-		return c.secure
+	case CiphertextSecret:
+		return true
 	default:
 		return false
 	}
@@ -91,14 +85,13 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 	case float64:
 		return NewPlaintext(v), nil
 	case string:
-		if !c.secure {
-			return NewPlaintext(v), nil
-		}
-		plaintext, err := decrypter.DecryptValue(ctx, v)
+		return NewPlaintext(v), nil
+	case CiphertextSecret:
+		plaintext, err := v.Decrypt(ctx, decrypter)
 		if err != nil {
 			return Plaintext{}, fmt.Errorf("%v: %w", path, err)
 		}
-		return NewSecurePlaintext(plaintext), nil
+		return NewPlaintext(plaintext), nil
 	case []object:
 		vs := make([]Plaintext, len(v))
 		for i, v := range v {
@@ -262,7 +255,7 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 		// COMPAT: If this is the first level, we create a new container and overwrite the old value rather than issuing
 		// a type error.
 		if len(prefix) == 1 {
-			c.value, c.secure = newContainer(path[0]), false
+			c.value = newContainer(path[0])
 		} else {
 			switch path[0].(type) {
 			case int:
@@ -339,15 +332,12 @@ func (c object) SecureValues(dec Decrypter) ([]string, error) {
 			values = append(values, vs...)
 		}
 		return values, nil
-	case string:
-		if c.secure {
-			plaintext, err := dec.DecryptValue(context.TODO(), v)
-			if err != nil {
-				return nil, err
-			}
-			return []string{plaintext}, nil
+	case CiphertextSecret:
+		plaintext, err := v.Decrypt(context.TODO(), dec)
+		if err != nil {
+			return nil, err
 		}
-		return nil, nil
+		return []string{string(plaintext)}, nil
 	default:
 		return nil, nil
 	}
@@ -374,11 +364,11 @@ func (c object) marshalObjectValue(root bool) any {
 			vs[k] = v.marshalObjectValue(false)
 		}
 		return vs
-	case string:
-		if !root && c.secure {
-			return map[string]any{"secure": c.value}
+	case CiphertextSecret:
+		if !root {
+			return map[string]any{"secure": v.value}
 		}
-		return c.value
+		return v.value
 	default:
 		return c.value
 	}
@@ -392,7 +382,9 @@ func (c object) MarshalString() (text string, secure, object bool, err error) {
 		bytes, err := c.MarshalJSON()
 		return string(bytes), false, false, err
 	case string:
-		return v, c.secure, false, nil
+		return v, false, false, nil
+	case CiphertextSecret:
+		return v.value, true, false, nil
 	default:
 		bytes, err := c.MarshalJSON()
 		if err != nil {
@@ -405,7 +397,11 @@ func (c object) MarshalString() (text string, secure, object bool, err error) {
 // UnmarshalString unmarshals the string representation accompanied by secure and object metadata into the receiver.
 func (c *object) UnmarshalString(text string, secure, object bool) error {
 	if !object {
-		c.value, c.secure = text, secure
+		if secure {
+			c.value = CiphertextSecret{text}
+		} else {
+			c.value = text
+		}
 		return nil
 	}
 	return c.UnmarshalJSON([]byte(text))
@@ -471,7 +467,7 @@ func unmarshalObject(v any) (object, error) {
 		return newObject(v.String()), nil
 	case map[string]any:
 		if ok, ciphertext := isSecureValue(v); ok {
-			return newSecureObject(ciphertext), nil
+			return newObject(ciphertext), nil
 		}
 		m := make(map[string]object, len(v))
 		for k, v := range v {
@@ -508,25 +504,25 @@ func unmarshalObject(v any) (object, error) {
 
 // marshalObject returns the value that should be passed to the JSON or YAML packages when marshaling the receiver.
 func (c object) marshalObject() any {
-	if str, ok := c.value.(string); ok && c.secure {
+	if ciphertext, ok := c.value.(CiphertextSecret); ok {
 		type secureValue struct {
 			Secure string `json:"secure" yaml:"secure"`
 		}
-		return secureValue{Secure: str}
+		return secureValue{Secure: ciphertext.value}
 	}
 	return c.value
 }
 
 // isSecureValue returns true if the object is a `map[string]any` of length one with a "secure" property of type string.
-func isSecureValue(v any) (bool, string) {
+func isSecureValue(v any) (bool, CiphertextSecret) {
 	if m, isMap := v.(map[string]any); isMap && len(m) == 1 {
 		if val, hasSecureKey := m["secure"]; hasSecureKey {
 			if valString, isString := val.(string); isString {
-				return true, valString
+				return true, CiphertextSecret{valString}
 			}
 		}
 	}
-	return false, ""
+	return false, CiphertextSecret{}
 }
 
 func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (resource.PropertyValue, error) {
