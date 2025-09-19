@@ -1873,9 +1873,10 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	}()
 
 	processFinished := make(chan error, 1)
-	var output strings.Builder
+	out := make(chan string, 1)
 
 	go func() {
+		var output strings.Builder
 		buf := make([]byte, 1024)
 		for {
 			n, err := ptmx.Read(buf)
@@ -1886,6 +1887,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 				break
 			}
 		}
+		out <- output.String()
 	}()
 
 	go func() {
@@ -1909,7 +1911,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	select {
 	case err := <-processFinished:
-		t.Logf("Process finished with error: %s, output: %s", err, output.String())
+		t.Logf("Process finished with error: %s, output: %s", err, <-out)
 		require.ErrorContains(t, err, "exit status 1")
 
 	case <-time.After(timeout):
@@ -1920,7 +1922,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		}
 
 		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
-			" Output so far: %s", timeout.String(), output.String())
+			" Output so far: %s", timeout.String(), <-out)
 	}
 }
 
