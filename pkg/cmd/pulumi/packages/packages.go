@@ -143,8 +143,8 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 }
 
 type LinkPackageContext struct {
-	// The workspace context for the project to which the SDK package is being linked.
-	Workspace pkgWorkspace.Context
+	// The project into which the SDK package is being linked.
+	Project workspace.BaseProject
 	// The programming language of the SDK package being linked.
 	Language string
 	// The root directory of the project to which the SDK package is being linked.
@@ -193,10 +193,6 @@ func getNodeJSPkgName(pkg *schema.Package) string {
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ctx *LinkPackageContext) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	proj, _, err := ctx.Workspace.ReadProject()
-	if err != nil {
-		return err
-	}
 	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
@@ -210,7 +206,7 @@ func linkNodeJsPackage(ctx *LinkPackageContext) error {
 	// * For cases where we do not want to install linked SDKs (where ctx.Install is false), we only want to modify the
 	//   package.json file. In this case, we can use the `pkg set` commands that many package managers support.
 	var addCmd *exec.Cmd
-	options := proj.Runtime.Options()
+	options := ctx.Project.RuntimeInfo().Options()
 
 	if ctx.Install {
 		// Installing -- use the `add` commands.
@@ -310,10 +306,6 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 func linkPythonPackage(ctx *LinkPackageContext) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Println()
-	proj, _, err := ctx.Workspace.ReadProject()
-	if err != nil {
-		return err
-	}
 	packageSpecifier, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
 		return err
@@ -370,7 +362,7 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 
 		return nil
 	}
-	options := proj.Runtime.Options()
+	options := ctx.Project.RuntimeInfo().Options()
 	if toolchainOpt, ok := options["toolchain"]; ok {
 		if tc, ok := toolchainOpt.(string); ok {
 			var depAddCmd *exec.Cmd

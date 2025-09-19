@@ -1,0 +1,7 @@
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+packages:
+  provider-nested: ../provider-nested@0.0.0

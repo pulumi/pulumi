@@ -220,6 +220,16 @@ func (configType *ProjectConfigType) TypeName() string {
 	return ""
 }
 
+// BaseProject is the base interface for project types. Projects have runtime
+// information (the language and its options) and packages.
+type BaseProject interface {
+	Validate() error
+	Save(path string) error
+	RuntimeInfo() *ProjectRuntimeInfo
+	AddPackage(name string, spec PackageSpec)
+	GetPackageSpecs() map[string]PackageSpec
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -272,8 +282,14 @@ type Project struct {
 	raw []byte
 }
 
+var _ BaseProject = (*Project)(nil)
+
 func (proj Project) RawValue() []byte {
 	return proj.raw
+}
+
+func (proj Project) RuntimeInfo() *ProjectRuntimeInfo {
+	return &proj.Runtime
 }
 
 // GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
@@ -290,8 +306,12 @@ func (proj *Project) GetPackageSpecs() map[string]PackageSpec {
 }
 
 func (proj *Project) AddPackage(name string, spec PackageSpec) {
-	if proj.Packages == nil {
-		proj.Packages = make(map[string]packageValue)
+	addPackageToMap(&proj.Packages, name, spec)
+}
+
+func addPackageToMap(packages *map[string]packageValue, name string, spec PackageSpec) {
+	if *packages == nil {
+		*packages = make(map[string]packageValue)
 	}
 
 	// We default to using the simple string format, but if the package
@@ -303,16 +323,16 @@ func (proj *Project) AddPackage(name string, spec PackageSpec) {
 	if len(spec.Parameters) > 0 {
 		// Simple string format does not support parameters
 		useStringFormat = false
-	} else if existingSpec, ok := proj.Packages[name]; ok {
+	} else if existingSpec, ok := (*packages)[name]; ok {
 		if _, ok := existingSpec.value.(PackageSpec); ok {
 			// If the existing spec is a PackageSpec, keep its format
 			useStringFormat = false
 		}
-	} else if len(proj.Packages) > 0 {
+	} else if len(*packages) > 0 {
 		// Check if all existing packages are PackageSpec
 		// If all packages are already using the PackageSpec format, maintain consistency
 		allPackageSpecs := true
-		for _, existingPackage := range proj.Packages {
+		for _, existingPackage := range *packages {
 			if _, ok := existingPackage.value.(PackageSpec); !ok {
 				allPackageSpecs = false
 				break
@@ -329,9 +349,9 @@ func (proj *Project) AddPackage(name string, spec PackageSpec) {
 		if spec.Version != "" {
 			specString = fmt.Sprintf("%s@%s", spec.Source, spec.Version)
 		}
-		proj.Packages[name] = packageValue{value: specString}
+		(*packages)[name] = packageValue{value: specString}
 	} else {
-		proj.Packages[name] = packageValue{value: spec}
+		(*packages)[name] = packageValue{value: spec}
 	}
 }
 
@@ -870,6 +890,39 @@ func (proj *PolicyPackProject) Save(path string) error {
 type PluginProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Packages is a map of package dependencies that can be either strings or PackageSpecs
+	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+}
+
+var _ BaseProject = (*PluginProject)(nil)
+
+func (proj *PluginProject) AddPackage(name string, spec PackageSpec) {
+	addPackageToMap(&proj.Packages, name, spec)
+}
+
+func (proj *PluginProject) Save(path string) error {
+	contract.Requiref(path != "", "path", "must not be empty")
+	contract.Requiref(proj != nil, "proj", "must not be nil")
+	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
+	return save(path, proj, false /*mkDirAll*/)
+}
+
+func (proj *PluginProject) RuntimeInfo() *ProjectRuntimeInfo {
+	return &proj.Runtime
+}
+
+// GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
+func (proj *PluginProject) GetPackageSpecs() map[string]PackageSpec {
+	if proj.Packages == nil {
+		return nil
+	}
+
+	result := make(map[string]PackageSpec)
+	for name, packageValue := range proj.Packages {
+		result[name] = packageValue.Spec()
+	}
+
+	return result
 }
 
 func (proj *PluginProject) Validate() error {
