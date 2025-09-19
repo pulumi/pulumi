@@ -72,16 +72,23 @@ async def _wait_for_shutdown() -> None:
 
 
 async def run_pulumi_func(func: Callable[[], None]):
+    # Run the function and grab any exception it generates
     ex = None
     try:
         func()
     except Exception as e:  # noqa # We re-raise this below
         ex = e
-    await wait_for_rpcs()
-    # If func succeeded, let the monitor decide when we should shutdown.
-    if not ex:
-        await _wait_for_shutdown()
-    await _shutdown_callbacks()
+
+    # Wait for RPCs to complete, then signal and wait for shutdown.
+    try:
+        await wait_for_rpcs()
+        # If func succeeded, let the monitor decide when we should shutdown.
+        if not ex:
+            await _wait_for_shutdown()
+    finally:
+        # Finally, we must always shutdown the callbacks server when we're done.
+        await _shutdown_callbacks()
+
     # By now, all tasks have exited and we're good to go.
     log.debug("run_pulumi_func completed")
     if ex:

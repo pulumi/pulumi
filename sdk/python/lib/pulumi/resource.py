@@ -848,6 +848,8 @@ class Resource:
 
         if dependency:
             self._providers = {}
+            self._transformations = []
+            self._childResources = set()
             return
 
         if props is None:

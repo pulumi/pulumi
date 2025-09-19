@@ -15,6 +15,8 @@
 package plugin
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
@@ -62,25 +64,26 @@ func NewPluginCmd() *cobra.Command {
 }
 
 // getProjectPlugins fetches a list of plugins used by this project.
-func getProjectPlugins() ([]workspace.PluginSpec, error) {
+func getProjectPlugins(ctx context.Context) ([]workspace.PluginSpec, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	pwd, main, pctx, err := engine.ProjectInfoContext(
+		ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer ctx.Close()
+	defer pctx.Close()
 	runtimeOptions := proj.Runtime.Options()
 	programInfo := plugin.NewProgramInfo(root, pwd, main, runtimeOptions)
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	plugins, err := engine.GetRequiredPlugins(
-		ctx.Host,
+		pctx.Host,
 		proj.Runtime.Name(),
 		programInfo)
 	if err != nil {
@@ -89,7 +92,7 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	return plugins, nil
 }
 
-func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
+func resolvePlugins(ctx context.Context, plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
@@ -98,18 +101,18 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, nil, false, nil, nil)
+	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, nil, d, d, nil, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer ctx.Close()
+	defer pctx.Close()
 
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
 	for _, plugin := range plugins {
-		info, err := workspace.GetPluginInfo(ctx.Base(), d, plugin, ctx.Host.GetProjectPlugins())
+		info, err := workspace.GetPluginInfo(pctx.Base(), d, plugin, pctx.Host.GetProjectPlugins())
 		if err != nil {
 			contract.IgnoreError(err)
 		}

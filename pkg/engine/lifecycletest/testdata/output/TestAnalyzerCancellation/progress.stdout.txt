@@ -14,5 +14,5 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
 
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 2s
 

@@ -71,8 +71,12 @@ class PulumiCommand:
         min_version = _MINIMUM_VERSION
         if version and version.compare(min_version) > 0:
             min_version = version
+        env = os.environ.copy()
+        env["PULUMI_SKIP_UPDATE_CHECK"] = "true"
         current_version = (
-            subprocess.check_output([self.command, "version"]).decode("utf-8").strip()
+            subprocess.check_output([self.command, "version"], env=env)
+            .decode("utf-8")
+            .strip()
         )
         if current_version.startswith("v"):
             current_version = current_version[1:]

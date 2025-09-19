@@ -243,7 +243,7 @@ class ProviderServicer(ResourceProviderServicer):
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
         parent = None
-        if not _empty_as_none(request.parent):
+        if request.parent:
             parent = DependencyResource(request.parent)
 
         deleted_with = None

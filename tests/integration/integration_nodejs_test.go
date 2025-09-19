@@ -2972,7 +2972,14 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					t.Logf("Outputs: %v", stack.Outputs)
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 					require.NoError(t, err)
-					require.Equal(t, tokens.Type("nodejs-component-provider:index:MyComponent"), urn.Type())
+					expectedType := tokens.Type("nodejs-component-provider:index:MyComponent")
+					expectedQualifiedType := "ParentComponent$" + expectedType
+					if runtime == "yaml" {
+						// yaml doesn't have components
+						expectedQualifiedType = expectedType
+					}
+					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
+					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
 					t.Logf("stack.Outputs = %+v", stack.Outputs)
 					require.Equal(t, float64(246), stack.Outputs["aNumberOutput"].(float64))
