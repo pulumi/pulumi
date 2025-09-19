@@ -92,8 +92,8 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -117,7 +117,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "c", Dependencies: []resource.URN{"d"}},
+		{URN: "c", Type: "simple:index:Resource", Dependencies: []resource.URN{"d"}},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -141,9 +141,9 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
-		{URN: "c", Dependencies: []resource.URN{"d"}},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
+		{URN: "c", Type: "simple:index:Resource", Dependencies: []resource.URN{"d"}},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -167,8 +167,8 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -192,8 +192,8 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 
 	fx.stdin.buf.WriteString("yes\r\n")
@@ -211,8 +211,8 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 	fx.cmd.Args.Yes = true
 
@@ -231,7 +231,11 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	//
 	// Dangling provider references can't be fixed, so this snapshot should fail to repair.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "a", Provider: "urn:pulumi:stack::project::pulumi:providers:p::x::id"},
+		{
+			URN:      "a",
+			Type:     "simple:index:Resource",
+			Provider: "urn:pulumi:stack::project::pulumi:providers:p::x::id",
+		},
 	})
 	fx.cmd.Args.Yes = true
 
@@ -248,8 +252,8 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 	fx.cmd.Args.Yes = true
 
