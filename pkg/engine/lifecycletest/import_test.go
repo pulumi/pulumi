@@ -515,7 +515,7 @@ func TestImportUpdatedID(t *testing.T) {
 	stackResource := newResource(
 		stackURN,
 		"",
-		"foo",
+		"",
 		"",
 		nil,
 		nil,

@@ -1694,12 +1694,12 @@ func generateParentedTestDependencyGraph(t *testing.T, p *lt.TestPlan) (
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
-			newResource(urnA, "", "0", nil, nil),
-			newResource(urnB, "", "1", nil, nil),
+			newResource(urnA, "", "", nil, nil),
+			newResource(urnB, "", "", nil, nil),
 			newResource(urnC, "", "2", nil, nil),
-			newResource(urnD, urnA, "3", nil, nil),
-			newResource(urnE, urnB, "4", nil, nil),
-			newResource(urnF, urnB, "5", nil, nil),
+			newResource(urnD, urnA, "", nil, nil),
+			newResource(urnE, urnB, "", nil, nil),
+			newResource(urnF, urnB, "", nil, nil),
 			newResource(urnG, urnD, "6", nil, nil),
 			newResource(urnH, urnD, "7", nil, nil),
 			newResource(urnI, urnA, "8", []resource.URN{urnG},
