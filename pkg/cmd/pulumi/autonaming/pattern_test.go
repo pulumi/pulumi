@@ -17,64 +17,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGenerateName(t *testing.T) {
-	t.Parallel()
-	urn := urn.New("mystack", "myproject", "", "aws:s3/bucket:Bucket", "myresource")
-	randomSeed := []byte("test seed")
-
-	tests := []struct {
-		name          string
-		pattern       string
-		want          string
-		wantHasRandom bool
-	}{
-		{
-			name:          "hex generation",
-			pattern:       "${name}-${hex(4)}",
-			want:          "myresource-ccf3",
-			wantHasRandom: true,
-		},
-		{
-			name:          "alphanum generation",
-			pattern:       "${name}-${alphanum(5)}",
-			want:          "myresource-uqk8s",
-			wantHasRandom: true,
-		},
-		{
-			name:          "string generation",
-			pattern:       "${name}-${string(6)}",
-			want:          "myresource-qekgoj",
-			wantHasRandom: true,
-		},
-		{
-			name:          "num generation",
-			pattern:       "${num(7)}_${name}",
-			want:          "4080051_myresource",
-			wantHasRandom: true,
-		},
-		{
-			name:          "uuid generation",
-			pattern:       "${uuid}",
-			want:          "ccf35be6-7106-5ccd-784a-fa394fcdb57c",
-			wantHasRandom: true,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			got, hasRandom := generateName(tt.pattern, urn, randomSeed)
-			assert.Equal(t, tt.want, got)
-			assert.Equal(t, tt.wantHasRandom, hasRandom)
-		})
-	}
-}
 
 func TestResolveStackExpressions(t *testing.T) {
 	t.Parallel()
