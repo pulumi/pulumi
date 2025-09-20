@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -534,4 +535,31 @@ func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypte
 		return resource.PropertyValue{}, err
 	}
 	return plaintext.PropertyValue(), nil
+}
+
+func coerce(v string) (any, bool) {
+	// If "false" or "true", return the boolean value.
+	switch v {
+	case "false":
+		return false, true
+	case "true":
+		return true, true
+	}
+
+	// If the value has more than one character and starts with "0", return the value as-is
+	// so values like "0123456" are saved as a string (without stripping any leading zeros)
+	// rather than as the integer 123456.
+	if len(v) > 1 && v[0] == '0' {
+		return nil, false
+	}
+
+	// If it's convertible to an int, return the int.
+	if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+		return i, true
+	}
+	if i, err := strconv.ParseUint(v, 10, 64); err == nil {
+		return i, true
+	}
+
+	return nil, false
 }
