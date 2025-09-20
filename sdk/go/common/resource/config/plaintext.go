@@ -81,25 +81,6 @@ func (c Plaintext) Value() any {
 	return c.value
 }
 
-// Coerce converts its receiver from a non-secure string to a boolean or number if possible.
-func (c Plaintext) Coerce() Plaintext {
-	if s, ok := c.Value().(string); ok && !c.secure {
-		if coerced, ok := coerce(s); ok {
-			switch coerced := coerced.(type) {
-			case bool:
-				return NewPlaintext(coerced)
-			case int64:
-				return NewPlaintext(coerced)
-			case uint64:
-				return NewPlaintext(coerced)
-			default:
-				contract.Failf("unreachable")
-			}
-		}
-	}
-	return c
-}
-
 // GoValue returns the inner plaintext value as a plain Go value:
 //
 //   - secure strings are mapped to their plaintext

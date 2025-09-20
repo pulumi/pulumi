@@ -537,6 +537,12 @@ func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypte
 	return plaintext.PropertyValue(), nil
 }
 
+// coerce attempts to coerce v to a boolean or number value. Returns the coerced value and true if coercion succeeds
+// and (nil, false) otherwise.
+//
+// The coercion rules are:
+// - "false" and "true" coerce to false and true, respectively
+// - strings of base-10 digits that do not begin with '0' are coerced to int64 or uint64
 func coerce(v string) (any, bool) {
 	// If "false" or "true", return the boolean value.
 	switch v {
