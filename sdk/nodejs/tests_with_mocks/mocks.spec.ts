@@ -144,15 +144,15 @@ setups.forEach(([test, isAsyncNewResource, isAsyncCall]) => {
         });
 
         describe("registered resources", function () {
-          it("exposes currently registered resources", async function () {
-            const monitor = pulumi.runtime.getMonitor() as MockMonitor | undefined;
-            const resources = monitor?.getRegisteredResources();
+            it("exposes currently registered resources", async function () {
+                const monitor = pulumi.runtime.getMonitor() as MockMonitor | undefined;
+                const resources = monitor?.getRegisteredResources();
 
-            for (const resource of [component, instance, custom, remoteComponent]) {
-              assert.ok(resources?.has(await resource.urn.promise()));
-            }
-          })
-        })
+                for (const resource of [component, instance, custom, remoteComponent]) {
+                    assert.ok(resources?.has(await resource.urn.promise()));
+                }
+            });
+        });
 
         describe("component", function () {
             it("has expected output value", (done) => {
