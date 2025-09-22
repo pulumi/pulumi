@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/python
+  description: Always set virtualenv option in GenerateProject
