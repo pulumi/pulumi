@@ -5,6 +5,7 @@ import pytest
 from copy import deepcopy
 from typing import Optional
 
+
 class MyMocks(mocks.Mocks):
     def new_resource(self, args: mocks.MockResourceArgs):
         return f"{args.name}_id", args.inputs
@@ -12,37 +13,40 @@ class MyMocks(mocks.Mocks):
     def call(self, args: mocks.MockCallArgs):
         return {}, None
 
+
 class TestMonitor(mocks.MockMonitor):
-  pass
+    pass
+
 
 @pytest.fixture
 def setup_mocks():
-  monitor = TestMonitor(MyMocks())
-  mocks.set_mocks(MyMocks(), monitor=monitor)
-  try:
-    yield monitor
-  finally:
-    settings.configure(deepcopy(settings.SETTINGS))
+    monitor = TestMonitor(MyMocks())
+    mocks.set_mocks(MyMocks(), monitor=monitor)
+    try:
+        yield monitor
+    finally:
+        settings.configure(deepcopy(settings.SETTINGS))
+
 
 @pulumi.runtime.test
 def test_mock_registered_resources(setup_mocks: TestMonitor):
-  class Component(pulumi.ComponentResource):
-    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
-      super().__init__(name, "test:index:Component", opts)
-  
-  class Custom(pulumi.CustomResource):
-    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
-      super().__init__(name, "test:index:Custom", opts)
+    class Component(pulumi.ComponentResource):
+        def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+            super().__init__(name, "test:index:Component", opts)
 
-  component = Component("component")
-  custom = Custom("custom")
+    class Custom(pulumi.CustomResource):
+        def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+            super().__init__(name, "test:index:Custom", opts)
 
-  async def check():
-    component_urn = await component.urn
-    custom_urn = await custom.urn
+    component = Component("component")
+    custom = Custom("custom")
 
-    registrations = setup_mocks.get_registered_resources()
-    assert component_urn in registrations
-    assert custom_urn in registrations
+    async def check():
+        component_urn = await component.urn
+        custom_urn = await custom.urn
 
-  return check()
+        registrations = setup_mocks.get_registered_resources()
+        assert component_urn in registrations
+        assert custom_urn in registrations
+
+    return check()
