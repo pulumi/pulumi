@@ -947,8 +947,12 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	require.Empty(t, sp.SavedSnapshots)
 
 	// The step here is not important.
-	step := deploy.NewSameStep(nil, nil, resourceA, resourceA.Copy())
-	err := manager.RegisterResourceOutputs(step)
+	resACopy := resourceA.Copy()
+	step := deploy.NewSameStep(nil, nil, resourceA, resACopy)
+	mutation, err := manager.BeginMutation(step)
+	require.NoError(t, err)
+	require.NoError(t, mutation.End(step, true))
+	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
 
 	// The RegisterResourceOutputs should not have caused a snapshot to be written.
@@ -957,17 +961,21 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
 	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
-	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
+	step = deploy.NewSameStep(nil, nil, resACopy, resourceA2)
+	mutation, err = manager.BeginMutation(step)
+	require.NoError(t, err)
+	require.NoError(t, mutation.End(step, true))
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
 
 	// The new outputs should have been saved.
-	require.Len(t, sp.SavedSnapshots, 1)
+	require.Len(t, sp.SavedSnapshots, 2)
 
 	// It should be identical to what has already been written.
 	lastSnap := sp.LastSnap()
 	require.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
+	assert.Equal(t, resourceA2.Outputs, lastSnap.Resources[0].Outputs)
 }
 
 func TestRecordingSameFailureJournaling(t *testing.T) {
