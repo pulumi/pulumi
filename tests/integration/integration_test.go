@@ -1839,6 +1839,11 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 
+	// package add creates `interrupted.txt`, remove it so we can test its
+	// creation during the program run below.
+	err := os.Remove(filepath.Join(programPath, "interrupted.txt"))
+	require.NoError(t, err)
+
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
 	// This simulates the behaviour of the 1password CLI.
 	cmd := e.SetupCommandIn(context.TODO(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
