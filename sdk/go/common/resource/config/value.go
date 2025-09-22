@@ -16,6 +16,9 @@ package config
 
 import (
 	"context"
+	"strconv"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type Type int
@@ -122,13 +125,60 @@ func (c Value) Object() bool {
 	return c.object
 }
 
+// coerceObject returns a more suitable value for objects by converting untyped string configuration values into
+// boolean or number values.
+func (c Value) coerceObject() (object, error) {
+	// If it's a secure value, a typed value, or an object, return as-is.
+	if c.Secure() || c.Object() || c.typ != TypeUnknown {
+		return c.unmarshalObject()
+	}
+
+	// Otherwise, attempt to coerce the value into a boolean or a number.
+	coerced, ok := coerce(c.value)
+	if !ok {
+		return c.unmarshalObject()
+	}
+	switch coerced := coerced.(type) {
+	case bool:
+		return newObject(coerced), nil
+	case int64:
+		return newObject(coerced), nil
+	case uint64:
+		return newObject(coerced), nil
+	default:
+		contract.Failf("unreachable")
+		return object{}, nil
+	}
+}
+
 func (c Value) unmarshalObject() (object, error) {
-	var obj object
-	if c.object || c.typ == TypeUnknown {
+	if c.secure || c.object || c.typ == TypeUnknown {
+		var obj object
 		err := obj.UnmarshalString(c.value, c.secure, c.object)
 		return obj, err
 	}
-	return adjustObjectValue(c)
+
+	switch c.typ {
+	case TypeString:
+		return newObject(c.value), nil
+	case TypeInt:
+		i, err := strconv.Atoi(c.value)
+		if err != nil {
+			return object{}, err
+		}
+		return newObject(int64(i)), nil
+	case TypeBool:
+		return newObject(c.value == "true"), nil
+	case TypeFloat:
+		f, err := strconv.ParseFloat(c.value, 64)
+		if err != nil {
+			return object{}, err
+		}
+		return newObject(f), nil
+	default:
+		contract.Failf("unreachable")
+		return object{}, nil
+	}
 }
 
 // ToObject returns the string value (if not an object), or the unmarshalled JSON object (if an object).
