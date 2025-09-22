@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: adds a line at end of diag sec showing whether dep was success or not with error count
