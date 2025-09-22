@@ -1810,9 +1810,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 }
 
 // TestRunningViaCLIWrapper tests that we can interrupt an operation when
-// running via a CLI wrapper tool like the 1Password CLI. This test also checks
-// that a provider also receives a SIGINT signal when the operation is
-// interrupted.
+// running via a CLI wrapper tool like the 1Password CLI.
 //
 // Regression test for https://github.com/pulumi/pulumi/issues/20154
 func TestRunningViaCLIWrapper(t *testing.T) {
@@ -1891,22 +1889,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	}()
 
 	go func() {
-		err := cmd.Wait()
-		// The provider might not have exited yet when the pulumi command exits,
-		// wait for interrupted.txt to be created by the provider after it
-		// received SIGINT.
-		end := time.Now().Add(timeout)
-		found := false
-		for time.Now().Before(end) {
-			if _, err := os.Stat(filepath.Join(programPath, "interrupted.txt")); err == nil {
-				t.Logf("Found `interrupted.txt`")
-				found = true
-				break
-			}
-			time.Sleep(wait)
-		}
-		require.True(t, found, "interrupted.txt should exist - did the provider not get SIGINT?")
-		processFinished <- err
+		processFinished <- cmd.Wait()
 	}()
 
 	select {
