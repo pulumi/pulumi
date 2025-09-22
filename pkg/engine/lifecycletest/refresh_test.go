@@ -1411,7 +1411,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		var dep map[resource.PropertyKey][]resource.URN
 		if programExecutions > 2 {
 			resp, err = monitor.RegisterResource("pkgA:m:typB", "resC", true, deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
+				Inputs: resource.PropertyMap{"foo": resource.NewProperty("baz")},
 			})
 			require.NoError(t, err)
 			dep = map[resource.PropertyKey][]resource.URN{
@@ -1422,7 +1422,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB"
 		// which is skipped.
 		_, err = monitor.RegisterResource("pkgA:m:typC", "resD", true, deploytest.ResourceOptions{
-			Inputs:       resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
+			Inputs:       resource.PropertyMap{"foo": resource.NewProperty("baz")},
 			PropertyDeps: dep,
 		})
 		require.NoError(t, err)
