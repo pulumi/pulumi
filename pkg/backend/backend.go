@@ -264,7 +264,7 @@ type Backend interface {
 	// packages and templates.
 	GetCloudRegistry() (CloudRegistry, error)
 
-	// GetReadOnlyCloudRegistry retusn a [registry.Registry] object tied to this
+	// GetReadOnlyCloudRegistry returns a [registry.Registry] object tied to this
 	// backend. All backends should support GetReadOnlyCloudRegistry.
 	GetReadOnlyCloudRegistry() registry.Registry
 }
