@@ -54,6 +54,10 @@ type CreatePolicyPackRequest struct {
 
 	// A URL to the repository where the policy pack is defined.
 	Repository string `json:"repository,omitempty"`
+
+	// Metadata contains optional data about the environment performing the publish operation,
+	// e.g. the current source code control commit information.
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
