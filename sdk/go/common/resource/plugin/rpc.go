@@ -16,8 +16,9 @@ package plugin
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -71,6 +72,10 @@ const (
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
 func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*structpb.Struct, error) {
+	if props == nil {
+		return nil, nil
+	}
+
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
@@ -271,16 +276,14 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
 func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.PropertyMap, error) {
+	if props == nil {
+		return nil, nil
+	}
+
 	result := make(resource.PropertyMap)
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
-	var keys []string
-	if props != nil {
-		for k := range props.Fields {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-	}
+	keys := slices.Sorted(maps.Keys(props.Fields))
 
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
