@@ -1921,7 +1921,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 			_ = cmd.Wait()
 		}
 
-		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
+		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
 			" Output so far: %s", timeout.String(), <-out)
 	}
 }
