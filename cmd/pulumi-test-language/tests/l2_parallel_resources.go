@@ -32,6 +32,7 @@ func init() {
 			func() plugin.Provider {
 				return &providers.SyncProvider{
 					CreateLimit: func() (w sync.WaitGroup) { w.Add(3); return }(),
+					CheckLimit:  func() (w sync.WaitGroup) { w.Add(3); return }(),
 				}
 			},
 		},

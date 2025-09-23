@@ -35,6 +35,7 @@ type SyncProvider struct {
 	plugin.UnimplementedProvider
 
 	CreateLimit sync.WaitGroup
+	CheckLimit  sync.WaitGroup
 }
 
 var syncVersion = semver.MustParse("3.0.0-alpha.1.internal+exp.sha.12345678")
@@ -88,6 +89,10 @@ func (p *SyncProvider) Check(
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
+	}
+
+	if err := p.waitWithTimeout(&p.CheckLimit); err != nil {
+		return plugin.CheckResponse{}, err
 	}
 
 	return plugin.CheckResponse{Properties: req.News}, nil
