@@ -127,6 +127,21 @@ type JournalReplayer struct {
 	newResources []*apitype.ResourceV3
 }
 
+func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
+	replayer := JournalReplayer{
+		toRemove:                   make(map[int64]struct{}),
+		toDeleteInSnapshot:         make(map[int64]struct{}),
+		toReplaceInSnapshot:        make(map[int64]*apitype.ResourceV3),
+		markAsDeletion:             make(map[int64]struct{}),
+		markAsPendingReplacement:   make(map[int64]struct{}),
+		operationIDToResourceIndex: make(map[int64]int64),
+		incompleteOps:              make(map[int64]apitype.JournalEntry),
+		newResources:               make([]*apitype.ResourceV3, 0),
+		base:                       base,
+	}
+	return &replayer
+}
+
 func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 	switch entry.Kind {
 	case apitype.JournalEntryKindBegin:
@@ -376,17 +391,8 @@ func (sj *snapshotJournaler) snap() (*deploy.Snapshot, error) {
 		}
 	}
 
-	replayer := JournalReplayer{
-		toRemove:                   make(map[int64]struct{}),
-		toDeleteInSnapshot:         make(map[int64]struct{}),
-		toReplaceInSnapshot:        make(map[int64]*apitype.ResourceV3),
-		markAsDeletion:             make(map[int64]struct{}),
-		markAsPendingReplacement:   make(map[int64]struct{}),
-		operationIDToResourceIndex: make(map[int64]int64),
-		incompleteOps:              make(map[int64]apitype.JournalEntry),
-		newResources:               make([]*apitype.ResourceV3, 0),
-		base:                       snap,
-	}
+	replayer := NewJournalReplayer(snap)
+
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sj.journalEntries {
 		replayer.Add(entry)
