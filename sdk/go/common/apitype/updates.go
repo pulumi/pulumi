@@ -137,7 +137,7 @@ type StartUpdateResponse struct {
 	// JournalVersion indicates the maximum version of journal entries that should be
 	// sent to the server. Is expected to be less or equal than the JournalVersion we
 	// sent in the update request.  If 0, journaling is disabled.
-	JournalVersion int64 `json:"useJournal,omitempty"`
+	JournalVersion int64 `json:"journalVersion,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.

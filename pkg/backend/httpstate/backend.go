@@ -1478,7 +1478,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	version, token, useJournal, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, journalVersion, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1519,7 +1519,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		version:    version,
 		leaseToken: token,
 		messages:   updateDetails.Messages,
-		useJournal: useJournal,
+		useJournal: journalVersion == 1, // TODO: FIXME
 	}, nil
 }
 
