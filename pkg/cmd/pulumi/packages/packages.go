@@ -32,7 +32,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -55,62 +55,57 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) error {
+func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) (hcl.Diagnostics, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("get current working directory: %w", err)
+		return nil, fmt.Errorf("get current working directory: %w", err)
 	}
 
-	generatePackage := func(directory string, pkg *schema.Package, extraFiles map[string][]byte) error {
+	generatePackage := func(directory string, pkg *schema.Package, extraFiles map[string][]byte) (hcl.Diagnostics, error) {
 		// Ensure the target directory is clean, but created.
 		err = os.RemoveAll(directory)
 		if err != nil && !os.IsNotExist(err) {
-			return err
+			return nil, err
 		}
 		err := os.MkdirAll(directory, 0o700)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		jsonBytes, err := pkg.MarshalJSON()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		pCtx, err := NewPluginContext(cwd)
 		if err != nil {
-			return fmt.Errorf("create plugin context: %w", err)
+			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
 		defer contract.IgnoreClose(pCtx.Host)
 		programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
 		languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		loader := schema.NewPluginLoader(pCtx.Host)
 		loaderServer := schema.NewLoaderServer(loader)
 		grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer contract.IgnoreClose(grpcServer)
 
 		diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
 		if err != nil {
-			return err
+			return diags, err
 		}
 
-		// These diagnostics come directly from the converter and so _should_ be user friendly. So we're just
-		// going to print them.
-		cmdDiag.PrintDiagnostics(pCtx.Diag, diags)
 		if diags.HasErrors() {
-			// If we've got error diagnostics then package generation failed, we've printed the error above so
-			// just return a plain message here.
-			return errors.New("generation failed")
+			return diags, fmt.Errorf("generation failed: %w", diags)
 		}
 
-		return nil
+		return diags, nil
 	}
 
 	extraFiles := make(map[string][]byte)
@@ -130,16 +125,12 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 			return nil
 		})
 		if err != nil {
-			return fmt.Errorf("read overlay directory %q: %w", overlays, err)
+			return nil, fmt.Errorf("read overlay directory %q: %w", overlays, err)
 		}
 	}
 
 	root := filepath.Join(out, language)
-	err = generatePackage(root, pkg, extraFiles)
-	if err != nil {
-		return err
-	}
-	return nil
+	return generatePackage(root, pkg, extraFiles)
 }
 
 type LinkPackageContext struct {
@@ -157,6 +148,7 @@ type LinkPackageContext struct {
 	// package will be linked (e.g. an entry added to package.json), but not installed (e.g. its contents unpacked into
 	// node_modules).
 	Install bool
+	Writer  io.Writer
 }
 
 // LinkPackage links a locally generated SDK to an existing project.
@@ -192,7 +184,7 @@ func getNodeJSPkgName(pkg *schema.Package) string {
 
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ctx *LinkPackageContext) error {
-	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
+	fmt.Fprintf(ctx.Writer, "Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	proj, _, err := ctx.Workspace.ReadProject()
 	if err != nil {
 		return err
@@ -308,8 +300,8 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 
 // linkPythonPackage links a locally generated SDK to an existing Python project.
 func linkPythonPackage(ctx *LinkPackageContext) error {
-	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Println()
+	fmt.Fprintf(ctx.Writer, "Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
+	fmt.Fprintf(ctx.Writer, "\n")
 	proj, _, err := ctx.Workspace.ReadProject()
 	if err != nil {
 		return err
@@ -459,17 +451,17 @@ func linkPythonPackage(ctx *LinkPackageContext) error {
 		packageName = python.PyPack(ctx.Pkg.Namespace, ctx.Pkg.Name)
 	}
 
-	fmt.Println()
-	fmt.Println("You can then import the SDK in your Python code with:")
-	fmt.Println()
-	fmt.Printf("  import %s as %s\n", packageName, importName)
-	fmt.Println()
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "You can then import the SDK in your Python code with:\n")
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "  import %s as %s\n", packageName, importName)
+	fmt.Fprintf(ctx.Writer, "\n")
 	return nil
 }
 
 // linkGoPackage links a locally generated SDK to an existing Go project.
 func linkGoPackage(ctx *LinkPackageContext) error {
-	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
+	fmt.Fprintf(ctx.Writer, "Successfully generated a Go SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 
 	// All go code is placed under a relative package root so it is nested one
 	// more directory deep equal to the package name.  This extra path is equal
@@ -540,11 +532,11 @@ func linkGoPackage(ctx *LinkPackageContext) error {
 		return fmt.Errorf("error writing go.mod: %w", err)
 	}
 
-	fmt.Printf("Go mod file updated to use local sdk for %s\n", ctx.Pkg.Name)
+	fmt.Fprintf(ctx.Writer, "Go mod file updated to use local sdk for %s\n", ctx.Pkg.Name)
 	// TODO: Also generate instructions using the default import path in cases where ImportBasePath is empty.
 	// See https://github.com/pulumi/pulumi/issues/18410
 	if goInfo.ImportBasePath != "" {
-		fmt.Printf("To use this package, import %s\n", goInfo.ImportBasePath)
+		fmt.Fprintf(ctx.Writer, "To use this package, import %s\n", goInfo.ImportBasePath)
 	}
 
 	return nil
@@ -564,8 +556,8 @@ func csharpPackageName(pkgName string) string {
 // linkDotnetPackage links a locally generated SDK to an existing .NET project.
 // Also prints instructions for modifying the csproj file for DefaultItemExcludes cleanup.
 func linkDotnetPackage(ctx *LinkPackageContext) error {
-	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Println()
+	fmt.Fprintf(ctx.Writer, "Successfully generated a .NET SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
+	fmt.Fprintf(ctx.Writer, "\n")
 
 	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
 	if err != nil {
@@ -584,43 +576,42 @@ func linkDotnetPackage(ctx *LinkPackageContext) error {
 		namespace = ctx.Pkg.Namespace
 	}
 
-	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
-	fmt.Println()
-	fmt.Println("  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>")
-	fmt.Println()
-	fmt.Println("You can then use the SDK in your .NET code with:")
-	fmt.Println()
-	fmt.Printf("  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(ctx.Pkg.Name))
-	fmt.Println()
+	fmt.Fprintf(ctx.Writer, "You also need to add the following to your .csproj file of the program:\n")
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>\n")
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "You can then use the SDK in your .NET code with:\n")
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(ctx.Pkg.Name))
+	fmt.Fprintf(ctx.Writer, "\n")
 	return nil
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Java
 // project, in the absence of us attempting to perform this linking automatically.
 func printJavaLinkInstructions(ctx *LinkPackageContext) error {
-	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Println()
-	fmt.Println("To use this SDK in your Java project, complete the following steps:")
-	fmt.Println()
-	fmt.Println("1. Copy the contents of the generated SDK to your Java project:")
-	fmt.Printf("     cp -r %s/src/* %s/src\n", ctx.Out, ctx.Root)
-	fmt.Println()
-	fmt.Println("2. Add the SDK's dependencies to your Java project's build configuration.")
-	fmt.Println("   If you are using Maven, add the following dependencies to your pom.xml:")
-	fmt.Println()
-	fmt.Println("     <dependencies>")
-	fmt.Println("         <dependency>")
-	fmt.Println("             <groupId>com.google.code.findbugs</groupId>")
-	fmt.Println("             <artifactId>jsr305</artifactId>")
-	fmt.Println("             <version>3.0.2</version>")
-	fmt.Println("         </dependency>")
-	fmt.Println("         <dependency>")
-	fmt.Println("             <groupId>com.google.code.gson</groupId>")
-	fmt.Println("             <artifactId>gson</artifactId>")
-	fmt.Println("             <version>2.8.9</version>")
-	fmt.Println("         </dependency>")
-	fmt.Println("     </dependencies>")
-	fmt.Println()
+	fmt.Fprintf(ctx.Writer, "Successfully generated a Java SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "To use this SDK in your Java project, complete the following steps:\n")
+	fmt.Fprintf(ctx.Writer, "1. Copy the contents of the generated SDK to your Java project:\n")
+	fmt.Fprintf(ctx.Writer, "     cp -r %s/src/* %s/src\n", ctx.Out, ctx.Root)
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "2. Add the SDK's dependencies to your Java project's build configuration.\n")
+	fmt.Fprintf(ctx.Writer, "   If you are using Maven, add the following dependencies to your pom.xml:\n")
+	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintf(ctx.Writer, "     <dependencies>\n")
+	fmt.Fprintf(ctx.Writer, "         <dependency>\n")
+	fmt.Fprintf(ctx.Writer, "             <groupId>com.google.code.findbugs</groupId>\n")
+	fmt.Fprintf(ctx.Writer, "             <artifactId>jsr305</artifactId>\n")
+	fmt.Fprintf(ctx.Writer, "             <version>3.0.2</version>\n")
+	fmt.Fprintf(ctx.Writer, "         </dependency>\n")
+	fmt.Fprintf(ctx.Writer, "         <dependency>\n")
+	fmt.Fprintf(ctx.Writer, "             <groupId>com.google.code.gson</groupId>\n")
+	fmt.Fprintf(ctx.Writer, "             <artifactId>gson</artifactId>\n")
+	fmt.Fprintf(ctx.Writer, "             <version>2.8.9</version>\n")
+	fmt.Fprintf(ctx.Writer, "         </dependency>\n")
+	fmt.Fprintf(ctx.Writer, "     </dependencies>\n")
+	fmt.Fprintf(ctx.Writer, "\n")
 	return nil
 }
 

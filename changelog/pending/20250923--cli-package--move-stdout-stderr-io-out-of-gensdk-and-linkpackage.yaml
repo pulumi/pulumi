@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/package
+  description: Move stdout/stderr IO out of GenSDK and LinkPackage

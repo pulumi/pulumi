@@ -23,6 +23,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -40,19 +41,19 @@ import (
 func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
 	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
-) (*schema.Package, *workspace.PackageSpec, error) {
+) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
 	pkg, specOverride, err := packages.SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
-			return nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
+			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
-		return nil, nil, fmt.Errorf("failed to get schema: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
 	}
 
 	tempOut, err := os.MkdirTemp("", "pulumi-package-")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create temporary directory: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tempOut)
 
@@ -63,7 +64,7 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
 	pkg.SupportPack = true
 
-	err = packages.GenSDK(
+	diags, err := packages.GenSDK(
 		language,
 		tempOut,
 		pkg,
@@ -71,13 +72,13 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		local, /*local*/
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate SDK: %w", err)
+		return nil, nil, diags, fmt.Errorf("failed to generate SDK: %w", err)
 	}
 
 	out := filepath.Join(root, "sdks")
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create directory for SDK: %w", err)
+		return nil, nil, diags, fmt.Errorf("failed to create directory for SDK: %w", err)
 	}
 
 	outName := pkg.Name
@@ -89,17 +90,18 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	// If directory already exists, remove it completely before copying new files
 	if _, err := os.Stat(out); err == nil {
 		if err := os.RemoveAll(out); err != nil {
-			return nil, nil, fmt.Errorf("failed to clean existing SDK directory: %w", err)
+			return nil, nil, diags, fmt.Errorf("failed to clean existing SDK directory: %w", err)
 		}
 	}
 
 	err = packages.CopyAll(out, filepath.Join(tempOut, language))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to move SDK to project: %w", err)
+		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
 	// Link the package to the project
 	if err := packages.LinkPackage(&packages.LinkPackageContext{
+		Writer:    os.Stdout,
 		Workspace: ws,
 		Language:  language,
 		Root:      root,
@@ -107,10 +109,10 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		Out:       out,
 		Install:   true,
 	}); err != nil {
-		return nil, nil, err
+		return nil, nil, diags, err
 	}
 
-	return pkg, specOverride, nil
+	return pkg, specOverride, diags, nil
 }
 
 // Constructs the `pulumi package add` command.
@@ -186,8 +188,9 @@ from the parameters, as in:
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
-			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, pluginSource, parameters,
+			pkg, packageSpec, diags, err := InstallPackage(ws, pctx, language, root, pluginSource, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), ws, proj, cmdutil.Diag(), env.Global()))
+			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
 			}
