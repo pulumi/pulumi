@@ -564,6 +564,18 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		if async {
 			ex.asyncEventsExpected++
 		}
+	case ContinueResourceCheckEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceCheckEvent")
+		ex.asyncEventsExpected--
+		if asyncErr := e.Error(); asyncErr != nil {
+			err = asyncErr
+			break
+		}
+		var async bool
+		steps, async, err = ex.stepGen.continueStepsFromCheck(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
 	case ContinueResourceRefreshEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
 		ex.asyncEventsExpected--

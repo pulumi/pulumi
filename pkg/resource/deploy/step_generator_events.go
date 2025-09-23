@@ -224,6 +224,10 @@ type ContinueResourceCheckEvent interface {
 	Provider() plugin.Provider
 	IsTargeted() bool
 	Autonaming() *plugin.AutonamingOptions
+
+	Error() error
+
+	isContinueCheckResourceEvent()
 }
 
 type continueCheckResourceEvent struct {
@@ -243,8 +247,11 @@ type continueCheckResourceEvent struct {
 	provider    plugin.Provider
 	isTargeted  bool
 	autonaming  *plugin.AutonamingOptions
+
+	err error
 }
 
+func (e continueCheckResourceEvent) isContinueCheckResourceEvent()         {}
 func (e continueCheckResourceEvent) Invalid() bool                         { return e.invalid }
 func (e continueCheckResourceEvent) Recreating() bool                      { return e.recreating }
 func (e continueCheckResourceEvent) WasExternal() bool                     { return e.wasExternal }
@@ -260,3 +267,4 @@ func (e continueCheckResourceEvent) Goal() *resource.Goal                  { ret
 func (e continueCheckResourceEvent) Provider() plugin.Provider             { return e.provider }
 func (e continueCheckResourceEvent) IsTargeted() bool                      { return e.isTargeted }
 func (e continueCheckResourceEvent) Autonaming() *plugin.AutonamingOptions { return e.autonaming }
+func (e continueCheckResourceEvent) Error() error                          { return e.err }

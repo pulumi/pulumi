@@ -1130,68 +1130,89 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		oldOutputs = old.Outputs
 	}
 
-	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
-	if prov != nil {
-		var resp plugin.CheckResponse
+	runCheck := func() (continueCheckResourceEvent, error) {
+		// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
+		if prov != nil {
+			var resp plugin.CheckResponse
 
-		checkInputs := prov.Check
-		if !isTargeted {
-			// If not targeted, stub out the provider check and use the old inputs directly.
-			checkInputs = func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
-				return plugin.CheckResponse{Properties: oldInputs}, nil
+			checkInputs := prov.Check
+			if !isTargeted {
+				// If not targeted, stub out the provider check and use the old inputs directly.
+				checkInputs = func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{Properties: oldInputs}, nil
+				}
 			}
+
+			// If we are re-creating this resource because it was deleted earlier, the old inputs are now
+			// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
+			// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
+			// targeted for replacement, ignore its old state.
+			if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
+				resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
+					URN:           urn,
+					News:          goal.Properties,
+					AllowUnknowns: allowUnknowns,
+					RandomSeed:    randomSeed,
+					Autonaming:    autonaming,
+				})
+			} else {
+				resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
+					URN:           urn,
+					Olds:          oldInputs,
+					News:          inputs,
+					AllowUnknowns: allowUnknowns,
+					RandomSeed:    randomSeed,
+					Autonaming:    autonaming,
+				})
+			}
+
+			inputs = resp.Properties
+
+			if err != nil {
+				return continueCheckResourceEvent{}, err
+			} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
+				invalid = true
+			}
+			new.Inputs = inputs
 		}
 
-		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
-		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
-		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
-		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
-				URN:           urn,
-				News:          goal.Properties,
-				AllowUnknowns: allowUnknowns,
-				RandomSeed:    randomSeed,
-				Autonaming:    autonaming,
-			})
-		} else {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
-				URN:           urn,
-				Olds:          oldInputs,
-				News:          inputs,
-				AllowUnknowns: allowUnknowns,
-				RandomSeed:    randomSeed,
-				Autonaming:    autonaming,
-			})
-		}
-		inputs = resp.Properties
-
-		if err != nil {
-			return nil, false, err
-		} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
-			invalid = true
-		}
-		new.Inputs = inputs
+		return continueCheckResourceEvent{
+			RegisterResourceEvent: event,
+			invalid:               invalid,
+			oldInputs:             oldInputs,
+			oldOutputs:            oldOutputs,
+			recreating:            recreating,
+			wasExternal:           wasExternal,
+			imported:              imported,
+			inputs:                inputs,
+			urn:                   urn,
+			new:                   new,
+			old:                   old,
+			randomSeed:            randomSeed,
+			goal:                  goal,
+			provider:              prov,
+			isTargeted:            isTargeted,
+			autonaming:            autonaming,
+		}, nil
 	}
 
-	return sg.continueStepsFromCheck(continueCheckResourceEvent{
-		RegisterResourceEvent: event,
-		invalid:               invalid,
-		oldInputs:             oldInputs,
-		oldOutputs:            oldOutputs,
-		recreating:            recreating,
-		wasExternal:           wasExternal,
-		imported:              imported,
-		inputs:                inputs,
-		urn:                   urn,
-		new:                   new,
-		old:                   old,
-		randomSeed:            randomSeed,
-		goal:                  goal,
-		provider:              prov,
-		isTargeted:            isTargeted,
-		autonaming:            autonaming,
-	})
+	TODO_AsyncCheck := 1+1 == 2
+	if TODO_AsyncCheck {
+		go func() {
+			r, err := runCheck()
+			if err != nil {
+				sg.events <- continueCheckResourceEvent{err: err}
+			}
+			sg.events <- r
+		}()
+		return nil, true, nil
+	}
+
+	r, err := runCheck()
+	if err != nil {
+		return nil, false, err
+	}
+	return sg.continueStepsFromCheck(r)
 }
 
 func (sg *stepGenerator) continueStepsFromCheck(event ContinueResourceCheckEvent) ([]Step, bool, error) {
