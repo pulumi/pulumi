@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/python
+  description: Catch BaseException when running the user program

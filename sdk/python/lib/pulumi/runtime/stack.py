@@ -76,7 +76,7 @@ async def run_pulumi_func(func: Callable[[], None]):
     ex = None
     try:
         func()
-    except Exception as e:  # noqa # We re-raise this below
+    except BaseException as e:  # noqa # We re-raise this below
         ex = e
 
     # Wait for RPCs to complete, then signal and wait for shutdown.
