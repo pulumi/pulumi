@@ -310,6 +310,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 
 	for _, mr := range expected.Resources {
 		if len(mr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
 			newPropDeps := map[resource.PropertyKey][]resource.URN{}
 			for k, v := range mr.PropertyDependencies {
 				if len(v) > 0 {
@@ -323,6 +324,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 
 	for _, jr := range snap.Resources {
 		if len(jr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
 			newPropDeps := map[resource.PropertyKey][]resource.URN{}
 			for k, v := range jr.PropertyDependencies {
 				if len(v) > 0 {
