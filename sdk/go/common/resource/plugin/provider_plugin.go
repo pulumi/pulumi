@@ -587,6 +587,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
 		Label:        label + ".olds",
 		KeepUnknowns: req.AllowUnknowns,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
@@ -595,6 +596,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
 		Label:        label + ".news",
 		KeepUnknowns: req.AllowUnknowns,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
@@ -629,6 +631,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			PropagateNil:   true,
 		})
 		if err != nil {
 			return CheckConfigResponse{}, err
@@ -696,6 +699,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
 		Label:        label + ".oldInputs",
 		KeepUnknowns: true,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -704,6 +708,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
 		Label:        label + ".oldOutputs",
 		KeepUnknowns: true,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -712,6 +717,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
 		Label:        label + ".newInputs",
 		KeepUnknowns: true,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -985,6 +991,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		err := fmt.Errorf("marshaling provider inputs: %w", err)
@@ -1076,6 +1083,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1085,6 +1093,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1129,6 +1138,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			PropagateNil:   true,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -1193,6 +1203,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1204,6 +1215,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1215,6 +1227,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1317,6 +1330,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		KeepUnknowns:  req.Preview,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1362,6 +1376,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
@@ -1422,6 +1437,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			ElideAssetContents: true,
 			KeepSecrets:        protocol.acceptSecrets,
 			KeepResources:      protocol.acceptResources,
+			PropagateNil:       true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1433,6 +1449,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1442,6 +1459,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		Label:         label,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1486,6 +1504,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resourceStatus}, err
@@ -1498,6 +1517,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			PropagateNil:   true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
@@ -1581,6 +1601,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1590,6 +1611,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1599,6 +1621,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		KeepUnknowns:  req.Preview,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1608,6 +1631,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		Label:         label + ".oldViews",
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1651,6 +1675,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
@@ -1700,6 +1725,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1710,6 +1736,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1719,6 +1746,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		Label:         label + ".oldViews",
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1805,6 +1833,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1900,6 +1929,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1945,6 +1975,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		Label:         label + ".args",
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -1966,6 +1997,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2011,6 +2043,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return CallResult{}, err
@@ -2058,6 +2091,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return CallResult{}, err
