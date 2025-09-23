@@ -58,7 +58,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -84,6 +83,9 @@ const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
 	defaultRunPath = "@pulumi/pulumi/cmd/run"
+
+	// The path to the NodeJS plugin launcher.
+	defaultRunPluginPath = "@pulumi/pulumi/cmd/run-plugin"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -1506,18 +1508,9 @@ func (host *nodeLanguageHost) RunPlugin(
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
 
-	// TODO: Pretty sure this isn't right for convert/tool plugins.
-	runPath := ""
-	if req.Kind == string(apitype.ResourcePlugin) {
-		runPath = os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-		if runPath == "" {
-			runPath = "@pulumi/pulumi/cmd/run-plugin"
-		}
-	} else if req.Kind == string(apitype.AnalyzerPlugin) {
-		// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
-		// used to have a dedicated shim plugin "pulumi-analyzer-policy" that would start policy packs up, but
-		// now we just let the nodejs RunPlugin code handle that logic.
-		runPath = "@pulumi/pulumi/cmd/run-policy-pack"
+	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+	if runPath == "" {
+		runPath = defaultRunPluginPath
 	}
 
 	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
@@ -1543,25 +1536,14 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
+	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
+
 	args = append(args, nodeargs...)
-	// For policy analyzers we need to send the program directory as an argument _last_, for everything else it comes first
-	if req.Kind == string(apitype.AnalyzerPlugin) {
-		args = append(args, req.Args...)
-		args = append(args, req.Info.ProgramDirectory)
-	} else {
-		args = append(args, req.Info.ProgramDirectory)
-		args = append(args, req.Args...)
-	}
+	args = append(args, req.Args...)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(server.Context(), nodeBin, args...)
-	// node policy packs used to always run with the working directory set to the policy pack directory, not
-	// the main working directory. We need to continue that for backwards compatibility.
-	if req.Kind == string(apitype.AnalyzerPlugin) {
-		cmd.Dir = req.Info.ProgramDirectory
-	} else {
-		cmd.Dir = req.Pwd
-	}
+	cmd := exec.Command(nodeBin, args...)
+	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
