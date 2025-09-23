@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -89,7 +90,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := packages.GenSDK(lang, out, pkg, overlays, local)
+					diags, err := packages.GenSDK(lang, out, pkg, overlays, local)
+					cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 					if err != nil {
 						return err
 					}
@@ -97,7 +99,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
 				return nil
 			}
-			err = packages.GenSDK(language, out, pkg, overlays, local)
+			diags, err := packages.GenSDK(language, out, pkg, overlays, local)
+			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
 			}

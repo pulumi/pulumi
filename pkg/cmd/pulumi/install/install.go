@@ -23,6 +23,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -204,8 +205,9 @@ func installPackagesFromProject(
 		}
 
 		parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
-		_, _, err := packagecmd.InstallPackage(
+		_, _, diags, err := packagecmd.InstallPackage(
 			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, parameters, registry)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("failed to install package '%s': %w", name, err)
 		}

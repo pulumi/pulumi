@@ -560,13 +560,14 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packages.GenSDK(
+		diags, err := packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
 			/*overlays*/ "",
 			/*local*/ true,
 		)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
@@ -599,6 +600,7 @@ func generateAndLinkSdksForPackages(
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
+			Writer:    os.Stdout,
 			Workspace: ws,
 			Language:  language,
 			Root:      "./",
