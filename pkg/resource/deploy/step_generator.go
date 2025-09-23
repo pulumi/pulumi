@@ -790,6 +790,31 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshE
 	return steps, false, err
 }
 
+func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, error) {
+	provider, allDeps := new.GetAllDependencies()
+	allDepURNs := make([]resource.URN, len(allDeps))
+	for i, dep := range allDeps {
+		allDepURNs[i] = dep.URN
+	}
+
+	if provider != "" {
+		prov, err := providers.ParseReference(provider)
+		if err != nil {
+			return false, fmt.Errorf(
+				"could not parse provider reference %s for %s: %w",
+				provider, new.URN, err)
+		}
+		allDepURNs = append(allDepURNs, prov.URN())
+	}
+
+	for _, depURN := range allDepURNs {
+		if sg.skippedCreates[depURN] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()
@@ -797,9 +822,15 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	new := event.New()
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
-	// custom non-provider resources.
+	// custom non-provider resources. We also need to skip refreshes for custom provider resources if they
+	// have dependencies that were skipped creates.
 	if sg.mode == refreshMode {
-		if goal.Custom && !providers.IsProviderType(goal.Type) {
+		hasSkippedDeps, err := sg.hasSkippedDependencies(new)
+		if err != nil {
+			return nil, false, err
+		}
+		if goal.Custom && !providers.IsProviderType(goal.Type) ||
+			providers.IsProviderType(goal.Type) && hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
 				sg.sames[urn] = true
