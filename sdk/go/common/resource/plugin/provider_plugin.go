@@ -1061,6 +1061,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+	contract.Assertf(req.News != nil, "Check requires new properties")
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
@@ -1083,7 +1084,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
+		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
+		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
+		// instead of nil for a long time and at least the NodeJS provider implementation relies on this behavior, so we
+		// must continue to do so for compatibility.
+		PropagateNil: false,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1285,6 +1291,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+	contract.Assertf(req.Properties != nil, "Create requires new input properties")
 
 	contract.Assertf(req.URN != "", "Create requires a URN")
 	contract.Assertf(req.Properties != nil, "Create requires properties")
