@@ -1714,6 +1714,9 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	contract.Assertf(req.URN != "", "Delete requires a URN")
 	contract.Assertf(req.ID != "", "Delete requires an ID")
 
+	contract.Assertf(req.Inputs != nil, "Delete requires input properties")
+	contract.Assertf(req.Outputs != nil, "Delete requires output properties")
+
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(req.Inputs), len(req.Outputs))
 
