@@ -56,6 +56,9 @@ on:
         description: "Retry tests n times if there are failures"
         type: number
     secrets:
+      PULUMI_BOT_TOKEN:
+        required: false
+        description: "GitHub access token, required to mitigate GitHub rate limits"
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
         description: "Pulumi access token, required to run tests against the service"
