@@ -28,6 +28,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -66,7 +67,7 @@ type PluginManager interface {
 	InstallPlugin(
 		ctx context.Context,
 		plugin workspace.PluginSpec,
-		content workspace.PluginContent,
+		content pkgWorkspace.PluginContent,
 		reinstall bool,
 	) error
 }
@@ -131,10 +132,10 @@ func (defaultPluginManager) DownloadPlugin(
 func (defaultPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content workspace.PluginContent,
+	content pkgWorkspace.PluginContent,
 	reinstall bool,
 ) error {
-	return plugin.InstallWithContext(ctx, content, reinstall)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
 }
 
 // PluginSet represents a set of plugins.
@@ -609,7 +610,7 @@ func installPlugin(
 	if err := pluginManager.InstallPlugin(
 		ctx,
 		plugin,
-		workspace.TarPlugin(withInstallProgress(tarball)),
+		pkgWorkspace.TarPlugin(withInstallProgress(tarball)),
 		false,
 	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
