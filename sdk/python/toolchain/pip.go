@@ -100,7 +100,7 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 		name = name + ".exe"
 	}
 	cmdPath := filepath.Join(p.virtualenvPath, virtualEnvBinDirName(), name)
-	cmd = exec.CommandContext(ctx, cmdPath, arg...)
+	cmd = exec.Command(cmdPath, arg...)
 
 	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
 

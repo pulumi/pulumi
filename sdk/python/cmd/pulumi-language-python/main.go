@@ -46,7 +46,6 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -1451,20 +1450,9 @@ func (host *pythonLanguageHost) RunPlugin(
 		}
 		logging.V(5).Infof("RunPlugin: %s", cmd.String())
 	} else {
-		// For policy analyzers we need to send the program directory as an argument _last_, for everything
-		// else it comes first
-		if req.Kind == string(apitype.AnalyzerPlugin) {
-			// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
-			// used to have a dedicated shim plugin "pulumi-analyzer-python-policy" that would start policy packs
-			// up, but now we just let the RunPlugin code handle that logic.
-			args = append(args, []string{"-u", "-m", "pulumi.policy"}...)
-			args = append(args, req.Args...)
-			args = append(args, req.Info.ProgramDirectory)
-		} else {
-			// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
-			args = append(args, req.Info.ProgramDirectory)
-			args = append(args, req.Args...)
-		}
+		// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
+		args = append(args, req.Info.ProgramDirectory)
+		args = append(args, req.Args...)
 		cmd, err = tc.Command(server.Context(), args...)
 		if err != nil {
 			return err
@@ -1478,13 +1466,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	// python policy packs used to always run with the working directory set to the policy pack directory, not
-	// the main working directory. We need to continue that for backwards compatibility.
-	if req.Kind == string(apitype.AnalyzerPlugin) {
-		cmd.Dir = req.Info.ProgramDirectory
-	} else {
-		cmd.Dir = req.Pwd
-	}
+	cmd.Dir = req.Pwd
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
