@@ -1174,6 +1174,42 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		new.Inputs = inputs
 	}
 
+	return sg.continueStepsFromCheck(continueCheckResourceEvent{
+		RegisterResourceEvent: event,
+		invalid:               invalid,
+		oldInputs:             oldInputs,
+		oldOutputs:            oldOutputs,
+		recreating:            recreating,
+		wasExternal:           wasExternal,
+		imported:              imported,
+		inputs:                inputs,
+		urn:                   urn,
+		new:                   new,
+		old:                   old,
+		randomSeed:            randomSeed,
+		goal:                  goal,
+		provider:              prov,
+		isTargeted:            isTargeted,
+		autonaming:            autonaming,
+	})
+}
+
+func (sg *stepGenerator) continueStepsFromCheck(event ContinueResourceCheckEvent) ([]Step, bool, error) {
+	invalid := event.Invalid()
+	recreating := event.Recreating()
+	wasExternal := event.WasExternal()
+	imported := event.Imported()
+	oldInputs := event.OldInputs()
+	oldOutputs := event.OldOutputs()
+	inputs := event.Inputs()
+	urn := event.URN()
+	old := event.Old()
+	new := event.New()
+	randomSeed := event.RandomSeed()
+	goal := event.Goal()
+	isTargeted := event.IsTargeted()
+	autonaming := event.Autonaming()
+	prov := event.Provider()
 	// If the resource is valid and we're generating plans then generate a plan
 	if !invalid && sg.deployment.opts.GeneratePlan {
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
@@ -1356,9 +1392,11 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	if wasExternal {
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
-		if err != nil {
-			return nil, false, err
-		}
+		// TODO: Handle correctly or prove that err is nil and remove
+		//
+		// 	if err != nil {
+		// 		return nil, false, err
+		// 	}
 
 		return []Step{
 			NewCreateReplacementStep(sg.deployment, event, old, new, nil, nil, nil, true),
