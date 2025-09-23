@@ -134,10 +134,9 @@ type JournalEntry struct {
 	// The index of the resource in the base snapshot that should be marked as pending
 	// replacement.
 	PendingReplacementOld *int64
-	// The operation ID of the new resource that should be marked as pending replacement
-	// The index of the resource in the base snapshot that should be marked as deleted,
+	// The operation ID of the new resource that should be marked as pending replacement.
 	PendingReplacementNew *int64
-	// or -1 if no deletion is needed.
+	// The index of the resource in the base snapshot that should be marked as deleted.
 	DeleteOld *int64
 	// The operation ID of the new resource that should be marked as deleted.
 	DeleteNew *int64
