@@ -78,7 +78,7 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	refreshDeletes map[resource.URN]bool // The set of resources that have been deleted by a refresh in this plan.
+	isRefresh bool // Whether or not the snapshot is part of a refresh
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -527,12 +527,11 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
 		viewStep, isViewStep := step.(*deploy.ViewStep)
 		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
+			rsm.manager.isRefresh = true
 			if successful {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
 					rsm.manager.markNew(step.New())
-				} else {
-					rsm.manager.refreshDeletes[step.Old().URN] = true
 				}
 			}
 			return true
@@ -673,7 +672,9 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	}
 
 	// Filter any refresh deletes
-	engine.FilterRefreshDeletes(sm.refreshDeletes, resources)
+	if sm.isRefresh {
+		engine.FilterRefreshDeletes(resources)
+	}
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
@@ -831,7 +832,6 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
-		refreshDeletes:   make(map[resource.URN]bool),
 	}
 
 	serviceLoop := manager.defaultServiceLoop
