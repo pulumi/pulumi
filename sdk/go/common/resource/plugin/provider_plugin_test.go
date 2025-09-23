@@ -329,8 +329,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 		{
 			desc: "empty",
 			give: DeleteRequest{
-				ID:  id,
-				URN: urn,
+				ID:      id,
+				URN:     urn,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -349,6 +351,7 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				Inputs: resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
 				},
+				Outputs: resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:   string(id),
@@ -366,8 +369,9 @@ func TestProvider_DeleteRequests(t *testing.T) {
 		{
 			desc: "outputs",
 			give: DeleteRequest{
-				ID:  id,
-				URN: urn,
+				ID:     id,
+				URN:    urn,
+				Inputs: resource.PropertyMap{},
 				Outputs: resource.PropertyMap{
 					"baz": resource.NewProperty("quux"),
 				},
@@ -391,6 +395,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:      id,
 				URN:     urn,
 				Timeout: 30,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -436,7 +442,6 @@ func TestProvider_DeleteRequests(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
