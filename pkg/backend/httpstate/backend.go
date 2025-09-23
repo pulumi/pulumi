@@ -1424,10 +1424,10 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 }
 
 type updateMetadata struct {
-	version    int
-	leaseToken string
-	messages   []apitype.Message
-	useJournal bool
+	version        int
+	leaseToken     string
+	messages       []apitype.Message
+	journalVersion int64
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -1517,10 +1517,10 @@ func (b *cloudBackend) createAndStartUpdate(
 		stackID.Owner, copilotEnabledValueString, userName, continuationString)
 
 	return update, updateMetadata{
-		version:    version,
-		leaseToken: token,
-		messages:   updateDetails.Messages,
-		useJournal: journalVersion == 1, // TODO: FIXME
+		version:        version,
+		leaseToken:     token,
+		messages:       updateDetails.Messages,
+		journalVersion: journalVersion,
 	}, nil
 }
 
@@ -1605,7 +1605,7 @@ func (b *cloudBackend) apply(
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
-		permalink, events, opts.DryRun, updateMeta.useJournal)
+		permalink, events, opts.DryRun, updateMeta.journalVersion)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1620,7 +1620,7 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
-	callerEventsOpt chan<- engine.Event, dryRun bool, useJournal bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1667,7 +1667,7 @@ func (b *cloudBackend) runEngineAction(
 		},
 	}
 	if kind != apitype.PreviewUpdate && !dryRun {
-		if useJournal && env.EnableJournaling.Value() {
+		if journalVersion == 1 && env.EnableJournaling.Value() {
 			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("creating journaler: %w", err)
