@@ -842,11 +842,11 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	}
 
 	req := apitype.StartUpdateRequest{
-		Tags:            tags,
+		Tags: tags,
 	}
 
 	if env.EnableJournaling.Value() {
-		req.JournalVersion = 1 // TODO: FIXME
+		req.JournalVersion = 1
 	}
 
 	var resp apitype.StartUpdateResponse
