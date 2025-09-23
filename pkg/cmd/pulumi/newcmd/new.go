@@ -361,7 +361,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			ctx,
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -423,7 +422,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			ctx,
 			projinfo,
 			nil,
 			cmdutil.Diag(),
