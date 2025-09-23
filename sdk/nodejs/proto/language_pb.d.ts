@@ -926,6 +926,8 @@ export class LinkRequest extends jspb.Message {
 
     getLocalDependenciesMap(): jspb.Map<string, string>;
     clearLocalDependenciesMap(): void;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): LinkRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkRequest.AsObject;
@@ -942,6 +944,7 @@ export namespace LinkRequest {
         info?: ProgramInfo.AsObject,
 
         localDependenciesMap: Array<[string, string]>,
+        loaderTarget: string,
     }
 }
 
