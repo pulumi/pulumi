@@ -17,8 +17,10 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 
@@ -106,14 +108,31 @@ func (p *SyncProvider) Create(
 		id = ""
 	}
 
-	p.CreateLimit.Done()
-	p.CreateLimit.Wait()
+	if err := p.waitWithTimeout(&p.CreateLimit); err != nil {
+		return plugin.CreateResponse{}, err
+	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
 		Properties: resource.PropertyMap{},
 		Status:     resource.StatusOK,
 	}, nil
+}
+
+func (p *SyncProvider) waitWithTimeout(wg *sync.WaitGroup) error {
+	done := make(chan struct{})
+	go func() {
+		wg.Done()
+		wg.Wait()
+		done <- struct{}{}
+	}()
+	timeout := time.Tick(time.Second * 3)
+	select {
+	case <-timeout:
+		return errors.New("timeout")
+	case <-done:
+		return nil
+	}
 }
 
 func (p *SyncProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
