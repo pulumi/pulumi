@@ -55,6 +55,85 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// InstallPackage installs a package to the project by generating an SDK and linking it.
+// It returns the path to the installed package.
+func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
+	schemaSource string, parameters plugin.ParameterizeParameters,
+	registry registry.Registry,
+) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
+	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	if err != nil {
+		var diagErr hcl.Diagnostics
+		if errors.As(err, &diagErr) {
+			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
+		}
+		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
+	}
+
+	tempOut, err := os.MkdirTemp("", "pulumi-package-")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tempOut)
+
+	local := true
+
+	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
+	// things like module paths for Go and we don't want every user using gen-sdk to be affected by that. But for
+	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
+	pkg.SupportPack = true
+
+	diags, err := GenSDK(
+		language,
+		tempOut,
+		pkg,
+		"",    /*overlays*/
+		local, /*local*/
+	)
+	if err != nil {
+		return nil, nil, diags, fmt.Errorf("failed to generate SDK: %w", err)
+	}
+
+	out := filepath.Join(root, "sdks")
+	err = os.MkdirAll(out, 0o755)
+	if err != nil {
+		return nil, nil, diags, fmt.Errorf("failed to create directory for SDK: %w", err)
+	}
+
+	outName := pkg.Name
+	if pkg.Namespace != "" {
+		outName = pkg.Namespace + "-" + outName
+	}
+	out = filepath.Join(out, outName)
+
+	// If directory already exists, remove it completely before copying new files
+	if _, err := os.Stat(out); err == nil {
+		if err := os.RemoveAll(out); err != nil {
+			return nil, nil, diags, fmt.Errorf("failed to clean existing SDK directory: %w", err)
+		}
+	}
+
+	err = CopyAll(out, filepath.Join(tempOut, language))
+	if err != nil {
+		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
+	}
+
+	// Link the package to the project
+	if err := LinkPackage(&LinkPackageContext{
+		Writer:    os.Stdout,
+		Workspace: ws,
+		Language:  language,
+		Root:      root,
+		Pkg:       pkg,
+		Out:       out,
+		Install:   true,
+	}); err != nil {
+		return nil, nil, diags, err
+	}
+
+	return pkg, specOverride, diags, nil
+}
+
 func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) (hcl.Diagnostics, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
