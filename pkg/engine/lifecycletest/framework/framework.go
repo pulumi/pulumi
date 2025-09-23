@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -119,7 +120,7 @@ func (nopPluginManager) DownloadPlugin(
 func (nopPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content workspace.PluginContent,
+	content pkgWorkspace.PluginContent,
 	reinstall bool,
 ) error {
 	return nil
