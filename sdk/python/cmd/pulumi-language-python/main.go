@@ -975,7 +975,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 	cmd, err := tc.Command(ctx, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s failed: %s", err, cmd.String())
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
