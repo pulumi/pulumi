@@ -29,7 +29,7 @@ def setup_mocks():
 
 
 @pulumi.runtime.test
-def test_mock_registered_resources(setup_mocks: TestMonitor):
+async def test_mock_registered_resources(setup_mocks: TestMonitor):
     class Component(pulumi.ComponentResource):
         def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
             super().__init__(name, "test:index:Component", opts)
@@ -41,12 +41,9 @@ def test_mock_registered_resources(setup_mocks: TestMonitor):
     component = Component("component")
     custom = Custom("custom")
 
-    async def check():
-        component_urn = await component.urn
-        custom_urn = await custom.urn
+    component_urn = await component.urn
+    custom_urn = await custom.urn
 
-        registrations = setup_mocks.get_registered_resources()
-        assert component_urn in registrations
-        assert custom_urn in registrations
-
-    return check()
+    registrations = setup_mocks.get_registered_resources()
+    assert component_urn in registrations
+    assert custom_urn in registrations
