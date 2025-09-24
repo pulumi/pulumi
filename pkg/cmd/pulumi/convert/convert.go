@@ -481,14 +481,13 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return err
 		}
-		defer pctx.Close()
+		defer ctx.Close()
 
-		if err := newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
+		if err := newcmd.InstallDependencies(ctx, &proj.Runtime, main); err != nil {
 			return err
 		}
 	}
@@ -560,13 +559,14 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packages.GenSDK(
+		diags, err := packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
 			/*overlays*/ "",
 			/*local*/ true,
 		)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
@@ -599,6 +599,7 @@ func generateAndLinkSdksForPackages(
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
+			Writer:    os.Stdout,
 			Workspace: ws,
 			Language:  language,
 			Root:      "./",

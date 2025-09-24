@@ -824,7 +824,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showCopilotLink {
 		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
 		display.println("")

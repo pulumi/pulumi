@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/package
+  description: Move InstallPackage from cmd/packagecmd to cmd/packages

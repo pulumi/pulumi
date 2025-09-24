@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk
+  description: Fix plugin killing during cancellation

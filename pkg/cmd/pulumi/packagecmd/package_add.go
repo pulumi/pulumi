@@ -15,103 +15,21 @@
 package packagecmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
-
-// InstallPackage installs a package to the project by generating an SDK and linking it.
-// It returns the path to the installed package.
-func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
-	schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry,
-) (*schema.Package, *workspace.PackageSpec, error) {
-	pkg, specOverride, err := packages.SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
-	if err != nil {
-		var diagErr hcl.Diagnostics
-		if errors.As(err, &diagErr) {
-			return nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
-		}
-		return nil, nil, fmt.Errorf("failed to get schema: %w", err)
-	}
-
-	tempOut, err := os.MkdirTemp("", "pulumi-package-")
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer os.RemoveAll(tempOut)
-
-	local := true
-
-	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
-	// things like module paths for Go and we don't want every user using gen-sdk to be affected by that. But for
-	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
-	pkg.SupportPack = true
-
-	err = packages.GenSDK(
-		language,
-		tempOut,
-		pkg,
-		"",    /*overlays*/
-		local, /*local*/
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate SDK: %w", err)
-	}
-
-	out := filepath.Join(root, "sdks")
-	err = os.MkdirAll(out, 0o755)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create directory for SDK: %w", err)
-	}
-
-	outName := pkg.Name
-	if pkg.Namespace != "" {
-		outName = pkg.Namespace + "-" + outName
-	}
-	out = filepath.Join(out, outName)
-
-	// If directory already exists, remove it completely before copying new files
-	if _, err := os.Stat(out); err == nil {
-		if err := os.RemoveAll(out); err != nil {
-			return nil, nil, fmt.Errorf("failed to clean existing SDK directory: %w", err)
-		}
-	}
-
-	err = packages.CopyAll(out, filepath.Join(tempOut, language))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to move SDK to project: %w", err)
-	}
-
-	// Link the package to the project
-	if err := packages.LinkPackage(&packages.LinkPackageContext{
-		Workspace: ws,
-		Language:  language,
-		Root:      root,
-		Pkg:       pkg,
-		Out:       out,
-		Install:   true,
-	}); err != nil {
-		return nil, nil, err
-	}
-
-	return pkg, specOverride, nil
-}
 
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
@@ -186,8 +104,9 @@ from the parameters, as in:
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
-			pkg, packageSpec, err := InstallPackage(ws, pctx, language, root, pluginSource, parameters,
+			pkg, packageSpec, diags, err := packages.InstallPackage(ws, pctx, language, root, pluginSource, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), ws, proj, cmdutil.Diag(), env.Global()))
+			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
 			}

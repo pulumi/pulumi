@@ -105,6 +105,7 @@ func (c plaintext) GoValue() any {
 	}
 }
 
+// PropertyValue converts a plaintext value into a resource.PropertyValue.
 func (c plaintext) PropertyValue() resource.PropertyValue {
 	var prop resource.PropertyValue
 	switch v := c.Value().(type) {

@@ -23,7 +23,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -105,7 +106,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
 			pwd, main, pctx, err := engine.ProjectInfoContext(
-				ctx,
 				projinfo,
 				nil,
 				cmdutil.Diag(),
@@ -188,14 +188,14 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 func installPackagesFromProject(
 	pctx *plugin.Context, proj *workspace.Project, root string, registry registry.Registry,
 ) error {
-	packages := proj.GetPackageSpecs()
-	if len(packages) == 0 {
+	pkgs := proj.GetPackageSpecs()
+	if len(pkgs) == 0 {
 		return nil
 	}
 
 	fmt.Println("Installing packages defined in Pulumi.yaml...")
 
-	for name, packageSpec := range packages {
+	for name, packageSpec := range pkgs {
 		fmt.Printf("Installing package '%s'...\n", name)
 
 		installSource := packageSpec.Source
@@ -204,8 +204,9 @@ func installPackagesFromProject(
 		}
 
 		parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
-		_, _, err := packagecmd.InstallPackage(
+		_, _, diags, err := packages.InstallPackage(
 			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, parameters, registry)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("failed to install package '%s': %w", name, err)
 		}

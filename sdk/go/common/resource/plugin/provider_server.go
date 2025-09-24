@@ -51,6 +51,7 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: keepOutputValues,
+		PropagateNil:     true,
 	}
 }
 
@@ -60,6 +61,7 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 		KeepUnknowns:  true,
 		KeepSecrets:   p.keepSecrets,
 		KeepResources: p.keepResources,
+		PropagateNil:  true,
 	}
 }
 

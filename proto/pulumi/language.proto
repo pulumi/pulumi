@@ -616,6 +616,9 @@ message LinkRequest {
     // to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
     // to be used instead of the published `@pulumi/aws` package.
     map<string, string> local_dependencies = 2;
+    
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 3;
 }
 
 // `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
