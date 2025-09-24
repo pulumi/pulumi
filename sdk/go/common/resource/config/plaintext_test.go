@@ -152,9 +152,11 @@ func TestMarshalPlaintext(t *testing.T) {
 
 //nolint:paralleltest // changes global defaultMaxChunkSize variable
 func TestEncryptMap(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("empty map", func(t *testing.T) {
-		result, err := encryptMap(t.Context(), map[Key]plaintext{}, nopCrypter{})
-		assert.NoError(t, err)
+		result, err := encryptMap(ctx, map[Key]plaintext{}, nopCrypter{})
+		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
 
@@ -163,8 +165,8 @@ func TestEncryptMap(t *testing.T) {
 			MustParseKey("ns:foo"): newPlaintext("bar"),
 			MustParseKey("ns:num"): newPlaintext(int64(42)),
 		}
-		result, err := encryptMap(t.Context(), input, nopCrypter{})
-		assert.NoError(t, err)
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
 		assert.Equal(t, "bar", result[MustParseKey("ns:foo")].value)
 		assert.Equal(t, int64(42), result[MustParseKey("ns:num")].value)
 	})
@@ -173,8 +175,8 @@ func TestEncryptMap(t *testing.T) {
 		input := map[Key]plaintext{
 			MustParseKey("ns:secret"): newSecurePlaintext("plaintext"),
 		}
-		result, err := encryptMap(t.Context(), input, nopCrypter{})
-		assert.NoError(t, err)
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
 		assert.Equal(t, "plaintext", result[MustParseKey("ns:secret")].value)
 		assert.True(t, result[MustParseKey("ns:secret")].secure)
 	})
@@ -184,8 +186,8 @@ func TestEncryptMap(t *testing.T) {
 			MustParseKey("ns:plain"):  newPlaintext("value"),
 			MustParseKey("ns:secret"): newSecurePlaintext("plaintext"),
 		}
-		result, err := encryptMap(t.Context(), input, nopCrypter{})
-		assert.NoError(t, err)
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
 		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
 		assert.Equal(t, "plaintext", result[MustParseKey("ns:secret")].value)
 		assert.True(t, result[MustParseKey("ns:secret")].secure)
@@ -202,8 +204,8 @@ func TestEncryptMap(t *testing.T) {
 			MustParseKey("ns:c"): newSecurePlaintext("s3"),
 			MustParseKey("ns:d"): newPlaintext("plain"),
 		}
-		result, err := encryptMap(t.Context(), input, nopCrypter{})
-		assert.NoError(t, err)
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
 		assert.Equal(t, "s1", result[MustParseKey("ns:a")].value)
 		assert.Equal(t, "s2", result[MustParseKey("ns:b")].value)
 		assert.Equal(t, "s3", result[MustParseKey("ns:c")].value)

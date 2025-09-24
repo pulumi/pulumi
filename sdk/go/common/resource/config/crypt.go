@@ -344,7 +344,9 @@ type CiphertextToPlaintextCachedCrypter struct {
 	ciphertextToPlaintextCache map[string]string
 }
 
-func NewCiphertextToPlaintextCachedCrypter(encrypter Encrypter, decrypter Decrypter) *CiphertextToPlaintextCachedCrypter {
+func NewCiphertextToPlaintextCachedCrypter(
+	encrypter Encrypter, decrypter Decrypter,
+) *CiphertextToPlaintextCachedCrypter {
 	return &CiphertextToPlaintextCachedCrypter{
 		encrypter:                  encrypter,
 		decrypter:                  decrypter,

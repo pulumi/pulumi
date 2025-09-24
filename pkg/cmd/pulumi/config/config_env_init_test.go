@@ -98,7 +98,7 @@ runtime: yaml`
 
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
-			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg=="), //base64 of hunter2
+			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
 			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
@@ -162,7 +162,7 @@ runtime: yaml`
 
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
-			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg=="), //base64 of hunter2
+			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
 			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
@@ -225,7 +225,7 @@ runtime: yaml`
 
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
-			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg=="), //base64 of hunter2
+			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
 			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 

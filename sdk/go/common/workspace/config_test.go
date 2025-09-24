@@ -22,9 +22,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
+//nolint:paralleltest // subtests will use parallelism of root test
 func TestValidateStackConfigValues(t *testing.T) {
 	t.Parallel()
-	
+
 	t.Run("No Decrypter Returns Nil", func(t *testing.T) {
 		// If decrypter is nil, function should return immediately with no error.
 		project := &Project{Name: "testProject"}

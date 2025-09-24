@@ -40,7 +40,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:paralleltest // subtests will use parallelism of root test
 func TestListConfig(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	openEnv := &esc.Environment{
@@ -93,19 +96,22 @@ func TestListConfig(t *testing.T) {
 		},
 	}
 
+	commonObjValue := `{"commonValue":"cfgVal2","commonArray":["cfgVal3","cfgVal4"]}`
+
 	cfg := map[config.Key]config.Value{
 		config.MustMakeKey("cfg", "value"):  config.NewValue("cfgVal1"),
-		config.MustMakeKey("cfg", "secret"): config.NewSecureValue("Y2ZnU2VjcmV0MQ=="), //base64 of cfgSecret1
-		config.MustMakeKey("common", "obj"): config.NewObjectValue(`{"commonValue":"cfgVal2","commonArray":["cfgVal3","cfgVal4"]}`),
+		config.MustMakeKey("cfg", "secret"): config.NewSecureValue("Y2ZnU2VjcmV0MQ==" /*base64 of cfgSecret1*/),
+		config.MustMakeKey("common", "obj"): config.NewObjectValue(commonObjValue),
 	}
 
 	plainCfg := map[config.Key]config.Value{
 		config.MustMakeKey("cfg", "value"):  config.NewValue("cfgVal1"),
-		config.MustMakeKey("common", "obj"): config.NewObjectValue(`{"commonValue":"cfgVal2","commonArray":["cfgVal3","cfgVal4"]}`),
+		config.MustMakeKey("common", "obj"): config.NewObjectValue(commonObjValue),
 	}
 
 	t.Run("with no env and with cfg and showSecrets=true openEnv=true", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, nil)
 
 		var stdout bytes.Buffer
@@ -127,7 +133,8 @@ common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2"}
 	})
 
 	t.Run("with env and no cfg and showSecrets=true openEnv=true", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, config.Map{}, openEnv)
 
 		var stdout bytes.Buffer
@@ -150,7 +157,8 @@ env:value   envVal1
 	})
 
 	t.Run("with env and cfg and showSecrets=true openEnv=true", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
 
 		var stdout bytes.Buffer
@@ -175,7 +183,8 @@ env:value   envVal1
 	})
 
 	t.Run("with env and cfg and showSecrets=false openEnv=true", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
 
 		var stdout bytes.Buffer
@@ -200,7 +209,8 @@ env:value   envVal1
 	})
 
 	t.Run("with env and cfg and showSecrets=true openEnv=false", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
 
 		var stdout bytes.Buffer
@@ -225,7 +235,8 @@ env:value   envVal1
 	})
 
 	t.Run("with env and cfg and showSecrets=false openEnv=false", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
 
 		var stdout bytes.Buffer
@@ -250,7 +261,8 @@ env:value   envVal1
 	})
 
 	t.Run("with plain env and plain cfg and showSecrets=true openEnv=true", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, plainEnv)
 
 		var stdout bytes.Buffer
@@ -273,7 +285,8 @@ env:value   envVal1
 	})
 
 	t.Run("with env and plain cfg and showSecrets=true openEnv=true", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
 
 		var stdout bytes.Buffer
@@ -297,7 +310,8 @@ env:value   envVal1
 	})
 
 	t.Run("with env and plain cfg and showSecrets=true openEnv=true and cached crypter", func(t *testing.T) {
-		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue, calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, true)
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, true)
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
 
 		var stdout bytes.Buffer
@@ -321,20 +335,24 @@ env:value   envVal1
 	})
 }
 
-func getCountingBase64SecretsManager(ctx context.Context, t *testing.T, withCachedCrypter bool) (*secrets.MockSecretsManager, *int, *int, *int, *int) {
+func getCountingBase64SecretsManager(
+	ctx context.Context,
+	t *testing.T,
+	withCachedCrypter bool,
+) (*secrets.MockSecretsManager, *int, *int, *int, *int) {
 	calledEncryptValue := 0
 	calledBatchEncrypt := 0
 	calledDecryptValue := 0
 	calledBatchDecrypt := 0
 	encrypter := &secrets.MockEncrypter{
 		EncryptValueF: func(input string) string {
-			calledEncryptValue += 1
+			calledEncryptValue++
 			ct, err := config.Base64Crypter.EncryptValue(ctx, input)
 			require.NoError(t, err)
 			return ct
 		},
 		BatchEncryptF: func(input []string) []string {
-			calledBatchEncrypt += 1
+			calledBatchEncrypt++
 			ct, err := config.Base64Crypter.BatchEncrypt(ctx, input)
 			require.NoError(t, err)
 			return ct
@@ -342,13 +360,13 @@ func getCountingBase64SecretsManager(ctx context.Context, t *testing.T, withCach
 	}
 	decrypter := &secrets.MockDecrypter{
 		DecryptValueF: func(input string) string {
-			calledDecryptValue += 1
+			calledDecryptValue++
 			pt, err := config.Base64Crypter.DecryptValue(ctx, input)
 			require.NoError(t, err)
 			return pt
 		},
 		BatchDecryptF: func(input []string) []string {
-			calledBatchDecrypt += 1
+			calledBatchDecrypt++
 			pt, err := config.Base64Crypter.BatchDecrypt(ctx, input)
 			require.NoError(t, err)
 			return pt
@@ -373,7 +391,12 @@ func getCountingBase64SecretsManager(ctx context.Context, t *testing.T, withCach
 	return secretsManager, &calledEncryptValue, &calledBatchEncrypt, &calledDecryptValue, &calledBatchDecrypt
 }
 
-func prepareConfig(t *testing.T, secretsManager secrets.Manager, cfg config.Map, env *esc.Environment) (backend.MockStack, workspace.Project, *workspace.ProjectStack, cmdStack.SecretsManagerLoader) {
+func prepareConfig(
+	t *testing.T,
+	secretsManager secrets.Manager,
+	cfg config.Map,
+	env *esc.Environment,
+) (backend.MockStack, workspace.Project, *workspace.ProjectStack, cmdStack.SecretsManagerLoader) {
 	snapshot := &deploy.Snapshot{SecretsManager: stack.NewBatchingCachingSecretsManager(secretsManager)}
 
 	mockStack := backend.MockStack{
@@ -419,7 +442,9 @@ func prepareConfig(t *testing.T, secretsManager secrets.Manager, cfg config.Map,
 	})
 	require.NoError(t, err)
 
-	projectStack, err := workspace.LoadProjectStackBytes(cmdutil.Diag(), &project, stackYAML, "Pulumi.stack.yaml", encoding.YAML)
+	projectStack, err := workspace.LoadProjectStackBytes(
+		cmdutil.Diag(), &project, stackYAML, "Pulumi.stack.yaml", encoding.YAML,
+	)
 	require.NoError(t, err)
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}

@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // subtests will use parallelism of root test
 func TestAddStringToChunks(t *testing.T) {
 	t.Parallel()
 

@@ -61,6 +61,7 @@ func (r *recordingEncrypter) BatchEncrypt(ctx context.Context, secrets []string)
 	return out, nil
 }
 
+//nolint:paralleltest // subtests will use parallelism of root test
 func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 	t.Parallel()
 
