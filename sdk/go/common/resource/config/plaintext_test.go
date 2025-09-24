@@ -122,19 +122,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 	actual, err := obj.Decrypt(context.Background(), NopDecrypter)
 	require.NoError(t, err)
 
-	rt := newPlaintext(map[string]plaintext{
-		"hello": newPlaintext([]plaintext{
-			newPlaintext(true),
-			newPlaintext(int64(42)),
-			// uint64 can't roundtrip through JSON
-			newPlaintext(float64(math.MaxUint64)),
-			newPlaintext(float64(3.14159)),
-			newPlaintext("world"),
-			newSecurePlaintext("moon"),
-		}),
-	})
-
-	assert.Equal(t, rt, actual)
+	assert.Equal(t, plain, actual)
 }
 
 func TestMarshalPlaintext(t *testing.T) {
@@ -163,6 +151,7 @@ func TestMarshalPlaintext(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // changes global defaultMaxChunkSize variable
 func TestEncryptMap(t *testing.T) {
 	t.Run("empty map", func(t *testing.T) {
 		result, err := encryptMap(t.Context(), map[Key]plaintext{}, nopCrypter{})

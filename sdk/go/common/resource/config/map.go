@@ -30,6 +30,18 @@ type Map map[Key]Value
 func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
 	ctx := context.TODO()
 
+	if decrypter == NopDecrypter {
+		result := map[Key]string{}
+		for k, v := range m {
+			vv, err := v.Value(decrypter)
+			if err != nil {
+				return nil, err
+			}
+			result[k] = vv
+		}
+		return result, nil
+	}
+
 	objectMap := map[Key]object{}
 	for k, v := range m {
 		obj, err := v.coerceObject()

@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -2001,6 +2001,10 @@ func TestEvalSource(t *testing.T) {
 								decrypterCalled = true
 								return "", errors.New("expected fail")
 							},
+							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
+								decrypterCalled = true
+								return nil, errors.New("expected fail")
+							},
 						},
 					},
 				},
@@ -2035,6 +2039,15 @@ func TestEvalSource(t *testing.T) {
 									return "", nil
 								}
 								return "", errors.New("expected fail")
+							},
+							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
+								decrypterCalled = true
+								if called == 0 {
+									// Will cause the next invocation to fail.
+									called++
+									return []string{}, nil
+								}
+								return nil, errors.New("expected fail")
 							},
 						},
 					},
