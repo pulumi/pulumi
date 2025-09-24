@@ -1,0 +1,5 @@
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+version: 2.0.0
