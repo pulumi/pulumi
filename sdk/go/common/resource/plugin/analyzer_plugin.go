@@ -139,40 +139,29 @@ func NewPolicyAnalyzer(
 		return res, nil
 	}
 
-	// This first section is a back compatibility bit for the old way of running analyzer plugins where we would look
-	// for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with two arguments, the engine
-	// address and the policy pack path. We still do this for python and nodejs, but not for other actual "languages"
-	// (i.e. things with language plugins), but have to leave this in to ensure things like
-	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be moved to
-	// just be language runtimes like the rest).
+	// This first section is a back compatibility bit for the old way of running analyzer plugins where we
+	// would look for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with two
+	// arguments, the engine address and the policy pack path. We don't do this for actual "languages" (i.e.
+	// things with language plugins), but have to leave this in to ensure things like
+	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be
+	// moved to just be language runtimes like the rest).
+	if hasPlugin == nil {
+		hasPlugin = func(spec workspace.PluginSpec) bool {
+			path, err := workspace.GetPluginPath(
+				ctx.baseContext,
+				ctx.Diag,
+				spec,
+				host.GetProjectPlugins())
+			return err == nil && path != ""
+		}
+	}
+	foundLanguagePlugin := hasPlugin(workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
 
 	var plug *Plugin
-	var foundLanguagePlugin bool
-	// Try to load the language plugin for the runtime, except for python and node that _for now_ continue using the
-	// legacy behavior.
-	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
-		if hasPlugin == nil {
-			hasPlugin = func(spec workspace.PluginSpec) bool {
-				path, err := workspace.GetPluginPath(
-					ctx.baseContext,
-					ctx.Diag,
-					spec,
-					host.GetProjectPlugins())
-				return err == nil && path != ""
-			}
-		}
-
-		foundLanguagePlugin = hasPlugin(workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
-	}
 	if !foundLanguagePlugin {
-		// Couldn't get a language plugin, fall back to the old behavior
-
-		// For historical reasons, the Node.js plugin name is just "policy".
-		// All other languages have the runtime appended, e.g. "policy-<runtime>".
-		policyAnalyzerName := "policy"
-		if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-			policyAnalyzerName = "policy-" + proj.Runtime.Name()
-		}
+		// Couldn't get a language plugin, fall back to the old behavior, of trying to run
+		// "pulumi-analyzer-policy-<runtime>".
+		policyAnalyzerName := "policy-" + proj.Runtime.Name()
 
 		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 		var pluginPath string
