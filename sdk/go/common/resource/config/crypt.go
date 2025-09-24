@@ -337,3 +337,80 @@ func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, err
 func (c *base64Crypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBatchDecrypt(ctx, c, ciphertexts)
 }
+
+type CiphertextToPlaintextCachedCrypter struct {
+	encrypter                  Encrypter
+	decrypter                  Decrypter
+	ciphertextToPlaintextCache map[string]string
+}
+
+func NewCiphertextToPlaintextCachedCrypter(encrypter Encrypter, decrypter Decrypter) *CiphertextToPlaintextCachedCrypter {
+	return &CiphertextToPlaintextCachedCrypter{
+		encrypter:                  encrypter,
+		decrypter:                  decrypter,
+		ciphertextToPlaintextCache: make(map[string]string),
+	}
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	ciphertext, err := c.encrypter.EncryptValue(ctx, plaintext)
+	if err != nil {
+		return "", err
+	}
+	c.ciphertextToPlaintextCache[ciphertext] = plaintext
+	return ciphertext, nil
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) BatchEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	ciphertexts, err := c.encrypter.BatchEncrypt(ctx, plaintexts)
+	if err != nil {
+		return nil, err
+	}
+	for i, ciphertext := range ciphertexts {
+		c.ciphertextToPlaintextCache[ciphertext] = plaintexts[i]
+	}
+	return ciphertexts, nil
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	if cachedPlaintext, ok := c.ciphertextToPlaintextCache[ciphertext]; ok {
+		return cachedPlaintext, nil
+	}
+	plaintext, err := c.decrypter.DecryptValue(ctx, ciphertext)
+	if err != nil {
+		return "", err
+	}
+	c.ciphertextToPlaintextCache[ciphertext] = plaintext
+	return plaintext, nil
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	if len(ciphertexts) == 0 {
+		return nil, nil
+	}
+	result := make([]string, len(ciphertexts))
+	var cacheMissedResultIndexes []int
+	var cacheMissedCiphertexts []string
+	for i, ct := range ciphertexts {
+		if cached, ok := c.ciphertextToPlaintextCache[ct]; ok {
+			result[i] = cached
+		} else {
+			cacheMissedResultIndexes = append(cacheMissedResultIndexes, i)
+			cacheMissedCiphertexts = append(cacheMissedCiphertexts, ct)
+		}
+	}
+	if len(cacheMissedCiphertexts) == 0 {
+		return result, nil
+	}
+	plaintexts, err := c.decrypter.BatchDecrypt(ctx, cacheMissedCiphertexts)
+	if err != nil {
+		return nil, err
+	}
+	for i, ciphertext := range cacheMissedCiphertexts {
+		plaintext := plaintexts[i]
+		c.ciphertextToPlaintextCache[ciphertext] = plaintext
+		resultIndex := cacheMissedResultIndexes[i]
+		result[resultIndex] = plaintext
+	}
+	return result, nil
+}
