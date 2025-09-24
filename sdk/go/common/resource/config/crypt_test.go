@@ -62,9 +62,13 @@ func (r *recordingEncrypter) BatchEncrypt(ctx context.Context, secrets []string)
 }
 
 func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
 	t.Run("EncryptValue stores mapping", func(t *testing.T) {
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, NewPanicCrypter())
-		ct, err := c.EncryptValue(context.Background(), "secret")
+		ct, err := c.EncryptValue(ctx, "secret")
 		require.NoError(t, err)
 		require.Equal(t, "secret", ct)
 
@@ -78,9 +82,9 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 		// Use panic decrypter to ensure decrypt isn't used in this test.
 		c := NewCiphertextToPlaintextCachedCrypter(rec, NewPanicCrypter())
 
-		ct1, err := c.EncryptValue(context.Background(), "duplicate")
+		ct1, err := c.EncryptValue(ctx, "duplicate")
 		require.NoError(t, err)
-		ct2, err := c.EncryptValue(context.Background(), "duplicate")
+		ct2, err := c.EncryptValue(ctx, "duplicate")
 		require.NoError(t, err)
 
 		require.NotEqual(t, ct1, ct2, "encrypt should produce distinct ciphertexts for repeated plaintexts")
@@ -98,7 +102,7 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 	t.Run("BatchEncrypt stores mapping", func(t *testing.T) {
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, NewPanicCrypter())
 		pts := []string{"a", "b", "c"}
-		cts, err := c.BatchEncrypt(context.Background(), pts)
+		cts, err := c.BatchEncrypt(ctx, pts)
 		require.NoError(t, err)
 		require.Equal(t, len(pts), len(cts))
 
@@ -115,7 +119,7 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 		c := NewCiphertextToPlaintextCachedCrypter(rec, NewPanicCrypter())
 
 		pts := []string{"dup", "dup", "uniq"}
-		cts, err := c.BatchEncrypt(context.Background(), pts)
+		cts, err := c.BatchEncrypt(ctx, pts)
 		require.NoError(t, err)
 		require.Equal(t, len(pts), len(cts))
 		// The two duplicate plaintexts should have different ciphertexts.
@@ -135,17 +139,17 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 		// Use panic decrypter to ensure it's not called when value is cached.
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, NewPanicCrypter())
 		// Populate cache.
-		ct, err := c.EncryptValue(context.Background(), "hidden")
+		ct, err := c.EncryptValue(ctx, "hidden")
 		require.NoError(t, err)
 		// Should return from cache and not panic.
-		pt, err := c.DecryptValue(context.Background(), ct)
+		pt, err := c.DecryptValue(ctx, ct)
 		require.NoError(t, err)
 		require.Equal(t, "hidden", pt)
 
 		// When not cached, underlying decrypter should be called.
 		rec := &recordingDecrypter{}
 		c2 := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, rec)
-		out, err := c2.DecryptValue(context.Background(), "miss")
+		out, err := c2.DecryptValue(ctx, "miss")
 		require.NoError(t, err)
 		require.Equal(t, "pt:miss", out)
 		require.Equal(t, []string{"miss"}, rec.received)
@@ -156,13 +160,13 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, rec)
 
 		// Prepopulate cache for "a" and "b"
-		ct1, err := c.EncryptValue(context.Background(), "a")
+		ct1, err := c.EncryptValue(ctx, "a")
 		require.NoError(t, err)
-		ct2, err := c.EncryptValue(context.Background(), "b")
+		ct2, err := c.EncryptValue(ctx, "b")
 		require.NoError(t, err)
 
 		input := []string{ct1, "c", ct2, "d"}
-		out, err := c.BatchDecrypt(context.Background(), input)
+		out, err := c.BatchDecrypt(ctx, input)
 		require.NoError(t, err)
 
 		expected := []string{"a", "pt:c", "b", "pt:d"}

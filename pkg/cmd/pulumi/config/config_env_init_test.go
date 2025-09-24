@@ -94,6 +94,8 @@ runtime: yaml`
 	t.Run("some config", func(t *testing.T) {
 		t.Parallel()
 
+		ctx := context.Background()
+
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
 			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg=="), //base64 of hunter2
@@ -108,7 +110,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, yes: true}
-		err = init.run(t.Context(), nil)
+		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test/stack for stack stack...\n" +
@@ -156,6 +158,8 @@ runtime: yaml`
 	t.Run("some config, show secrets", func(t *testing.T) {
 		t.Parallel()
 
+		ctx := context.Background()
+
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
 			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg=="), //base64 of hunter2
@@ -170,7 +174,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, showSecrets: true, yes: true}
-		err = init.run(t.Context(), nil)
+		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test/stack for stack stack...\n" +
@@ -217,6 +221,8 @@ runtime: yaml`
 	t.Run("other env, some config, show secrets", func(t *testing.T) {
 		t.Parallel()
 
+		ctx := context.Background()
+
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
 			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg=="), //base64 of hunter2
@@ -236,7 +242,7 @@ runtime: yaml`
 			"env": `{"values": {"pulumiConfig": {"app:tags": {"name": "project"}}}}`,
 		})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, showSecrets: true, yes: true}
-		err = init.run(t.Context(), nil)
+		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test/stack for stack stack...\n" +

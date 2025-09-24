@@ -31,7 +31,6 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
-
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -929,9 +928,8 @@ func listConfig(
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
-		// secretsManager has a cache for crypto operations. As we are encrypting all environment secrets with the
-		// secretManager's encrypter ensure to use secretManager's decrypter later on when reading the merged config.
-		// TODO: This is not true!!! Think about cache sharing in this case.
+		// secretsManager's crypter has a cache for crypto operations. As we are encrypting all environment secrets
+		// with the secretManager's encrypter ensure to use its decrypter later on when reading the merged config.
 		envCrypter = secretsManager.Encrypter()
 	}
 
@@ -1110,9 +1108,8 @@ func getConfig(
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
-		// secretsManager has a cache for crypto operations. As we are encrypting all environment secrets with the
-		// secretManager's encrypter ensure to use secretManager's decrypter later on when reading the merged config.
-		// TODO: This is not true!!! Think about cache sharing in this case.
+		// secretsManager's crypter has a cache for crypto operations. As we are encrypting all environment secrets
+		// with the secretManager's encrypter ensure to use its decrypter later on when reading the merged config.
 		envCrypter = secretsManager.Encrypter()
 	}
 
