@@ -17,6 +17,7 @@ package policyx
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -64,7 +65,8 @@ type analyzerServer struct {
 	policyPackFactory func(pulumix.Engine) (PolicyPack, error)
 	policyPack        PolicyPack
 
-	config map[string]PolicyConfig
+	config             map[string]PolicyConfig
+	stackConfiguration *pulumirpc.AnalyzerStackConfigureRequest
 }
 
 func (srv *analyzerServer) Handshake(
@@ -137,6 +139,14 @@ func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pu
 	}, nil
 }
 
+func (srv *analyzerServer) ConfigureStack(ctx context.Context,
+	req *pulumirpc.AnalyzerStackConfigureRequest) (
+	*pulumirpc.AnalyzerStackConfigureResponse, error,
+) {
+	srv.stackConfiguration = req
+	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
+}
+
 func (srv *analyzerServer) Configure(ctx context.Context, req *pulumirpc.ConfigureAnalyzerRequest) (*pbempty.Empty,
 	error,
 ) {
@@ -167,6 +177,10 @@ func (srv *analyzerServer) Analyze(
 ) (*pulumirpc.AnalyzeResponse, error) {
 	var ds []*pulumirpc.AnalyzeDiagnostic
 	policyManager := &policyManager{}
+
+	if srv.stackConfiguration == nil {
+		return nil, errors.New("analyzer has not been configured with stack configuration")
+	}
 
 	for _, p := range srv.policyPack.Policies() {
 		switch p := p.(type) {
@@ -214,6 +228,7 @@ func (srv *analyzerServer) Analyze(
 				args := ResourceValidationArgs{
 					Manager: policyManager,
 					Config:  config.Properties,
+					DryRun:  srv.stackConfiguration.DryRun,
 					Resource: AnalyzerResource{
 						Type:                 req.GetType(),
 						Properties:           resource.FromResourcePropertyMap(pm),
