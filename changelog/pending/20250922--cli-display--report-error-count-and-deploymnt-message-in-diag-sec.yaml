@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Add a line at end of diag section showing whether deployment was success or not with error count

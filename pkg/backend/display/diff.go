@@ -283,7 +283,6 @@ func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool,
 			out.WriteString(opts.Color.Colorize(piece))
 		}
 
-		fprintIgnoreError(out, "\n")
 	}
 
 	if diffStyleSummary {

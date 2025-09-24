@@ -755,16 +755,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
 
-	// this tracks Total diag messages of severity as error
-	errDiagMessgCount := 0
-
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
 	for _, row := range eventRows {
 		// The header for the diagnostics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
 		wroteResourceHeader := false
-
-		errDiagMessgCount += row.DiagInfo().ErrorCount
 
 		// Each row in the display corresponded with a resource, and that resource could have emitted
 		// diagnostics to various streams.
@@ -820,16 +815,6 @@ func (display *ProgressDisplay) printDiagnostics() {
 			}
 		}
 	}
-
-	// check  errDiagMessgCount and show final line indicating if
-	// deployment was successful or not
-	if errDiagMessgCount > 0 {
-		errCountStr := fmt.Sprintf("[error count = %d]", errDiagMessgCount)
-		display.println(colors.BrightRed + "  " + "deployment encountered errors " + errCountStr + colors.Reset)
-	} else {
-		display.println(colors.BrightGreen + "  " + "deployment completed" + colors.Reset)
-	}
-	display.println("")
 
 	// Print a link to Copilot to explain the failure.
 	// "ShowCopilotFeatures" renders the link if it is enabled so don't render it here.
@@ -1042,6 +1027,28 @@ func (display *ProgressDisplay) printSummary() {
 
 	msg := renderSummaryEvent(*display.summaryEventPayload, false, display.opts)
 	display.println(msg)
+
+	// after printing resources changes summary also add the count for resources that errored
+
+	// track Resources that errored
+	resourcesErrored := 0
+
+	// get resource rows
+	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+
+	// check error count for each resource
+	for _, r := range rr {
+		if r.DiagInfo().ErrorCount > 0 {
+			resourcesErrored++
+		}
+	}
+
+	// finally print the line showing resources errored
+	if resourcesErrored > 0 {
+		errSummaryStr := fmt.Sprintf("%d errored", resourcesErrored)
+		display.println("    " + colors.Red + errSummaryStr + colors.Reset)
+		display.println("")
+	}
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
