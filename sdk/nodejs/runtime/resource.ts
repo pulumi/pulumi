@@ -1177,6 +1177,9 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                         (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``),
                 );
 
+                const store = getStore();
+                store.currentExportMap = resolved.outputs;
+
                 // Fetch the monitor and make an RPC request.
                 const monitor = getMonitor();
                 if (monitor) {
