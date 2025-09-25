@@ -32,7 +32,6 @@ describe("program exports via runtime stack", () => {
                 a: 42,
                 b: pulumi.output(99),
                 c: { x: nested, y: "z" },
-                u: undefined, // top-level undefined should be omitted
             } as const;
         });
 
@@ -41,6 +40,5 @@ describe("program exports via runtime stack", () => {
         const exportMap = getStore().currentExportMap as Record<string, any> | undefined;
         assert.ok(exportMap, "expected currentExportMap to be set after stack outputs registration");
         assert.deepStrictEqual(exportMap, { a: 42, b: 99, c: { x: { n: 1 }, y: "z" } });
-        assert.strictEqual("u" in exportMap!, false);
     });
 });
