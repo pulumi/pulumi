@@ -34,24 +34,24 @@ import (
 // Main starts the analyzer server with the provided policy pack factory function.
 func Main(policyPack func(pulumix.Engine) (PolicyPack, error)) error {
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
 			analyzer := &analyzerServer{
 				policyPackFactory: policyPack,
 			}
 			pulumirpc.RegisterAnalyzerServer(srv, analyzer)
 			return nil
 		},
-	}, nil)
+	})
 	if err != nil {
 		return fmt.Errorf("fatal: %v", err)
 	}
 
 	// The analyzer protocol requires that we now write out the port we have chosen to listen on.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// Finally, wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		return fmt.Errorf("fatal: %v", err)
 	}
 
