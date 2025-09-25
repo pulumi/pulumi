@@ -389,6 +389,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.HasField("delete_before_replace"):
             ropts.delete_before_replace = opts.delete_before_replace
 
+        if opts.HasField("import"):
+            ropts.import_ = getattr(opts, "import")
+
         additional_secret_outputs = list(opts.additional_secret_outputs)
         if additional_secret_outputs:
             ropts.additional_secret_outputs = additional_secret_outputs
@@ -537,6 +540,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             hooks=hooks,
         )
 
+        if opts.import_ is not None:
+            setattr(result, "import", opts.import_)
         if opts.deleted_with is not None:
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
         if opts.plugin_download_url:
