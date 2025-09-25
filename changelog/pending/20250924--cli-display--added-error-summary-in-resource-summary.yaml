@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/display
-  description: Adds resources error summary at the end of resource section
+  description: Add resources error summary at the end of resource section

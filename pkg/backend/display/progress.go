@@ -1029,21 +1029,16 @@ func (display *ProgressDisplay) printSummary() {
 	display.println(msg)
 
 	// after printing resources changes summary also add the count for resources that errored
-
-	// track Resources that errored
 	resourcesErrored := 0
 
-	// get resource rows
 	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
-	// check error count for each resource
 	for _, r := range rr {
 		if r.DiagInfo().ErrorCount > 0 {
 			resourcesErrored++
 		}
 	}
 
-	// finally print the line showing resources errored
 	if resourcesErrored > 0 {
 		errSummaryStr := fmt.Sprintf("%d errored", resourcesErrored)
 		display.println("    " + colors.Red + errSummaryStr + colors.Reset)
