@@ -381,13 +381,9 @@ func (sj *snapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 	//           they would have been appended to the list before r.
 	snap := sj.snapshot
 
-	// We could have a rebase entry as one of the first two journal entries. If we do use
-	// the snapshot from that entry as the base snapshot.
-	if len(sj.journalEntries) >= 2 {
+	if len(sj.journalEntries) > 0 {
 		if firstEntry := sj.journalEntries[0]; firstEntry.Kind == apitype.JournalEntryKindWrite {
 			snap = firstEntry.NewSnapshot
-		} else if secondEntry := sj.journalEntries[1]; secondEntry.Kind == apitype.JournalEntryKindWrite {
-			snap = secondEntry.NewSnapshot
 		}
 	}
 
@@ -482,6 +478,10 @@ serviceLoop:
 		case <-sj.cancel:
 			break serviceLoop
 		}
+		// Ensure the secrets manager is set after we've seen the first journal entry.
+		// We don't want to do this before, because a new journal entry always causes
+		// a snapshot to be written, and we don't need to write a snapshot if we never
+		// see any journal entries.
 		if !setSecretsManager {
 			setSecretsManager = true
 			_ = sj.BeginOperation(engine.JournalEntry{
@@ -634,10 +634,21 @@ type writeJournalEntryRequest struct {
 }
 
 func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
+	var completeBatch stack.CompleteCrypterBatch
+	enc := sj.secretsManager.Encrypter()
+
+	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
+		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+	}
 	serializedEntry, err := SerializeJournalEntry(
-		sj.ctx, entry, sj.secretsManager.Encrypter())
+		sj.ctx, entry, enc)
 	if err != nil {
 		return fmt.Errorf("failed to serialize journal entry: %w", err)
+	}
+	if completeBatch != nil {
+		if err := completeBatch(sj.ctx); err != nil {
+			return fmt.Errorf("failed to complete batch encryption: %w", err)
+		}
 	}
 
 	result := make(chan error)
