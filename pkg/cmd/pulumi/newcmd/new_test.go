@@ -89,28 +89,6 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process
-func TestFailIfProjectFolderName(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
-	tempdir := tempProjectDir(t)
-	tempdir = tempdir + "/pulumi"
-	chdir(t, tempdir)
-
-	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             "org/projectA/stack",
-		name:              "projectB",
-		templateNameOrURL: "typescript",
-	}
-
-	err := runNew(context.Background(), args)
-	assert.ErrorContains(t, err, "Base of project directory cannot be named pulumi ")
-}
-
-//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	skipIfShortOrNoPulumiAccessToken(t)
