@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Generate error message when the project base dir named pulumi
