@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -824,7 +824,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showCopilotLink {
 		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
 		display.println("")
@@ -1012,8 +1012,14 @@ func (display *ProgressDisplay) printOutputs() {
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
 	props := getResourceOutputsPropertiesString(
-		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources, display.opts.ShowSecrets)
+		stackStep,
+		1, /* indent */
+		display.isPreview,
+		display.opts.Debug,
+		false, /* refresh */
+		display.opts.ShowSameResources,
+		display.opts.ShowSecrets,
+		display.opts.TruncateOutput)
 	if props != "" {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)
@@ -1170,6 +1176,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
+		return
+	case engine.ErrorEvent:
+		return
+	case engine.PolicyAnalyzeSummaryEvent,
+		engine.PolicyAnalyzeStackSummaryEvent,
+		engine.PolicyRemediateSummaryEvent:
 		return
 	}
 

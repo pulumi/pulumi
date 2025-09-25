@@ -40,9 +40,9 @@ import (
 func TestDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -131,7 +131,7 @@ func TestDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -148,9 +148,9 @@ func TestDestroyWithProgram(t *testing.T) {
 func TestTargetedDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -239,7 +239,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a targeted destroy against resA
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{snap.Resources[1].URN})
 	snap, err = lt.TestOp(DestroyV2).
@@ -258,9 +258,9 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -370,7 +370,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy with the new provider version
 	pkgVersion = "2.0.0"
 	snap, err = lt.TestOp(DestroyV2).
@@ -389,9 +389,9 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -496,7 +496,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy with the new provider version
 	pkgVersion = "2.0.0"
 	snap, err = lt.TestOp(DestroyV2).
@@ -514,9 +514,9 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 func TestDestroyWithProgramWithComponents(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -597,7 +597,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -615,9 +615,9 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -712,7 +712,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -730,9 +730,9 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -831,7 +831,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -849,12 +849,12 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 func TestDestroyWithProgramResourceRead(t *testing.T) {
 	t.Parallel()
 
-	readInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	readInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -917,7 +917,19 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		programExecutions++
 
-		_, state, err := monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
+		_, state, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
 		require.NoError(t, err)
 		assert.Equal(t, readOutputs, state)
 
@@ -950,7 +962,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")

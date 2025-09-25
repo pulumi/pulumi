@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: protobuf
+  description: Add loader_target to LanguageRuntime.LinkRequest

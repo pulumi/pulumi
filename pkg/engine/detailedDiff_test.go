@@ -55,8 +55,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"foo": {
-						Old: resource.NewNumberProperty(42),
-						New: resource.NewNumberProperty(24),
+						Old: resource.NewProperty(42.0),
+						New: resource.NewProperty(24.0),
 					},
 				},
 			},
@@ -77,8 +77,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"foo": {
-						Old: resource.NewNumberProperty(42),
-						New: resource.NewNumberProperty(42),
+						Old: resource.NewProperty(42.0),
+						New: resource.NewProperty(42.0),
 					},
 				},
 			},
@@ -101,8 +101,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"foo": {
-						Old: resource.NewNumberProperty(42),
-						New: resource.NewNumberProperty(24),
+						Old: resource.NewProperty(42.0),
+						New: resource.NewProperty(24.0),
 					},
 				},
 			},
@@ -125,8 +125,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"foo": {
-						Old: resource.NewNumberProperty(42),
-						New: resource.NewNumberProperty(24),
+						Old: resource.NewProperty(42.0),
+						New: resource.NewProperty(24.0),
 					},
 				},
 			},
@@ -141,7 +141,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 			expected: &resource.ObjectDiff{
 				Adds: resource.PropertyMap{
-					"foo": resource.NewNumberProperty(24),
+					"foo": resource.NewProperty(24.0),
 				},
 				Deletes: resource.PropertyMap{},
 				Sames:   resource.PropertyMap{},
@@ -159,7 +159,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			expected: &resource.ObjectDiff{
 				Adds: resource.PropertyMap{},
 				Deletes: resource.PropertyMap{
-					"foo": resource.NewNumberProperty(24),
+					"foo": resource.NewProperty(24.0),
 				},
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{},
@@ -182,7 +182,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			expected: &resource.ObjectDiff{
 				Adds: resource.PropertyMap{},
 				Deletes: resource.PropertyMap{
-					"foo": resource.NewNumberProperty(42),
+					"foo": resource.NewProperty(42.0),
 				},
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{},
@@ -216,8 +216,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							Sames:   map[int]resource.PropertyValue{},
 							Updates: map[int]resource.ValueDiff{
 								1: {
-									Old: resource.NewStringProperty("baz"),
-									New: resource.NewStringProperty("qux"),
+									Old: resource.NewProperty("baz"),
+									New: resource.NewProperty("qux"),
 								},
 							},
 						},
@@ -263,8 +263,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							},
 							Updates: map[int]resource.ValueDiff{
 								1: {
-									Old: resource.NewStringProperty("baz"),
-									New: resource.NewStringProperty("qux"),
+									Old: resource.NewProperty("baz"),
+									New: resource.NewProperty("qux"),
 								},
 							},
 						},
@@ -296,7 +296,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"foo": {
 						Array: &resource.ArrayDiff{
 							Adds: map[int]resource.PropertyValue{
-								1: resource.NewStringProperty("baz"),
+								1: resource.NewProperty("baz"),
 							},
 							Deletes: map[int]resource.PropertyValue{},
 							Sames:   map[int]resource.PropertyValue{},
@@ -330,7 +330,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 						Array: &resource.ArrayDiff{
 							Adds: map[int]resource.PropertyValue{},
 							Deletes: map[int]resource.PropertyValue{
-								1: resource.NewStringProperty("baz"),
+								1: resource.NewProperty("baz"),
 							},
 							Sames:   map[int]resource.PropertyValue{},
 							Updates: map[int]resource.ValueDiff{},
@@ -445,8 +445,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 						Array: &resource.ArrayDiff{
 							Adds: map[int]resource.PropertyValue{},
 							Deletes: map[int]resource.PropertyValue{
-								0: resource.NewObjectProperty(resource.PropertyMap{
-									"baz": resource.NewNumberProperty(42),
+								0: resource.NewProperty(resource.PropertyMap{
+									"baz": resource.NewProperty(42.0),
 								}),
 							},
 							Sames:   map[int]resource.PropertyValue{},
@@ -484,8 +484,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							Sames:   resource.PropertyMap{},
 							Updates: map[resource.PropertyKey]resource.ValueDiff{
 								"qux": {
-									Old: resource.NewStringProperty("zed"),
-									New: resource.NewStringProperty("alpha"),
+									Old: resource.NewProperty("zed"),
+									New: resource.NewProperty("alpha"),
 								},
 							},
 						},
@@ -531,8 +531,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							},
 							Updates: map[resource.PropertyKey]resource.ValueDiff{
 								"qux": {
-									Old: resource.NewStringProperty("zed"),
-									New: resource.NewStringProperty("alpha"),
+									Old: resource.NewProperty("zed"),
+									New: resource.NewProperty("alpha"),
 								},
 							},
 						},
@@ -563,7 +563,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"foo": {
 						Object: &resource.ObjectDiff{
 							Adds: resource.PropertyMap{
-								"qux": resource.NewStringProperty("alpha"),
+								"qux": resource.NewProperty("alpha"),
 							},
 							Deletes: resource.PropertyMap{},
 							Sames:   resource.PropertyMap{},
@@ -597,7 +597,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 						Object: &resource.ObjectDiff{
 							Adds: resource.PropertyMap{},
 							Deletes: resource.PropertyMap{
-								"qux": resource.NewStringProperty("zed"),
+								"qux": resource.NewProperty("zed"),
 							},
 							Sames:   resource.PropertyMap{},
 							Updates: map[resource.PropertyKey]resource.ValueDiff{},
@@ -712,8 +712,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 						Array: &resource.ArrayDiff{
 							Adds: map[int]resource.PropertyValue{},
 							Deletes: map[int]resource.PropertyValue{
-								0: resource.NewObjectProperty(resource.PropertyMap{
-									"baz": resource.NewNumberProperty(42),
+								0: resource.NewProperty(resource.PropertyMap{
+									"baz": resource.NewProperty(42.0),
 								}),
 							},
 							Sames:   map[int]resource.PropertyValue{},

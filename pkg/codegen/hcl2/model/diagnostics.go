@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -104,11 +105,16 @@ func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
 }
 
 func unknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
+	slices.Sort(props)
 	return errorf(indexRange, "unknown property '%s' among %v", name, props)
 }
 
 func unsupportedReceiverType(receiver Type, indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "cannot traverse value of type %v", receiver)
+}
+
+func unsupportedReceiverTypeWarning(receiver Type, indexRange hcl.Range) *hcl.Diagnostic {
+	return warnf(indexRange, "cannot traverse value of type %v", receiver)
 }
 
 func unsupportedCollectionType(collectionType Type, iteratorRange hcl.Range) *hcl.Diagnostic {

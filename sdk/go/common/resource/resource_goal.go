@@ -18,7 +18,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-// Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
+// Goal is a desired state for a resource object. Normally it represents a subset of the resource's state expressed by
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type Goal struct {
 	Type                    tokens.Type           // the type of resource.
@@ -44,43 +44,110 @@ type Goal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
 	SourcePosition string                // If set, the source location of the resource registration
+	StackTrace     []StackFrame          // If set, the stack trace at time of registration
 	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
 }
 
-// NewGoal allocates a new resource goal state.
-func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
-	parent URN, protect *bool, dependencies []URN, provider string, initErrors []string,
-	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
-	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete *bool, deletedWith URN, sourcePosition string,
-	resourceHooks map[HookType][]string,
-) *Goal {
-	g := &Goal{
-		Type:                    t,
-		Name:                    name,
-		Custom:                  custom,
-		Properties:              props,
-		Parent:                  parent,
-		Protect:                 protect,
-		Dependencies:            dependencies,
-		Provider:                provider,
-		InitErrors:              initErrors,
-		PropertyDependencies:    propertyDependencies,
-		DeleteBeforeReplace:     deleteBeforeReplace,
-		IgnoreChanges:           ignoreChanges,
-		AdditionalSecretOutputs: additionalSecretOutputs,
-		Aliases:                 aliases,
-		ID:                      id,
-		ReplaceOnChanges:        replaceOnChanges,
-		RetainOnDelete:          retainOnDelete,
-		DeletedWith:             deletedWith,
-		SourcePosition:          sourcePosition,
-		ResourceHooks:           resourceHooks,
-	}
+// NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
+// Call [NewGoal.Make] to create the *Goal value.
+type NewGoal struct {
+	// the type of resource.
+	Type tokens.Type // required
 
-	if customTimeouts != nil {
-		g.CustomTimeouts = *customTimeouts
-	}
+	// the name for the resource's URN.
+	Name string // required
 
-	return g
+	// true if this resource is custom, managed by a plugin.
+	Custom bool // required
+
+	// the resource's property state.
+	Properties PropertyMap // required
+
+	// an optional parent URN for this resource.
+	Parent URN // required
+
+	// true to protect this resource from deletion.
+	Protect *bool // required
+
+	// dependencies of this resource object.
+	Dependencies []URN // required
+
+	// the provider to use for this resource.
+	Provider string // required
+
+	// errors encountered as we attempted to initialize the resource.
+	InitErrors []string // required
+
+	// the set of dependencies that affect each property.
+	PropertyDependencies map[PropertyKey][]URN // required
+
+	// true if this resource should be deleted prior to replacement.
+	DeleteBeforeReplace *bool // required
+
+	// a list of property paths to ignore when diffing.
+	IgnoreChanges []string // required
+
+	// outputs that should always be treated as secrets.
+	AdditionalSecretOutputs []PropertyKey // required
+
+	// additional structured Aliases that should be assigned.
+	Aliases []Alias // required
+
+	// the expected ID of the resource, if any.
+	ID ID // required
+
+	// an optional config object for resource options
+	CustomTimeouts *CustomTimeouts // required
+
+	// a list of property paths that if changed should force a replacement.
+	ReplaceOnChanges []string // required
+
+	// if set to True, the providers Delete method will not be called for this resource.
+	// required
+	RetainOnDelete *bool // required
+
+	// if set, the providers Delete method will not be called for this resource
+	// if specified resource is being deleted as well.
+	DeletedWith URN // required
+
+	// If set, the source location of the resource registration
+	SourcePosition string // required
+
+	// If set, the stack trace at time of registration
+	StackTrace []StackFrame // required
+
+	// The resource hooks attached to the resource, by type.
+	ResourceHooks map[HookType][]string // required
+}
+
+// Make consumes the NewGoal to create a *Goal.
+func (g NewGoal) Make() *Goal {
+	var customTimeouts CustomTimeouts
+	if g.CustomTimeouts != nil {
+		customTimeouts = *g.CustomTimeouts
+	}
+	return &Goal{
+		Type:                    g.Type,
+		Name:                    g.Name,
+		Custom:                  g.Custom,
+		Properties:              g.Properties,
+		Parent:                  g.Parent,
+		Protect:                 g.Protect,
+		Dependencies:            g.Dependencies,
+		Provider:                g.Provider,
+		InitErrors:              g.InitErrors,
+		PropertyDependencies:    g.PropertyDependencies,
+		DeleteBeforeReplace:     g.DeleteBeforeReplace,
+		IgnoreChanges:           g.IgnoreChanges,
+		AdditionalSecretOutputs: g.AdditionalSecretOutputs,
+		Aliases:                 g.Aliases,
+		ID:                      g.ID,
+		CustomTimeouts:          customTimeouts,
+		ReplaceOnChanges:        g.ReplaceOnChanges,
+		RetainOnDelete:          g.RetainOnDelete,
+		DeletedWith:             g.DeletedWith,
+		SourcePosition:          g.SourcePosition,
+		StackTrace:              g.StackTrace,
+		ResourceHooks:           g.ResourceHooks,
+	}
 }

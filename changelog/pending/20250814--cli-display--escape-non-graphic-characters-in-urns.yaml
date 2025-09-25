@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Escape non-graphic characters in URNs

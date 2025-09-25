@@ -76,6 +76,72 @@ type PolicyRemediationEvent struct {
 	After                map[string]interface{} `json:"after,omitempty"`
 }
 
+// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
+type PolicyNotApplicable struct {
+	// The name of the policy that was not applicable.
+	PolicyName string `json:"policyName"`
+	// An optional reason why the policy was not applicable.
+	Reason string `json:"reason,omitempty"`
+}
+
+// PolicyAnalyzeSummaryEvent is emitted after a call to Analyze on an analyzer, summarizing the results.
+type PolicyAnalyzeSummaryEvent struct {
+	// The URN of the resource being analyzed.
+	ResourceURN string `json:"resourceUrn"`
+	// The name of the policy pack.
+	PolicyPackName string `json:"policyPackName"`
+	// The version of the policy pack.
+	PolicyPackVersion string `json:"policyPackVersion"`
+	// The version tag of the policy pack.
+	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+	// Names of resource policies in the policy pack that were disabled.
+	Disabled []string `json:"disabled,omitempty"`
+	// Not applicable resource policies in the policy pack.
+	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
+	// The names of resource policies that passed (i.e. did not produce any violations).
+	Passed []string `json:"passed,omitempty"`
+	// The names of resource policies that failed (i.e. produced violations).
+	Failed []string `json:"failed,omitempty"`
+}
+
+// PolicyRemediateSummaryEvent is emitted after a call to Remediate on an analyzer, summarizing the results.
+type PolicyRemediateSummaryEvent struct {
+	// The URN of the resource being remediated.
+	ResourceURN string `json:"resourceUrn"`
+	// The name of the policy pack.
+	PolicyPackName string `json:"policyPackName"`
+	// The version of the policy pack.
+	PolicyPackVersion string `json:"policyPackVersion"`
+	// The version tag of the policy pack.
+	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+	// Names of resource policies in the policy pack that were disabled.
+	Disabled []string `json:"disabled,omitempty"`
+	// Not applicable resource policies in the policy pack.
+	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
+	// The names of resource policies that passed (i.e. did not produce any violations).
+	Passed []string `json:"passed,omitempty"`
+	// The names of resource policies that failed (i.e. produced violations).
+	Failed []string `json:"failed,omitempty"`
+}
+
+// PolicyAnalyzeStackSummaryEvent is emitted after a call to AnalyzeStack on an analyzer, summarizing the results.
+type PolicyAnalyzeStackSummaryEvent struct {
+	// The name of the policy pack.
+	PolicyPackName string `json:"policyPackName"`
+	// The version of the policy pack.
+	PolicyPackVersion string `json:"policyPackVersion"`
+	// The version tag of the policy pack.
+	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+	// Names of stack policies in the policy pack that were disabled.
+	Disabled []string `json:"disabled,omitempty"`
+	// Not applicable stack policies in the policy pack.
+	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
+	// The names of stack policies that passed (i.e. did not produce any violations).
+	Passed []string `json:"passed,omitempty"`
+	// The names of stack policies that failed (i.e. produced violations).
+	Failed []string `json:"failed,omitempty"`
+}
+
 // PreludeEvent is emitted at the start of an update.
 type PreludeEvent struct {
 	// Config contains the keys and values for the update.
@@ -104,7 +170,6 @@ type SummaryEvent struct {
 // ErrorEvent is emitted when an internal error occurs in the engine. This is not meant
 // to be used for user facing errors, but rather for internal errors, where an event
 // can help with debugging.
-
 type ErrorEvent struct {
 	// Error is the error message.
 	Error string `json:"error"`
@@ -180,6 +245,8 @@ type StepEventStateMetadata struct {
 	Parent string `json:"parent"`
 	// Protect is true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool `json:"protect,omitempty"`
+	// Taint is set to true when we wish to force it to be replaced upon the next update.
+	Taint bool `json:"taint,omitempty"`
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
@@ -260,20 +327,23 @@ type EngineEvent struct {
 	// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
 	Timestamp int `json:"timestamp"`
 
-	CancelEvent            *CancelEvent            `json:"cancelEvent,omitempty"`
-	StdoutEvent            *StdoutEngineEvent      `json:"stdoutEvent,omitempty"`
-	DiagnosticEvent        *DiagnosticEvent        `json:"diagnosticEvent,omitempty"`
-	PreludeEvent           *PreludeEvent           `json:"preludeEvent,omitempty"`
-	SummaryEvent           *SummaryEvent           `json:"summaryEvent,omitempty"`
-	ResourcePreEvent       *ResourcePreEvent       `json:"resourcePreEvent,omitempty"`
-	ResOutputsEvent        *ResOutputsEvent        `json:"resOutputsEvent,omitempty"`
-	ResOpFailedEvent       *ResOpFailedEvent       `json:"resOpFailedEvent,omitempty"`
-	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
-	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
-	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
-	StartDebuggingEvent    *StartDebuggingEvent    `json:"startDebuggingEvent,omitempty"`
-	ProgressEvent          *ProgressEvent          `json:"progressEvent,omitempty"`
-	ErrorEvent             *ErrorEvent             `json:"errorEvent,omitempty"`
+	CancelEvent                    *CancelEvent                    `json:"cancelEvent,omitempty"`
+	StdoutEvent                    *StdoutEngineEvent              `json:"stdoutEvent,omitempty"`
+	DiagnosticEvent                *DiagnosticEvent                `json:"diagnosticEvent,omitempty"`
+	PreludeEvent                   *PreludeEvent                   `json:"preludeEvent,omitempty"`
+	SummaryEvent                   *SummaryEvent                   `json:"summaryEvent,omitempty"`
+	ResourcePreEvent               *ResourcePreEvent               `json:"resourcePreEvent,omitempty"`
+	ResOutputsEvent                *ResOutputsEvent                `json:"resOutputsEvent,omitempty"`
+	ResOpFailedEvent               *ResOpFailedEvent               `json:"resOpFailedEvent,omitempty"`
+	PolicyEvent                    *PolicyEvent                    `json:"policyEvent,omitempty"`
+	PolicyRemediationEvent         *PolicyRemediationEvent         `json:"policyRemediationEvent,omitempty"`
+	PolicyLoadEvent                *PolicyLoadEvent                `json:"policyLoadEvent,omitempty"`
+	PolicyAnalyzeSummaryEvent      *PolicyAnalyzeSummaryEvent      `json:"policyAnalyzeSummaryEvent,omitempty"`
+	PolicyRemediateSummaryEvent    *PolicyRemediateSummaryEvent    `json:"policyRemediateSummaryEvent,omitempty"`
+	PolicyAnalyzeStackSummaryEvent *PolicyAnalyzeStackSummaryEvent `json:"policyAnalyzeStackSummaryEvent,omitempty"`
+	StartDebuggingEvent            *StartDebuggingEvent            `json:"startDebuggingEvent,omitempty"`
+	ProgressEvent                  *ProgressEvent                  `json:"progressEvent,omitempty"`
+	ErrorEvent                     *ErrorEvent                     `json:"errorEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

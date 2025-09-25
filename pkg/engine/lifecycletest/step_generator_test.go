@@ -47,7 +47,7 @@ func TestDuplicateURN(t *testing.T) {
 		assert.Error(t, err)
 
 		// Reads use the same URN namespace as register so make sure this also errors
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", nil, "", "")
 		assert.Error(t, err)
 
 		return nil
@@ -121,7 +121,7 @@ func TestSecretMasked(t *testing.T) {
 					return plugin.CreateResponse{
 						ID: "id",
 						Properties: resource.PropertyMap{
-							"shouldBeSecret": resource.NewStringProperty("bar"),
+							"shouldBeSecret": resource.NewProperty("bar"),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -133,7 +133,7 @@ func TestSecretMasked(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"shouldBeSecret": resource.MakeSecret(resource.NewStringProperty("bar")),
+				"shouldBeSecret": resource.MakeSecret(resource.NewProperty("bar")),
 			},
 		})
 		require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestReadReplaceStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", nil, "", "")
 					require.NoError(t, err)
 					return nil
 				}, false).
@@ -250,7 +250,7 @@ func TestRelinquishStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
 					require.NoError(t, err)
 					return nil
 				}, true).
@@ -279,7 +279,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", nil, "", "")
 			require.NoError(t, err)
 			return nil
 		}, false).
@@ -328,11 +328,13 @@ func TestInitErrorsStep(t *testing.T) {
 	lt.NewTestBuilder(t, &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:   "pulumi:providers:pkgA",
-				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::default",
-				Custom: true,
-				Delete: false,
-				ID:     "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Type:    "pulumi:providers:pkgA",
+				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",
+				Custom:  true,
+				Delete:  false,
+				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
 			},
 			{
 				Type:     "pkgA:m:typA",
@@ -343,6 +345,8 @@ func TestInitErrorsStep(t *testing.T) {
 				InitErrors: []string{
 					`errors should yield an empty update to "continue" awaiting initialization.`,
 				},
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
 			},
 		},
 	}).
@@ -382,7 +386,7 @@ func TestReadNilOutputs(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
+			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
 			require.Fail(t, "RegisterResource should not return")
 
 			return nil

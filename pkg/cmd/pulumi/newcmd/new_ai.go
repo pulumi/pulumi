@@ -52,7 +52,7 @@ func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool
 		!args.yes
 }
 
-// Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI
+// Iteratively prompt the user for input, sending their input as a prompt to Pulumi AI.
 // Stream the response back to the console, and repeat until the user is done.
 func runAINew(
 	ctx context.Context,

@@ -52,9 +52,9 @@ func newTemplatePublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish <directory>",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Publish a template to the Pulumi Registry",
-		Long: "Publish a template to the Pulumi Registry.\n\n" +
-			"This command publishes a template directory to the Pulumi Registry.",
+		Short: "Publish a template to the Private Registry",
+		Long: "Publish a template to the Private Registry.\n\n" +
+			"This command publishes a template directory to the Private Registry.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			tplPublishCmd := templatePublishCmd{defaultOrg: backend.GetDefaultOrg}
@@ -111,7 +111,7 @@ func (tplCmd *templatePublishCmd) Run(
 
 	_, err = b.GetCloudRegistry()
 	if err != nil {
-		return fmt.Errorf("backend does not support registry operations: %w", err)
+		return fmt.Errorf("backend does not support Private Registry operations: %w", err)
 	}
 
 	var publisher string
@@ -160,7 +160,7 @@ func (tplCmd *templatePublishCmd) publishTemplate(
 ) error {
 	registry, err := b.GetCloudRegistry()
 	if err != nil {
-		return fmt.Errorf("failed to get cloud registry: %w", err)
+		return fmt.Errorf("failed to get the Private Registry backend: %w", err)
 	}
 
 	publishInput := apitype.TemplatePublishOp{

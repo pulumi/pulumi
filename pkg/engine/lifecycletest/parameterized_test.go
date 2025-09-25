@@ -161,11 +161,11 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "pkgExt:index:func", req.Tok.String())
-					assert.Equal(t, resource.NewStringProperty("in"), req.Args["input"])
+					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
 
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{
-							"output": resource.NewStringProperty("in " + param),
+							"output": resource.NewProperty("in " + param),
 						},
 					}, nil
 				},
@@ -187,14 +187,14 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				CallF: func(_ context.Context, req plugin.CallRequest, _ *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					assert.Equal(t, "pkgExt:index:call", req.Tok.String())
-					assert.Equal(t, resource.NewStringProperty("in"), req.Args["input"])
+					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
 					assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 						"input": {"urn:pulumi:stack::m::typA::resB"},
 					}, req.Options.ArgDependencies)
 
 					return plugin.CallResponse{
 						Return: resource.PropertyMap{
-							"output": resource.NewStringProperty("output"),
+							"output": resource.NewProperty("output"),
 						},
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
@@ -218,7 +218,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 					return plugin.ConstructResponse{
 						URN: resource.NewURN("", "", "", req.Type, req.Name),
 						Outputs: resource.PropertyMap{
-							"output": resource.NewStringProperty("output"),
+							"output": resource.NewProperty("output"),
 						},
 						OutputDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
@@ -247,7 +247,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "mlcA", mlcA.URN.Name())
 		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewStringProperty("output"),
+			"output": resource.NewProperty("output"),
 		}, mlcA.Outputs)
 		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 			"output": {"urn:pulumi:stack::m::typA::resB"},
@@ -275,7 +275,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "mlcB", mlcB.URN.Name())
 		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewStringProperty("output"),
+			"output": resource.NewProperty("output"),
 		}, mlcB.Outputs)
 		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 			"output": {"urn:pulumi:stack::m::typA::resB"},
@@ -283,22 +283,34 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 		// Test invoking a function on the replacement provider
 		result, _, err := monitor.Invoke("pkgExt:index:func", resource.PropertyMap{
-			"input": resource.NewStringProperty("in"),
+			"input": resource.NewProperty("in"),
 		}, "", "", extRef)
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewStringProperty("in replacement"),
+			"output": resource.NewProperty("in replacement"),
 		}, result)
 
 		// Test reading a resource on the replacement provider
-		_, _, err = monitor.ReadResource("pkgExt:m:typA", "resC", "id", "", resource.PropertyMap{}, "", "", "", extRef)
+		_, _, err = monitor.ReadResource(
+			"pkgExt:m:typA",
+			"resC",
+			"id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			extRef,
+		)
 		require.NoError(t, err)
 
 		// Test calling a function on the replacement provider
 		callOuts, callDeps, callFailures, err := monitor.Call(
 			"pkgExt:index:call",
 			resource.PropertyMap{
-				"input": resource.NewStringProperty("in"),
+				"input": resource.NewProperty("in"),
 			},
 			map[resource.PropertyKey][]resource.URN{
 				"input": {"urn:pulumi:stack::m::typA::resB"},
@@ -306,10 +318,13 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			"", /*provider*/
 			"", /*version*/
 			extRef,
+			"",
+			nil,
+			"",
 		)
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewStringProperty("output"),
+			"output": resource.NewProperty("output"),
 		}, callOuts)
 		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 			"output": {"urn:pulumi:stack::m::typA::resB"},
@@ -536,10 +551,10 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("input"),
+								"input": resource.NewProperty("input"),
 							},
 							Outputs: resource.PropertyMap{
-								"output": resource.NewStringProperty("output"),
+								"output": resource.NewProperty("output"),
 							},
 						},
 						Status: resource.StatusOK,
@@ -558,7 +573,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 			PackageRef: pkgRef,
 			ImportID:   "idA",
 			Inputs: resource.PropertyMap{
-				"input": resource.NewStringProperty("input"),
+				"input": resource.NewProperty("input"),
 			},
 		})
 		require.NoError(t, err)
@@ -576,7 +591,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 			PackageRef: extRef,
 			ImportID:   "idB",
 			Inputs: resource.PropertyMap{
-				"input": resource.NewStringProperty("input"),
+				"input": resource.NewProperty("input"),
 			},
 		})
 		require.NoError(t, err)
@@ -594,7 +609,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 			Provider: provRef.String(),
 			ImportID: "idB",
 			Inputs: resource.PropertyMap{
-				"input": resource.NewStringProperty("input"),
+				"input": resource.NewProperty("input"),
 			},
 		})
 		require.NoError(t, err)
@@ -634,29 +649,29 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
 	assert.Equal(t, "resA", resA.URN.Name())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("input"),
+		"input": resource.NewProperty("input"),
 	}, resA.Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"output": resource.NewStringProperty("output"),
+		"output": resource.NewProperty("output"),
 	}, resA.Outputs)
 
 	resB := snap.Resources[3]
 	assert.Equal(t, tokens.Type("pkgExt:m:typA"), resB.Type)
 	assert.Equal(t, "resB", resB.URN.Name())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("input"),
+		"input": resource.NewProperty("input"),
 	}, resB.Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"output": resource.NewStringProperty("output"),
+		"output": resource.NewProperty("output"),
 	}, resB.Outputs)
 
 	resC := snap.Resources[5]
 	assert.Equal(t, tokens.Type("pkgExt:m:typA"), resC.Type)
 	assert.Equal(t, "resC", resC.URN.Name())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("input"),
+		"input": resource.NewProperty("input"),
 	}, resC.Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"output": resource.NewStringProperty("output"),
+		"output": resource.NewProperty("output"),
 	}, resC.Outputs)
 }

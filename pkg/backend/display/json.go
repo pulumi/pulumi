@@ -41,17 +41,17 @@ func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.P
 		for i, e := range v.ArrayValue() {
 			new[i] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewArrayProperty(new)
+		return resource.NewProperty(new)
 	case v.IsObject():
 		new := make(resource.PropertyMap, len(v.ObjectValue()))
 		for k, e := range v.ObjectValue() {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewObjectProperty(new)
+		return resource.NewProperty(new)
 	case v.IsSecret() && showSecrets:
 		return massagePropertyValue(v.SecretValue().Element, showSecrets)
 	case v.IsSecret():
-		return resource.NewStringProperty("[secret]")
+		return resource.NewProperty("[secret]")
 	default:
 		return v
 	}
@@ -83,12 +83,39 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
 	}
-
-	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
-		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
-		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts,
-		s.ImportID, s.RetainOnDelete, s.DeletedWith, s.Created, s.Modified, s.SourcePosition, s.IgnoreChanges,
-		s.ReplaceOnChanges, s.RefreshBeforeUpdate, s.ViewOf, s.ResourceHooks)
+	return resource.NewState{
+		Type:                    s.Type,
+		URN:                     s.URN,
+		Custom:                  s.Custom,
+		Delete:                  s.Delete,
+		ID:                      s.ID,
+		Inputs:                  inputs,
+		Outputs:                 outputs,
+		Parent:                  s.Parent,
+		Protect:                 s.Protect,
+		Taint:                   s.Taint,
+		External:                s.External,
+		Dependencies:            s.Dependencies,
+		InitErrors:              s.InitErrors,
+		Provider:                s.Provider,
+		PropertyDependencies:    s.PropertyDependencies,
+		PendingReplacement:      s.PendingReplacement,
+		AdditionalSecretOutputs: s.AdditionalSecretOutputs,
+		Aliases:                 s.Aliases,
+		CustomTimeouts:          &s.CustomTimeouts,
+		ImportID:                s.ImportID,
+		RetainOnDelete:          s.RetainOnDelete,
+		DeletedWith:             s.DeletedWith,
+		Created:                 s.Created,
+		Modified:                s.Modified,
+		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
+		IgnoreChanges:           s.IgnoreChanges,
+		ReplaceOnChanges:        s.ReplaceOnChanges,
+		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
+		ViewOf:                  s.ViewOf,
+		ResourceHooks:           s.ResourceHooks,
+	}.Make()
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
@@ -194,7 +221,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			continue
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
+		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent,
+			engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
 		case engine.SummaryEvent:

@@ -53,8 +53,8 @@ func init() {
 					require.NotNil(l, stack)
 					assert.Equal(l, "pulumi:pulumi:Stack", stack.Type.String(), "expected stack resource")
 					// Check we have to two expected outputs name and type
-					assert.Equal(l, resource.NewStringProperty("res"), stack.Outputs["name"])
-					assert.Equal(l, resource.NewStringProperty("simple:index:Resource"), stack.Outputs["type"])
+					assert.Equal(l, resource.NewProperty("res"), stack.Outputs["name"])
+					assert.Equal(l, resource.NewProperty("simple:index:Resource"), stack.Outputs["type"])
 				},
 			},
 		},

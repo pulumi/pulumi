@@ -42,20 +42,19 @@ import (
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
 	t.Parallel()
-
-	res := resource.NewState(
-		tokens.Type("Test"),
-		resource.NewURN(
+	res := resource.NewState{
+		Type: tokens.Type("Test"),
+		URN: resource.NewURN(
 			tokens.QName("test"),
 			tokens.PackageName("resource/test"),
 			tokens.Type(""),
 			tokens.Type("Test"),
 			"resource-x",
 		),
-		true,
-		false,
-		resource.ID("test-resource-x"),
-		resource.NewPropertyMapFromMap(map[string]interface{}{
+		Custom: true,
+		Delete: false,
+		ID:     resource.ID("test-resource-x"),
+		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 			"in-nil":         nil,
 			"in-bool":        true,
 			"in-float64":     float64(1.5),
@@ -73,7 +72,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			"in-custom-resource-reference":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
 			"in-custom-resource-reference-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
 		}),
-		resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 			"out-nil":         nil,
 			"out-bool":        false,
 			"out-float64":     float64(76),
@@ -87,36 +86,37 @@ func TestDeploymentSerialization(t *testing.T) {
 			},
 			"out-empty-map": map[string]interface{}{},
 		}),
-		"",
-		false,
-		false,
-		[]resource.URN{
+		Parent:   "",
+		Protect:  false,
+		Taint:    false,
+		External: false,
+		Dependencies: []resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
 		},
-		[]string{},
-		"",
-		nil,
-		false,
-		nil,
-		nil,
-		nil,
-		"",
-		false,
-		"",
-		nil,
-		nil,
-		"",
-		nil,
-		nil,
-		false,
-		"",
-		map[resource.HookType][]string{
+		InitErrors:              []string{},
+		Provider:                "",
+		PropertyDependencies:    nil,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: nil,
+		Aliases:                 nil,
+		CustomTimeouts:          nil,
+		ImportID:                "",
+		RetainOnDelete:          false,
+		DeletedWith:             "",
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          "",
+		StackTrace:              nil,
+		IgnoreChanges:           nil,
+		ReplaceOnChanges:        nil,
+		RefreshBeforeUpdate:     false,
+		ViewOf:                  "",
+		ResourceHooks: map[resource.HookType][]string{
 			resource.BeforeCreate: {"hook1"},
 			resource.AfterDelete:  {"hook2"},
 		},
-	)
-
+	}.Make()
 	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
 	require.NoError(t, err)
 
@@ -270,6 +270,17 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			expectedVersion:  4,
 			expectedFeatures: []string{"hooks"},
 		},
+		{
+			name: "v4 deployment with taint",
+			resources: []*resource.State{
+				{
+					URN:   "urn1",
+					Taint: true,
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"taint"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -359,6 +370,7 @@ func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 		"refreshBeforeUpdate",
 		"views",
 		"hooks",
+		"taint",
 	}) {
 		t.Run(strings.Join(features, ","), func(t *testing.T) {
 			t.Parallel()
@@ -440,7 +452,7 @@ func TestCustomSerialization(t *testing.T) {
 	textAsset, err := rasset.FromText("alpha beta gamma")
 	require.NoError(t, err)
 
-	strProp := resource.NewStringProperty("strProp")
+	strProp := resource.NewProperty("strProp")
 
 	computed := resource.Computed{Element: strProp}
 	output := resource.Output{Element: strProp}
@@ -716,12 +728,12 @@ func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 	ctx := context.Background()
 	crypter := config.NewPanicCrypter()
 
-	secret := resource.MakeSecret(resource.NewStringProperty("secret"))
+	secret := resource.MakeSecret(resource.NewProperty("secret"))
 	_, err := SerializePropertyValue(ctx, secret, crypter, true)
 	require.NoError(t, err)
 
-	secret = resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-		resource.MakeSecret(resource.NewStringProperty("secret")),
+	secret = resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+		resource.MakeSecret(resource.NewProperty("secret")),
 	}))
 	_, err = SerializePropertyValue(ctx, secret, crypter, true)
 	require.NoError(t, err)
@@ -789,7 +801,7 @@ func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue
 			o[k] = replaceOutputsWithComputed(v)
 		}
 	case v.IsOutput():
-		return resource.MakeComputed(resource.NewStringProperty(""))
+		return resource.MakeComputed(resource.NewProperty(""))
 	case v.IsSecret():
 		v.SecretValue().Element = replaceOutputsWithComputed(v.SecretValue().Element)
 	}
@@ -952,4 +964,31 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 			SecretObjectGenerator(maxDepth).AsAny())
 	}
 	return rapid.OneOf(choices...)
+}
+
+func TestSecretInputRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	res := &resource.State{
+		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
+		Type: "pkg:index:type",
+		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			"normal": "hello",
+			"secret": resource.MakeSecret(resource.NewProperty("there")),
+		}),
+	}
+
+	sm := b64.NewBase64SecretsManager()
+
+	serialized, err := SerializeResource(ctx, res, sm.Encrypter(), false /* showSecrets */)
+	require.NoError(t, err)
+
+	deserialized, err := DeserializeResource(serialized, sm.Decrypter())
+	require.NoError(t, err)
+	require.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"normal": "hello",
+		"secret": resource.MakeSecret(resource.NewProperty("there")),
+	}), deserialized.Inputs)
 }

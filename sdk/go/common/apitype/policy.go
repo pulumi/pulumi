@@ -39,6 +39,21 @@ type CreatePolicyPackRequest struct {
 	// The Policies outline the specific Policies in the package, and are derived
 	// from the package by the CLI.
 	Policies []Policy `json:"policies"`
+
+	// A brief description of the policy pack.
+	Description string `json:"description,omitempty"`
+
+	// README text about the policy pack.
+	Readme string `json:"readme,omitempty"`
+
+	// The cloud provider/platform this policy pack is associated with, e.g. AWS, Azure, etc.
+	Provider string `json:"provider,omitempty"`
+
+	// Tags for this policy pack.
+	Tags []string `json:"tags,omitempty"`
+
+	// A URL to the repository where the policy pack is defined.
+	Repository string `json:"repository,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
@@ -92,6 +107,21 @@ type Policy struct {
 
 	// The JSON schema for the Policy's configuration.
 	ConfigSchema *PolicyConfigSchema `json:"configSchema,omitempty"`
+
+	// The severity of the policy.
+	Severity PolicySeverity `json:"severity,omitempty"`
+
+	// The compliance framework that this policy belongs to.
+	Framework *PolicyComplianceFramework `json:"framework,omitempty"`
+
+	// Tags associated with the policy.
+	Tags []string `json:"tags,omitempty"`
+
+	// A description of the steps to take to remediate a policy violation.
+	RemediationSteps string `json:"remediationSteps,omitempty"`
+
+	// A URL to more information about the policy.
+	URL string `json:"url,omitempty"`
 }
 
 // PolicyConfigSchema defines the JSON schema of a particular Policy's
@@ -130,6 +160,17 @@ const (
 
 	// Disabled is an enforcement level that disables the policy from being enforced.
 	Disabled EnforcementLevel = "disabled"
+)
+
+// Indicates the severity of a policy.
+type PolicySeverity string
+
+const (
+	PolicySeverityUnspecified PolicySeverity = ""
+	PolicySeverityLow         PolicySeverity = "low"
+	PolicySeverityMedium      PolicySeverity = "medium"
+	PolicySeverityHigh        PolicySeverity = "high"
+	PolicySeverityCritical    PolicySeverity = "critical"
 )
 
 // IsValid returns true if the EnforcementLevel is a valid value.
@@ -244,4 +285,16 @@ type PolicyGroupSummary struct {
 type GetPolicyPackConfigSchemaResponse struct {
 	// The JSON schema for each Policy's configuration.
 	ConfigSchema map[string]PolicyConfigSchema `json:"configSchema,omitempty"`
+}
+
+// PolicyComplianceFramework represents a compliance framework that a policy belongs to.
+type PolicyComplianceFramework struct {
+	// The compliance framework name.
+	Name string `json:"name,omitempty"`
+	// The compliance framework version.
+	Version string `json:"version,omitempty"`
+	// The compliance framework reference.
+	Reference string `json:"reference,omitempty"`
+	// The compliance framework specification.
+	Specification string `json:"specification,omitempty"`
 }

@@ -1206,6 +1206,9 @@ class LinkRequest(google.protobuf.message.Message):
 
     INFO_FIELD_NUMBER: builtins.int
     LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
@@ -1224,9 +1227,10 @@ class LinkRequest(google.protobuf.message.Message):
         *,
         info: global___ProgramInfo | None = ...,
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["info", b"info", "local_dependencies", b"local_dependencies"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies"]) -> None: ...
 
 global___LinkRequest = LinkRequest
 

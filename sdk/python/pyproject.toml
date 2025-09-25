@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.191.0"
+version = "3.198.0"
 license = "Apache-2.0"
-license-files = ["../..LICENSE"]
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 description = "Pulumi's Python SDK"
 readme = "README.md"
@@ -30,8 +30,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    'mypy==1.9.0',
-    'pyright==1.1.375',
+    'mypy==1.17.1',
+    'pyright==1.1.404',
     'pytest~=7.4.4',
     'pytest-timeout',
     'types-pyyaml',
@@ -39,9 +39,10 @@ dev = [
     'pytest-asyncio',
     'coverage>=6.0.2',
     'wheel',
-    'ruff==0.8.0',
+    'ruff==0.12.10',
     "build>=1.2.2.post1",
     "twine>=6.0.1",
+    "types-grpcio>=1.0.0.20250703",
 ]
 
 [project.urls]
@@ -100,12 +101,16 @@ select = [
     "ASYNC", # flake8-async
     "BLE",   # flake8-blind-except
     "S102",  # use of exec builtin
+    "UP",    # pyupgrade
 ]
 ignore = [
-    "PLR",  # pylint refactor rules
-    "S101", # use of assert, probably want to re-enable this
-    "E731", # lambda-assignment
-    "E741", # ambiguous-variable-name
+    "PLR",     # pylint refactor rules
+    "S101",    # use of assert, probably want to re-enable this
+    "E731",    # lambda-assignment
+    "E741",    # ambiguous-variable-name
+    "PLC0415", # `import` should be at the top-level of a file
+    "UP045",   # non-pep604-annotation-optional
+    "UP007",   # non-pep604-annotation-union
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -124,6 +129,7 @@ python_version = "3.9"
 module = [
     "dill",
     "google.protobuf.pyext._message",
+    "grpc.experimental.aio",
     "google.protobuf.pyext",
     "pulumi.runtime.proto.*",
 ]

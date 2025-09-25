@@ -1175,9 +1175,9 @@ func TestProjectRename_LocalProject(t *testing.T) {
 	testProjectRename(e, "organization")
 }
 
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestProjectRename_Cloud(t *testing.T) {
-	t.Parallel()
-
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -1386,6 +1386,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 }
 
 // regression test for https://github.com/pulumi/pulumi/issues/11092
+// and https://github.com/pulumi/pulumi/issues/20367
 func TestPolicyPluginExtraArguments(t *testing.T) {
 	t.Parallel()
 
@@ -1424,7 +1425,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 
 	// Run with extra arguments
 	_, _, err = e.GetCommandResults("pulumi", "--logflow", "preview", "--logtostderr",
-		"--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
+		"-v9", "--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
 	require.NoError(t, err)
 }
 
@@ -1603,6 +1604,39 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestPulumiInstallInstallsPackagesWithExperimentalRegistry(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packageadd-remote")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.Env = append(e.Env, "PULUMI_EXPERIMENTAL=true")
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
+
+	// Manually modify Pulumi.yaml to include a GitHub URL in packages section
+	pulumiYamlContent := `name: package-add-remote-test
+description: A minimal TypeScript Pulumi program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: yarn
+packages:
+  test-provider: github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc
+`
+	e.WriteTestFile("Pulumi.yaml", pulumiYamlContent)
+
+	// Remove the plugin from the local cache and try to install it using `pulumi install`
+	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.NotContains(t, stdout, "github.com_pulumi_component-test-providers")
+
+	e.RunCommand("pulumi", "install")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+}
+
 func TestOverrideComponentNamespace(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1776,9 +1810,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 }
 
 // TestRunningViaCLIWrapper tests that we can interrupt an operation when
-// running via a CLI wrapper tool like the 1Password CLI. This test also checks
-// that a provider also receives a SIGINT signal when the operation is
-// interrupted.
+// running via a CLI wrapper tool like the 1Password CLI.
 //
 // Regression test for https://github.com/pulumi/pulumi/issues/20154
 func TestRunningViaCLIWrapper(t *testing.T) {
@@ -1817,6 +1849,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		Cols: 80,
 	})
 	require.NoError(t, err)
+	defer ptmx.Close()
 
 	timeout := 3 * time.Minute
 	wait := 100 * time.Millisecond
@@ -1838,9 +1871,10 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	}()
 
 	processFinished := make(chan error, 1)
-	var output strings.Builder
+	out := make(chan string, 1)
 
 	go func() {
+		var output strings.Builder
 		buf := make([]byte, 1024)
 		for {
 			n, err := ptmx.Read(buf)
@@ -1851,6 +1885,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 				break
 			}
 		}
+		out <- output.String()
 	}()
 
 	go func() {
@@ -1859,13 +1894,8 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	select {
 	case err := <-processFinished:
-		ptmx.Close()
-		t.Logf("Process finished with error: %s, output: %s", err, output.String())
+		t.Logf("Process finished with error: %s, output: %s", err, <-out)
 		require.ErrorContains(t, err, "exit status 1")
-		// The provider should have received a SIGINT as well, and written
-		// out the `interrupted.txt` file.
-		_, err = os.Stat(filepath.Join(programPath, "interrupted.txt"))
-		require.NoError(t, err, "interrupted.txt file should exist")
 
 	case <-time.After(timeout):
 		// This is the bug - process hung trying to control terminal
@@ -1873,10 +1903,9 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		}
-		ptmx.Close()
 
-		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
-			" Output so far: %s", timeout.String(), output.String())
+		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
+			" Output so far: %s", timeout.String(), <-out)
 	}
 }
 

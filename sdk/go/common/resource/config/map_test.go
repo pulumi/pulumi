@@ -1453,7 +1453,7 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
 			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewStringProperty("testValue"),
+				"my:testKey": resource.NewProperty("testValue"),
 			},
 		},
 		{
@@ -1461,7 +1461,7 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "testKey"): NewValue("1"),
 			},
 			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewNumberProperty(1.0),
+				"my:testKey": resource.NewProperty(1.0),
 			},
 		},
 		{
@@ -1469,7 +1469,7 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "testKey"): NewValue("18446744073709551615"),
 			},
 			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewNumberProperty(1.8446744073709552e+19),
+				"my:testKey": resource.NewProperty(1.8446744073709552e+19),
 			},
 		},
 		{
@@ -1477,7 +1477,7 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "testKey"): NewValue("true"),
 			},
 			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewBoolProperty(true),
+				"my:testKey": resource.NewProperty(true),
 			},
 		},
 		{
@@ -1485,7 +1485,7 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "testKey"): NewSecureValue("stackAsecurevalue"),
 			},
 			Expected: resource.PropertyMap{
-				"my:testKey": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+				"my:testKey": resource.MakeSecret(resource.NewProperty("stackAsecurevalue")),
 			},
 		},
 		{
@@ -1493,8 +1493,8 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
 			},
 			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewObjectProperty(resource.PropertyMap{
-					"inner": resource.NewStringProperty("value"),
+				"my:testKey": resource.NewProperty(resource.PropertyMap{
+					"inner": resource.NewProperty("value"),
 				}),
 			},
 		},
@@ -1505,11 +1505,11 @@ func TestPropertyMap(t *testing.T) {
 			},
 			Expected: resource.PropertyMap{
 				//nolint:lll
-				"my:testKey": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewObjectProperty(resource.PropertyMap{
-						"inner": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+				"my:testKey": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"inner": resource.MakeSecret(resource.NewProperty("stackAsecurevalue")),
 					}),
-					resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue2")),
+					resource.MakeSecret(resource.NewProperty("stackAsecurevalue2")),
 				}),
 			},
 		},
@@ -1518,7 +1518,7 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "test.Key"): NewValue("testValue"),
 			},
 			Expected: resource.PropertyMap{
-				"my:test.Key": resource.NewStringProperty("testValue"),
+				"my:test.Key": resource.NewProperty("testValue"),
 			},
 		},
 		{
@@ -1526,9 +1526,9 @@ func TestPropertyMap(t *testing.T) {
 				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
 			},
 			Expected: resource.PropertyMap{
-				"my:name": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewStringProperty("value"),
+				"my:name": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty("value"),
 					}),
 				}),
 			},

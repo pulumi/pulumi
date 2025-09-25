@@ -78,7 +78,7 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	refreshDeletes map[resource.URN]bool // The set of resources that have been deleted by a refresh in this plan.
+	isRefresh bool // Whether or not the snapshot is part of a refresh
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -173,6 +173,14 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 
 	contract.Failf("unknown StepOp: %s", step.Op())
 	return nil, nil
+}
+
+func (sm *SnapshotManager) Write(_ *deploy.Snapshot) error {
+	// We don't need to do anything here. The snapshot manager uses the in-memory snapshot to
+	// produce a new snapshot whenever a mutation occurs. This method is only used by the
+	// journaling snapshot manager, which doesn't have access to the same in-memory state that
+	// gets modified by the engine.
+	return nil
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -519,12 +527,11 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
 		viewStep, isViewStep := step.(*deploy.ViewStep)
 		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
+			rsm.manager.isRefresh = true
 			if successful {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
 					rsm.manager.markNew(step.New())
-				} else {
-					rsm.manager.refreshDeletes[step.Old().URN] = true
 				}
 			}
 			return true
@@ -614,7 +621,7 @@ func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sm *SnapshotManager) snap() *deploy.Snapshot {
+func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -665,7 +672,9 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	// Filter any refresh deletes
-	engine.FilterRefreshDeletes(sm.refreshDeletes, resources)
+	if sm.isRefresh {
+		engine.FilterRefreshDeletes(resources)
+	}
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
@@ -715,7 +724,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap, err := sm.snap().NormalizeURNReferences()
+	snap, err := sm.Snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
@@ -823,7 +832,6 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
-		refreshDeletes:   make(map[resource.URN]bool),
 	}
 
 	serviceLoop := manager.defaultServiceLoop

@@ -148,6 +148,15 @@ export function allAliases(
 }
 
 /**
+ * {@link CallSite} describes a single stack frame, including optional position information.
+ */
+interface CallSite {
+    file?: string;
+    line?: number;
+    column?: number;
+}
+
+/**
  * {@link Resource} represents a class whose CRUD operations are implemented by
  * a provider plugin.
  */
@@ -155,8 +164,7 @@ export abstract class Resource {
     /**
      * A regexp for use with {@link sourcePosition}.
      */
-    private static sourcePositionRegExp =
-        /Error:\s*\n\s*at new Resource \(.*\)\n\s*at new \S*Resource \(.*\)\n(\s*at new \S* \(.*\)\n)?[^(]*\((?<file>.*):(?<line>[0-9]+):(?<col>[0-9]+)\)\n/;
+    private static framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
 
     /**
      * A private field to help with RTTI that works in SxS scenarios.
@@ -326,56 +334,69 @@ export abstract class Resource {
     }
 
     /**
-     * Returns the source position of the user code that instantiated this
-     * resource.
+     * Returns the list of callsites for the current stack. The top of the stack is at index 0.
      *
-     * This is somewhat brittle in that it expects a call stack of the form:
-     *
-     * - {@link Resource} class constructor
-     * - abstract {@link Resource} subclass constructor
-     * - concrete {@link Resource} subclass constructor
-     * - user code
-     *
-     * This stack reflects the expected class hierarchy of:
-     *
-     * Resource > Custom/Component resource > Cloud/Component resource
-     *
-     * For example, consider the AWS S3 Bucket resource. When user code
-     * instantiates a Bucket, the stack will look like this:
-     *
-     *     new Resource (/path/to/resource.ts:123:45)
-     *     new CustomResource (/path/to/resource.ts:678:90)
-     *     new Bucket (/path/to/bucket.ts:987:65)
-     *     <user code> (/path/to/index.ts:4:3)
-     *
-     * Because Node can only give us the stack trace as text, we parse out the
-     * source position using a regex that matches traces of this form (see
-     * the {@link sourcePositionRegExp} above).
+     * Some callsites may not contain position information. It is up to the caller to detect this situation.
      */
-    private static sourcePosition(): SourcePosition | undefined {
-        const stackObj: any = {};
-        Error.captureStackTrace(stackObj, Resource.sourcePosition);
-
-        // Parse out the source position of the user code. If any part of the match is missing, return undefined.
-        const { file, line, col } = Resource.sourcePositionRegExp.exec(stackObj.stack)?.groups || {};
-        if (!file || !line || !col) {
-            return undefined;
-        }
-
-        // Parse the line and column numbers. If either fails to parse, return undefined.
+    private static callsites(): CallSite[] {
+        // NOTE: it would be lovely to implement this using prepareStackTrace and actual V8 callsite information.
+        // Unfortunately, the V8 source locations are not mapped from transpiled locations to user locations, and
+        // Node 20.x does not expose an easy way to access source map information. Furthermore, ts-node may inject
+        // hooks that perform this mapping as part of prepareStackTrace. Instead of using prepareStackTrace, then,
+        // we parse its output as returned via `new Error().stack`. The stack trace will look like:
         //
-        // Note: this really shouldn't happen given the regex; this is just a bit of defensive coding.
-        const lineNum = parseInt(line, 10);
-        const colNum = parseInt(col, 10);
-        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
-            return undefined;
-        }
+        //     Error
+        //         at foo (file:line:column)
+        //         at bar (file:line:column)
+        //         at baz (file:line:column)
+        //
+        // We process this by splitting it into lines and parsing the position information out of each line.
+        const stackTraceLimit = Error.stackTraceLimit;
+        try {
+            Error.stackTraceLimit = Number.POSITIVE_INFINITY;
 
-        return {
-            uri: url.pathToFileURL(file).toString(),
-            line: lineNum,
-            column: colNum,
-        };
+            const stackTrace = new Error().stack;
+            return (
+                stackTrace
+                    ?.split("\n")
+                    ?.slice(1)
+                    ?.map((frame) => {
+                        const { file, line, column } = Resource.framePositionRegExp.exec(frame)?.groups || {};
+                        if (!file || !line || !column || file.startsWith("node:")) {
+                            return {};
+                        }
+                        const lineNum = parseInt(line, 10);
+                        const colNum = parseInt(column, 10);
+                        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+                            return {};
+                        }
+                        return { file, line: lineNum, column: colNum };
+                    }) || []
+            );
+        } finally {
+            Error.stackTraceLimit = stackTraceLimit;
+        }
+    }
+
+    private static stackTrace(skip: number): (SourcePosition | undefined)[] {
+        let stack = Resource.callsites();
+        if (stack.length < skip + 1) {
+            return [];
+        }
+        stack = stack.slice(skip + 1);
+
+        return stack.map((frame) => {
+            const { file, line, column } = frame;
+            if (!file || !line || !column) {
+                return undefined;
+            }
+
+            return {
+                uri: url.pathToFileURL(file).toString(),
+                line,
+                column,
+            };
+        });
     }
 
     /**
@@ -534,7 +555,26 @@ export abstract class Resource {
             }
         }
 
-        const sourcePosition = Resource.sourcePosition();
+        // This is somewhat brittle in that it expects a call stack of the form:
+        //
+        // - {@link Resource} class constructor
+        // - abstract {@link Resource} subclass constructor
+        // - concrete {@link Resource} subclass constructor
+        // - user code
+        //
+        // This stack reflects the expected class hierarchy of:
+        //
+        // Resource > Custom/Component resource > Cloud/Component resource
+        //
+        // For example, consider the AWS S3 Bucket resource. When user code
+        // instantiates a Bucket, the stack will look like this:
+        //
+        //     new Resource (/path/to/resource.ts:123:45)
+        //     new CustomResource (/path/to/resource.ts:678:90)
+        //     new Bucket (/path/to/bucket.ts:987:65)
+        //     <user code> (/path/to/index.ts:4:3)
+        const stackTrace = Resource.stackTrace(4);
+        const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
 
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
@@ -547,7 +587,7 @@ export abstract class Resource {
                     opts.parent,
                 );
             }
-            readResource(this, parent, t, name, props, opts, sourcePosition, packageRef);
+            readResource(this, parent, t, name, props, opts, sourcePosition, stackTrace, packageRef);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
@@ -564,6 +604,7 @@ export abstract class Resource {
                 props,
                 opts,
                 sourcePosition,
+                stackTrace,
                 packageRef,
             );
         }

@@ -111,6 +111,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithNumericName(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
@@ -279,6 +280,31 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	require.NoError(t, err)
 	proj := loadProject(t, args.dir)
 	require.Equal(t, "yaml", proj.Runtime.Name())
+}
+
+// pulumi new --language yaml --yes --non-interactive
+//
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithAILanguage(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:                   true,
+		interactive:           false,
+		aiLanguage:            "yaml",
+		aiPrompt:              "", // empty
+		prompt:                ui.PromptForValue,
+		chooseTemplate:        ChooseTemplate,
+		secretsProvider:       "default",
+		stack:                 stackName,
+		generateOnly:          true,
+		promptForAIProjectURL: promptForAIProjectURL,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err,
+		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
 }
 
 const (

@@ -8,3 +8,7 @@ venv/
 .coverage
 build/
 !cmd/pulumi-language-python-exec
+!dist/pulumi-analyzer-policy-python
+!dist/pulumi-analyzer-policy-python.cmd
+!dist/pulumi-resource-pulumi-python
+!dist/pulumi-resource-pulumi-python.cmd

@@ -1332,9 +1332,10 @@ func TestAboutPython(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
+	e.RunCommand("pulumi", "install")
 	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "pulumi-kubernetes")
+	assert.Contains(t, stdout, "pulumi_kubernetes")
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
@@ -2031,6 +2032,33 @@ func TestRegress18176(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStuckEventLoop(t *testing.T) {
+	done := make(chan struct{})
+	stderr := &bytes.Buffer{}
+	go func() {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python", "stuck-eventloop"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python"),
+			},
+			LocalProviders: []integration.LocalDependency{
+				{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			},
+			Stderr:        stderr,
+			Quick:         true,
+			ExpectFailure: true, // We expect a failure, but the program shouldn't hang indefinitely.
+		})
+		done <- struct{}{}
+	}()
+	select {
+	case <-time.After(10 * time.Minute):
+		t.Fatal("Test timed out")
+	case <-done:
+		require.Contains(t, stderr.String(), "delay failed", "stderr = %s", stderr.String())
+	}
+}
+
 // Tests that we can run a Python component provider using component_provider_host
 func TestPythonComponentProviderRun(t *testing.T) {
 	t.Parallel()
@@ -2053,7 +2081,14 @@ func TestPythonComponentProviderRun(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 					require.NoError(t, err)
-					require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+					expectedType := tokens.Type("component:index:MyComponent")
+					expectedQualifiedType := "ParentComponent$" + expectedType
+					if runtime == "yaml" {
+						// yaml doesn't have components
+						expectedQualifiedType = expectedType
+					}
+					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
+					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
 					t.Logf("Outputs: %v", stack.Outputs)
 					require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))

@@ -1416,7 +1416,7 @@ func TestInvokeDependsOn(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1457,7 +1457,7 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1552,7 +1552,7 @@ func TestInvokeDependsOnIgnored(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1600,7 +1600,7 @@ func TestInvokeSecret(t *testing.T) {
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
 				// The invoke result contains a secret.
-				"echo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"echo": resource.MakeSecret(resource.NewProperty("hello")),
 			}, nil
 		},
 	}

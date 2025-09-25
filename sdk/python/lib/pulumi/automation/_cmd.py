@@ -18,7 +18,8 @@ import subprocess
 import tempfile
 import threading
 import urllib.request
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Callable, Optional
+from collections.abc import Mapping
 
 from semver import VersionInfo
 
@@ -70,8 +71,12 @@ class PulumiCommand:
         min_version = _MINIMUM_VERSION
         if version and version.compare(min_version) > 0:
             min_version = version
+        env = os.environ.copy()
+        env["PULUMI_SKIP_UPDATE_CHECK"] = "true"
         current_version = (
-            subprocess.check_output([self.command, "version"]).decode("utf-8").strip()
+            subprocess.check_output([self.command, "version"], env=env)
+            .decode("utf-8")
+            .strip()
         )
         if current_version.startswith("v"):
             current_version = current_version[1:]
@@ -184,7 +189,7 @@ class PulumiCommand:
 
     def run(
         self,
-        args: List[str],
+        args: list[str],
         cwd: str,
         additional_env: Mapping[str, str],
         on_output: Optional[OnOutput] = None,
@@ -214,8 +219,8 @@ class PulumiCommand:
         cmd = [self.command]
         cmd.extend(args)
 
-        stdout_chunks: List[str] = []
-        stderr_chunks: List[str] = []
+        stdout_chunks: list[str] = []
+        stderr_chunks: list[str] = []
 
         def consumer(stream, callback, chunks):
             for line in iter(stream.readline, ""):
@@ -267,7 +272,7 @@ def _download_to_file(url: str, path: str):
         out_file.write(data)
 
 
-def _fixup_path(env: Dict[str, str], pulumiBin: str) -> Dict[str, str]:
+def _fixup_path(env: dict[str, str], pulumiBin: str) -> dict[str, str]:
     """
     Fixup path so that we prioritize up the bundled plugins next to the pulumi binary.
     """

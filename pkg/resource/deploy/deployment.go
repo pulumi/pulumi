@@ -231,6 +231,7 @@ func (t *UrnTargets) addLiteral(urn resource.URN) {
 
 // StepExecutorEvents is an interface that can be used to hook resource lifecycle events.
 type StepExecutorEvents interface {
+	OnSnapshotWrite(base *Snapshot) error
 	OnResourceStepPre(step Step) (interface{}, error)
 	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
@@ -240,6 +241,9 @@ type StepExecutorEvents interface {
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
 	OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
+	OnPolicyAnalyzeSummary(plugin.PolicySummary)
+	OnPolicyRemediateSummary(plugin.PolicySummary)
+	OnPolicyAnalyzeStackSummary(plugin.PolicySummary)
 }
 
 // Events is an interface that can be used to hook interesting engine events.
@@ -292,6 +296,9 @@ type Deployment struct {
 	opts *Options
 	// event handlers for this deployment.
 	events Events
+	// writeSnapshot indicates whether or not the deployment should write a new snapshot at the beginning
+	// of the deployment. This is true if the previous snapshot was migrated to add providers
+	writeSnapshot bool
 	// the deployment target.
 	target *Target
 	// the old resource snapshot for comparison.
@@ -335,9 +342,11 @@ type Deployment struct {
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
 // information for these providers is sourced from the snapshot's manifest; inputs parameters are sourced from the
 // stack's configuration.
-func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
+//
+// Returns true if the snapshot was modified, false otherwise, and an error if one occurred.
+func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, error) {
 	if prev == nil {
-		return nil
+		return false, nil
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
@@ -365,7 +374,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 		if !ok {
 			inputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
-				return fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
+				return false, fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
 				providers.SetProviderVersion(inputs, pkgInfo.Version)
@@ -375,7 +384,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 
 			uuid, err := uuid.NewV4()
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.String())
@@ -397,24 +406,29 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 		res.Provider = ref.String()
 	}
 
+	changed := false
 	// If any default providers are necessary, prepend their definitions to the snapshot's resources. This trivially
 	// guarantees that all default provider references name providers that precede the referent in the snapshot.
 	if len(defaultProviders) != 0 {
+		changed = true
 		prev.Resources = append(defaultProviders, prev.Resources...)
 	}
 
-	return nil
+	return changed, nil
 }
 
 // migrateProviders is responsible for adding default providers to old snapshots and filling in output properties for
 // providers that do not have them.
-func migrateProviders(target *Target, prev *Snapshot, source Source) error {
+//
+// Returns true if the snapshot was modified, false otherwise, and an error if one occurred.
+func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, error) {
 	// Add any necessary default provider references to the previous snapshot in order to accommodate stacks that were
 	// created prior to the changes that added first-class providers. We do this here rather than in the migration
 	// package s.t. the inputs to any default providers (which we fetch from the stacks's configuration) are as
 	// accurate as possible.
-	if err := addDefaultProviders(target, source, prev); err != nil {
-		return err
+	changed, err := addDefaultProviders(target, source, prev)
+	if err != nil {
+		return changed, err
 	}
 
 	// Migrate provider resources from the old, output-less format to the new format where all inputs are reflected as
@@ -426,6 +440,7 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
 			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
+				changed = true
 				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
 				res.Outputs = make(resource.PropertyMap)
 				for k, v := range res.Inputs {
@@ -438,7 +453,7 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 		}
 	}
 
-	return nil
+	return changed, nil
 }
 
 // buildResourceMaps produces maps of old resources and views from the previous snapshot for fast access. It returns the
@@ -507,7 +522,8 @@ func NewDeployment(
 	contract.Requiref(target != nil, "target", "must not be nil")
 	contract.Requiref(source != nil, "source", "must not be nil")
 
-	if err := migrateProviders(target, prev, source); err != nil {
+	needsWrite, err := migrateProviders(target, prev, source)
+	if err != nil {
 		return nil, err
 	}
 
@@ -543,6 +559,7 @@ func NewDeployment(
 		ctx:                             ctx,
 		opts:                            opts,
 		events:                          events,
+		writeSnapshot:                   needsWrite,
 		target:                          target,
 		prev:                            prev,
 		plan:                            plan,

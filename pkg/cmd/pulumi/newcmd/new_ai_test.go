@@ -16,12 +16,15 @@ package newcmd
 
 import (
 	"context"
+	"iter"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,8 +37,14 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		NameF: func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				},
+			}
+		},
 	})
 
 	testNewArgs := newArgs{
@@ -58,12 +67,29 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
+	listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+		assert.Nil(t, name)
+		return func(yield func(apitype.TemplateMetadata, error) bool) {
+			if !yield(apitype.TemplateMetadata{
+				Name:      "name1",
+				Publisher: "publisher1",
+				Source:    "source1",
+			}, nil) {
+				return
+			}
+		}
+	}
+
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-		SupportsTemplatesF: func() bool { return false },
-		NameF:              func() string { return "mock" },
+		NameF: func() string { return "mock" },
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{
+				ListTemplatesF: listTemplates,
+			}
+		},
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.

@@ -27,6 +27,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/spf13/cobra"
 
@@ -393,9 +395,37 @@ func parseImportFile(
 			}
 			urnMapping[spec.Name] = urn
 			takenURNs[urn] = struct{}{}
-			// This might clash with earlier entries in the name table (unique urn, but duplicate name) that's
-			// fine and the code generators should deal with it.
-			names[urn] = spec.Name
+
+			nameExists := false
+			for _, n := range names {
+				if n == spec.Name {
+					nameExists = true
+					break
+				}
+			}
+
+			uniqueName := func(name string, typ tokens.Type) string {
+				caser := cases.Title(language.English, cases.NoLower)
+				typeSuffix := caser.String(string(typ.Name()))
+				baseName := fmt.Sprintf("%s%s", name, typeSuffix)
+				name = baseName
+
+				counter := 2
+				for _, has := takenNames[name]; has; _, has = takenNames[name] {
+					name = fmt.Sprintf("%s%d", baseName, counter)
+					counter++
+				}
+				takenNames[name] = true
+				return name
+			}
+
+			if nameExists {
+				names[urn] = uniqueName(spec.Name, spec.Type)
+			} else {
+				// If the name is not taken, we can just use it as is.
+				names[urn] = spec.Name
+			}
+
 			// Mark this resource as done
 			dones[i] = true
 		}

@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +59,8 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			engine.PolicyLoadEvent, engine.PolicyRemediationEvent, engine.ErrorEvent:
 			// Ignore it
 			continue
-		case engine.PolicyViolationEvent:
+		case engine.PolicyViolationEvent, engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent,
+			engine.PolicyAnalyzeStackSummaryEvent:
 			// At this point in time, we don't handle policy events as part of pulumi watch
 			continue
 		case engine.DiagEvent:
@@ -89,7 +90,16 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 
 			// If it's the stack, print out the stack outputs.
 			if isRootURN(p.Metadata.URN) {
-				props := getResourceOutputsPropertiesString(p.Metadata, 1, false, false, false, false, false)
+				props := getResourceOutputsPropertiesString(
+					p.Metadata,
+					1,     /* indent */
+					false, /* planning */
+					false, /* debug */
+					false, /* refresh */
+					false, /* showSames */
+					false, /* showSecrest*/
+					false, /* truncateOutput*/
+				)
 				if props != "" {
 					WatchPrefixPrintf(time.Now(), opts.Color, "",
 						colors.SpecInfo+"--- Outputs ---"+colors.Reset+"\n")

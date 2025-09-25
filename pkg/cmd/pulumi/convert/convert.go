@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ import (
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -201,7 +201,7 @@ func runConvert(
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packagecmd.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -549,29 +549,30 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
+		pkgSchema, _, err := packages.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
-			pkg.Parameterization.Value,
+			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
 			registry,
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packagecmd.GenSDK(
+		diags, err := packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
 			/*overlays*/ "",
 			/*local*/ true,
 		)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
 
 		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
-		err = packagecmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
@@ -597,7 +598,8 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
+		err = packages.LinkPackage(&packages.LinkPackageContext{
+			Writer:    os.Stdout,
 			Workspace: ws,
 			Language:  language,
 			Root:      "./",

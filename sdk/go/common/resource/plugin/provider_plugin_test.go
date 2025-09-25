@@ -44,44 +44,44 @@ func TestAnnotateSecrets(t *testing.T) {
 	t.Parallel()
 
 	from := resource.PropertyMap{
-		"stringValue": resource.MakeSecret(resource.NewStringProperty("hello")),
-		"numberValue": resource.MakeSecret(resource.NewNumberProperty(1.00)),
-		"boolValue":   resource.MakeSecret(resource.NewBoolProperty(true)),
-		"secretArrayValue": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
+		"stringValue": resource.MakeSecret(resource.NewProperty("hello")),
+		"numberValue": resource.MakeSecret(resource.NewProperty(1.00)),
+		"boolValue":   resource.MakeSecret(resource.NewProperty(true)),
+		"secretArrayValue": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
 		})),
-		"secretObjectValue": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.NewStringProperty("bValue"),
-			"c": resource.NewStringProperty("cValue"),
+		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.NewProperty("bValue"),
+			"c": resource.NewProperty("cValue"),
 		})),
-		"objectWithSecretValue": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.MakeSecret(resource.NewStringProperty("bValue")),
-			"c": resource.NewStringProperty("cValue"),
+		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.MakeSecret(resource.NewProperty("bValue")),
+			"c": resource.NewProperty("cValue"),
 		}),
 	}
 
 	to := resource.PropertyMap{
-		"stringValue": resource.NewStringProperty("hello"),
-		"numberValue": resource.NewNumberProperty(1.00),
-		"boolValue":   resource.NewBoolProperty(true),
-		"secretArrayValue": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
+		"stringValue": resource.NewProperty("hello"),
+		"numberValue": resource.NewProperty(1.00),
+		"boolValue":   resource.NewProperty(true),
+		"secretArrayValue": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
 		}),
-		"secretObjectValue": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.NewStringProperty("bValue"),
-			"c": resource.NewStringProperty("cValue"),
+		"secretObjectValue": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.NewProperty("bValue"),
+			"c": resource.NewProperty("cValue"),
 		}),
-		"objectWithSecretValue": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.NewStringProperty("bValue"),
-			"c": resource.NewStringProperty("cValue"),
+		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.NewProperty("bValue"),
+			"c": resource.NewProperty("cValue"),
 		}),
 	}
 
@@ -97,37 +97,37 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 	// are not present in from stay in to, but any secretness is propigated for shared keys.
 
 	from := resource.PropertyMap{
-		"stringValue": resource.MakeSecret(resource.NewStringProperty("hello")),
-		"numberValue": resource.MakeSecret(resource.NewNumberProperty(1.00)),
-		"boolValue":   resource.MakeSecret(resource.NewBoolProperty(true)),
-		"secretObjectValue": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.NewStringProperty("bValue"),
-			"c": resource.NewStringProperty("cValue"),
+		"stringValue": resource.MakeSecret(resource.NewProperty("hello")),
+		"numberValue": resource.MakeSecret(resource.NewProperty(1.00)),
+		"boolValue":   resource.MakeSecret(resource.NewProperty(true)),
+		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.NewProperty("bValue"),
+			"c": resource.NewProperty("cValue"),
 		})),
-		"objectWithSecretValue": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.MakeSecret(resource.NewStringProperty("bValue")),
-			"c": resource.NewStringProperty("cValue"),
+		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.MakeSecret(resource.NewProperty("bValue")),
+			"c": resource.NewProperty("cValue"),
 		}),
-		"extraFromValue": resource.NewStringProperty("extraFromValue"),
+		"extraFromValue": resource.NewProperty("extraFromValue"),
 	}
 
 	to := resource.PropertyMap{
-		"stringValue": resource.NewStringProperty("hello"),
-		"numberValue": resource.NewNumberProperty(1.00),
-		"boolValue":   resource.NewBoolProperty(true),
-		"secretObjectValue": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.NewStringProperty("bValue"),
-			"c": resource.NewStringProperty("cValue"),
+		"stringValue": resource.NewProperty("hello"),
+		"numberValue": resource.NewProperty(1.00),
+		"boolValue":   resource.NewProperty(true),
+		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.NewProperty("bValue"),
+			"c": resource.NewProperty("cValue"),
 		})),
-		"objectWithSecretValue": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("aValue"),
-			"b": resource.NewStringProperty("bValue"),
-			"c": resource.NewStringProperty("cValue"),
+		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("aValue"),
+			"b": resource.NewProperty("bValue"),
+			"c": resource.NewProperty("cValue"),
 		}),
-		"extraToValue": resource.NewStringProperty("extraToValue"),
+		"extraToValue": resource.NewProperty("extraToValue"),
 	}
 
 	annotateSecrets(to, from)
@@ -152,41 +152,41 @@ func TestAnnotateSecretsArrays(t *testing.T) {
 	t.Parallel()
 
 	from := resource.PropertyMap{
-		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
+		"secretArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
 		})),
-		"arrayWithSecrets": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.MakeSecret(resource.NewStringProperty("b")),
-			resource.NewStringProperty("c"),
+		"arrayWithSecrets": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.MakeSecret(resource.NewProperty("b")),
+			resource.NewProperty("c"),
 		}),
 	}
 
 	to := resource.PropertyMap{
-		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
+		"secretArray": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
 		}),
-		"arrayWithSecrets": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("c"),
-			resource.NewStringProperty("b"),
+		"arrayWithSecrets": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("c"),
+			resource.NewProperty("b"),
 		}),
 	}
 
 	expected := resource.PropertyMap{
-		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
+		"secretArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
 		})),
-		"arrayWithSecrets": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("c"),
-			resource.NewStringProperty("b"),
+		"arrayWithSecrets": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("a"),
+			resource.NewProperty("c"),
+			resource.NewProperty("b"),
 		})),
 	}
 
@@ -199,59 +199,59 @@ func TestNestedSecret(t *testing.T) {
 	t.Parallel()
 
 	from := resource.PropertyMap{
-		"secretString": resource.MakeSecret(resource.NewStringProperty("shh")),
-		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("hello"),
-			resource.MakeSecret(resource.NewStringProperty("shh")),
-			resource.NewStringProperty("goodbye"),
+		"secretString": resource.MakeSecret(resource.NewProperty("shh")),
+		"secretArray": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("hello"),
+			resource.MakeSecret(resource.NewProperty("shh")),
+			resource.NewProperty("goodbye"),
 		}),
-		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("a"),
-			"b": resource.NewStringProperty("b"),
+		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("a"),
+			"b": resource.NewProperty("b"),
 		})),
-		"deepSecretMap": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("a"),
-			"b": resource.MakeSecret(resource.NewStringProperty("b")),
+		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("a"),
+			"b": resource.MakeSecret(resource.NewProperty("b")),
 		}),
 	}
 
 	to := resource.PropertyMap{
-		"secretString": resource.NewStringProperty("shh"),
-		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("shh"),
-			resource.NewStringProperty("hello"),
-			resource.NewStringProperty("goodbye"),
+		"secretString": resource.NewProperty("shh"),
+		"secretArray": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("shh"),
+			resource.NewProperty("hello"),
+			resource.NewProperty("goodbye"),
 		}),
-		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("a"),
-			"b": resource.NewStringProperty("b"),
+		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("a"),
+			"b": resource.NewProperty("b"),
 		})),
-		"deepSecretMap": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("a"),
-			"b": resource.NewStringProperty("b"),
+		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("a"),
+			"b": resource.NewProperty("b"),
 			// Note the additional property here, which we expect to be kept when annotating.
-			"c": resource.NewStringProperty("c"),
+			"c": resource.NewProperty("c"),
 		}),
 	}
 
 	expected := resource.PropertyMap{
-		"secretString": resource.MakeSecret(resource.NewStringProperty("shh")),
+		"secretString": resource.MakeSecret(resource.NewProperty("shh")),
 		// The entire array has been marked a secret because it contained a secret member in from. Since arrays
 		// are often used for sets, we didn't try to apply the secretness to a specific member of the array, like
 		// we would have with maps (where we can use the keys to correlate related properties)
-		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("shh"),
-			resource.NewStringProperty("hello"),
-			resource.NewStringProperty("goodbye"),
+		"secretArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("shh"),
+			resource.NewProperty("hello"),
+			resource.NewProperty("goodbye"),
 		})),
-		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("a"),
-			"b": resource.NewStringProperty("b"),
+		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("a"),
+			"b": resource.NewProperty("b"),
 		})),
-		"deepSecretMap": resource.NewObjectProperty(resource.PropertyMap{
-			"a": resource.NewStringProperty("a"),
-			"b": resource.MakeSecret(resource.NewStringProperty("b")),
-			"c": resource.NewStringProperty("c"),
+		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
+			"a": resource.NewProperty("a"),
+			"b": resource.MakeSecret(resource.NewProperty("b")),
+			"c": resource.NewProperty("c"),
 		}),
 	}
 
@@ -265,23 +265,23 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 	textAsset := func(text string) resource.PropertyValue {
 		asset, err := asset.FromText(text)
 		require.NoError(t, err)
-		return resource.NewAssetProperty(asset)
+		return resource.NewProperty(asset)
 	}
 
 	original := resource.PropertyMap{
 		"source": textAsset("Hello world"),
-		"nested": resource.NewObjectProperty(resource.PropertyMap{
+		"nested": resource.NewProperty(resource.PropertyMap{
 			"another":      textAsset("Another"),
 			"doubleNested": textAsset("Double nested"),
-			"tripleNested": resource.NewObjectProperty(resource.PropertyMap{
+			"tripleNested": resource.NewProperty(resource.PropertyMap{
 				"secret": resource.MakeSecret(textAsset("Secret content")),
 			}),
 		}),
-		"insideArray": resource.NewArrayProperty([]resource.PropertyValue{
+		"insideArray": resource.NewProperty([]resource.PropertyValue{
 			textAsset("First"),
 			textAsset("Second"),
-			resource.NewObjectProperty(resource.PropertyMap{
-				"nestedArray": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewProperty(resource.PropertyMap{
+				"nestedArray": resource.NewProperty([]resource.PropertyValue{
 					textAsset("Nested array"),
 					resource.MakeSecret(textAsset("another secret content")),
 				}),
@@ -329,8 +329,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 		{
 			desc: "empty",
 			give: DeleteRequest{
-				ID:  id,
-				URN: urn,
+				ID:      id,
+				URN:     urn,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -347,8 +349,9 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:  id,
 				URN: urn,
 				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+					"foo": resource.NewProperty("bar"),
 				},
+				Outputs: resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:   string(id),
@@ -366,10 +369,11 @@ func TestProvider_DeleteRequests(t *testing.T) {
 		{
 			desc: "outputs",
 			give: DeleteRequest{
-				ID:  id,
-				URN: urn,
+				ID:     id,
+				URN:    urn,
+				Inputs: resource.PropertyMap{},
 				Outputs: resource.PropertyMap{
-					"baz": resource.NewStringProperty("quux"),
+					"baz": resource.NewProperty("quux"),
 				},
 			},
 			want: &pulumirpc.DeleteRequest{
@@ -391,6 +395,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:      id,
 				URN:     urn,
 				Timeout: 30,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -408,10 +414,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:  id,
 				URN: urn,
 				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+					"foo": resource.NewProperty("bar"),
 				},
 				Outputs: resource.PropertyMap{
-					"baz": resource.NewStringProperty("quux"),
+					"baz": resource.NewProperty("quux"),
 				},
 				Timeout: 30,
 			},
@@ -436,7 +442,6 @@ func TestProvider_DeleteRequests(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -735,8 +740,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
 
 	props := resource.PropertyMap{
-		"foo": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("bar"),
+		"foo": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("bar"),
 		}),
 	}
 

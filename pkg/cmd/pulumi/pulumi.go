@@ -192,12 +192,26 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		logging.Flush()
 		cmdutil.CloseTracing()
 
+		if logging.Verbose > 0 && !logging.LogToStderr {
+			logFile, err := logging.GetLogfilePath()
+			if err != nil {
+				logging.Warningf("could not find the log file: %s", err)
+				logging.Flush()
+			} else {
+				fmt.Printf("The log file for this run is at %s\n", logFile)
+			}
+		}
+
 		if profiling != "" {
 			if err := cmdutil.CloseProfiling(profiling); err != nil {
 				logging.Warningf("could not close profiling: %v", err)
 			}
 		}
 	}
+
+	// We run this method for its side-effects. On windows, this will enable the windows terminal
+	// to understand ANSI escape codes.
+	_, _, _ = term.StdStreams()
 
 	cmd := &cobra.Command{
 		Use:           "pulumi",
@@ -221,10 +235,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// We run this method for its side-effects. On windows, this will enable the windows terminal
-			// to understand ANSI escape codes.
-			_, _, _ = term.StdStreams()
-
 			// If we fail before we start the async update check, go ahead and close the
 			// channel since we know it will never receive a value.
 			var waitForUpdateCheck bool
@@ -274,6 +284,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			cmd.SetContext(ctx)
 
+			cmdutil.InitPprofServer(ctx)
+
 			if logging.Verbose >= 11 {
 				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
 			}
@@ -282,6 +294,15 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// that so that log messages go to the logging package that we use everywhere else instead.
 			loggingWriter := &loggingWriter{}
 			log.SetOutput(loggingWriter)
+
+			ver, err := semver.ParseTolerant(version.Version)
+			if err != nil {
+				logging.V(3).Infof("error parsing current version: %s", err)
+			} else {
+				logging.V(3).Info("Pulumi " + ver.String())
+			}
+			metadata := getCLIMetadata(cmd, os.Environ())
+			logging.V(9).Infof("CLI Metadata: %v", metadata)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
@@ -295,7 +316,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
-				metadata := getCLIMetadata(cmd, os.Environ())
 				go func() {
 					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)

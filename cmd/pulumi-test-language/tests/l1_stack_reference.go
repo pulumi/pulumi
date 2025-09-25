@@ -26,8 +26,8 @@ func init() {
 	LanguageTests["l1-stack-reference"] = LanguageTest{
 		StackReferences: map[string]resource.PropertyMap{
 			"organization/other/dev": {
-				"plain":  resource.NewStringProperty("plain"),
-				"secret": resource.MakeSecret(resource.NewStringProperty("secret")),
+				"plain":  resource.NewProperty("plain"),
+				"secret": resource.MakeSecret(resource.NewProperty("secret")),
 			},
 		},
 		Runs: []TestRun{
@@ -47,8 +47,8 @@ func init() {
 					outputs := stack.Outputs
 
 					require.Len(l, outputs, 2, "expected 2 outputs")
-					AssertPropertyMapMember(l, outputs, "plain", resource.NewStringProperty("plain"))
-					AssertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewStringProperty("secret")))
+					AssertPropertyMapMember(l, outputs, "plain", resource.NewProperty("plain"))
+					AssertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewProperty("secret")))
 				},
 			},
 		},

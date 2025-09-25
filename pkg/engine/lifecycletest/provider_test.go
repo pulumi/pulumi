@@ -310,7 +310,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+		resource.PropertyKey("foo"): resource.NewProperty("bar"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
@@ -341,7 +341,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the config and run an update. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	providerInputs[resource.PropertyKey("foo")] = resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -446,7 +446,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("id"): resource.NewStringProperty("first"),
+		resource.PropertyKey("id"): resource.NewProperty("first"),
 	}
 	providerName := "provA"
 	aliases := []resource.URN{}
@@ -493,7 +493,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	// Change the provider name and configuration and remove the resource. This will cause an Update for the provider
 	// and a Delete for the resource. The updated provider instance should be used to perform the delete.
 	providerName = "provB"
-	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
+	providerInputs[resource.PropertyKey("id")] = resource.NewProperty("second")
 	registerResource = false
 
 	p.Steps = []lt.TestStep{{Op: Update}}
@@ -539,7 +539,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("id"): resource.NewStringProperty("first"),
+		resource.PropertyKey("id"): resource.NewProperty("first"),
 	}
 	providerName := "provA"
 	aliases := []resource.URN{}
@@ -597,7 +597,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the config and run an update maintaining the alias. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
+	providerInputs[resource.PropertyKey("id")] = resource.NewProperty("second")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -683,7 +683,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+		resource.PropertyKey("foo"): resource.NewProperty("bar"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
@@ -714,7 +714,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the config and run an update. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	providerInputs[resource.PropertyKey("foo")] = resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -1215,7 +1215,7 @@ func TestProviderVersionInput(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"version": resource.NewStringProperty("1.0.0"),
+					"version": resource.NewProperty("1.0.0"),
 				},
 			})
 		require.NoError(t, err)
@@ -1260,7 +1260,7 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"version": resource.NewStringProperty("1.5.0"),
+					"version": resource.NewProperty("1.5.0"),
 				},
 				Version: "1.0.0",
 			})
@@ -1719,7 +1719,7 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1852,7 +1852,7 @@ func TestRefreshLegacyState(t *testing.T) {
 				URN:  p.NewURN("providers:pulumi:pkgA", "prov", ""),
 				Inputs: map[resource.PropertyKey]resource.PropertyValue{
 					"version":           resource.NewPropertyValue("1.3.0"),
-					"pluginDownloadURL": resource.NewStringProperty("http://example.com"),
+					"pluginDownloadURL": resource.NewProperty("http://example.com"),
 				},
 			},
 		},
@@ -1973,7 +1973,7 @@ func TestInternalFiltered(t *testing.T) {
 func TestProviderSameStep(t *testing.T) {
 	t.Parallel()
 
-	providerConfigValue := resource.NewStringProperty("100")
+	providerConfigValue := resource.NewProperty("100")
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -2016,7 +2016,7 @@ func TestProviderSameStep(t *testing.T) {
 
 	// Run another update where we send a new value for the provider config, but diff reports no diff so we
 	// should same step
-	providerConfigValue = resource.NewStringProperty("200")
+	providerConfigValue = resource.NewProperty("200")
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
@@ -2104,7 +2104,7 @@ func TestMissingIDRefresh(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 		require.NoError(t, err)
@@ -2206,7 +2206,7 @@ func TestChangedVersion(t *testing.T) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 					news := req.News.Copy()
-					news["version"] = resource.NewStringProperty("2.0.0")
+					news["version"] = resource.NewProperty("2.0.0")
 					return plugin.CheckConfigResponse{
 						Properties: news,
 					}, nil
@@ -2247,7 +2247,7 @@ func TestInternalKey(t *testing.T) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 					news := req.News.Copy()
-					news["__internal"] = resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 						"some": "internal data",
 					}))
 					return plugin.CheckConfigResponse{
@@ -2288,7 +2288,7 @@ func TestInternalKey(t *testing.T) {
 	require.True(t, ok, "expected '__internal' to be present in provider inputs")
 	require.True(t, internal.IsObject(), "expected '__internal' to be an object")
 	assert.Equal(t, resource.PropertyMap{
-		"pluginDownloadURL": resource.NewStringProperty("http://example.com"),
+		"pluginDownloadURL": resource.NewProperty("http://example.com"),
 	}, internal.ObjectValue())
 	// assert we got the warning message
 	warns := sink.Messages[diag.Warning]

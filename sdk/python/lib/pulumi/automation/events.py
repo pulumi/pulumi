@@ -16,7 +16,8 @@
 # JSON types defined and versioned in sdk/go/common/apitype/events.go
 
 from enum import Enum
-from typing import Optional, List, Mapping, Any, MutableMapping
+from typing import Optional, Any
+from collections.abc import Mapping, MutableMapping
 from ._representable import _Representable
 
 
@@ -337,6 +338,8 @@ class StepEventStateMetadata(BaseEvent):
         Outputs contains the resource's complete output state (as returned by the resource provider).
     init_errors: Optional[List[str]]
         init_errors is the set of errors encountered in the process of initializing resource.
+    taint: bool
+        Taint is true to indicate that the resource should be replaced upon the next update.
     """
 
     def __init__(
@@ -352,7 +355,8 @@ class StepEventStateMetadata(BaseEvent):
         retain_on_delete: Optional[bool] = None,
         inputs: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
-        init_errors: Optional[List[str]] = None,
+        init_errors: Optional[list[str]] = None,
+        taint: Optional[bool] = None,
     ):
         self.type = type
         self.urn = urn
@@ -366,6 +370,7 @@ class StepEventStateMetadata(BaseEvent):
         self.inputs = inputs
         self.outputs = outputs
         self.init_errors = init_errors
+        self.taint = taint
 
     @classmethod
     def from_json(cls, data: dict) -> "StepEventStateMetadata":
@@ -382,6 +387,7 @@ class StepEventStateMetadata(BaseEvent):
             inputs=data.get("inputs"),
             outputs=data.get("outputs"),
             init_errors=data.get("initErrors"),
+            taint=data.get("taint"),
         )
 
 
@@ -422,8 +428,8 @@ class StepEventMetadata(BaseEvent):
         provider: str,
         old: Optional[StepEventStateMetadata] = None,
         new: Optional[StepEventStateMetadata] = None,
-        keys: Optional[List[str]] = None,
-        diffs: Optional[List[str]] = None,
+        keys: Optional[list[str]] = None,
+        diffs: Optional[list[str]] = None,
         detailed_diff: Optional[Mapping[str, PropertyDiff]] = None,
         logical: Optional[bool] = None,
     ):

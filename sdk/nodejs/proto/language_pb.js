@@ -7429,7 +7429,8 @@ proto.pulumirpc.LinkRequest.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.LinkRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
-localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : []
+localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : [],
+loaderTarget: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -7477,6 +7478,10 @@ proto.pulumirpc.LinkRequest.deserializeBinaryFromReader = function(msg, reader) 
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7517,6 +7522,13 @@ proto.pulumirpc.LinkRequest.serializeBinaryToWriter = function(message, writer) 
   f = message.getLocalDependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(2, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
   }
 };
 
@@ -7578,6 +7590,24 @@ proto.pulumirpc.LinkRequest.prototype.getLocalDependenciesMap = function(opt_noL
 proto.pulumirpc.LinkRequest.prototype.clearLocalDependenciesMap = function() {
   this.getLocalDependenciesMap().clear();
   return this;
+};
+
+
+/**
+ * optional string loader_target = 3;
+ * @return {string}
+ */
+proto.pulumirpc.LinkRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.LinkRequest} returns this
+ */
+proto.pulumirpc.LinkRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

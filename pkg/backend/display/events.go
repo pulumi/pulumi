@@ -133,6 +133,53 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			After:                after,
 		}
 
+	case engine.PolicyAnalyzeSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyAnalyzeSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyAnalyzeSummaryEvent = &apitype.PolicyAnalyzeSummaryEvent{
+			ResourceURN:          string(p.ResourceURN),
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Disabled:             p.Disabled,
+			NotApplicable:        p.NotApplicable,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
+	case engine.PolicyRemediateSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyRemediateSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyRemediateSummaryEvent = &apitype.PolicyRemediateSummaryEvent{
+			ResourceURN:          string(p.ResourceURN),
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Disabled:             p.Disabled,
+			NotApplicable:        p.NotApplicable,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
+	case engine.PolicyAnalyzeStackSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyAnalyzeStackSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyAnalyzeStackSummaryEvent = &apitype.PolicyAnalyzeStackSummaryEvent{
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Disabled:             p.Disabled,
+			NotApplicable:        p.NotApplicable,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
 	case engine.PreludeEvent:
 		p, ok := e.Payload().(engine.PreludeEventPayload)
 		if !ok {
@@ -218,7 +265,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ErrorEvent = &apitype.ErrorEvent{
-			Error: p.Error.Error(),
+			Error: p.Error,
 		}
 
 	default:
@@ -313,6 +360,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Parent:         string(md.Parent),
 		Provider:       md.Provider,
 		Protect:        md.Protect,
+		Taint:          md.Taint,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
@@ -384,6 +432,41 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			After:             after,
 		})
 
+	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
+		p := apiEvent.PolicyAnalyzeSummaryEvent
+		event = engine.NewEvent(engine.PolicyAnalyzeSummaryEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Disabled:          p.Disabled,
+			NotApplicable:     p.NotApplicable,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
+	case apiEvent.PolicyRemediateSummaryEvent != nil:
+		p := apiEvent.PolicyRemediateSummaryEvent
+		event = engine.NewEvent(engine.PolicyRemediateSummaryEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Disabled:          p.Disabled,
+			NotApplicable:     p.NotApplicable,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
+	case apiEvent.PolicyAnalyzeStackSummaryEvent != nil:
+		p := apiEvent.PolicyAnalyzeStackSummaryEvent
+		event = engine.NewEvent(engine.PolicyAnalyzeStackSummaryEventPayload{
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Disabled:          p.Disabled,
+			NotApplicable:     p.NotApplicable,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
 	case apiEvent.PreludeEvent != nil:
 		p := apiEvent.PreludeEvent
 
@@ -432,6 +515,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.PolicyLoadEvent != nil:
 		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
 
+	case apiEvent.StartDebuggingEvent != nil:
+		p := apiEvent.StartDebuggingEvent
+		event = engine.NewEvent(engine.StartDebuggingEventPayload{
+			Config: p.Config,
+		})
+
 	case apiEvent.ProgressEvent != nil:
 		p := apiEvent.ProgressEvent
 		event = engine.NewEvent(engine.ProgressEventPayload{
@@ -441,6 +530,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Completed: p.Completed,
 			Total:     p.Total,
 			Done:      p.Done,
+		})
+
+	case apiEvent.ErrorEvent != nil:
+		p := apiEvent.ErrorEvent
+		event = engine.NewEvent(engine.ErrorEventPayload{
+			Error: p.Error,
 		})
 
 	default:
@@ -538,6 +633,7 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Parent:         resource.URN(md.Parent),
 		Provider:       md.Provider,
 		Protect:        md.Protect,
+		Taint:          md.Taint,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,

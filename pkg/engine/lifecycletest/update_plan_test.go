@@ -78,7 +78,7 @@ func TestPlannedUpdate(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]interface{}{
@@ -693,7 +693,7 @@ func TestResoucesWithSames(t *testing.T) {
 	// Generate a plan to create A
 	createA = true
 	createB = false
-	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"zed": computed,
@@ -786,7 +786,7 @@ func TestPlannedPreviews(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]interface{}{
@@ -1212,7 +1212,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	project := p.GetProject()
 
 	// The three property sets we'll use in this test
-	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 	computedPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]interface{}{
@@ -1326,7 +1326,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 					require.NoError(t, err)
 
 					result := req.News.Copy()
-					result["name"] = resource.NewStringProperty(name)
+					result["name"] = resource.NewProperty(name)
 					return plugin.CheckResponse{Properties: result}, nil
 				},
 			}, nil
@@ -1368,7 +1368,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"zed": computed,
@@ -1545,7 +1545,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 						} else {
 							name, err := resource.NewUniqueName(req.RandomSeed, req.URN.Name(), -1, -1, nil)
 							require.NoError(t, err)
-							generatedName = resource.NewStringProperty(name)
+							generatedName = resource.NewProperty(name)
 							req.News["name"] = generatedName
 						}
 					}
@@ -1736,7 +1736,7 @@ func TestResourcesTargeted(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 		if expectError {
@@ -1747,7 +1747,7 @@ func TestResourcesTargeted(t *testing.T) {
 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 
@@ -1828,7 +1828,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 		require.NoError(t, err)
 
 		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		})
 
 		require.NoError(t, err)

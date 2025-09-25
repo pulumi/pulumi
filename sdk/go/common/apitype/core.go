@@ -329,6 +329,8 @@ type ResourceV3 struct {
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	// Taint is set to true when we wish to force it to be replaced upon the next update.
+	Taint bool `json:"taint,omitempty" yaml:"taint,omitempty"`
 	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
 	External bool `json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
@@ -362,6 +364,8 @@ type ResourceV3 struct {
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// StackTrace records the stack at the time this resource was registered
+	StackTrace []StackFrameV1 `json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
@@ -372,6 +376,12 @@ type ResourceV3 struct {
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 	// ResourceHooks is a map of hook types to lists of hook names for the given type.
 	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
+}
+
+// StackFrameV1 captures information about a stack frame.
+type StackFrameV1 struct {
+	// SourcePosition contains the source position associated with the stack frame.
+	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

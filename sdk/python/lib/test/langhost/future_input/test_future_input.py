@@ -47,6 +47,7 @@ class FutureInputTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual(ty, "test:index:FileResource")
         self.assertEqual(name, "file")

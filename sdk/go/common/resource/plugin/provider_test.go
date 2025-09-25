@@ -173,9 +173,9 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 		"nested update": {
 			diff: &resource.ObjectDiff{
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
-					"a": *resource.NewObjectProperty(resource.PropertyMap{
+					"a": *resource.NewProperty(resource.PropertyMap{
 						"b": resource.NewPropertyValue(1),
-					}).Diff(resource.NewObjectProperty(resource.PropertyMap{
+					}).Diff(resource.NewProperty(resource.PropertyMap{
 						"b": resource.NewPropertyValue(2),
 					})),
 				},
@@ -190,10 +190,10 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 		"nested update with quoted keys": {
 			diff: &resource.ObjectDiff{
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
-					"a": *resource.NewObjectProperty(resource.PropertyMap{
+					"a": *resource.NewProperty(resource.PropertyMap{
 						"b.c":          resource.NewPropertyValue(1),
 						`"quoted key"`: resource.NewPropertyValue(2),
-					}).Diff(resource.NewObjectProperty(resource.PropertyMap{
+					}).Diff(resource.NewProperty(resource.PropertyMap{
 						"b.c":          resource.NewPropertyValue(2),
 						`"quoted key"`: resource.NewPropertyValue(3),
 					})),

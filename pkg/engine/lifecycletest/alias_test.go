@@ -339,7 +339,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t4",
 		name: "n2",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(42),
+			resource.PropertyKey("x"): resource.NewProperty(42.0),
 		},
 		aliases: []resource.Alias{
 			{Type: "pkgA:othermod:t3", Name: "n1"},
@@ -351,7 +351,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t5",
 		name: "n3",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("x"): resource.NewProperty(1000.0),
 		},
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t4", Name: "n2"},
@@ -363,7 +363,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t6",
 		name: "n4",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
 		},
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t5", Name: "n3"},
@@ -376,7 +376,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t7",
 		name: "n5",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
@@ -389,7 +389,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -402,7 +402,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
@@ -423,7 +423,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -436,7 +436,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
@@ -880,7 +880,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t4",
 		name: "n2",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(42),
+			resource.PropertyKey("x"): resource.NewProperty(42.0),
 		},
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
@@ -892,7 +892,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t5",
 		name: "n3",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("x"): resource.NewProperty(1000.0),
 		},
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
@@ -904,7 +904,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t6",
 		name: "n4",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
 		},
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
@@ -917,7 +917,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t7",
 		name: "n5",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
 		},
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
@@ -930,7 +930,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -943,7 +943,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
@@ -964,7 +964,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -977,7 +977,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{

@@ -60,7 +60,7 @@ func TestRefreshTargetChildren(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Outputs: resource.PropertyMap{
-								"count": resource.NewNumberProperty(float64(count)),
+								"count": resource.NewProperty(float64(count)),
 							},
 						},
 						Status: resource.StatusOK,
@@ -501,7 +501,7 @@ func TestRefreshExcludeTarget(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Outputs: resource.PropertyMap{
-								"count": resource.NewNumberProperty(float64(count)),
+								"count": resource.NewProperty(float64(count)),
 							},
 						},
 						Status: resource.StatusOK,
@@ -581,7 +581,7 @@ func TestRefreshExcludeChildren(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Outputs: resource.PropertyMap{
-								"count": resource.NewNumberProperty(callCount),
+								"count": resource.NewProperty(callCount),
 							},
 						},
 						Status: resource.StatusOK,
@@ -632,7 +632,7 @@ func TestRefreshExcludeChildren(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[1].Outputs["count"], resource.NewNumberProperty(1.0))
+	assert.Equal(t, snap.Resources[1].Outputs["count"], resource.NewProperty(1.0))
 	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[4].Outputs["count"], null)
@@ -1694,12 +1694,12 @@ func generateParentedTestDependencyGraph(t *testing.T, p *lt.TestPlan) (
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
-			newResource(urnA, "", "0", nil, nil),
-			newResource(urnB, "", "1", nil, nil),
+			newResource(urnA, "", "", nil, nil),
+			newResource(urnB, "", "", nil, nil),
 			newResource(urnC, "", "2", nil, nil),
-			newResource(urnD, urnA, "3", nil, nil),
-			newResource(urnE, urnB, "4", nil, nil),
-			newResource(urnF, urnB, "5", nil, nil),
+			newResource(urnD, urnA, "", nil, nil),
+			newResource(urnE, urnB, "", nil, nil),
+			newResource(urnF, urnB, "", nil, nil),
 			newResource(urnG, urnD, "6", nil, nil),
 			newResource(urnH, urnD, "7", nil, nil),
 			newResource(urnI, urnA, "8", []resource.URN{urnG},
@@ -1823,7 +1823,7 @@ func destroySpecificTargetsWithChildren(
 					return plugin.DiffResult{}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1875,7 +1875,10 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 ) *resource.State {
 	inputs := resource.PropertyMap{}
 	for k := range propertyDeps {
-		inputs[k] = resource.NewStringProperty("foo")
+		inputs[k] = resource.NewProperty("foo")
+	}
+	if outputs == nil {
+		outputs = resource.PropertyMap{}
 	}
 
 	return &resource.State{
@@ -1964,7 +1967,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
 					// Pulumi GCP provider alters inputs during Check.
-					req.News["__defaults"] = resource.NewStringProperty("exists")
+					req.News["__defaults"] = resource.NewProperty("exists")
 					return plugin.CheckResponse{Properties: req.News}, nil
 				},
 			}, nil
@@ -1978,14 +1981,14 @@ func TestEnsureUntargetedSame(t *testing.T) {
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("foo"),
+				"foo": resource.NewProperty("foo"),
 			},
 		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			},
 		})
 		require.NoError(t, err)
@@ -2053,7 +2056,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty(fooVal),
+				"foo": resource.NewProperty(fooVal),
 			},
 			ReplaceOnChanges: []string{"foo"},
 		})
@@ -2063,14 +2066,14 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			// Now try to create resB which is not targeted and should show up in the plan.
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty(fooVal),
+					"foo": resource.NewProperty(fooVal),
 				},
 			})
 			require.NoError(t, err)
 		}
 
 		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
-			"foo": resource.NewStringProperty(fooVal),
+			"foo": resource.NewProperty(fooVal),
 		})
 
 		require.NoError(t, err)
@@ -2509,7 +2512,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 		// Run an update to target the child. This works because we don't need to create the parent so can just
 		// SameStep it using the data currently in state.
 		inputs = resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		}
 		snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
 			T:     t,
@@ -2980,7 +2983,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 
 	// Run an update to target the target, and make sure the unrelated dependency isn't changed
 	inputs = resource.PropertyMap{
-		"foo": resource.NewStringProperty("bar"),
+		"foo": resource.NewProperty("bar"),
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
 		T:     t,
@@ -3079,7 +3082,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		// Run an update to target the child. This works because we don't need to create the parent so can just
 		// SameStep it using the data currently in state.
 		inputs = resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		}
 		snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
 			T:     t,
@@ -3178,7 +3181,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 	providerVersion = "2.0.0"
 	expectError = true
 	inputs = resource.PropertyMap{
-		"foo": resource.NewStringProperty("bar"),
+		"foo": resource.NewProperty("bar"),
 	}
 	options.UpdateOptions = UpdateOptions{
 		Targets: deploy.NewUrnTargets([]string{
@@ -3249,7 +3252,7 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 	// Run an update to target the target, that also happens to change the unrelated provider version.
 	providerVersion = "2.0.0"
 	inputs = resource.PropertyMap{
-		"foo": resource.NewStringProperty("bar"),
+		"foo": resource.NewProperty("bar"),
 	}
 	options.UpdateOptions = UpdateOptions{
 		Targets: deploy.NewUrnTargets([]string{
@@ -4407,7 +4410,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 	expectError = true
 	explicitProvider = false
 	inputs = resource.PropertyMap{
-		"foo": resource.NewStringProperty("bar"),
+		"foo": resource.NewProperty("bar"),
 	}
 	options.UpdateOptions = UpdateOptions{
 		Targets: deploy.NewUrnTargets([]string{
@@ -4752,7 +4755,7 @@ func TestUntargetedResourceAnalyzer(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader(analyzerPath, func(*plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					// We expect to see resA and resB in the analysis.
 					var foundA, foundB bool
 					for _, res := range resources {
@@ -4764,7 +4767,7 @@ func TestUntargetedResourceAnalyzer(t *testing.T) {
 					}
 					assert.True(t, foundA, "Expected to find resA in analysis")
 					assert.True(t, foundB, "Expected to find resB in analysis")
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}, nil
 		}),
@@ -4843,7 +4846,7 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader(analyzerPath, func(*plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					// We expect to see resA and resB in the analysis. resA should have the new provider and
 					// resB should have the old provider.
 					var foundA, foundB bool
@@ -4859,7 +4862,7 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 					}
 					assert.True(t, foundA, "Expected to find resA in analysis")
 					assert.True(t, foundB, "Expected to find resB in analysis")
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}, nil
 		}),

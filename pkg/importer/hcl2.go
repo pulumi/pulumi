@@ -533,15 +533,15 @@ func zeroValue(t schema.Type) model.Expression {
 	}
 	switch t {
 	case schema.BoolType:
-		x, err := generateValue(t, resource.NewBoolProperty(false), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, resource.NewProperty(false), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.IntType, schema.NumberType:
-		x, err := generateValue(t, resource.NewNumberProperty(0), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, resource.NewProperty(0.0), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.StringType:
-		x, err := generateValue(t, resource.NewStringProperty(""), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, resource.NewProperty(""), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.ArchiveType, schema.AssetType:

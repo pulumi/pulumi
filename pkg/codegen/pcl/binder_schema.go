@@ -384,6 +384,9 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
+			objType.Strict = false
+		}
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Properties {
 			typ := prop.Type
@@ -425,6 +428,9 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
+			objType.Strict = false
+		}
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Resource.Properties {
 			typ := prop.Type

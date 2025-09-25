@@ -1179,7 +1179,7 @@ func (b *diyBackend) apply(
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
 
-	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	scope := op.Scopes.NewScope(ctx, engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
@@ -1195,18 +1195,18 @@ func (b *diyBackend) apply(
 		close(eventsDone)
 	}()
 
+	engineCtx := &engine.Context{
+		Cancel:        scope.Context(),
+		Events:        engineEvents,
+		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
 		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
-	}
-	engineCtx := &engine.Context{
-		Cancel:          scope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
+		engineCtx.SnapshotManager = manager
 	}
 
 	// Perform the update
@@ -1552,7 +1552,7 @@ func (b *diyBackend) getParallel() int {
 }
 
 func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
-	return nil, errors.New("cloud registry is not supported by diy backends")
+	return nil, errors.New("Private Registry is not supported by diy backends")
 }
 
 func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {

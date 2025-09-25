@@ -45,7 +45,7 @@ type JournalEntries []TestJournalEntry
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
-	refreshDeletes := make(map[resource.URN]bool)
+	isRefresh := false
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
@@ -115,10 +115,9 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				refreshStep, isRefreshStep := e.Step.(*deploy.RefreshStep)
 				viewStep, isViewStep := e.Step.(*deploy.ViewStep)
 				if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
+					isRefresh = true
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
-					} else {
-						refreshDeletes[e.Step.Old().URN] = true
 					}
 					dones[e.Step.Old()] = true
 				}
@@ -148,7 +147,9 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
-	FilterRefreshDeletes(refreshDeletes, filteredResources)
+	if isRefresh {
+		FilterRefreshDeletes(filteredResources)
+	}
 
 	// Append any pending operations.
 	var operations []resource.Operation
@@ -247,6 +248,10 @@ func (j *TestJournal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 
+func (j *TestJournal) Write(base *deploy.Snapshot) error {
+	return nil
+}
+
 // NewTestJournal creates a new TestJournal that is used in tests to record journal entries for
 // deployment steps. These journal entries are used to reconstruct the snapshot at the end of
 // the test. This is used in lifecycletests to check that the snapshot manager and the testjournal
@@ -271,16 +276,16 @@ func NewTestJournal() *TestJournal {
 	return j
 }
 
-// FilterRefreshDeletes filters out any dependencies and parents from 'resources' that refer to a URN that has
-// been deleted by a refresh operation. This is pretty much the same as `rebuildBaseState` in the deployment
+// FilterRefreshDeletes filters out any dependencies and parents from 'resources' that refer to a URN that is
+// not present in 'resources', due to refreshes. This is pretty much the same as `rebuildBaseState` in the deployment
 // executor (see that function for a lot of details about why this is necessary). The main difference is that
 // this function does not mutate the state objects in place instead returning a new state object with the
 // appropriate fields filtered out, note that the slice containing the states is mutated.
 func FilterRefreshDeletes(
-	refreshDeletes map[resource.URN]bool,
 	resources []*resource.State,
 ) {
 	availableParents := map[resource.URN]resource.URN{}
+	referenceable := make(map[resource.URN]bool)
 
 	for i, res := range resources {
 		newDeps := []resource.URN{}
@@ -293,7 +298,7 @@ func FilterRefreshDeletes(
 		for _, dep := range allDeps {
 			switch dep.Type {
 			case resource.ResourceParent:
-				if !refreshDeletes[dep.URN] {
+				if referenceable[dep.URN] {
 					availableParents[res.URN] = dep.URN
 					newParent = dep.URN
 				} else {
@@ -307,25 +312,27 @@ func FilterRefreshDeletes(
 					filtered = true
 				}
 			case resource.ResourceDependency:
-				if !refreshDeletes[dep.URN] {
+				if referenceable[dep.URN] {
 					newDeps = append(newDeps, dep.URN)
 				} else {
 					filtered = true
 				}
 			case resource.ResourcePropertyDependency:
-				if !refreshDeletes[dep.URN] {
+				if referenceable[dep.URN] {
 					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
 				} else {
 					filtered = true
 				}
 			case resource.ResourceDeletedWith:
-				if !refreshDeletes[dep.URN] {
+				if referenceable[dep.URN] {
 					newDeletedWith = dep.URN
 				} else {
 					filtered = true
 				}
 			}
 		}
+
+		referenceable[res.URN] = true
 
 		if !filtered {
 			continue

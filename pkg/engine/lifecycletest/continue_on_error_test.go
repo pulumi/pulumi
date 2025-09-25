@@ -375,7 +375,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 		switch urn {
 		case "urn:pulumi:test::test::pkgB:m:typB::failing", "urn:pulumi:test::test::pkgB:m:typB::failing2":
-			assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[idx].Inputs["foo"])
+			assert.Equal(t, resource.NewProperty("bar"), snap.Resources[idx].Inputs["foo"])
 		}
 	}
 }
@@ -658,7 +658,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
-	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[5].Inputs["foo"])
+	assert.Equal(t, resource.NewProperty("bar"), snap.Resources[5].Inputs["foo"])
 }
 
 func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {

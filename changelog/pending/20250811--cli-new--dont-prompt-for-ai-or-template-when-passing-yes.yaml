@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Don't prompt for ai or template when passing --yes

@@ -521,6 +521,9 @@ message CallRequest {
     string organization = 14;       // the organization of the stack being deployed into.
 
     bool accepts_output_values = 17; // the engine can be passed output values back, returnDependencies can be left blank if returning output values.
+
+    // The stack trace handle for the call. Supports stitching stack traces together across plugins.
+    string stack_trace_handle = 18;
 }
 
 message CallResponse {
@@ -1101,6 +1104,9 @@ message ConstructRequest {
         repeated string after_delete = 6;
     }
     optional ResourceHooksBinding resource_hooks = 26;
+
+    // The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
+    string stack_trace_handle = 27;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.

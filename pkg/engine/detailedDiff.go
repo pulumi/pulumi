@@ -159,14 +159,14 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) *resource.Obje
 			elements = []interface{}{path}
 		}
 
-		olds := resource.NewObjectProperty(step.Old.Outputs)
+		olds := resource.NewProperty(step.Old.Outputs)
 		if pdiff.InputDiff {
-			olds = resource.NewObjectProperty(step.Old.Inputs)
+			olds = resource.NewProperty(step.Old.Inputs)
 		}
 
-		news := resource.NewObjectProperty(step.New.Inputs)
+		news := resource.NewProperty(step.New.Inputs)
 		if refresh {
-			news = resource.NewObjectProperty(step.New.Outputs)
+			news = resource.NewProperty(step.New.Outputs)
 		}
 
 		addDiff(elements, pdiff.Kind, &diff, olds, news)

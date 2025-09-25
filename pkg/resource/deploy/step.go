@@ -1536,14 +1536,15 @@ func (s *ImportStep) Op() display.StepOp {
 	return OpImport
 }
 
-func (s *ImportStep) Deployment() *Deployment { return s.deployment }
-func (s *ImportStep) Type() tokens.Type       { return s.new.Type }
-func (s *ImportStep) Provider() string        { return s.new.Provider }
-func (s *ImportStep) URN() resource.URN       { return s.new.URN }
-func (s *ImportStep) Old() *resource.State    { return s.old }
-func (s *ImportStep) New() *resource.State    { return s.new }
-func (s *ImportStep) Res() *resource.State    { return s.new }
-func (s *ImportStep) Logical() bool           { return !s.replacing }
+func (s *ImportStep) Deployment() *Deployment   { return s.deployment }
+func (s *ImportStep) Type() tokens.Type         { return s.new.Type }
+func (s *ImportStep) Provider() string          { return s.new.Provider }
+func (s *ImportStep) URN() resource.URN         { return s.new.URN }
+func (s *ImportStep) Old() *resource.State      { return s.old }
+func (s *ImportStep) Original() *resource.State { return s.original }
+func (s *ImportStep) New() *resource.State      { return s.new }
+func (s *ImportStep) Res() *resource.State      { return s.new }
+func (s *ImportStep) Logical() bool             { return !s.replacing }
 
 func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) {
 	defer func() {
@@ -1649,11 +1650,39 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
 	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
 	// differences between the old and new states are between the inputs and outputs.
-	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, inputs, outputs,
-		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
-		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.ReplaceOnChanges,
-		s.new.RefreshBeforeUpdate, s.new.ViewOf, nil)
+	s.old = resource.NewState{
+		Type:                    s.new.Type,
+		URN:                     s.new.URN,
+		Custom:                  s.new.Custom,
+		Delete:                  false,
+		ID:                      s.new.ID,
+		Inputs:                  inputs,
+		Outputs:                 outputs,
+		Parent:                  s.new.Parent,
+		Protect:                 s.new.Protect,
+		Taint:                   false,
+		External:                false,
+		Dependencies:            s.new.Dependencies,
+		InitErrors:              s.new.InitErrors,
+		Provider:                s.new.Provider,
+		PropertyDependencies:    s.new.PropertyDependencies,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: nil,
+		Aliases:                 nil,
+		CustomTimeouts:          &s.new.CustomTimeouts,
+		ImportID:                s.new.ImportID,
+		RetainOnDelete:          s.new.RetainOnDelete,
+		DeletedWith:             s.new.DeletedWith,
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          s.new.SourcePosition,
+		StackTrace:              s.new.StackTrace,
+		IgnoreChanges:           s.new.IgnoreChanges,
+		ReplaceOnChanges:        s.new.ReplaceOnChanges,
+		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
+		ViewOf:                  s.new.ViewOf,
+		ResourceHooks:           nil,
+	}.Make()
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()

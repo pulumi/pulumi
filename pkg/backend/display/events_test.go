@@ -18,9 +18,11 @@ package display
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -63,4 +65,30 @@ func TestEmptyDetailedDiff(t *testing.T) {
 	jsonEvent, err := json.Marshal(res)
 	require.NoError(t, err, "unable to marshal to json")
 	assert.Equal(t, expected, string(jsonEvent))
+}
+
+// TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.
+func TestConvertJSONEventExhaustive(t *testing.T) {
+	t.Parallel()
+
+	rt := reflect.TypeOf(apitype.EngineEvent{})
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		// Only consider exported pointer-to-struct fields.
+		if f.PkgPath != "" || f.Type.Kind() != reflect.Ptr || f.Type.Elem().Kind() != reflect.Struct {
+			continue
+		}
+
+		t.Run(f.Name, func(t *testing.T) {
+			t.Parallel()
+
+			// Build an event with exactly this field set non-nil.
+			var v apitype.EngineEvent
+			rv := reflect.ValueOf(&v).Elem()
+			rv.Field(i).Set(reflect.New(f.Type.Elem())) // zero value pointer, but non-nil
+
+			_, err := ConvertJSONEvent(v)
+			require.NoError(t, err, "field %s is not handled by ConvertJSONEvent", f.Name)
+		})
+	}
 }

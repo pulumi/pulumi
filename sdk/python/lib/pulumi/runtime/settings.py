@@ -23,7 +23,7 @@ import os
 import threading
 from collections import deque
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
 
@@ -275,14 +275,14 @@ async def _shutdown_callbacks():
     await _CallbackServicer.shutdown()
 
 
-def get_root_resource() -> Optional["Resource"]:
+def get_root_resource() -> Optional[Resource]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
     return ROOT.get()
 
 
-def set_root_resource(root: "Resource"):
+def set_root_resource(root: Resource):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
@@ -320,7 +320,7 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     return Exception(details)
 
 
-def handle_grpc_error(exn: grpc.RpcError) -> None:
+def handle_grpc_error(exn: grpc.RpcError) -> NoReturn:
     raise grpc_error_to_exception(exn)
 
 

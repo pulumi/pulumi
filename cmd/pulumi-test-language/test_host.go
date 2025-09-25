@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
@@ -50,6 +51,8 @@ type testHost struct {
 	connections map[plugin.Provider]io.Closer
 
 	policies []plugin.Analyzer
+
+	closeMutex sync.Mutex
 }
 
 var _ plugin.Host = (*testHost)(nil)
@@ -243,6 +246,8 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	h.closeMutex.Lock()
+	defer h.closeMutex.Unlock()
 	errs := make([]error, 0)
 	for _, closer := range h.connections {
 		if err := closer.Close(); err != nil {

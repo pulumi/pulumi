@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
@@ -833,7 +832,7 @@ func (ctx *Context) InvokePackage(
 	if err != nil {
 		return err
 	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), resultV.Elem())
 
 	if hasSecret {
 		return errors.New("unexpected secret result returned to invoke call, " +
@@ -858,7 +857,7 @@ func (ctx *Context) InvokePackageRaw(
 	if err != nil {
 		return false, err
 	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), resultV.Elem())
 	if err != nil {
 		return false, err
 	}
@@ -949,7 +948,7 @@ func (ctx *Context) InvokeOutput(
 		}
 
 		known := !outProps.ContainsUnknowns()
-		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
+		secret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), dest)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
@@ -1118,7 +1117,7 @@ func (ctx *Context) CallPackage(
 			var secret bool
 			dest := reflect.New(output.ElementType()).Elem()
 			known := !outprops.ContainsUnknowns()
-			secret, err = unmarshalOutput(ctx, resource.NewObjectProperty(outprops), dest)
+			secret, err = unmarshalOutput(ctx, resource.NewProperty(outprops), dest)
 			if err != nil {
 				internal.RejectOutput(output, err)
 			} else {
@@ -1358,8 +1357,9 @@ func (ctx *Context) readPackageResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
-	// between the this function and user code.
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there is an
+	// intermediate frame between the this function and user code.
+	stackTrace := ctx.getStackTrace(3)
 	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
@@ -1397,6 +1397,7 @@ func (ctx *Context) readPackageResource(
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
+			StackTrace:              stackTrace,
 			PackageRef:              packageRef,
 		})
 		if err != nil {
@@ -1646,8 +1647,9 @@ func (ctx *Context) registerResource(
 	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
-	// frames between this function and user code.
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
+	// intermediate frames between this function and user code.
+	stackTrace := ctx.getStackTrace(4)
 	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
@@ -1754,6 +1756,7 @@ func (ctx *Context) registerResource(
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
 				SourcePosition:             sourcePosition,
+				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
@@ -2145,9 +2148,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		return
 	}
 
-	outprops["urn"] = resource.NewStringProperty(urn)
+	outprops["urn"] = resource.NewProperty(urn)
 	if id != "" || !keepUnknowns {
-		outprops["id"] = resource.NewStringProperty(id)
+		outprops["id"] = resource.NewProperty(id)
 	} else {
 		outprops["id"] = resource.MakeComputed(resource.PropertyValue{})
 	}
@@ -2163,9 +2166,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 			}
 		}
 		if !known {
-			outprops[""] = resource.MakeComputed(resource.NewStringProperty(""))
+			outprops[""] = resource.MakeComputed(resource.NewProperty(""))
 		} else {
-			outprops[""] = resource.NewObjectProperty(remaining)
+			outprops[""] = resource.NewProperty(remaining)
 		}
 	}
 
@@ -2704,6 +2707,11 @@ func (ctx *Context) Export(name string, value Input) {
 	ctx.state.exports[name] = value
 }
 
+// Get a copy of the current export map. Primarily useful for testing.
+func (ctx *Context) GetCurrentExportMap() map[string]Input {
+	return maps.Clone(ctx.state.exports)
+}
+
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
 	ctx.state.stack.addTransformation(t)
@@ -2786,6 +2794,51 @@ func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(&ctx.state.join)
 }
 
+// getSourcePositionForFrame converts a runtime.Frame to an RPC source position. Returns nil if the frame is not valid.
+func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.SourcePosition {
+	if frame.File == "" || frame.Line == 0 {
+		return nil
+	}
+
+	line := int32(-1)
+	if frame.Line <= math.MaxInt32 {
+		//nolint:gosec
+		line = int32(frame.Line)
+	}
+	return &pulumirpc.SourcePosition{
+		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
+		Line: line,
+	}
+}
+
+// getStackTrace returns an RPC stack trace that corresponds to the set of Go frames on the stack at the time of the
+// call. The number of frames to skip is parameterized in order to account for differing call stacks for different
+// operations.
+func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
+	// Skip this frame as well.
+	skip = max(skip+1, 2)
+
+	trace := &pulumirpc.StackTrace{}
+
+	var pcs [256]uintptr
+	for {
+		callers := runtime.Callers(skip, pcs[:])
+		if callers == 0 {
+			return trace
+		}
+		skip += callers
+
+		frames := runtime.CallersFrames(pcs[:])
+		for {
+			frame, more := frames.Next()
+			trace.Frames = append(trace.Frames, &pulumirpc.StackFrame{Pc: ctx.getSourcePositionForFrame(frame)})
+			if !more {
+				break
+			}
+		}
+	}
+}
+
 // Returns the source position of the Nth stack frame, where N is skip+1.
 //
 // This is used to compute the source position of the user code that instantiated a resource. The number of frames to
@@ -2797,23 +2850,5 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	}
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
-	if frame.File == "" || frame.Line == 0 {
-		return nil
-	}
-	elems := filepath.SplitList(frame.File)
-	for i := range elems {
-		elems[i] = url.PathEscape(elems[i])
-	}
-	var line int32
-	if frame.Line <= math.MaxInt32 {
-		//nolint:gosec
-		line = int32(frame.Line)
-	} else {
-		// line is out of range for int32, that's a long sourcefile!
-		line = -1
-	}
-	return &pulumirpc.SourcePosition{
-		Uri:  "project://" + path.Join(elems...),
-		Line: line,
-	}
+	return ctx.getSourcePositionForFrame(frame)
 }

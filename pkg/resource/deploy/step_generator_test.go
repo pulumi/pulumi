@@ -167,6 +167,50 @@ func TestIgnoreChanges(t *testing.T) {
 			expected:      map[string]interface{}{},
 			ignoreChanges: []string{"a.b"},
 		},
+		{
+			name: "Arrays with different lengths",
+			oldInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+					map[string]string{"b": "bar", "c": "baz"},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "bar", "c": "bar"},
+					map[string]string{"b": "qux", "c": "baz"},
+					map[string]string{"b": "baz", "c": "qux"},
+				},
+			},
+			expected: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+					map[string]string{"b": "bar", "c": "baz"},
+					map[string]string{"b": "baz", "c": "qux"},
+				},
+			},
+			ignoreChanges: []string{"a[*].b"},
+		},
+		{
+			name: "Shorter new array",
+			oldInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+					map[string]string{"b": "bar", "c": "baz"},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "bar", "c": "bar"},
+				},
+			},
+			expected: map[string]interface{}{
+				"a": []interface{}{
+					map[string]string{"b": "foo", "c": "bar"},
+				},
+			},
+			ignoreChanges: []string{"a[*].b"},
+		},
 	}
 
 	for _, c := range cases {
@@ -327,7 +371,7 @@ func TestEngineDiff(t *testing.T) {
 				"val0": resource.NewPropertyValue(3.14),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"val1": resource.NewNumberProperty(42),
+				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
 			expected:        []resource.PropertyKey{"val0", "val1", "val2"},
@@ -339,7 +383,7 @@ func TestEngineDiff(t *testing.T) {
 				"val1": resource.NewPropertyValue(42),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"val1": resource.NewNumberProperty(42),
+				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
 			expected:        []resource.PropertyKey{"val2"},

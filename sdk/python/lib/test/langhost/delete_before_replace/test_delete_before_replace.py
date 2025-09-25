@@ -46,6 +46,7 @@ class DeleteBeforeReplaceTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual("foo", name)
         self.assertTrue(_delete_before_replace)

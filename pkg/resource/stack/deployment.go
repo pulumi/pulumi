@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 
+	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -59,6 +61,7 @@ const (
 	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
 	viewsFeature               = "views"
 	hooksFeature               = "hooks"
+	taintFeature               = "taint"
 )
 
 var (
@@ -113,6 +116,7 @@ var supportedFeatures = map[string]bool{
 	refreshBeforeUpdateFeature: true,
 	viewsFeature:               true,
 	hooksFeature:               true,
+	taintFeature:               true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -139,6 +143,9 @@ func applyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if len(res.ResourceHooks) > 0 {
 		features[hooksFeature] = true
+	}
+	if res.Taint {
+		features[taintFeature] = true
 	}
 }
 
@@ -457,6 +464,10 @@ func SerializeResource(
 		outputs = soutp
 	}
 
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame resource.StackFrame) apitype.StackFrameV1 {
+		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
+	}))
+
 	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
 		Custom:                  res.Custom,
@@ -467,6 +478,7 @@ func SerializeResource(
 		Inputs:                  inputs,
 		Outputs:                 outputs,
 		Protect:                 res.Protect,
+		Taint:                   res.Taint,
 		External:                res.External,
 		Dependencies:            res.Dependencies,
 		InitErrors:              res.InitErrors,
@@ -481,6 +493,7 @@ func SerializeResource(
 		Created:                 res.Created,
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
+		StackTrace:              stackTrace,
 		IgnoreChanges:           res.IgnoreChanges,
 		ReplaceOnChanges:        res.ReplaceOnChanges,
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
@@ -647,16 +660,44 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
-	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
-		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
-		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified, res.SourcePosition, res.IgnoreChanges,
-		res.ReplaceOnChanges,
-		res.RefreshBeforeUpdate,
-		res.ViewOf,
-		res.ResourceHooks,
-	), nil
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) resource.StackFrame {
+		return resource.StackFrame{SourcePosition: frame.SourcePosition}
+	}))
+
+	return resource.NewState{
+			Type:                    res.Type,
+			URN:                     res.URN,
+			Custom:                  res.Custom,
+			Delete:                  res.Delete,
+			ID:                      res.ID,
+			Inputs:                  inputs,
+			Outputs:                 outputs,
+			Parent:                  res.Parent,
+			Protect:                 res.Protect,
+			Taint:                   res.Taint,
+			External:                res.External,
+			Dependencies:            res.Dependencies,
+			InitErrors:              res.InitErrors,
+			Provider:                res.Provider,
+			PropertyDependencies:    res.PropertyDependencies,
+			PendingReplacement:      res.PendingReplacement,
+			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
+			Aliases:                 res.Aliases,
+			CustomTimeouts:          res.CustomTimeouts,
+			ImportID:                res.ImportID,
+			RetainOnDelete:          res.RetainOnDelete,
+			DeletedWith:             res.DeletedWith,
+			Created:                 res.Created,
+			Modified:                res.Modified,
+			SourcePosition:          res.SourcePosition,
+			StackTrace:              stackTrace,
+			IgnoreChanges:           res.IgnoreChanges,
+			ReplaceOnChanges:        res.ReplaceOnChanges,
+			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
+			ViewOf:                  res.ViewOf,
+			ResourceHooks:           res.ResourceHooks,
+		}.Make(),
+		nil
 }
 
 // DeserializeOperation hydrates a pending resource/operation pair.
@@ -683,6 +724,48 @@ func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
 	return result, nil
 }
 
+// deserializeSecret deserializes a secret value from its SecretV1 representation.
+func deserializeSecret(
+	ctx context.Context, secret *apitype.SecretV1, dec config.Decrypter,
+) (resource.PropertyValue, error) {
+	prop := resource.MakeSecret(resource.NewNullProperty())
+	propSecret := prop.SecretValue()
+
+	if (secret.Plaintext == "" && secret.Ciphertext == "") ||
+		(secret.Plaintext != "" && secret.Ciphertext != "") {
+		return resource.PropertyValue{}, errors.New(
+			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
+	}
+
+	if secret.Plaintext != "" {
+		propertyValue, err := secretPropertyValueFromPlaintext(secret.Plaintext)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		propSecret.Element = propertyValue
+	} else {
+		// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
+		if batchDecrypter, ok := dec.(BatchDecrypter); ok {
+			err := batchDecrypter.Enqueue(ctx, secret.Ciphertext, propSecret)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
+			}
+		} else {
+			unencryptedText, err := dec.DecryptValue(ctx, secret.Ciphertext)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
+			}
+			ev, err := secretPropertyValueFromPlaintext(unencryptedText)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			propSecret.Element = ev
+		}
+	}
+
+	return prop, nil
+}
+
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
 func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 ) (resource.PropertyValue, error) {
@@ -690,14 +773,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return resource.NewBoolProperty(w), nil
+			return resource.NewProperty(w), nil
 		case float64:
-			return resource.NewNumberProperty(w), nil
+			return resource.NewProperty(w), nil
 		case string:
 			if w == computedValuePlaceholder {
-				return resource.MakeComputed(resource.NewStringProperty("")), nil
+				return resource.MakeComputed(resource.NewProperty("")), nil
 			}
-			return resource.NewStringProperty(w), nil
+			return resource.NewProperty(w), nil
 		case []interface{}:
 			arr := make([]resource.PropertyValue, len(w))
 			for i, elem := range w {
@@ -707,7 +790,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 				}
 				arr[i] = ev
 			}
-			return resource.NewArrayProperty(arr), nil
+			return resource.NewProperty(arr), nil
 		case map[string]interface{}:
 			obj, err := DeserializeProperties(w, dec)
 			if err != nil {
@@ -724,51 +807,27 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isasset, "resource with asset signature is not an asset")
-					return resource.NewAssetProperty(asset), nil
+					return resource.NewProperty(asset), nil
 				case archive.ArchiveSig:
 					archive, isarchive, err := archive.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isarchive, "resource with archive signature is not an archive")
-					return resource.NewArchiveProperty(archive), nil
+					return resource.NewProperty(archive), nil
 				case resource.SecretSig:
-					prop := resource.MakeSecret(resource.NewNullProperty())
-					secret := prop.SecretValue()
 					ciphertext, cipherOk := objmap["ciphertext"].(string)
 					plaintext, plainOk := objmap["plaintext"].(string)
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
 						return resource.PropertyValue{}, errors.New(
 							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
 					}
-
-					if plainOk {
-						propertyValue, err := secretPropertyValueFromPlaintext(plaintext)
-						if err != nil {
-							return resource.PropertyValue{}, err
-						}
-						secret.Element = propertyValue
-					} else {
-						// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
-						if batchDecrypter, ok := dec.(BatchDecrypter); ok {
-							err := batchDecrypter.Enqueue(ctx, ciphertext, secret)
-							if err != nil {
-								return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
-							}
-						} else {
-							unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
-							if err != nil {
-								return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
-							}
-							ev, err := secretPropertyValueFromPlaintext(unencryptedText)
-							if err != nil {
-								return resource.PropertyValue{}, err
-							}
-							secret.Element = ev
-						}
+					secret := &apitype.SecretV1{
+						Sig:        resource.SecretSig,
+						Plaintext:  plaintext,
+						Ciphertext: ciphertext,
 					}
-
-					return prop, nil
+					return deserializeSecret(ctx, secret, dec)
 				case resource.ResourceReferenceSig:
 					var packageVersion string
 					if packageVersionV, ok := objmap["packageVersion"]; ok {
@@ -828,7 +887,9 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			}
 
 			// Otherwise, it's just a weakly typed object map.
-			return resource.NewObjectProperty(obj), nil
+			return resource.NewProperty(obj), nil
+		case *apitype.SecretV1:
+			return deserializeSecret(ctx, w, dec)
 		default:
 			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}

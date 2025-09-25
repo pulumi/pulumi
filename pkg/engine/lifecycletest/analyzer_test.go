@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,15 +127,33 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeF: func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
-					return []plugin.AnalyzeDiagnostic{{
+				Info: plugin.AnalyzerInfo{
+					Name: "analyzerA",
+					Policies: []plugin.AnalyzerPolicyInfo{
+						{
+							Name:             "always-fails",
+							Description:      "a policy that always fails",
+							EnforcementLevel: apitype.Mandatory,
+						},
+					},
+				},
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type != "pkgA:m:typA" {
+						return plugin.AnalyzeResponse{
+							NotApplicable: []plugin.PolicyNotApplicable{
+								{PolicyName: "always-fails", Reason: "not the right resource type"},
+							},
+						}, nil
+					}
+
+					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
 						PolicyName:       "always-fails",
 						PolicyPackName:   "analyzerA",
 						Description:      "a policy that always fails",
 						Message:          "a policy failed",
 						EnforcementLevel: apitype.Mandatory,
 						URN:              r.URN,
-					}}, nil
+					}}}, nil
 				},
 			}, nil
 		}),
@@ -158,8 +176,59 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		},
 	}
 
+	expectedResourceURN := p.NewURN("pkgA:m:typA", "resA", "")
+	expectedProviderURN := p.NewURN("pulumi:providers:pkgA", "default", "")
+
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		var violationEvents []Event
+		var summaryEvents []Event
+		for _, e := range events {
+			switch e.Type { //nolint:exhaustive
+			case PolicyViolationEvent:
+				violationEvents = append(violationEvents, e)
+			case PolicyAnalyzeSummaryEvent:
+				summaryEvents = append(summaryEvents, e)
+			}
+		}
+
+		require.Len(t, violationEvents, 1)
+		require.IsType(t, PolicyViolationEventPayload{}, violationEvents[0].Payload())
+		violationPayload := violationEvents[0].Payload().(PolicyViolationEventPayload)
+		assert.Equal(t, expectedResourceURN, violationPayload.ResourceURN)
+		assert.Equal(t, "always-fails", violationPayload.PolicyName)
+		assert.Equal(t, "analyzerA", violationPayload.PolicyPackName)
+		assert.Contains(t, violationPayload.Message, "a policy failed")
+		assert.Equal(t, apitype.Mandatory, violationPayload.EnforcementLevel)
+
+		require.Len(t, summaryEvents, 2)
+
+		require.IsType(t, PolicyAnalyzeSummaryEventPayload{}, summaryEvents[0].Payload())
+		summaryPayload0 := summaryEvents[0].Payload().(PolicyAnalyzeSummaryEventPayload)
+		assert.Equal(t, expectedProviderURN, summaryPayload0.ResourceURN)
+		assert.Equal(t, "analyzerA", summaryPayload0.PolicyPackName)
+		assert.Equal(t, []apitype.PolicyNotApplicable{
+			{PolicyName: "always-fails", Reason: "not the right resource type"},
+		}, summaryPayload0.NotApplicable)
+		assert.Empty(t, summaryPayload0.Disabled)
+		assert.Empty(t, summaryPayload0.Passed)
+		assert.Empty(t, summaryPayload0.Failed)
+
+		require.IsType(t, PolicyAnalyzeSummaryEventPayload{}, summaryEvents[1].Payload())
+		summaryPayload1 := summaryEvents[1].Payload().(PolicyAnalyzeSummaryEventPayload)
+		assert.Equal(t, expectedResourceURN, summaryPayload1.ResourceURN)
+		assert.Equal(t, "analyzerA", summaryPayload1.PolicyPackName)
+		assert.Empty(t, summaryPayload1.NotApplicable)
+		assert.Empty(t, summaryPayload1.Disabled)
+		assert.Empty(t, summaryPayload1.Passed)
+		assert.Equal(t, []string{"always-fails"}, summaryPayload1.Failed)
+
+		return err
+	}
+
 	project := p.GetProject()
-	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Error(t, err)
 }
 
@@ -172,15 +241,25 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
-					return []plugin.AnalyzeDiagnostic{{
+				Info: plugin.AnalyzerInfo{
+					Name: "analyzerA",
+					Policies: []plugin.AnalyzerPolicyInfo{
+						{
+							Name:             "always-fails",
+							Description:      "a policy that always fails",
+							EnforcementLevel: apitype.Mandatory,
+						},
+					},
+				},
+				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
 						PolicyName:       "always-fails",
 						PolicyPackName:   "analyzerA",
 						Description:      "a policy that always fails",
 						Message:          "a policy failed",
 						EnforcementLevel: apitype.Mandatory,
 						URN:              rs[0].URN,
-					}}, nil
+					}}}, nil
 				},
 			}, nil
 		}),
@@ -204,8 +283,42 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		},
 	}
 
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		var violationEvents []Event
+		var summaryEvents []Event
+		for _, e := range events {
+			switch e.Type { //nolint:exhaustive
+			case PolicyViolationEvent:
+				violationEvents = append(violationEvents, e)
+			case PolicyAnalyzeStackSummaryEvent:
+				summaryEvents = append(summaryEvents, e)
+			}
+		}
+
+		require.Len(t, violationEvents, 1)
+		require.IsType(t, PolicyViolationEventPayload{}, violationEvents[0].Payload())
+		violationPayload := violationEvents[0].Payload().(PolicyViolationEventPayload)
+		assert.Equal(t, "always-fails", violationPayload.PolicyName)
+		assert.Equal(t, "analyzerA", violationPayload.PolicyPackName)
+		assert.Contains(t, violationPayload.Message, "a policy failed")
+		assert.Equal(t, apitype.Mandatory, violationPayload.EnforcementLevel)
+
+		require.Len(t, summaryEvents, 1)
+		require.IsType(t, PolicyAnalyzeStackSummaryEventPayload{}, summaryEvents[0].Payload())
+		summaryPayload0 := summaryEvents[0].Payload().(PolicyAnalyzeStackSummaryEventPayload)
+		assert.Equal(t, "analyzerA", summaryPayload0.PolicyPackName)
+		assert.Empty(t, summaryPayload0.NotApplicable)
+		assert.Empty(t, summaryPayload0.Disabled)
+		assert.Empty(t, summaryPayload0.Passed)
+		assert.Equal(t, []string{"always-fails"}, summaryPayload0.Failed)
+
+		return err
+	}
+
 	project := p.GetProject()
-	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Error(t, err)
 }
 
@@ -220,17 +333,42 @@ func TestResourceRemediation(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				RemediateF: func(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+				Info: plugin.AnalyzerInfo{
+					Name:    "analyzerA",
+					Version: "1.0.0",
+					Policies: []plugin.AnalyzerPolicyInfo{
+						{
+							Name:             "ignored",
+							Description:      "a remediation that gets ignored because it runs first",
+							EnforcementLevel: apitype.Remediate,
+						},
+						{
+							Name:             "real-deal",
+							Description:      "a remediation that actually gets applied because it runs last",
+							EnforcementLevel: apitype.Remediate,
+						},
+					},
+				},
+				RemediateF: func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+					if r.Type != "pkgA:m:typA" {
+						return plugin.RemediateResponse{
+							NotApplicable: []plugin.PolicyNotApplicable{
+								{PolicyName: "ignored", Reason: "not the right resource type"},
+								{PolicyName: "real-deal", Reason: "not the right resource type"},
+							},
+						}, nil
+					}
+
 					// Run two remediations to ensure they are applied in order.
-					return []plugin.Remediation{
+					return plugin.RemediateResponse{Remediations: []plugin.Remediation{
 						{
 							PolicyName:        "ignored",
 							PolicyPackName:    "analyzerA",
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that gets ignored because it runs first",
 							Properties: resource.PropertyMap{
-								"a":   resource.NewStringProperty("nope"),
-								"ggg": resource.NewBoolProperty(true),
+								"a":   resource.NewProperty("nope"),
+								"ggg": resource.NewProperty(true),
 							},
 						},
 						{
@@ -239,12 +377,12 @@ func TestResourceRemediation(t *testing.T) {
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that actually gets applied because it runs last",
 							Properties: resource.PropertyMap{
-								"a":   resource.NewStringProperty("foo"),
-								"fff": resource.NewBoolProperty(true),
-								"z":   resource.NewStringProperty("bar"),
+								"a":   resource.NewProperty("foo"),
+								"fff": resource.NewProperty(true),
+								"z":   resource.NewProperty("bar"),
 							},
 						},
-					}, nil
+					}}, nil
 				},
 			}, nil
 		}),
@@ -267,8 +405,83 @@ func TestResourceRemediation(t *testing.T) {
 		},
 	}
 
+	expectedResourceURN := p.NewURN("pkgA:m:typA", "resA", "")
+	expectedProviderURN := p.NewURN("pulumi:providers:pkgA", "default", "")
+
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		var remediationEvents []Event
+		var summaryEvents []Event
+		for _, e := range events {
+			switch e.Type { //nolint:exhaustive
+			case PolicyRemediationEvent:
+				remediationEvents = append(remediationEvents, e)
+			case PolicyRemediateSummaryEvent:
+				summaryEvents = append(summaryEvents, e)
+			}
+		}
+
+		require.Len(t, remediationEvents, 2)
+
+		require.IsType(t, PolicyRemediationEventPayload{}, remediationEvents[0].Payload())
+		remediationPayload0 := remediationEvents[0].Payload().(PolicyRemediationEventPayload)
+		assert.Equal(t, expectedResourceURN, remediationPayload0.ResourceURN)
+		assert.Equal(t, "ignored", remediationPayload0.PolicyName)
+		assert.Equal(t, "analyzerA", remediationPayload0.PolicyPackName)
+		assert.Equal(t, "1.0.0", remediationPayload0.PolicyPackVersion)
+		assert.Equal(t, resource.PropertyMap{}, remediationPayload0.Before)
+		assert.Equal(t, resource.PropertyMap{
+			"a":   resource.NewProperty("nope"),
+			"ggg": resource.NewProperty(true),
+		}, remediationPayload0.After)
+
+		require.IsType(t, PolicyRemediationEventPayload{}, remediationEvents[1].Payload())
+		remediationPayload1 := remediationEvents[1].Payload().(PolicyRemediationEventPayload)
+		assert.Equal(t, expectedResourceURN, remediationPayload1.ResourceURN)
+		assert.Equal(t, "real-deal", remediationPayload1.PolicyName)
+		assert.Equal(t, "analyzerA", remediationPayload1.PolicyPackName)
+		assert.Equal(t, "1.0.0", remediationPayload1.PolicyPackVersion)
+		assert.Equal(t, resource.PropertyMap{
+			"a":   resource.NewProperty("nope"),
+			"ggg": resource.NewProperty(true),
+		}, remediationPayload1.Before)
+		assert.Equal(t, resource.PropertyMap{
+			"a":   resource.NewProperty("foo"),
+			"fff": resource.NewProperty(true),
+			"z":   resource.NewProperty("bar"),
+		}, remediationPayload1.After)
+
+		require.Len(t, summaryEvents, 2)
+
+		require.IsType(t, PolicyRemediateSummaryEventPayload{}, summaryEvents[0].Payload())
+		summaryPayload := summaryEvents[0].Payload().(PolicyRemediateSummaryEventPayload)
+		assert.Equal(t, expectedProviderURN, summaryPayload.ResourceURN)
+		assert.Equal(t, "analyzerA", summaryPayload.PolicyPackName)
+		assert.Equal(t, "1.0.0", summaryPayload.PolicyPackVersion)
+		assert.Equal(t, []apitype.PolicyNotApplicable{
+			{PolicyName: "ignored", Reason: "not the right resource type"},
+			{PolicyName: "real-deal", Reason: "not the right resource type"},
+		}, summaryPayload.NotApplicable)
+		assert.Empty(t, summaryPayload.Disabled)
+		assert.Empty(t, summaryPayload.Passed)
+		assert.Empty(t, summaryPayload.Failed)
+
+		require.IsType(t, PolicyRemediateSummaryEventPayload{}, summaryEvents[1].Payload())
+		summaryPayload = summaryEvents[1].Payload().(PolicyRemediateSummaryEventPayload)
+		assert.Equal(t, expectedResourceURN, summaryPayload.ResourceURN)
+		assert.Equal(t, "analyzerA", summaryPayload.PolicyPackName)
+		assert.Equal(t, "1.0.0", summaryPayload.PolicyPackVersion)
+		assert.Empty(t, summaryPayload.NotApplicable)
+		assert.Empty(t, summaryPayload.Disabled)
+		assert.Empty(t, summaryPayload.Passed)
+		assert.Equal(t, []string{"ignored", "real-deal"}, summaryPayload.Failed)
+
+		return err
+	}
+
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
@@ -295,14 +508,14 @@ func TestRemediationDiagnostic(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				RemediateF: func(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
-					return []plugin.Remediation{{
+				RemediateF: func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+					return plugin.RemediateResponse{Remediations: []plugin.Remediation{{
 						PolicyName:        "warning",
 						PolicyPackName:    "analyzerA",
 						PolicyPackVersion: "1.0.0",
 						Description:       "a remediation with a diagnostic",
 						Diagnostic:        "warning - could not run due to unknowns",
-					}}, nil
+					}}}, nil
 				},
 			}, nil
 		}),
@@ -345,8 +558,8 @@ func TestRemediateFailure(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				RemediateF: func(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
-					return nil, errors.New("this remediation failed")
+				RemediateF: func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+					return plugin.RemediateResponse{}, errors.New("this remediation failed")
 				},
 			}, nil
 		}),
@@ -385,15 +598,15 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeF: func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
-					return []plugin.AnalyzeDiagnostic{{
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
 						PolicyName:       "always-fails",
 						PolicyPackName:   "analyzerA",
 						Description:      "a policy that always fails",
 						Message:          "a policy failed",
 						EnforcementLevel: apitype.Remediate,
 						URN:              r.URN,
-					}}, nil
+					}}}, nil
 				},
 			}, nil
 		}),
@@ -450,15 +663,15 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
-				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
-					return []plugin.AnalyzeDiagnostic{{
+				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
 						PolicyName:       "always-fails",
 						PolicyPackName:   "analyzerA",
 						Description:      "a policy that always fails",
 						Message:          "a policy failed",
 						EnforcementLevel: apitype.Remediate,
 						URN:              rs[0].URN,
-					}}, nil
+					}}}, nil
 				},
 			}, nil
 		}),

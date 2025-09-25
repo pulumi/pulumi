@@ -342,7 +342,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 	// Change the resource outputs.
 	changes = append(changes, NewResource(resourceA.URN))
-	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	snap := NewSnapshot([]*resource.State{
 		provider,
@@ -393,10 +393,11 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Source position is not a meaningful change, and we batch them up for performance reasons
+	// Source positions + stack traces are not meaningful changes, and we batch them up for performance reasons
 	manager, sp := MockSetup(t, snap)
 	sourceUpdated := NewResource(resourceA.URN)
 	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
+	sourceUpdated.StackTrace = []resource.StackFrame{{SourcePosition: provider.SourcePosition}}
 	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
 	mutation, err := manager.BeginMutation(sourceUpdatedSame)
 	require.NoError(t, err)
@@ -724,9 +725,9 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
@@ -743,7 +744,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
@@ -754,16 +755,16 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRecordingUpdateFailure(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
@@ -780,7 +781,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
@@ -791,7 +792,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRecordingDeleteSuccess(t *testing.T) {
@@ -887,12 +888,12 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("c")
 	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -909,9 +910,9 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
 
@@ -920,7 +921,7 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
@@ -958,12 +959,12 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("e")
 	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -980,9 +981,9 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
 
@@ -992,7 +993,7 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRegisterOutputs(t *testing.T) {
@@ -1017,7 +1018,7 @@ func TestRegisterOutputs(t *testing.T) {
 
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
-	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewStringProperty("world")}
+	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
 	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)

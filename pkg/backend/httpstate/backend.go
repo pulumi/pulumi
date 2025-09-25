@@ -1649,20 +1649,52 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// We only need a snapshot manager if we're doing an update.
+	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
+	var validationErrs []error
+	journalPersister := &backend.ValidatingPersister{
+		ErrorFunc: func(err error) {
+			if err != nil {
+				validationErrs = append(validationErrs,
+					fmt.Errorf("journal snapshot validation error: %w", err))
+			}
+		},
+	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
+		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
+		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+		combinedManager = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+		}
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
+	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
+	snapshotManagerClosed := false
 	engineCtx := &engine.Context{
-		Cancel:          cancellationScope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: snapshotManager,
-		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Cancel:        cancellationScope.Context(),
+		Events:        engineEvents,
+		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		FinalizeUpdateFunc: func() {
+			if snapshotManager == nil || journalPersister == nil {
+				return
+			}
+			err := errors.Join(validationErrs...)
+			err = errors.Join(err, combinedManager.Close())
+			snapshotManagerClosed = true
+			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
+			if err != nil {
+				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
+					Error: fmt.Sprintf("snapshot mismatch: %s", err),
+				})
+			}
+		},
+	}
+	if combinedManager != nil {
+		engineCtx.SnapshotManager = combinedManager
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -1700,8 +1732,8 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	if snapshotManager != nil {
-		err = snapshotManager.Close()
+	if combinedManager != nil && !snapshotManagerClosed {
+		err = combinedManager.Close()
 		// If the snapshot manager failed to close, we should return that error.
 		// Even though all the parts of the operation have potentially succeeded, a
 		// snapshotting failure is likely to rear its head on the next

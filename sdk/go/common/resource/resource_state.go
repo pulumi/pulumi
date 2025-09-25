@@ -22,9 +22,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// State is a structure containing state associated with a resource.  This resource may have been serialized and
-// deserialized, or snapshotted from a live graph of resource objects.  The value's state is not, however, associated
+// State is a structure containing state associated with a resource. This resource may have been serialized and
+// deserialized, or snapshotted from a live graph of resource objects. The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
+//
+// Only test code should create State values directly. All other code should use [NewState].
 //
 //nolint:lll
 type State struct {
@@ -42,6 +44,7 @@ type State struct {
 	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
 	Parent                  URN                   // an optional parent URN that this resource belongs to.
 	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
+	Taint                   bool                  // true to force replacement of this resource during the next update.
 	External                bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle.
 	Dependencies            []URN                 // the resource's dependencies.
 	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
@@ -57,6 +60,7 @@ type State struct {
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 	SourcePosition          string                // If set, the source location of the resource registration
+	StackTrace              []StackFrame          // If set, the stack trace at time of registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
@@ -76,6 +80,7 @@ func (s *State) Copy() *State {
 		Outputs:                 s.Outputs,
 		Parent:                  s.Parent,
 		Protect:                 s.Protect,
+		Taint:                   s.Taint,
 		External:                s.External,
 		Dependencies:            s.Dependencies,
 		InitErrors:              s.InitErrors,
@@ -91,6 +96,7 @@ func (s *State) Copy() *State {
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
@@ -111,55 +117,148 @@ func (s *State) GetAliases() []Alias {
 	return aliases
 }
 
-// NewState creates a new resource value from existing resource state information.
-func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
-	external bool, dependencies []URN, initErrors []string, provider string,
-	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
-	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
-	sourcePosition string, ignoreChanges []string, replaceOnChanges []string, refreshBeforeUpdate bool,
-	viewOf URN, resourceHooks map[HookType][]string,
-) *State {
-	contract.Assertf(t != "", "type was empty")
-	contract.Assertf(custom || id == "", "is custom or had empty ID")
+// NewState is used to construct State values. The dataflow for State is rather sensitive, so all fields are required.
+// Call [NewState.Make] to create the *State value.
+//
+//nolint:lll
+type NewState struct {
+	// the resource's type.
+	Type tokens.Type // required
 
-	s := &State{
-		Type:                    t,
-		URN:                     urn,
-		Custom:                  custom,
-		Delete:                  del,
-		ID:                      id,
-		Inputs:                  inputs,
-		Outputs:                 outputs,
-		Parent:                  parent,
-		Protect:                 protect,
-		External:                external,
-		Dependencies:            dependencies,
-		InitErrors:              initErrors,
-		Provider:                provider,
-		PropertyDependencies:    propertyDependencies,
-		PendingReplacement:      pendingReplacement,
-		AdditionalSecretOutputs: additionalSecretOutputs,
-		Aliases:                 aliases,
-		ImportID:                importID,
-		RetainOnDelete:          retainOnDelete,
-		DeletedWith:             deletedWith,
-		Created:                 created,
-		Modified:                modified,
-		SourcePosition:          sourcePosition,
-		IgnoreChanges:           ignoreChanges,
-		ReplaceOnChanges:        replaceOnChanges,
-		RefreshBeforeUpdate:     refreshBeforeUpdate,
-		ViewOf:                  viewOf,
-		ResourceHooks:           resourceHooks,
+	// the resource's object urn, a human-friendly, unique name for the resource.
+	URN URN // required
+
+	// true if the resource is custom, managed by a plugin.
+	Custom bool // required
+
+	// true if this resource is pending deletion due to a replacement.
+	Delete bool // required
+
+	// the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+	ID ID // required
+
+	// the resource's input properties (as specified by the program).
+	Inputs PropertyMap // required
+
+	// the resource's complete output state (as returned by the resource provider).
+	Outputs PropertyMap // required
+
+	// an optional parent URN that this resource belongs to.
+	Parent URN // required
+
+	// true to "protect" this resource (protected resources cannot be deleted).
+	Protect bool // required
+
+	// true to force replacement of this resource during the next update.
+	Taint bool // required
+
+	// true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	External bool // required
+
+	// the resource's dependencies.
+	Dependencies []URN // required
+
+	// the set of errors encountered in the process of initializing resource.
+	InitErrors []string // required
+
+	// the provider to use for this resource.
+	Provider string // required
+
+	// the set of dependencies that affect each property.
+	PropertyDependencies map[PropertyKey][]URN // required
+
+	// true if this resource was deleted and is awaiting replacement.
+	PendingReplacement bool // required
+
+	// an additional set of outputs that should be treated as secrets.
+	AdditionalSecretOutputs []PropertyKey // required
+
+	// an optional set of URNs for which this resource is an alias.
+	Aliases []URN // required
+
+	// A config block that will be used to configure timeouts for CRUD operations.
+	CustomTimeouts *CustomTimeouts // required
+
+	// the resource's import id, if this was an imported resource.
+	ImportID ID // required
+
+	// if set to True, the providers Delete method will not be called for this resource.
+	RetainOnDelete bool // required
+
+	// If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
+	DeletedWith URN // required
+
+	// If set, the time when the state was initially added to the state file. (i.e. Create, Import)
+	Created *time.Time // required
+
+	// If set, the time when the state was last modified in the state file.
+	Modified *time.Time // required
+
+	// If set, the source location of the resource registration
+	SourcePosition string // required
+
+	// If set, the stack trace at time of registration
+	StackTrace []StackFrame // required
+
+	// If set, the list of properties to ignore changes for.
+	IgnoreChanges []string // required
+
+	// If set, the list of properties that if changed trigger a replace.
+	ReplaceOnChanges []string // required
+
+	// true if this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool // required
+
+	// If set, the URN of the resource this resource is a view of.
+	ViewOf URN // required
+
+	// The resource hooks attached to the resource, by type.
+	ResourceHooks map[HookType][]string // required
+}
+
+// Make consumes the NewState to create a *State.
+func (s NewState) Make() *State {
+	contract.Assertf(s.Type != "", "type was empty")
+	contract.Assertf(s.Custom || s.ID == "", "is custom or had empty ID")
+
+	var customTimeouts CustomTimeouts
+	if s.CustomTimeouts != nil {
+		customTimeouts = *s.CustomTimeouts
 	}
 
-	if timeouts != nil {
-		s.CustomTimeouts = *timeouts
+	return &State{
+		Type:                    s.Type,
+		URN:                     s.URN,
+		Custom:                  s.Custom,
+		Delete:                  s.Delete,
+		ID:                      s.ID,
+		Inputs:                  s.Inputs,
+		Outputs:                 s.Outputs,
+		Parent:                  s.Parent,
+		Protect:                 s.Protect,
+		Taint:                   s.Taint,
+		External:                s.External,
+		Dependencies:            s.Dependencies,
+		InitErrors:              s.InitErrors,
+		Provider:                s.Provider,
+		PropertyDependencies:    s.PropertyDependencies,
+		PendingReplacement:      s.PendingReplacement,
+		AdditionalSecretOutputs: s.AdditionalSecretOutputs,
+		Aliases:                 s.Aliases,
+		CustomTimeouts:          customTimeouts,
+		ImportID:                s.ImportID,
+		RetainOnDelete:          s.RetainOnDelete,
+		DeletedWith:             s.DeletedWith,
+		Created:                 s.Created,
+		Modified:                s.Modified,
+		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
+		IgnoreChanges:           s.IgnoreChanges,
+		ReplaceOnChanges:        s.ReplaceOnChanges,
+		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
+		ViewOf:                  s.ViewOf,
+		ResourceHooks:           s.ResourceHooks,
 	}
-
-	return s
 }
 
 // StateDependency objects are used when enumerating all the dependencies of a
@@ -220,4 +319,10 @@ func (s *State) GetAllDependencies() (string, []StateDependency) {
 		allDeps = append(allDeps, StateDependency{Type: ResourceDeletedWith, URN: s.DeletedWith})
 	}
 	return s.Provider, allDeps
+}
+
+// StackFrames are used to record the stack at the time a resource is registered.
+type StackFrame struct {
+	// The source position associated with the stack frame.
+	SourcePosition string
 }

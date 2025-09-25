@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -287,7 +287,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 		for i, v := range p.ArrayValue() {
 			arr[i] = massageStackPreviewAdd(v)
 		}
-		return resource.NewArrayProperty(arr)
+		return resource.NewProperty(arr)
 	case p.IsObject():
 		obj := resource.PropertyMap{}
 		for k, v := range p.ObjectValue() {
@@ -295,7 +295,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 				obj[k] = massageStackPreviewAdd(v)
 			}
 		}
-		return resource.NewObjectProperty(obj)
+		return resource.NewProperty(obj)
 	default:
 		return p
 	}
@@ -351,7 +351,14 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 // getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func getResourceOutputsPropertiesString(
-	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames, showSecrets bool,
+	step engine.StepEventMetadata,
+	indent int,
+	planning,
+	debug,
+	refresh,
+	showSames,
+	showSecrets,
+	truncateOutput bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
 	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
@@ -431,12 +438,13 @@ func getResourceOutputsPropertiesString(
 
 	b := &bytes.Buffer{}
 	p := propertyPrinter{
-		dest:        b,
-		planning:    planning,
-		indent:      indent,
-		op:          op,
-		debug:       debug,
-		showSecrets: showSecrets,
+		dest:           b,
+		planning:       planning,
+		indent:         indent,
+		op:             op,
+		debug:          debug,
+		showSecrets:    showSecrets,
+		truncateOutput: truncateOutput,
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
@@ -570,7 +578,18 @@ func propertyTitlePrinter(name string, align int) func(*propertyPrinter) {
 }
 
 func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
+	p.printPropertyValueRecurse(v)
+	p.writeVerbatim("\n")
+}
+
+func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 	switch {
+	case v.IsSecret():
+		if p.showSecrets {
+			p.printPropertyValueRecurse(v.SecretValue().Element)
+		} else {
+			p.printPrimitivePropertyValue(v)
+		}
 	case isPrimitive(v):
 		p.printPrimitivePropertyValue(v)
 	case v.IsArray():
@@ -644,7 +663,6 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 	default:
 		contract.Failf("Unknown PropertyValue type %v", v)
 	}
-	p.writeVerbatim("\n")
 }
 
 func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
@@ -655,9 +673,9 @@ func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
 func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
 	switch t := v.(type) {
 	case *asset.Asset:
-		return resource.NewAssetProperty(t)
+		return resource.NewProperty(t)
 	case *archive.Archive:
-		return resource.NewArchiveProperty(t)
+		return resource.NewProperty(t)
 	default:
 		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
 		return resource.PropertyValue{V: nil}
@@ -857,11 +875,7 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writeVerbatim("[unknown]")
 		}
 	} else if v.IsSecret() {
-		if p.showSecrets {
-			p.printPropertyValue(v.SecretValue().Element)
-		} else {
-			p.writeVerbatim("[secret]")
-		}
+		p.writeVerbatim("[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}
@@ -1343,12 +1357,13 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 
 	lines := strings.Split(propertyString, "\n")
 	numLines := len(lines)
+	isTruncated := false
 	if numLines > contextLines {
+		isTruncated = true
 		numLines = contextLines
 	}
 
-	isTruncated := false
-	for i := 0; i < numLines; i++ {
+	for i := range numLines {
 		if len(lines[i]) > maxLineLength {
 			lines[i] = lines[i][:maxLineLength] + "..."
 			isTruncated = true
