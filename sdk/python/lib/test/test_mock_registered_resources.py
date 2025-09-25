@@ -41,8 +41,8 @@ async def test_mock_registered_resources(setup_mocks: TestMonitor):
     component = Component("component")
     custom = Custom("custom")
 
-    component_urn = await component.urn
-    custom_urn = await custom.urn
+    component_urn = await component.urn.future()
+    custom_urn = await custom.urn.future()
 
     registrations = setup_mocks.get_registered_resources()
     assert component_urn in registrations
