@@ -1035,6 +1035,23 @@ func (display *ProgressDisplay) printSummary() {
 
 	msg := renderSummaryEvent(*display.summaryEventPayload, false, display.opts)
 	display.println(msg)
+
+	// after printing resources changes summary also add the count for resources that errored
+	resourcesErrored := 0
+
+	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+
+	for _, r := range rr {
+		if r.DiagInfo().ErrorCount > 0 {
+			resourcesErrored++
+		}
+	}
+
+	if resourcesErrored > 0 {
+		errSummaryStr := fmt.Sprintf("%d errored", resourcesErrored)
+		display.println("    " + colors.Red + errSummaryStr + colors.Reset)
+		display.println("")
+	}
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
