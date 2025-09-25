@@ -22,6 +22,5 @@
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 4 updated<{%reset%}>
     8 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

@@ -3,14 +3,13 @@
 <{%reset%}><{%reset%}><{%reset%}>  component: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::component::parent]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=c6b02a56-f464-4318-84be-3943773f78d1]
+<{%reset%}>    [id=d88a950c-2da3-4d93-a136-507087d147fd]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>    <{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>        [id=f511c6b2-ab9a-4db3-a878-2e3574ad6681]
+<{%reset%}>        [id=ca93dd4e-24fb-4e81-9001-eb5d7289c838]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::component$pkgA:m:typA::child]
 <{%reset%}><{%fg 2%}>      + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
     2 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

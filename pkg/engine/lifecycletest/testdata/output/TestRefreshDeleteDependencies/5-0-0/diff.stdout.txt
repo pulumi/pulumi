@@ -9,5 +9,4 @@
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resC]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     3 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

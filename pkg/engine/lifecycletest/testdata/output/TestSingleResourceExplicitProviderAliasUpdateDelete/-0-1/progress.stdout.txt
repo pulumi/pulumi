@@ -10,6 +10,5 @@
     <{%fg 3%}>~ 1 updated<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>
     <{%bold%}>2 changes<{%reset%}>
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

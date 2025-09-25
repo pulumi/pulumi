@@ -1,13 +1,12 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=8605d848-32ee-4228-b026-7f7ab54c132f]
+<{%reset%}>    [id=b67e92f5-e9eb-4bdf-85b9-fd0e39907123]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    foo: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=adf2ef95-999d-4621-a5c2-df822b8848a0]
+<{%reset%}>    [id=5cc86225-f1e6-41e2-aeeb-a23028171756]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::8605d848-32ee-4228-b026-7f7ab54c132f]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::b67e92f5-e9eb-4bdf-85b9-fd0e39907123]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

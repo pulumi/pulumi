@@ -2,19 +2,18 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=d8514b38-b18a-414c-a4df-b933b4469191]
+<{%reset%}>    [id=a38524ee-0d8a-409b-9097-e26cc3687086]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::a8a6bbfb-94a4-4c94-9500-60014039a3d6<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::c6f53a2f-2215-4086-9752-dd3eb19306dc<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::a234ec5a-4b4b-4312-9cda-c7139cd7b70d<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::193ccbfd-e18f-4245-9032-6ee6bd1409be<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=a8a6bbfb-94a4-4c94-9500-60014039a3d6]
+<{%reset%}>    [id=a234ec5a-4b4b-4312-9cda-c7139cd7b70d]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=2b65682a-9765-4fe8-8624-f5af2fe07c71]
+<{%reset%}>    [id=c339ca7d-e37e-423e-b952-8ee6e40aff13]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::a8a6bbfb-94a4-4c94-9500-60014039a3d6]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::a234ec5a-4b4b-4312-9cda-c7139cd7b70d]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
-
 <{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
     <{%underline%}><{%fg 12%}>Name<{%reset%}>         <{%underline%}><{%fg 12%}>Version<{%reset%}>
     |local|test  

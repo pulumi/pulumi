@@ -5,5 +5,4 @@
 <{%reset%}><{%reset%}>    second: <{%reset%}><{%reset%}>"step 0"<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

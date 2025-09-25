@@ -2,5 +2,4 @@
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

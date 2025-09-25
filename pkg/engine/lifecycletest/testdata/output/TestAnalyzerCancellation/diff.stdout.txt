@@ -4,4 +4,4 @@
     <{%underline%}><{%fg 12%}>Name<{%reset%}>       <{%underline%}><{%fg 12%}>Version<{%reset%}>
     analyzerA  
 
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 2s

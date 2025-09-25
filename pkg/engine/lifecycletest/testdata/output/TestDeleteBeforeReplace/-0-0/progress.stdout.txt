@@ -54,6 +54,5 @@
     <{%fg 3%}>~ 5 updated<{%reset%}>
     <{%fg 13%}>+-6 replaced<{%reset%}>
     <{%bold%}>11 changes<{%reset%}>. 1 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

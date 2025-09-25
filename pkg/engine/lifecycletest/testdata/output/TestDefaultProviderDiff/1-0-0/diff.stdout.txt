@@ -1,18 +1,17 @@
 <{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10]
-<{%reset%}><{%fg 2%}>    version: <{%reset%}><{%fg 2%}>"0.17.10"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"0.17.10"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=a19d14e0-d447-472a-9da0-a46d97b4db15]
+<{%reset%}>    [id=9ede3fe9-98d8-48cf-8632-dfe48afdc314]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::bf7fa149-97bc-465c-97d8-5de0f3a4e50c<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::f0a15cf4-00db-44b4-a044-0f9e8a688702<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::b1e1418a-a05a-40c6-a548-d2cf197234d2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::d32f5a56-25d0-4497-859d-cda274e1763a<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=4c78664b-91c0-4632-a6a5-714241959c2d]
+<{%reset%}>    [id=bd9dfe39-323c-4857-ad07-27ab4cc7369c]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::bf7fa149-97bc-465c-97d8-5de0f3a4e50c<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::f0a15cf4-00db-44b4-a044-0f9e8a688702<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::b1e1418a-a05a-40c6-a548-d2cf197234d2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::d32f5a56-25d0-4497-859d-cda274e1763a<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=bf7fa149-97bc-465c-97d8-5de0f3a4e50c]
+<{%fg 1%}>    [id=b1e1418a-a05a-40c6-a548-d2cf197234d2]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

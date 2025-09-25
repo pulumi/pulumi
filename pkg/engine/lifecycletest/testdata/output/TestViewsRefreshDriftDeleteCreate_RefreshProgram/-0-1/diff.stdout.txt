@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=f46b5296-ae1e-4fcb-adae-d91fc5a9320c]
+<{%reset%}>    [id=4603c436-02a9-4781-82e9-e190e48ce7e2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>    <{%fg 3%}>~ pkgA:m:typAView: (refresh)
 <{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
@@ -17,5 +17,4 @@
     <{%fg 2%}>+ 1 created<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
     <{%bold%}>2 changes<{%reset%}>
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

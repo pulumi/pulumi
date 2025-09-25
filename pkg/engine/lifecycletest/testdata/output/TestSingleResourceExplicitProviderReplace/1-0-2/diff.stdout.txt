@@ -1,11 +1,10 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=616b7eb2-c9b1-4824-a585-76566c7d9af0]
+<{%reset%}>    [id=f8b973f7-712c-49b4-8964-41fd7d2206f8]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=a3f7735c-a202-4f88-bcb9-7b26ca4e8671]
+<{%reset%}>    [id=592f502d-d114-44eb-9c23-785c2c037e72]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::616b7eb2-c9b1-4824-a585-76566c7d9af0]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f8b973f7-712c-49b4-8964-41fd7d2206f8]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

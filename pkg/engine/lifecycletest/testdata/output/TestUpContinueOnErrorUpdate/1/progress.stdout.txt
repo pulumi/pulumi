@@ -33,3 +33,5 @@
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
+    <{%fg 1%}>3 errored<{%reset%}>
+

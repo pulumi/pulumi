@@ -1,15 +1,14 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=86cbef78-811c-4c60-97ce-0c1dc8c3e368]
+<{%reset%}>    [id=e946e103-95c5-473d-bfdc-cc2dc64c372c]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=bfaa478e-2d4b-4a0e-8995-b37cebb24701]
+<{%reset%}>    [id=36afaf33-dd0d-4e08-a937-c88c2d89fefe]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=c1d4ecab-b6c1-4c19-a6a8-4db06cd28cab]
+<{%reset%}>    [id=5d117e6b-8e6c-4b72-a596-31c2b41000a7]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
-
 <{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
     <{%underline%}><{%fg 12%}>Name<{%reset%}>         <{%underline%}><{%fg 12%}>Version<{%reset%}>
     |local|test  
