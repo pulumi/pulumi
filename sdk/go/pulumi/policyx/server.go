@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -33,7 +32,7 @@ import (
 )
 
 // Main starts the analyzer server with the provided policy pack factory function.
-func Main(policyPack func(pulumix.Engine) (PolicyPack, error)) error {
+func Main(policyPack func(*pulumi.Context) (PolicyPack, error)) error {
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -62,36 +61,18 @@ func Main(policyPack func(pulumix.Engine) (PolicyPack, error)) error {
 type analyzerServer struct {
 	pulumirpc.UnimplementedAnalyzerServer
 
-	policyPackFactory func(pulumix.Engine) (PolicyPack, error)
+	policyPackFactory func(*pulumi.Context) (PolicyPack, error)
 	policyPack        PolicyPack
 
-	config             map[string]PolicyConfig
-	stackConfiguration *pulumirpc.AnalyzerStackConfigureRequest
+	config    map[string]PolicyConfig
+	handshake *pulumirpc.AnalyzerHandshakeRequest
 }
 
 func (srv *analyzerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.AnalyzerHandshakeRequest,
 ) (*pulumirpc.AnalyzerHandshakeResponse, error) {
-	engine, err := pulumix.NewEngine(req.GetEngineAddress())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create engine: %w", err)
-	}
-
-	srv.policyPack, err = srv.policyPackFactory(engine)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create policy pack: %w", err)
-	}
-
-	_, err = srv.policyPack.Handshake(ctx, HandshakeRequest{
-		Engine:           engine,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-	})
-	if err != nil {
-		return nil, err
-	}
-
+	srv.handshake = req
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
 }
 
@@ -143,7 +124,40 @@ func (srv *analyzerServer) ConfigureStack(ctx context.Context,
 	req *pulumirpc.AnalyzerStackConfigureRequest) (
 	*pulumirpc.AnalyzerStackConfigureResponse, error,
 ) {
-	srv.stackConfiguration = req
+	if srv.handshake == nil {
+		return nil, errors.New("analyzer has not had handshake called")
+	}
+
+	root := ""
+	if srv.handshake.RootDirectory != nil {
+		root = *srv.handshake.RootDirectory
+	}
+
+	info := pulumi.RunInfo{
+		Stack:        req.Stack,
+		Project:      req.Project,
+		Organization: req.Organization,
+
+		RootDirectory: root,
+
+		MonitorAddr: "",
+		EngineAddr:  srv.handshake.EngineAddress,
+
+		Config:           req.Config,
+		ConfigSecretKeys: req.ConfigSecretKeys,
+		DryRun:           req.DryRun,
+		Parallel:         1,
+	}
+	pctx, err := pulumi.NewContext(context.Background(), info)
+	if err != nil {
+		return nil, fmt.Errorf("creating context: %w", err)
+	}
+
+	srv.policyPack, err = srv.policyPackFactory(pctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create policy pack: %w", err)
+	}
+
 	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
 }
 
@@ -177,10 +191,6 @@ func (srv *analyzerServer) Analyze(
 ) (*pulumirpc.AnalyzeResponse, error) {
 	var ds []*pulumirpc.AnalyzeDiagnostic
 	policyManager := &policyManager{}
-
-	if srv.stackConfiguration == nil {
-		return nil, errors.New("analyzer has not been configured with stack configuration")
-	}
 
 	for _, p := range srv.policyPack.Policies() {
 		switch p := p.(type) {
@@ -228,7 +238,6 @@ func (srv *analyzerServer) Analyze(
 				args := ResourceValidationArgs{
 					Manager: policyManager,
 					Config:  config.Properties,
-					DryRun:  srv.stackConfiguration.DryRun,
 					Resource: AnalyzerResource{
 						Type:                 req.GetType(),
 						Properties:           resource.FromResourcePropertyMap(pm),

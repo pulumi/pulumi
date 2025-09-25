@@ -7,17 +7,17 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/policyx"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 
 	"github.com/blang/semver"
 )
 
 func main() {
-	if err := policyx.Main(func(host pulumix.Engine) (policyx.PolicyPack, error) {
+	if err := policyx.Main(func(pctx *pulumi.Context) (policyx.PolicyPack, error) {
 		version := semver.MustParse("2.0.0")
 		return policyx.NewPolicyPack(
-			"config", version, policyx.EnforcementLevelMandatory, nil,
+			"config", version, policyx.EnforcementLevelMandatory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("allowed", policyx.ResourceValidationPolicyArgs{
 					Description:      "Verifies properties",
