@@ -46,8 +46,8 @@ func NewPlaintext[T PlaintextType](v T) Plaintext {
 }
 
 // NewSecurePlaintext creates a new secure string with the given plaintext.
-func NewSecurePlaintext(plaintext string) Plaintext {
-	return Plaintext{value: plaintext, secure: true}
+func NewSecurePlaintext(value string) Plaintext {
+	return Plaintext{value: value, secure: true}
 }
 
 // Secure returns true if the receiver is a secure string or a composite value that contains a secure string.
@@ -141,6 +141,52 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 		prop = resource.MakeSecret(prop)
 	}
 	return prop
+}
+
+func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter Encrypter) (map[Key]object, error) {
+	// Collect all secure values
+	var locationRefs []secureLocationRef
+	var valuesChunks [][]string
+	collectSecureFromPlaintextKeyMap(plaintextMap, &locationRefs, &valuesChunks)
+
+	// Encrypt objects in batches
+	offset := 0
+	for _, valuesChunk := range valuesChunks {
+		if len(valuesChunk) == 0 {
+			continue
+		}
+		encryptedChunk, err := encrypter.BatchEncrypt(ctx, valuesChunk)
+		if err != nil {
+			return nil, err
+		}
+		// Assign encrypted values back into original structure
+		// We are accepting that a secure Plaintext now has a ciphertext value
+		for i, encrypted := range encryptedChunk {
+			locationRef := locationRefs[offset+i]
+			switch container := locationRef.container.(type) {
+			case map[Key]Plaintext:
+				container[locationRef.key.(Key)] = NewSecurePlaintext(encrypted)
+			case map[string]Plaintext:
+				container[locationRef.key.(string)] = NewSecurePlaintext(encrypted)
+			case []Plaintext:
+				container[locationRef.key.(int)] = NewSecurePlaintext(encrypted)
+			}
+		}
+		offset += len(valuesChunk)
+	}
+
+	// Marshal each top-level object back into an object value.
+	// Note that at this point, all secure values have been encrypted.
+	// So we can use the NopEncrypter here.
+	result := map[Key]object{}
+	for k, pt := range plaintextMap {
+		obj, err := pt.encrypt(ctx, nil, NopEncrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = obj
+	}
+	return result, nil
 }
 
 // Encrypt converts the receiver as a Value. All secure strings in the result are encrypted using encrypter.
