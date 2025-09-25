@@ -81,7 +81,6 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = stderr
 				}
-				// continue
 			}
 
 			msg := RenderDiffEvent(event, seen, opts)
