@@ -154,14 +154,20 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 			if entry.RemoveOld != nil {
 				toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
 			}
-			if entry.Delete != nil {
-				markAsDeletion[*entry.Delete] = struct{}{}
-			}
 			if entry.RemoveNew != nil {
 				toRemove[*entry.RemoveNew] = struct{}{}
 			}
-			if entry.PendingReplacement != nil {
-				markAsPendingReplacement[*entry.PendingReplacement] = struct{}{}
+			if entry.DeleteOld != nil {
+				markAsDeletion[*entry.DeleteOld] = struct{}{}
+			}
+			if entry.DeleteNew != nil {
+				newResources[operationIDToResourceIndex[*entry.DeleteNew]].Delete = true
+			}
+			if entry.PendingReplacementOld != nil {
+				markAsPendingReplacement[*entry.PendingReplacementOld] = struct{}{}
+			}
+			if entry.PendingReplacementNew != nil {
+				newResources[operationIDToResourceIndex[*entry.PendingReplacementNew]].PendingReplacement = true
 			}
 
 			if entry.IsRefresh {
