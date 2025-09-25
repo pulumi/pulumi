@@ -2579,12 +2579,13 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 	}
 
 	stop := make(chan bool)
-	port, _, err := rpcutil.Serve(0, stop, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: stop,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, ctx)
 			return nil
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -2593,7 +2594,7 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Runtime: "client",
 		RuntimeOptions: map[string]interface{}{
-			"address": fmt.Sprintf("127.0.0.1:%d", port),
+			"address": fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		},
 	}
 
