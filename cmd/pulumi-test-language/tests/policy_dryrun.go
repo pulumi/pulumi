@@ -79,13 +79,7 @@ func init() {
 						}
 					}
 
-					expectedViolations := []engine.PolicyViolationEventPayload{}
-
-					require.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
-
-					for _, violation := range expectedViolations {
-						assert.Contains(l, policyViolations, violation, "expected policy violation %v", violation)
-					}
+					require.Empty(l, policyViolations, "expected no policy violations")
 				},
 			},
 		},
