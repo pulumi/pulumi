@@ -1664,7 +1664,7 @@ func (b *cloudBackend) runEngineAction(
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
 		journal, err := backend.NewSnapshotJournaler(
-			journalPersister, op.SecretsManager, stack.DefaultSecretsProvider, u.Target.Snapshot)
+			ctx, journalPersister, op.SecretsManager, stack.DefaultSecretsProvider, u.Target.Snapshot)
 		if err != nil {
 			validationErrs = append(validationErrs, err)
 		}

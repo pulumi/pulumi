@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,8 @@ func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotM
 	sp := &MockStackPersister{}
 
 	secretsProvider := stack.Base64SecretsProvider{}
-	journal, err := NewSnapshotJournaler(sp, baseSnap.SecretsManager, secretsProvider, baseSnap)
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, baseSnap.SecretsManager, secretsProvider, baseSnap)
 	require.NoError(t, err)
 	return engine.NewJournalSnapshotManager(journal, baseSnap), sp
 }
@@ -1015,7 +1017,8 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
-	journal, err := NewSnapshotJournaler(sp, snap.SecretsManager, secretsProvider, snap)
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
 
 	sm := engine.NewJournalSnapshotManager(journal, snap)
@@ -1036,7 +1039,8 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
-	journal, err := NewSnapshotJournaler(sp, snap.SecretsManager, secretsProvider, snap)
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
 
 	sm := engine.NewJournalSnapshotManager(journal, snap)
@@ -1059,7 +1063,8 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
-	journal, err := NewSnapshotJournaler(sp, snap.SecretsManager, secretsProvider, snap)
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
 	sm := engine.NewJournalSnapshotManager(journal, snap)
 
@@ -1081,7 +1086,8 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
-	journal, err := NewSnapshotJournaler(sp, snap.SecretsManager, secretsProvider, snap)
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
 	sm := engine.NewJournalSnapshotManager(journal, snap)
 

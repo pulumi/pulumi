@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -351,7 +350,7 @@ func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []st
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sj *snapshotJournaler) snap() (*deploy.Snapshot, error) {
+func (sj *snapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error) {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -380,14 +379,15 @@ func (sj *snapshotJournaler) snap() (*deploy.Snapshot, error) {
 	//           relative order w.r.t. r has not changed.
 	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
 	//           they would have been appended to the list before r.
-
 	snap := sj.snapshot
 
-	if len(sj.journalEntries) != 0 {
-		firstEntry := sj.journalEntries[0]
-		if firstEntry.Kind == apitype.JournalEntryKindWrite {
+	// We could have a rebase entry as one of the first two journal entries. If we do use
+	// the snapshot from that entry as the base snapshot.
+	if len(sj.journalEntries) >= 2 {
+		if firstEntry := sj.journalEntries[0]; firstEntry.Kind == apitype.JournalEntryKindWrite {
 			snap = firstEntry.NewSnapshot
-			contract.Assertf(firstEntry.OperationID == 0, "rebase journal entry must not have an operation ID")
+		} else if secondEntry := sj.journalEntries[1]; secondEntry.Kind == apitype.JournalEntryKindWrite {
+			snap = secondEntry.NewSnapshot
 		}
 	}
 
@@ -400,7 +400,7 @@ func (sj *snapshotJournaler) snap() (*deploy.Snapshot, error) {
 
 	deploymentV3, _, _ := replayer.GenerateDeployment()
 
-	return stack.DeserializeDeploymentV3(context.TODO(), *deploymentV3, sj.secretsProvider)
+	return stack.DeserializeDeploymentV3(ctx, *deploymentV3, sj.secretsProvider)
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
@@ -408,10 +408,13 @@ func (sj *snapshotJournaler) snap() (*deploy.Snapshot, error) {
 // metadata about this write operation is added to the snapshot before it is
 // written, in order to aid debugging should future operations fail with an
 // error.
-func (sj *snapshotJournaler) saveSnapshot() error {
-	snap, err := sj.snap()
+func (sj *snapshotJournaler) saveSnapshot(ctx context.Context) error {
+	snap, err := sj.snap(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to generate snapshot: %w", err)
+	}
+	if snap == nil {
+		return nil
 	}
 	snap, err = snap.NormalizeURNReferences()
 	if err != nil {
@@ -453,24 +456,21 @@ func (sj *snapshotJournaler) saveSnapshot() error {
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sj *snapshotJournaler) defaultServiceLoop(
+	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	// True if we have elided writes since the last actual write.
 	hasElidedWrites := true
+
+	setSecretsManager := false
 
 	// Service each mutation request in turn.
 serviceLoop:
 	for {
 		select {
 		case request := <-journalEvents:
-			serializedEntry, err := SerializeJournalEntry(
-				context.TODO(), request.JournalEntry, sj.secretsManager.Encrypter())
-			if err != nil {
-				request.result <- fmt.Errorf("failed to serialize journal entry: %w", err)
-				return
-			}
-			sj.journalEntries = append(sj.journalEntries, serializedEntry)
-			if request.JournalEntry.ElideWrite {
+			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
+			if request.elideWrite {
 				hasElidedWrites = true
 				if request.result != nil {
 					request.result <- nil
@@ -478,9 +478,16 @@ serviceLoop:
 				continue
 			}
 			hasElidedWrites = false
-			request.result <- sj.saveSnapshot()
+			request.result <- sj.saveSnapshot(ctx)
 		case <-sj.cancel:
 			break serviceLoop
+		}
+		if !setSecretsManager {
+			setSecretsManager = true
+			_ = sj.BeginOperation(engine.JournalEntry{
+				Kind:           engine.JournalEntrySecretsManager,
+				SecretsManager: sj.secretsManager,
+			})
 		}
 	}
 
@@ -488,7 +495,7 @@ serviceLoop:
 	var err error
 	if hasElidedWrites {
 		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-		err = sj.saveSnapshot()
+		err = sj.saveSnapshot(ctx)
 	}
 	done <- err
 }
@@ -497,30 +504,32 @@ serviceLoop:
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
 func (sj *snapshotJournaler) unsafeServiceLoop(
+	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
+	setSecretsManager := false
 	for {
 		select {
 		case request := <-journalEvents:
-			if request.JournalEntry.Kind == engine.JournalEntryWrite {
-				contract.Assertf(len(sj.journalEntries) == 0, "should not have seen an jornalentry before a rebase")
-			}
-			serializedEntry, err := SerializeJournalEntry(
-				context.TODO(), request.JournalEntry, sj.secretsManager.Encrypter())
-			if err != nil {
-				request.result <- fmt.Errorf("failed to serialize journal entry: %w", err)
-				return
-			}
-			sj.journalEntries = append(sj.journalEntries, serializedEntry)
+			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
 			request.result <- nil
 		case <-sj.cancel:
-			done <- sj.saveSnapshot()
+			done <- sj.saveSnapshot(ctx)
 			return
 		}
+		if !setSecretsManager {
+			setSecretsManager = true
+			_ = sj.BeginOperation(engine.JournalEntry{
+				Kind:           engine.JournalEntrySecretsManager,
+				SecretsManager: sj.secretsManager,
+			})
+		}
+
 	}
 }
 
 type snapshotJournaler struct {
+	ctx             context.Context
 	persister       SnapshotPersister
 	snapshot        *apitype.DeploymentV3
 	journalEvents   chan writeJournalEntryRequest
@@ -551,6 +560,7 @@ type snapshotJournaler struct {
 // meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
 // are flushed by the next non-elided write or the next call to Close.
 func NewSnapshotJournaler(
+	ctx context.Context,
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	secretsProvider secrets.Provider,
@@ -586,7 +596,7 @@ func NewSnapshotJournaler(
 	if baseSnap != nil {
 		var err error
 		deployment, _, _, err = stack.SerializeDeploymentWithMetadata(
-			context.TODO(), snapCopy, false)
+			ctx, snapCopy, false)
 		if err != nil {
 			return nil, err
 		}
@@ -595,6 +605,7 @@ func NewSnapshotJournaler(
 	}
 
 	journaler := snapshotJournaler{
+		ctx:             ctx,
 		persister:       persister,
 		snapshot:        deployment,
 		journalEvents:   journalEvents,
@@ -611,20 +622,31 @@ func NewSnapshotJournaler(
 		serviceLoop = journaler.unsafeServiceLoop
 	}
 
-	go serviceLoop(journalEvents, done)
+	go serviceLoop(ctx, journalEvents, done)
 
 	return &journaler, nil
 }
 
 type writeJournalEntryRequest struct {
-	JournalEntry engine.JournalEntry
+	journalEntry apitype.JournalEntry
+	elideWrite   bool
 	result       chan error
 }
 
 func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
+	serializedEntry, err := SerializeJournalEntry(
+		sj.ctx, entry, sj.secretsManager.Encrypter())
+	if err != nil {
+		return fmt.Errorf("failed to serialize journal entry: %w", err)
+	}
+
 	result := make(chan error)
 	select {
-	case sj.journalEvents <- writeJournalEntryRequest{JournalEntry: entry, result: result}:
+	case sj.journalEvents <- writeJournalEntryRequest{
+		journalEntry: serializedEntry,
+		elideWrite:   entry.ElideWrite,
+		result:       result,
+	}:
 		// We don't need to check for cancellation here, as the service loop guarantees
 		// that it will return a result for every journal entry that it processes.
 		return <-result
@@ -660,7 +682,7 @@ func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
 	}
 
 	deployment, _, _, err := stack.SerializeDeploymentWithMetadata(
-		context.TODO(), snapCopy, true)
+		sj.ctx, snapCopy, true)
 	if err != nil {
 		return fmt.Errorf("serializing base snapshot: %w", err)
 	}

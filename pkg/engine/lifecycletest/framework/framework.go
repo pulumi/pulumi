@@ -241,7 +241,8 @@ func (op TestOp) runWithContext(
 		secretsManager := b64.NewBase64SecretsManager()
 		secretsProvider := stack.Base64SecretsProvider{}
 
-		journaler, err := backend.NewSnapshotJournaler(journalPersister, secretsManager, secretsProvider, target.Snapshot)
+		journaler, err := backend.NewSnapshotJournaler(
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
 		contract.AssertNoErrorf(err, "got error setting up journaler")
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
 		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)

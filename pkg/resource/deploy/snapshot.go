@@ -319,6 +319,9 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 			}
 			mr.PropertyDependencies = newPropDeps
 		}
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
 		if len(mr.Outputs) == 0 {
 			mr.Outputs = make(resource.PropertyMap)
 		}
@@ -342,6 +345,9 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 
 		found := false
 		var diffStr string
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
 		if len(jr.Outputs) == 0 {
 			jr.Outputs = make(resource.PropertyMap)
 		}
