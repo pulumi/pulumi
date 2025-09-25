@@ -192,9 +192,11 @@ func NewServiceSecretsManager(
 		return nil, fmt.Errorf("marshalling state: %w", err)
 	}
 
+	crypter := newServiceCrypter(client, id)
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &serviceSecretsManager{
 		state:   state,
-		crypter: newServiceCrypter(client, id),
+		crypter: cachedCrypter,
 	}, nil
 }
 
@@ -230,8 +232,10 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Color: colors.Never,
 	}))
 
+	crypter := newServiceCrypter(c, id)
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &serviceSecretsManager{
 		state:   state,
-		crypter: newServiceCrypter(c, id),
+		crypter: cachedCrypter,
 	}, nil
 }
