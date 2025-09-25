@@ -458,8 +458,6 @@ func (sj *snapshotJournaler) defaultServiceLoop(
 	// True if we have elided writes since the last actual write.
 	hasElidedWrites := true
 
-	setSecretsManager := false
-
 	// Service each mutation request in turn.
 serviceLoop:
 	for {
@@ -477,17 +475,6 @@ serviceLoop:
 			request.result <- sj.saveSnapshot(ctx)
 		case <-sj.cancel:
 			break serviceLoop
-		}
-		// Ensure the secrets manager is set after we've seen the first journal entry.
-		// We don't want to do this before, because a new journal entry always causes
-		// a snapshot to be written, and we don't need to write a snapshot if we never
-		// see any journal entries.
-		if !setSecretsManager {
-			setSecretsManager = true
-			_ = sj.BeginOperation(engine.JournalEntry{
-				Kind:           engine.JournalEntrySecretsManager,
-				SecretsManager: sj.secretsManager,
-			})
 		}
 	}
 
@@ -507,7 +494,6 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
-	setSecretsManager := false
 	for {
 		select {
 		case request := <-journalEvents:
@@ -517,14 +503,6 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 			done <- sj.saveSnapshot(ctx)
 			return
 		}
-		if !setSecretsManager {
-			setSecretsManager = true
-			_ = sj.BeginOperation(engine.JournalEntry{
-				Kind:           engine.JournalEntrySecretsManager,
-				SecretsManager: sj.secretsManager,
-			})
-		}
-
 	}
 }
 
@@ -624,7 +602,13 @@ func NewSnapshotJournaler(
 
 	go serviceLoop(ctx, journalEvents, done)
 
-	return &journaler, nil
+	err := journaler.BeginOperation(engine.JournalEntry{
+		Kind:           engine.JournalEntrySecretsManager,
+		SecretsManager: secretsManager,
+		ElideWrite:     true,
+	})
+
+	return &journaler, err
 }
 
 type writeJournalEntryRequest struct {
