@@ -81,6 +81,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = stderr
 				}
+				// continue
 			}
 
 			msg := RenderDiffEvent(event, seen, opts)
@@ -132,8 +133,6 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderDiffResourceOutputsEvent(event.Payload().(engine.ResourceOutputsEventPayload), seen, opts)
 	case engine.ResourcePreEvent:
 		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
-	case engine.DiagEvent:
-		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
 	case engine.PolicyRemediationEvent:
 		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
