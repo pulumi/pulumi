@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend
+  description: Stop showing the dotnet build output in diff section of the update changes
