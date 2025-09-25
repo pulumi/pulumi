@@ -145,6 +145,10 @@ class Mocks(ABC):
 
 class MockMonitor:
     class ResourceRegistration(NamedTuple):
+        """
+        ResourceRegistration contains the URN, ID, and state of a registered resource.
+        """
+
         urn: str
         id: str
         state: dict
@@ -165,6 +169,10 @@ class MockMonitor:
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
 
     def get_registered_resources(self) -> dict[str, ResourceRegistration]:
+        """
+        get_registered_resources returns a copy of the resources dictionary that can be used for test assertions.
+        """
+
         return dict(self.resources)
 
     def Invoke(self, request):
