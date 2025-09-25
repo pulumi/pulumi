@@ -1810,9 +1810,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 }
 
 // TestRunningViaCLIWrapper tests that we can interrupt an operation when
-// running via a CLI wrapper tool like the 1Password CLI. This test also checks
-// that a provider also receives a SIGINT signal when the operation is
-// interrupted.
+// running via a CLI wrapper tool like the 1Password CLI.
 //
 // Regression test for https://github.com/pulumi/pulumi/issues/20154
 func TestRunningViaCLIWrapper(t *testing.T) {
@@ -1851,6 +1849,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		Cols: 80,
 	})
 	require.NoError(t, err)
+	defer ptmx.Close()
 
 	timeout := 3 * time.Minute
 	wait := 100 * time.Millisecond
@@ -1872,9 +1871,10 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	}()
 
 	processFinished := make(chan error, 1)
-	var output strings.Builder
+	out := make(chan string, 1)
 
 	go func() {
+		var output strings.Builder
 		buf := make([]byte, 1024)
 		for {
 			n, err := ptmx.Read(buf)
@@ -1885,6 +1885,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 				break
 			}
 		}
+		out <- output.String()
 	}()
 
 	go func() {
@@ -1893,13 +1894,8 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	select {
 	case err := <-processFinished:
-		ptmx.Close()
-		t.Logf("Process finished with error: %s, output: %s", err, output.String())
+		t.Logf("Process finished with error: %s, output: %s", err, <-out)
 		require.ErrorContains(t, err, "exit status 1")
-		// The provider should have received a SIGINT as well, and written
-		// out the `interrupted.txt` file.
-		_, err = os.Stat(filepath.Join(programPath, "interrupted.txt"))
-		require.NoError(t, err, "interrupted.txt file should exist")
 
 	case <-time.After(timeout):
 		// This is the bug - process hung trying to control terminal
@@ -1907,10 +1903,9 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		}
-		ptmx.Close()
 
-		require.Failf(t, "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
-			" Output so far: %s", timeout.String(), output.String())
+		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
+			" Output so far: %s", timeout.String(), <-out)
 	}
 }
 

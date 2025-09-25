@@ -309,10 +309,31 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	resourcesMap := make(map[resource.URN][]*resource.State)
 
 	for _, mr := range expected.Resources {
+		if len(mr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range mr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			mr.PropertyDependencies = newPropDeps
+		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
 
 	for _, jr := range snap.Resources {
+		if len(jr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range jr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			jr.PropertyDependencies = newPropDeps
+		}
+
 		found := false
 		var diffStr string
 		for _, mr := range resourcesMap[jr.URN] {
@@ -520,12 +541,21 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			return SnapshotIntegrityErrorf("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
-		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
-		// any duplicate URNs.
+		// Now check the resources.  Check that the resources are well formed, that there
+		// are no duplicate URNs and that all dependencies exist in the snapshot.
 		urns := make(map[resource.URN][]*resource.State)
 		provs := make(map[providers.Reference]struct{})
 		for i, state := range snap.Resources {
 			urn := state.URN
+			if urn == "" {
+				return SnapshotIntegrityErrorf("resource at index %d missing required 'urn' field", i)
+			}
+			if state.Type == "" {
+				return SnapshotIntegrityErrorf("resource '%s' missing required 'type' field", urn)
+			}
+			if !state.Custom && state.ID != "" {
+				return SnapshotIntegrityErrorf("resource '%s' has 'custom false but non-empty ID", urn)
+			}
 
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)

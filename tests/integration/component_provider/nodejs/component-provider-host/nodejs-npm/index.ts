@@ -11,6 +11,8 @@ import * as random from "@pulumi/random"
 import * as assert from "node:assert";
 assert(random);
 
+let parent = new pulumi.ComponentResource("ParentComponent", "parent");
+
 let comp = new provider.MyComponent("comp", {
     aNumber: 123,
     anOptionalString: "Bonnie",
@@ -21,7 +23,7 @@ let comp = new provider.MyComponent("comp", {
             aNumber: 9,
         }
     }
-})
+}, { parent: parent })
 
 export const urn = comp.urn;
 export const aNumberOutput = comp.aNumberOutput;

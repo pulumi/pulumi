@@ -1,0 +1,19 @@
+{
+    "name": "@pulumi/sync",
+    "version": "3.0.0-alpha.1.internal+exp.sha.2143768",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "sync",
+        "version": "3.0.0-alpha.1.internal+exp.sha.2143768"
+    }
+}

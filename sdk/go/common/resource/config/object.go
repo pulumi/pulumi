@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -534,4 +535,37 @@ func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypte
 		return resource.PropertyValue{}, err
 	}
 	return plaintext.PropertyValue(), nil
+}
+
+// coerce attempts to coerce v to a boolean or number value. Returns the coerced value and true if coercion succeeds
+// and (nil, false) otherwise.
+//
+// The coercion rules are:
+// - "false" and "true" coerce to false and true, respectively
+// - strings of base-10 digits that do not begin with '0' are coerced to int64 or uint64
+func coerce(v string) (any, bool) {
+	// If "false" or "true", return the boolean value.
+	switch v {
+	case "false":
+		return false, true
+	case "true":
+		return true, true
+	}
+
+	// If the value has more than one character and starts with "0", return the value as-is
+	// so values like "0123456" are saved as a string (without stripping any leading zeros)
+	// rather than as the integer 123456.
+	if len(v) > 1 && v[0] == '0' {
+		return nil, false
+	}
+
+	// If it's convertible to an int, return the int.
+	if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+		return i, true
+	}
+	if i, err := strconv.ParseUint(v, 10, 64); err == nil {
+		return i, true
+	}
+
+	return nil, false
 }

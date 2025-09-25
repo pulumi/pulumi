@@ -1,5 +1,68 @@
 # Changelog
 
+## 3.197.0 (2025-09-17)
+
+
+### Features
+
+- [cli] Send new policy fields when publishing a policy pack
+
+- [sdk/dotnet] Update dotnet to v3.88
+  [#20512](https://github.com/pulumi/pulumi/pull/20512)
+
+
+### Bug Fixes
+
+- [engine] Fix a panic in preview, that could happen in some cases when default providers get updated
+  [#20511](https://github.com/pulumi/pulumi/pull/20511)
+
+- [components/python] Fix parenting of python components
+  [#20508](https://github.com/pulumi/pulumi/pull/20508)
+
+- [sdk/python] Fix hang when shutting down in certain error conditions
+  [#20484](https://github.com/pulumi/pulumi/pull/20484)
+
+- [sdk/python] Fix license-files entry for python package
+  [#20506](https://github.com/pulumi/pulumi/pull/20506)
+
+## 3.196.0 (2025-09-12)
+
+
+### Miscellaneous
+
+- [sdk] Add policy summary events apitypes
+  [#20443](https://github.com/pulumi/pulumi/pull/20443)
+
+- [sdk] Add new policy fields apitypes
+  [#20491](https://github.com/pulumi/pulumi/pull/20491)
+
+- [protobuf] Add support for indicating "not applicable" policies
+  [#20492](https://github.com/pulumi/pulumi/pull/20492)
+
+- [protobuf] Add new analyzer policy fields
+  [#20494](https://github.com/pulumi/pulumi/pull/20494)
+
+## 3.195.0 (2025-09-10)
+
+
+### Features
+
+- [engine] Add support for capturing program stack traces as part of resource registration
+  [#20430](https://github.com/pulumi/pulumi/pull/20430)
+
+- [sdk/go] Registered resources can now be retrieved from the mock monitor for test assertions
+  [#20472](https://github.com/pulumi/pulumi/pull/20472)
+
+- [sdk/go] The current exports map is now available for unit testing through `GetCurrentExportMap`
+  [#20471](https://github.com/pulumi/pulumi/pull/20471)
+
+
+### Bug Fixes
+
+- [pkg/go] Fix an issue where v3.194.0 of the `github.com/pulumi/pulumi/pkg/v3` module depends on APIs from `github.com/pulumi/pulumi/sdk/v3` that haven't been released
+  [#20487](https://github.com/pulumi/pulumi/issues/20487)
+
+
 ## 3.194.0 (2025-09-08)
 
 

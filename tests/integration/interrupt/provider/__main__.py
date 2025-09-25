@@ -12,18 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import signal
-from typing import Any
 from pulumi.provider.experimental import component_provider_host
 from component import MyComponent
-
-
-def signal_handler(sig: int, frame: Any):
-    with open("interrupted.txt", "w") as f:
-        f.write("Signal received\n")
-
-
-signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
     component_provider_host([MyComponent], "provider")

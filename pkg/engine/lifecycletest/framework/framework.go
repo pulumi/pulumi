@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -119,7 +120,7 @@ func (nopPluginManager) DownloadPlugin(
 func (nopPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content workspace.PluginContent,
+	content pkgWorkspace.PluginContent,
 	reinstall bool,
 ) error {
 	return nil
@@ -216,28 +217,35 @@ func (op TestOp) runWithContext(
 
 	errs := []error{}
 	events := make(chan engine.Event)
-	journal := engine.NewTestJournal()
-	persister := &backend.ValidatingPersister{
-		ErrorFunc: func(err error) {
-			if err != nil {
-				errs = append(errs, fmt.Errorf("manager validation error: %w", err))
-			}
-		},
-	}
-	journalPersister := &backend.ValidatingPersister{
-		ErrorFunc: func(err error) {
-			if err != nil {
-				errs = append(errs, fmt.Errorf("journal validation error: %w", err))
-			}
-		},
-	}
-	secretsManager := b64.NewBase64SecretsManager()
-	journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot)
-	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
-	journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
+	var combined *engine.CombinedManager
+	var journal *engine.TestJournal
+	var persister *backend.ValidatingPersister
+	var journalPersister *backend.ValidatingPersister
+	if !dryRun {
+		journal = engine.NewTestJournal()
+		persister = &backend.ValidatingPersister{
+			ErrorFunc: func(err error) {
+				if err != nil {
+					errs = append(errs, fmt.Errorf("manager validation error: %w", err))
+				}
+			},
+		}
+		journalPersister = &backend.ValidatingPersister{
+			ErrorFunc: func(err error) {
+				if err != nil {
+					errs = append(errs, fmt.Errorf("journal validation error: %w", err))
+				}
+			},
+		}
+		secretsManager := b64.NewBase64SecretsManager()
 
-	combined := &engine.CombinedManager{
-		Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},
+		journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot)
+		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
+
+		combined = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},
+		}
 	}
 
 	ctx := &engine.Context{
@@ -270,7 +278,9 @@ func (op TestOp) runWithContext(
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	errs = append(errs, combined.Close())
+	if combined != nil {
+		errs = append(errs, combined.Close())
+	}
 
 	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
 	// the deployment context, not expecting it to have any effect on the test code here. See
@@ -281,7 +291,11 @@ func (op TestOp) runWithContext(
 	}
 
 	if validate != nil {
-		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
+		var entries engine.JournalEntries
+		if !dryRun {
+			entries = journal.Entries()
+		}
+		opErr = validate(project, target, entries, firedEvents, opErr)
 	}
 
 	if !opts.SkipDisplayTests {

@@ -46,19 +46,23 @@ func RequireStackResource(t TestingT, err error, changes display.ResourceChanges
 	}
 }
 
-func RequireSingleResource(t TestingT, resources []*resource.State, typ tokens.Type) *resource.State {
+func RequireNResources(t TestingT, resources []*resource.State, typ tokens.Type, count int) []*resource.State {
 	t.Helper()
 
-	var result *resource.State
+	var results []*resource.State
 	for _, res := range resources {
 		if res.Type == typ {
-			require.Nil(t, result, "expected exactly 1 resource of type %q, got multiple", typ)
-			result = res
+			results = append(results, res)
 		}
 	}
 
-	require.NotNil(t, result, "expected exactly 1 resource of type %q, got none", typ)
-	return result
+	require.Len(t, results, count, "expected exactly %d resources of type %q", count, typ)
+	return results
+}
+
+func RequireSingleResource(t TestingT, resources []*resource.State, typ tokens.Type) *resource.State {
+	t.Helper()
+	return RequireNResources(t, resources, typ, 1)[0]
 }
 
 // RequireSingleNamedResource returns the single resource with the given name from the given list of resources. If more
