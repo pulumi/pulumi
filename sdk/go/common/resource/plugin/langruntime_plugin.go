@@ -81,6 +81,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		}
 
 		conn, handshakeResponse, err := dialPlugin(
+			ctx.Base(),
 			port,
 			"pulumi-language-"+runtime,
 			runtime+" (Language Plugin)",

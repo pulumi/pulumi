@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
@@ -85,6 +86,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type commandGroup struct {
@@ -180,17 +182,24 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var logFlow bool
 	var logToStderr bool
 	var tracingFlag string
+	var otelFlag string
 	var tracingHeaderFlag string
 	var profiling string
 	var verbose int
 	var color string
 	var memProfileRate int
 
+	var rootSpan oteltrace.Span
+
 	updateCheckResult := make(chan *diag.Diag)
 
 	cleanup := func() {
 		logging.Flush()
 		cmdutil.CloseTracing()
+		if rootSpan != nil {
+			rootSpan.End()
+		}
+		cmdutil.CloseOtel(context.Background())
 
 		if logging.Verbose > 0 && !logging.LogToStderr {
 			logFile, err := logging.GetLogfilePath()
@@ -263,6 +272,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
+			cmdutil.InitOtel("pulumi-cli", otelFlag, "pulumi")
 
 			ctx := cmd.Context()
 			if cmdutil.IsTracingEnabled() {
@@ -281,6 +291,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					TracingHeader:  tracingHeader,
 				}
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
+			}
+			fmt.Println(cmdutil.IsOtelEnabled())
+			if cmdutil.IsOtelEnabled() {
+				fmt.Println("OpenTelemetry tracing is enabled, starting span")
+				tracer := otel.Tracer("pulumi-cli")
+				ctx, rootSpan = tracer.Start(ctx, "pulumi")
 			}
 			cmd.SetContext(ctx)
 
@@ -352,6 +368,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
+	cmd.PersistentFlags().StringVar(&otelFlag, "otel", "",
+		"Emit OpenTelemetry traces to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,

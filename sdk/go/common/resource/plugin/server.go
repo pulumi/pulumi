@@ -37,6 +37,7 @@ func NewServer(ctx *Context, registrations ...func(server *grpc.Server)) (*GrpcS
 
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Ctx:    ctx.Base(),
 		Cancel: cancel,
 		Init: func(srv *grpc.Server) error {
 			for _, registration := range registrations {

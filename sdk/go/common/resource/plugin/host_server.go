@@ -53,6 +53,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Ctx:    ctx.Base(),
 		Cancel: engine.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)

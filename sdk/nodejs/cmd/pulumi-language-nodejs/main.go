@@ -51,6 +51,9 @@ import (
 	"github.com/google/shlex"
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -104,6 +107,8 @@ const (
 	preferredPort = 9229
 )
 
+var tracer trace.Tracer
+
 // Launches the language host RPC endpoint, which in turn fires
 // up an RPC server implementing the LanguageRuntimeServer RPC
 // endpoint.
@@ -120,9 +125,15 @@ func main() {
 	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
 	flag.Parse()
 
+	ctx := context.Background()
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
+	cmdutil.InitOtel("pulumi-cli", "http://localhost:4318", "pulumi")
+	defer cmdutil.CloseOtel(ctx)
+
+	tracer = otel.Tracer("pulumi-language-nodejs")
 
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
@@ -130,7 +141,7 @@ func main() {
 		engineAddress = args[0]
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
@@ -148,6 +159,7 @@ func main() {
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Ctx:    ctx,
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
@@ -303,7 +315,7 @@ func newLanguageHost(
 	}
 }
 
-func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+func (host *nodeLanguageHost) connectToEngine(ctx context.Context) (pulumirpc.EngineClient, io.Closer, error) {
 	if host.engineAddress == "" {
 		return nil, nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
 	}
@@ -311,6 +323,7 @@ func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Clos
 	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
@@ -353,6 +366,8 @@ func compatibleVersions(a, b semver.Version) (bool, string) {
 func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	ctx, span := tracer.Start(ctx, "GetRequiredPackages")
+	defer span.End()
 	// To get the plugins required by a program, find all node_modules/ packages that contain {
 	// "pulumi": true } inside of their package.json files.  We begin this search in the same
 	// directory that contains the project. It's possible that a developer would do a
@@ -403,6 +418,8 @@ func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	ctx, span := tracer.Start(ctx, "GetRequiredPlugins")
+	defer span.End()
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
 
@@ -641,9 +658,11 @@ func getPluginVersion(info packageJSON) (string, error) {
 
 // Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	ctx, span := tracer.Start(ctx, "Run")
+	defer span.End()
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
-	engineClient, closer, err := host.connectToEngine()
+	engineClient, closer, err := host.connectToEngine(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -653,6 +672,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	conn, err := grpc.NewClient(
 		req.GetMonitorAddress(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
@@ -672,6 +692,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	// Launch the rpc server giving it the real monitor to forward messages to.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Ctx:    ctx,
 		Cancel: serverCancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target: target})
@@ -747,6 +768,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.RunRequest,
 	engineClient pulumirpc.EngineClient, nodeBin, runPath, address, pipesDirectory string,
 ) *pulumirpc.RunResponse {
+	ctx, span := tracer.Start(ctx, "execNodejs")
+	defer span.End()
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	args := host.constructArguments(req, runPath, address, pipesDirectory)
 	config, err := host.constructConfig(req)
@@ -969,6 +992,8 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.Em
 func (host *nodeLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
+	ctx, span := tracer.Start(server.Context(), "InstallDependencies")
+	defer span.End()
 	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
@@ -1123,6 +1148,8 @@ func installNodeVersion(cwd string, stdout io.Writer) error {
 func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	req *pulumirpc.RuntimeOptionsRequest,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
+	ctx, span := tracer.Start(ctx, "RuntimeOptionsPrompts")
+	defer span.End()
 	var prompts []*pulumirpc.RuntimeOptionPrompt
 	rawOpts := req.Info.Options.AsMap()
 
@@ -1147,6 +1174,8 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *nodeLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
+	ctx, span := tracer.Start(ctx, "About")
+	defer span.End()
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)
 		if err != nil {
@@ -1178,9 +1207,11 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 func (host *nodeLanguageHost) Handshake(ctx context.Context,
 	req *pulumirpc.LanguageHandshakeRequest,
 ) (*pulumirpc.LanguageHandshakeResponse, error) {
+	ctx, span := tracer.Start(ctx, "Handshake")
+	defer span.End()
 	host.engineAddress = req.EngineAddress
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
@@ -1338,6 +1369,8 @@ func crossCheckPackageJSONFile(path string, file []byte,
 func (host *nodeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	ctx, span := tracer.Start(ctx, "GetProgramDependencies")
+	defer span.End()
 	// We get the node dependencies. This requires either a yarn.lock file and the
 	// yarn executable, a package-lock.json file and the npm executable. If
 	// transitive is false, we also need the package.json file.
@@ -1469,10 +1502,12 @@ func startDebugging(
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
-	ctx := context.Background()
+	ctx, span := tracer.Start(server.Context(), "RunPlugin")
+	defer span.End()
 
-	engineClient, closer, err := host.connectToEngine()
+	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
+
+	engineClient, closer, err := host.connectToEngine(ctx)
 	if err != nil {
 		return err
 	}
@@ -1583,6 +1618,9 @@ func (host *nodeLanguageHost) RunPlugin(
 func (host *nodeLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
+	ctx, span := tracer.Start(ctx, "GenerateProject")
+	defer span.End()
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1629,6 +1667,9 @@ func (host *nodeLanguageHost) GenerateProject(
 func (host *nodeLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
+	ctx, span := tracer.Start(ctx, "GenerateProgram")
+	defer span.End()
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1688,6 +1729,8 @@ func (host *nodeLanguageHost) GenerateProgram(
 func (host *nodeLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
+	ctx, span := tracer.Start(ctx, "GeneratePackage")
+	defer span.End()
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err

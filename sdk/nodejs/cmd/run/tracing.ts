@@ -16,8 +16,10 @@
 import * as packageJson from "../../package.json";
 import * as opentelemetry from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 import { BatchSpanProcessor, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
+import { JaegerExporter } from "@opentelemetry/exporter-jaeger";
 import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
@@ -56,21 +58,19 @@ function validateUrl(destination: string): boolean {
 
 /** @internal */
 export function start(destinationUrl: string) {
-    if (!validateUrl(destinationUrl)) {
-        return;
+    if (destinationUrl === "" || destinationUrl === undefined) {
+	destinationUrl = "http://localhost:9411/api/v2/spans"
     }
+    // if (!validateUrl(destinationUrl)) {
+    //     return;
+    // }
     // Set up gRPC auto-instrumentation.
-    registerInstrumentations({
-        instrumentations: [new GrpcInstrumentation()],
-    });
-
     // Tag traces from this program with metadata about their source.
-    const resource = Resource.default().merge(
+    const resource =
         new Resource({
             [ATTR_SERVICE_NAME]: serviceName,
             [ATTR_SERVICE_VERSION]: packageJson.version,
-        }),
-    );
+        });
 
     /**
      * Taken from OpenTelemetry Examples (Apache 2 License):
@@ -84,17 +84,40 @@ export function start(destinationUrl: string) {
      * registered here.
      */
 
+    exporter = new ZipkinExporter({ url: destinationUrl, serviceName });
     // Create a new tracer provider, acting as a factory for tracers.
     const provider = new NodeTracerProvider({
         resource: resource,
+	spanProcessors: [new SimpleSpanProcessor(exporter)],
     });
 
     // Configure span processor to send spans to the exporter
     log.debug(`Registering tracing url: ${destinationUrl}`);
-    exporter = new ZipkinExporter({ url: destinationUrl, serviceName });
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+    console.log(`Registering tracing url: ${destinationUrl}`);
 
-    provider.register();
+	const sdk = new NodeSDK({
+//	    traceExporter: exporter,
+	    traceExporter: new JaegerExporter(),
+//	    resource: resource,
+	    // new Resource({
+	    // 		[SemanticResourceAttributes.SERVICE_NAME]: 'my-grpc-service',
+	    // 	}),
+		instrumentations: [
+			new GrpcInstrumentation({
+				// optional config
+				ignoreGrpcMethods: [],
+			}),
+		],
+	});
+
+    sdk.start()
+
+    // provider.register();
+
+    // registerInstrumentations({
+    //     instrumentations: [new GrpcInstrumentation()],
+    // });
+
     const tracer = opentelemetry.trace.getTracer("nodejs-runtime");
     // Create a root span, which must be closed.
     rootSpan = tracer.startSpan("nodejs-runtime-root");
@@ -105,10 +128,12 @@ export function stop() {
     // If rootSpan is null, the URI provided was invalid,
     // so tracing was never enabled.
     if (rootSpan != null) {
+	console.log("Shutting down tracer.");
         log.debug("Shutting down tracer.");
         // Always close the root span.
         rootSpan.end();
     }
+
     // Do not bother stopping the tracing exporter. Because we use a
     // SimpleSpanProcessor, it eagerly sends spans.
 }

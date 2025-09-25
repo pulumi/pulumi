@@ -247,10 +247,10 @@ export async function run(
     const tracingUrl: string | boolean = argv["tracing"];
     // Start tracing. Before exiting, gracefully shutdown tracing, exporting
     // all remaining spans in the batch.
-    if (tracingIsEnabled(tracingUrl)) {
+//    if (tracingIsEnabled(tracingUrl)) {
         tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
         process.on("exit", tracing.stop);
-    }
+//    }
     // Start a new span, which we shutdown at the bottom of this method.
     const span = tracing.newSpan("language-runtime.run");
 

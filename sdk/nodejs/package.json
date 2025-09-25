@@ -13,10 +13,13 @@
         "@logdna/tail-file": "^2.0.6",
         "@npmcli/arborist": "^7.3.1",
         "@opentelemetry/api": "^1.9",
+        "@opentelemetry/exporter-jaeger": "^2.0.1",
+        "@opentelemetry/exporter-trace-otlp-proto": "^0.203.0",
         "@opentelemetry/exporter-zipkin": "^1.28",
         "@opentelemetry/instrumentation": "^0.55",
         "@opentelemetry/instrumentation-grpc": "^0.55",
         "@opentelemetry/resources": "^1.28",
+        "@opentelemetry/sdk-node": "^0.203.0",
         "@opentelemetry/sdk-trace-base": "^1.28",
         "@opentelemetry/sdk-trace-node": "^1.28",
         "@types/google-protobuf": "^3.15.5",
@@ -83,8 +86,14 @@
         "node": ">=20"
     },
     "mocha": {
-        "require": ["source-map-support/register"],
-        "node-option": ["import=tsx"]
+        "require": [
+            "source-map-support/register"
+        ],
+        "node-option": [
+            "import=tsx"
+        ]
     },
-    "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
+    "//": [
+        "NOTE: @types/node is pinned due to grpc/grpc-node#2002"
+    ]
 }

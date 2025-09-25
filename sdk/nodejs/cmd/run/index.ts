@@ -15,8 +15,6 @@
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
 
-import * as grpc from "@grpc/grpc-js";
-import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
 

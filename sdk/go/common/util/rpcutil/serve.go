@@ -15,17 +15,23 @@
 package rpcutil
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/stats"
 )
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -45,6 +51,9 @@ func IsBenignCloseErr(err error) bool {
 }
 
 type ServeOptions struct {
+	// Context for span information
+	Ctx context.Context
+
 	// Port to listen on. Passing 0 makes the system choose a port automatically.
 	Port int
 
@@ -67,6 +76,42 @@ type ServeHandle struct {
 	Done <-chan error
 }
 
+// stackTraceHandler wraps otelgrpc.ClientHandler and adds stack traces.
+type stackTraceHandler struct {
+	delegate  stats.Handler
+	origStack []byte
+}
+
+func (h *stackTraceHandler) TagConn(ctx context.Context, info *stats.ConnTagInfo) context.Context {
+	return h.delegate.TagConn(ctx, info)
+}
+
+func (h *stackTraceHandler) HandleConn(ctx context.Context, stat stats.ConnStats) {
+	h.delegate.HandleConn(ctx, stat)
+}
+
+func (h *stackTraceHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
+	return h.delegate.TagRPC(ctx, info)
+}
+
+func (h *stackTraceHandler) HandleRPC(ctx context.Context, stat stats.RPCStats) {
+	// Let otelgrpc do its normal span work first
+	h.delegate.HandleRPC(ctx, stat)
+
+	// Try to fetch the current span
+	span := trace.SpanFromContext(ctx)
+	if span != nil && span.IsRecording() {
+		stack := debug.Stack()
+		span.AddEvent("grpc.callstack",
+			trace.WithAttributes(attribute.String("stacktrace", string(stack))),
+		)
+
+		span.AddEvent("grpc.origcallstack",
+			trace.WithAttributes(attribute.String("stacktrace", string(h.origStack))),
+		)
+	}
+}
+
 // ServeWithOptions creates a new gRPC server, calls opts.Init and listens on a TCP port.
 func ServeWithOptions(opts ServeOptions) (ServeHandle, error) {
 	h, _, err := serveWithOptions(opts)
@@ -87,7 +132,33 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
 
-	srv := grpc.NewServer(append(opts.Options, grpc.MaxRecvMsgSize(maxRPCMessageSize))...)
+	options := opts.Options
+	options = append(options, grpc.MaxRecvMsgSize(maxRPCMessageSize))
+	//	if opts.Ctx != nil {
+	options = append(options, grpc.UnaryInterceptor(func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		// // Inject the top-level span as parent into request context
+		// if !trace.SpanFromContext(ctx).SpanContext().IsValid() {
+		// 	span := trace.SpanFromContext(opts.Ctx)
+		// 	q.Q(span)
+		// 	ctx = trace.ContextWithSpan(ctx, span)
+		// }
+		if opts.Ctx != nil {
+			return handler(opts.Ctx, req)
+		}
+		return handler(ctx, req)
+	}))
+
+	h := otelgrpc.NewServerHandler()
+
+	options = append(options, grpc.StatsHandler(&stackTraceHandler{delegate: h, origStack: debug.Stack()}))
+	//	}
+
+	srv := grpc.NewServer(options...)
 
 	if opts.Init != nil {
 		if err := opts.Init(srv); err != nil {

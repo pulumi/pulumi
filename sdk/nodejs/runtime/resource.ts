@@ -15,6 +15,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as log from "../log";
 import * as utils from "../utils";
+import * as tracing from "../cmd/run/tracing";
 
 import { Input, Inputs, Output, output } from "../output";
 import {
@@ -1142,6 +1143,9 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
     // never resolve.
+    tracing.start(""); // safe cast, since tracingIsEnable confirmed the type
+    const rcSpan = tracing.newSpan("language-runtime.registerResourceOutputs");
+
     const opLabel = `monitor.registerResourceOutputs(...)`;
     const done = rpcKeepAlive();
     runAsyncResourceOp(
@@ -1206,6 +1210,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         },
         false,
     );
+    rcSpan.end();
 }
 
 /**

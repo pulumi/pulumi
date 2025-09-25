@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type clientLanguageRuntimeHost struct {
@@ -63,6 +64,7 @@ func langRuntimePluginDialOptions(ctx *plugin.Context, address string) []grpc.Di
 		rpcutil.OpenTracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 
 	if ctx.DialOptions != nil {

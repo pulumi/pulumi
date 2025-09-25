@@ -790,6 +790,7 @@ func newResourceMonitor(
 
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Ctx:    src.plugctx.Base(),
 		Cancel: resmon.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)

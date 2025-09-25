@@ -15,6 +15,7 @@
 package cmdutil
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -31,6 +32,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
@@ -46,6 +53,10 @@ var TracingToFile bool
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
+
+var otelTracerProvider *sdktrace.TracerProvider
+
+var otelRootSpan trace.Span
 
 type localStore struct {
 	path  string
@@ -63,6 +74,10 @@ func (s *localStore) Close() error {
 
 func IsTracingEnabled() bool {
 	return TracingEndpoint != ""
+}
+
+func IsOtelEnabled() bool {
+	return otelTracerProvider != nil
 }
 
 // InitTracing initializes tracing
@@ -171,6 +186,51 @@ func CloseTracing() {
 	}
 
 	contract.IgnoreClose(traceCloser)
+}
+
+func InitOtel(name, tracingEndpoint, rootSpanName string) {
+	if tracingEndpoint == "" || otelTracerProvider != nil {
+		return
+	}
+	endpointURL, err := url.Parse(tracingEndpoint)
+	if err != nil {
+		log.Fatalf("invalid tracing endpoint: %v", err)
+	}
+
+	switch endpointURL.Scheme {
+	case "http":
+		traceExporter, err := otlptracehttp.New(context.TODO(),
+			otlptracehttp.WithEndpoint(endpointURL.Host),
+			otlptracehttp.WithInsecure(),
+		)
+		if err != nil {
+			log.Fatalf("failed to initialize http trace exporter: %v", err)
+		}
+
+		otelTracerProvider = sdktrace.NewTracerProvider(
+			sdktrace.WithBatcher(traceExporter,
+				// Default is 5s. Set to 1s for demonstrative purposes.
+				sdktrace.WithBatchTimeout(time.Second)),
+		)
+	default:
+		log.Fatalf("invalid OpenTelemetry tracing endpoint: %v", err)
+	}
+
+	otel.SetTracerProvider(otelTracerProvider)
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		),
+	)
+}
+
+func CloseOtel(ctx context.Context) {
+	if !IsOtelEnabled() {
+		return
+	}
+	fmt.Println("Flushing OpenTelemetry spans...")
+	otelTracerProvider.Shutdown(ctx)
 }
 
 // Starts an AppDash server listening on any available TCP port

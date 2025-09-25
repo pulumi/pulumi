@@ -63,7 +63,9 @@ func main() {
 
 	if err := pulumiCmd.Execute(); err != nil {
 		cmd.DisplayErrorMessage(err)
-		cleanup()
+		if cleanup != nil {
+			cleanup()
+		}
 		os.Exit(-1)
 	}
 	*finished = true

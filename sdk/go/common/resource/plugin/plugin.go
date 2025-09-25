@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,11 +34,15 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -161,7 +166,39 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
+// stackTraceHandler wraps otelgrpc.ClientHandler and adds stack traces.
+type stackTraceHandler struct {
+	delegate stats.Handler
+}
+
+func (h *stackTraceHandler) TagConn(ctx context.Context, info *stats.ConnTagInfo) context.Context {
+	return h.delegate.TagConn(ctx, info)
+}
+
+func (h *stackTraceHandler) HandleConn(ctx context.Context, stat stats.ConnStats) {
+	h.delegate.HandleConn(ctx, stat)
+}
+
+func (h *stackTraceHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
+	return h.delegate.TagRPC(ctx, info)
+}
+
+func (h *stackTraceHandler) HandleRPC(ctx context.Context, stat stats.RPCStats) {
+	// Let otelgrpc do its normal span work first
+	h.delegate.HandleRPC(ctx, stat)
+
+	// Try to fetch the current span
+	span := trace.SpanFromContext(ctx)
+	if span != nil && span.IsRecording() {
+		stack := debug.Stack()
+		span.AddEvent("grpc.callstack",
+			trace.WithAttributes(attribute.String("stacktrace", string(stack))),
+		)
+	}
+}
+
 func dialPlugin[T any](
+	ctx context.Context,
 	portNum int,
 	bin string,
 	prefix string,
@@ -169,6 +206,10 @@ func dialPlugin[T any](
 	dialOptions []grpc.DialOption,
 ) (*grpc.ClientConn, *T, error) {
 	port := strconv.Itoa(portNum)
+
+	h := otelgrpc.NewClientHandler()
+
+	dialOptions = append(dialOptions, grpc.WithStatsHandler(&stackTraceHandler{delegate: h}))
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.NewClient("127.0.0.1:"+port, dialOptions...)
@@ -185,7 +226,7 @@ func dialPlugin[T any](
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	timeout, _ := context.WithTimeout(ctx, pluginRPCConnectionTimeout)
 	for {
 		s := conn.GetState()
 		if s == connectivity.Ready {
@@ -399,7 +440,7 @@ func newPlugin[T any](
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, outStreamID, stdoutDone)
 
-	conn, handshakeRes, err := dialPlugin(port, bin, prefix, handshake, dialOptions)
+	conn, handshakeRes, err := dialPlugin(ctx.Base(), port, bin, prefix, handshake, dialOptions)
 	if err != nil {
 		return nil, nil, err
 	}
