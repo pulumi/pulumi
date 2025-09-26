@@ -586,7 +586,7 @@ func TestRemediateFailure(t *testing.T) {
 	snap, res := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NotNil(t, res)
 	require.NotNil(t, snap)
-	assert.Equal(t, 0, len(snap.Resources))
+	assert.Empty(t, snap.Resources)
 }
 
 func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T) {

@@ -316,5 +316,5 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	plugins, err := workspace.GetPluginsFromDir(dir)
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(plugins))
+	assert.Empty(t, plugins)
 }

@@ -1237,7 +1237,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, old)
-	assert.Equal(t, 0, len(snap.Resources))
+	assert.Empty(t, snap.Resources)
 }
 
 // Test that we can run a simple refresh by executing the program for it.

@@ -333,10 +333,10 @@ Successfully moved resources from organization/test/sourceStack to organization/
 		destSnapshot.Resources[1].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::resToMove"),
 		destSnapshot.Resources[2].URN)
-	assert.Equal(t, 0, len(destSnapshot.Resources[2].Dependencies))
+	assert.Empty(t, destSnapshot.Resources[2].Dependencies)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::movedChildURN"),
 		destSnapshot.Resources[3].URN)
-	assert.Equal(t, 0, len(destSnapshot.Resources[3].Dependencies))
+	assert.Empty(t, destSnapshot.Resources[3].Dependencies)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::dependsOnMovedChildURN"),
 		destSnapshot.Resources[4].URN)
 	assert.Equal(t, 1, len(destSnapshot.Resources[4].Dependencies))

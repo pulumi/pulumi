@@ -355,7 +355,7 @@ func TestArchiveSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarchive)
 		assert.True(t, archiveDes.IsAssets())
-		assert.Equal(t, 0, len(archiveDes.Assets))
+		assert.Empty(t, archiveDes.Assets)
 	})
 	t.Run("empty archive", func(t *testing.T) {
 		t.Parallel()
@@ -363,7 +363,7 @@ func TestArchiveSerialize(t *testing.T) {
 		// Check that a fully empty archive is treated as an empty assets archive.
 		empty := &rarchive.Archive{}
 		assert.True(t, empty.IsAssets())
-		assert.Equal(t, 0, len(empty.Assets))
+		assert.Empty(t, empty.Assets)
 		emptySer := empty.Serialize()
 		emptyDes, isarchive, err := rarchive.Deserialize(emptySer)
 		require.NoError(t, err)

@@ -222,7 +222,7 @@ func TestStackOutputsNodeJS(t *testing.T) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Empty(t, stackRes.Inputs)
 				assert.Equal(t, 2, len(stackRes.Outputs))
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
@@ -464,7 +464,7 @@ func TestStackDependencyGraph(t *testing.T) {
 				urn := string(res.URN)
 				if strings.Contains(urn, "dynamic:Resource::first") {
 					// The first resource doesn't depend on anything.
-					assert.Equal(t, 0, len(res.Dependencies))
+					assert.Empty(t, res.Dependencies)
 					sawFirst = true
 				} else if strings.Contains(urn, "dynamic:Resource::second") {
 					// The second resource uses an Output property of the first resource, so it
