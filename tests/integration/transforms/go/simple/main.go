@@ -259,6 +259,19 @@ func main() {
 			return fmt.Errorf("expected prefix to be test, got %v", result["prefix"])
 		}
 
+		_, err = NewRandom(ctx, "res9", &RandomArgs{Length: pulumi.Int(5)}, pulumi.Transforms([]pulumi.ResourceTransform{
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
+				rta.Opts.Import = pulumi.ID("test-id")
+				return &pulumi.ResourceTransformResult{
+					Props: rta.Props,
+					Opts:  rta.Opts,
+				}
+			},
+		}))
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 }
