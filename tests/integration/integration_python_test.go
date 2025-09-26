@@ -102,12 +102,12 @@ func TestStackOutputsPython(t *testing.T) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+			if assert.Len(t, stackInfo.Deployment.Resources, 1) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Empty(t, stackRes.Inputs)
-				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Len(t, stackRes.Outputs, 2)
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
@@ -807,7 +807,7 @@ func TestConstructSlowPython(t *testing.T) {
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+			if assert.Len(t, stackInfo.Deployment.Resources, 5) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)

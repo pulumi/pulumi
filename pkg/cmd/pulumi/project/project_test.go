@@ -25,7 +25,7 @@ func TestNewProjectCmd(t *testing.T) {
 	cmd := NewProjectCmd()
 	assert.Equal(t, "project", cmd.Use)
 	assert.Equal(t, "Manage Pulumi projects", cmd.Short)
-	assert.Equal(t, 1, len(cmd.Commands()))
+	assert.Len(t, cmd.Commands(), 1)
 
 	// Check ls command
 	lsCmd := cmd.Commands()[0]

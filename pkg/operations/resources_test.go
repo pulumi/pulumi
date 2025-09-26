@@ -45,15 +45,15 @@ func TestTodo(t *testing.T) {
 	t.Parallel()
 
 	components := getPulumiResources(t, "testdata/todo.json")
-	assert.Equal(t, 4, len(components.Children))
+	assert.Len(t, components.Children, 4)
 
 	// Table child
 	table, ok := components.GetChild("cloud:table:Table", "todo")
 	assert.True(t, ok)
 	require.NotNil(t, table)
-	assert.Equal(t, 2, len(table.State.Inputs))
+	assert.Len(t, table.State.Inputs, 2)
 	assert.Equal(t, "id", table.State.Inputs["primaryKey"].StringValue())
-	assert.Equal(t, 1, len(table.Children))
+	assert.Len(t, table.Children, 1)
 	table, ok = table.GetChild("aws:dynamodb/table:Table", "todo")
 	assert.True(t, ok)
 	require.NotNil(t, table)
@@ -62,10 +62,10 @@ func TestTodo(t *testing.T) {
 	endpoint, ok := components.GetChild("cloud:http:HttpEndpoint", "todo")
 	assert.True(t, ok)
 	require.NotNil(t, endpoint)
-	assert.Equal(t, 5, len(endpoint.State.Inputs))
+	assert.Len(t, endpoint.State.Inputs, 5)
 	assert.Equal(t,
 		"https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/", endpoint.State.Inputs["url"].StringValue())
-	assert.Equal(t, 14, len(endpoint.Children))
+	assert.Len(t, endpoint.Children, 14)
 	endpoint, ok = endpoint.GetChild("aws:apigateway/restApi:RestApi", "todo")
 	assert.True(t, ok)
 	require.NotNil(t, endpoint)
@@ -80,14 +80,14 @@ func TestCrawler(t *testing.T) {
 	t.Parallel()
 
 	components := getPulumiResources(t, "testdata/crawler.json")
-	assert.Equal(t, 7, len(components.Children))
+	assert.Len(t, components.Children, 7)
 
 	// Topic child
 	topic, ok := components.GetChild("cloud:topic:Topic", "countDown")
 	assert.True(t, ok)
 	require.NotNil(t, topic)
 	assert.Empty(t, topic.State.Inputs)
-	assert.Equal(t, 1, len(topic.Children))
+	assert.Len(t, topic.Children, 1)
 	topic, ok = topic.GetChild("aws:sns/topic:Topic", "countDown")
 	assert.True(t, ok)
 	require.NotNil(t, topic)
@@ -96,14 +96,14 @@ func TestCrawler(t *testing.T) {
 	heartbeat, ok := components.GetChild("cloud:timer:Timer", "heartbeat")
 	assert.True(t, ok)
 	require.NotNil(t, heartbeat)
-	assert.Equal(t, 1, len(heartbeat.State.Inputs))
+	assert.Len(t, heartbeat.State.Inputs, 1)
 	assert.Equal(t, "rate(5 minutes)", heartbeat.State.Inputs["scheduleExpression"].StringValue())
-	assert.Equal(t, 4, len(heartbeat.Children))
+	assert.Len(t, heartbeat.Children, 4)
 
 	// Function child of timer
 	function, ok := heartbeat.GetChild("cloud:function:Function", "heartbeat")
 	assert.True(t, ok)
 	require.NotNil(t, function)
-	assert.Equal(t, 1, len(function.State.Inputs))
-	assert.Equal(t, 3, len(function.Children))
+	assert.Len(t, function.State.Inputs, 1)
+	assert.Len(t, function.Children, 3)
 }

@@ -245,7 +245,7 @@ func testRemoteStackGitSource(
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)

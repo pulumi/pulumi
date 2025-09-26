@@ -203,7 +203,7 @@ func TestCopy(t *testing.T) {
 	src["a"] = NewNullProperty()
 	assert.Equal(t, NewProperty("str"), dst["a"])
 	src["c"] = NewProperty(99.99)
-	assert.Equal(t, 2, len(dst))
+	assert.Len(t, dst, 2)
 }
 
 func TestSecretUnknown(t *testing.T) {

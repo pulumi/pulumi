@@ -460,8 +460,8 @@ func TestConfigPropertyMapMatches(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Check that the config property map matches what we expect.
-		assert.Equal(t, 8, len(info.Config))
-		assert.Equal(t, 8, len(info.ConfigPropertyMap))
+		assert.Len(t, info.Config, 8)
+		assert.Len(t, info.ConfigPropertyMap, 8)
 
 		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
 		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
@@ -970,9 +970,9 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 
 	// Assert that CREATE pending operations are retained
 	// TODO: should revisit whether non-CREATE pending operations should also be retained
-	assert.Equal(t, 1, len(new.PendingOperations))
+	assert.Len(t, new.PendingOperations, 1)
 	createOperations := findPendingOperationsByType(resource.OperationTypeCreating, new)
-	assert.Equal(t, 1, len(createOperations))
+	assert.Len(t, createOperations, 1)
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
 

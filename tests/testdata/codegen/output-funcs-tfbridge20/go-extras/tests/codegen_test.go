@@ -152,7 +152,7 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 
 		keys := waitOut(t, output.Keys()).([]mypkg.StorageAccountKeyResponse)
 
-		assert.Equal(t, 1, len(keys))
+		assert.Len(t, keys, 1)
 		assert.Equal(t, "key", keys[0].KeyName)
 		assert.Equal(t, "permissions", keys[0].Permissions)
 		assert.Equal(t, "accountName=my-account-name, resourceGroupName=my-resource-group-name, expand=",
@@ -166,7 +166,7 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 
 		keys = waitOut(t, output.Keys()).([]mypkg.StorageAccountKeyResponse)
 
-		assert.Equal(t, 1, len(keys))
+		assert.Len(t, keys, 1)
 		assert.Equal(t, "key", keys[0].KeyName)
 		assert.Equal(t, "permissions", keys[0].Permissions)
 		assert.Equal(t, "accountName=my-account-name, resourceGroupName=my-resource-group-name, expand=my-expand",

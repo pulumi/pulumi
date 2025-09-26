@@ -197,7 +197,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		assert.Falsef(t, treeRenderer.dirty, "Expecting the renderer to not be dirty after a frame is called")
 
 		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
-		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
+		assert.Len(t, treeRenderer.systemMessages, 1000,
 			"Expecting 1000 system messages to now be in the tree renderer")
 	}()
 
