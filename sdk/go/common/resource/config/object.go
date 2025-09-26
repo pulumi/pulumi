@@ -75,6 +75,52 @@ func (c object) Secure() bool {
 	}
 }
 
+func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypter) (map[Key]Plaintext, error) {
+	// Collect all secure values
+	var locationRefs []secureLocationRef
+	var valuesChunks [][]string
+	collectSecureFromKeyMap(objectMap, &locationRefs, &valuesChunks)
+
+	// Decrypt objects in batches
+	offset := 0
+	for _, valuesChunk := range valuesChunks {
+		if len(valuesChunk) == 0 {
+			continue
+		}
+		decryptedChunk, err := decrypter.BatchDecrypt(ctx, valuesChunk)
+		if err != nil {
+			return nil, err
+		}
+		// Assign decrypted values back into original structure
+		// We are accepting that a secure object now has a Plaintext value
+		for i, decrypted := range decryptedChunk {
+			locationRef := locationRefs[offset+i]
+			switch container := locationRef.container.(type) {
+			case map[Key]object:
+				container[locationRef.key.(Key)] = newSecureObject(decrypted)
+			case map[string]object:
+				container[locationRef.key.(string)] = newSecureObject(decrypted)
+			case []object:
+				container[locationRef.key.(int)] = newSecureObject(decrypted)
+			}
+		}
+		offset += len(valuesChunk)
+	}
+
+	// Marshal each top-level object back into a Plaintext value.
+	// Note that at this point, all secure values have been decrypted.
+	// So we can use the NopDecrypter here.
+	result := map[Key]Plaintext{}
+	for k, obj := range objectMap {
+		pt, err := obj.decrypt(ctx, nil, NopDecrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = pt
+	}
+	return result, nil
+}
+
 // Decrypt decrypts any ciphertexts within the object and returns appropriately-shaped Plaintext values.
 func (c object) Decrypt(ctx context.Context, decrypter Decrypter) (Plaintext, error) {
 	return c.decrypt(ctx, nil, decrypter)
@@ -94,11 +140,11 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 		if !c.secure {
 			return NewPlaintext(v), nil
 		}
-		plaintext, err := decrypter.DecryptValue(ctx, v)
+		decrypted, err := decrypter.DecryptValue(ctx, v)
 		if err != nil {
 			return Plaintext{}, fmt.Errorf("%v: %w", path, err)
 		}
-		return NewSecurePlaintext(plaintext), nil
+		return NewSecurePlaintext(decrypted), nil
 	case []object:
 		vs := make([]Plaintext, len(v))
 		for i, v := range v {
@@ -316,40 +362,23 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 	}
 }
 
-// SecureValues returns the plaintext values for any secure strings contained in the receiver.
-func (c object) SecureValues(dec Decrypter) ([]string, error) {
+// EncryptedValues returns the ciphertext values for any secure strings contained in the receiver.
+func (c object) EncryptedValues(valuesChunks *[][]string) {
 	switch v := c.value.(type) {
 	case []object:
-		var values []string
 		for _, v := range v {
-			vs, err := v.SecureValues(dec)
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, vs...)
+			v.EncryptedValues(valuesChunks)
 		}
-		return values, nil
 	case map[string]object:
-		var values []string
 		for _, v := range v {
-			vs, err := v.SecureValues(dec)
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, vs...)
+			v.EncryptedValues(valuesChunks)
 		}
-		return values, nil
 	case string:
 		if c.secure {
-			plaintext, err := dec.DecryptValue(context.TODO(), v)
-			if err != nil {
-				return nil, err
-			}
-			return []string{plaintext}, nil
+			addStringToChunks(valuesChunks, v, defaultMaxChunkSize)
 		}
-		return nil, nil
 	default:
-		return nil, nil
+		return
 	}
 }
 
@@ -530,7 +559,7 @@ func isSecureValue(v any) (bool, string) {
 }
 
 func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (resource.PropertyValue, error) {
-	plaintext, err := c.Decrypt(ctx, decrypter)
+	plaintext, err := c.decrypt(ctx, nil, decrypter)
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
