@@ -28,6 +28,10 @@ type SnapshotManager interface {
 	// for example after migrating providers.
 	Write(base *deploy.Snapshot) error
 
+	// RebuiltBaseState is called to inform the SnapshotManager that the engine has rebuilt
+	// the base state after a refresh
+	RebuiltBaseState() error
+
 	// BeginMutation signals to the SnapshotManager that the planner intends to mutate the global
 	// snapshot. It provides the step that it intends to execute. Based on that step, BeginMutation
 	// will record this intent in the global snapshot and return a `SnapshotMutation` that, when ended,

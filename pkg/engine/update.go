@@ -613,6 +613,10 @@ func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
 	return acts.Context.SnapshotManager.Write(step)
 }
 
+func (acts *updateActions) OnRebuiltBaseState() error {
+	return acts.Context.SnapshotManager.RebuiltBaseState()
+}
+
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
@@ -822,6 +826,10 @@ func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 }
 
 func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
+	return nil
+}
+
+func (acts *previewActions) OnRebuiltBaseState() error {
 	return nil
 }
 

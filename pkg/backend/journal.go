@@ -215,6 +215,19 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 		}
 
 		r.base.SecretsProviders = entry.SecretsProvider
+	case apitype.JournalEntryKindRebuiltBaseState:
+		// We need to build the snapshot from the current state here and discard the
+		// current journal entries. This happens after a refresh operation.
+		deployment, _, _ := r.GenerateDeployment()
+		r.base = deployment
+		r.toRemove = make(map[int64]struct{})
+		r.toDeleteInSnapshot = make(map[int64]struct{})
+		r.toReplaceInSnapshot = make(map[int64]*apitype.ResourceV3)
+		r.markAsDeletion = make(map[int64]struct{})
+		r.markAsPendingReplacement = make(map[int64]struct{})
+		r.operationIDToResourceIndex = make(map[int64]int64)
+		r.incompleteOps = make(map[int64]apitype.JournalEntry)
+		r.newResources = make([]*apitype.ResourceV3, 0)
 	}
 }
 
@@ -687,6 +700,10 @@ func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
 		Kind:        engine.JournalEntryWrite,
 		NewSnapshot: snapCopy,
 	})
+}
+
+func (sj *snapshotJournaler) RebuiltBaseState() error {
+	return sj.journalMutation(engine.JournalEntry{Kind: engine.JournalEntryRebuiltBaseState})
 }
 
 func (sj snapshotJournaler) Close() error {

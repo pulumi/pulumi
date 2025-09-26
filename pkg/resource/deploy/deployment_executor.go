@@ -806,6 +806,11 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 
 	ex.rebuildBaseState(resourceToStep)
 
+	err := ex.deployment.events.OnRebuiltBaseState()
+	if err != nil {
+		return err
+	}
+
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
