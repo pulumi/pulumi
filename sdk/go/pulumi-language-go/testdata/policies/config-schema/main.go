@@ -8,17 +8,17 @@ import (
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/policyx"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 
 	"github.com/blang/semver"
 )
 
 func main() {
-	if err := policyx.Main(func(host pulumix.Engine) (policyx.PolicyPack, error) {
+	if err := policyx.Main(func(pctx *pulumi.Context) (policyx.PolicyPack, error) {
 		version := semver.MustParse("3.0.0")
 		return policyx.NewPolicyPack(
-			"config-schema", version, policyx.EnforcementLevelAdvisory, nil,
+			"config-schema", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("validator", policyx.ResourceValidationPolicyArgs{
 					Description:      "Verifies property matches config",

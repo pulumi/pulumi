@@ -96,23 +96,10 @@ runtime: yaml`
 
 		ctx := context.Background()
 
-		plaintext := map[string]config.Plaintext{
-			"aws:region":   config.NewPlaintext("us-west-2"),
-			"app:password": config.NewSecurePlaintext("hunter2"),
-			"app:tags": config.NewPlaintext(map[string]config.Plaintext{
-				"env": config.NewPlaintext("testing"),
-				"owners": config.NewPlaintext([]config.Plaintext{
-					config.NewPlaintext("alice"),
-					config.NewPlaintext("bob"),
-				}),
-			}),
-		}
-		cfg := make(config.Map)
-		for k, v := range plaintext {
-			cv, err := v.Encrypt(ctx, config.Base64Crypter)
-			require.NoError(t, err)
-			ns, name, _ := strings.Cut(k, ":")
-			cfg[config.MustMakeKey(ns, name)] = cv
+		cfg := map[config.Key]config.Value{
+			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
+			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
@@ -173,23 +160,10 @@ runtime: yaml`
 
 		ctx := context.Background()
 
-		plaintext := map[string]config.Plaintext{
-			"aws:region":   config.NewPlaintext("us-west-2"),
-			"app:password": config.NewSecurePlaintext("hunter2"),
-			"app:tags": config.NewPlaintext(map[string]config.Plaintext{
-				"env": config.NewPlaintext("testing"),
-				"owners": config.NewPlaintext([]config.Plaintext{
-					config.NewPlaintext("alice"),
-					config.NewPlaintext("bob"),
-				}),
-			}),
-		}
-		cfg := make(config.Map)
-		for k, v := range plaintext {
-			cv, err := v.Encrypt(ctx, config.Base64Crypter)
-			require.NoError(t, err)
-			ns, name, _ := strings.Cut(k, ":")
-			cfg[config.MustMakeKey(ns, name)] = cv
+		cfg := map[config.Key]config.Value{
+			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
+			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
@@ -249,23 +223,10 @@ runtime: yaml`
 
 		ctx := context.Background()
 
-		plaintext := map[string]config.Plaintext{
-			"aws:region":   config.NewPlaintext("us-west-2"),
-			"app:password": config.NewSecurePlaintext("hunter2"),
-			"app:tags": config.NewPlaintext(map[string]config.Plaintext{
-				"env": config.NewPlaintext("testing"),
-				"owners": config.NewPlaintext([]config.Plaintext{
-					config.NewPlaintext("alice"),
-					config.NewPlaintext("bob"),
-				}),
-			}),
-		}
-		cfg := make(config.Map)
-		for k, v := range plaintext {
-			cv, err := v.Encrypt(ctx, config.Base64Crypter)
-			require.NoError(t, err)
-			ns, name, _ := strings.Cut(k, ":")
-			cfg[config.MustMakeKey(ns, name)] = cv
+		cfg := map[config.Key]config.Value{
+			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
+			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{
