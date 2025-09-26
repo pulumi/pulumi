@@ -259,9 +259,9 @@ func main() {
 			return fmt.Errorf("expected prefix to be test, got %v", result["prefix"])
 		}
 
-		_, err = NewRandom(ctx, "res9", &RandomArgs{Length: pulumi.Int(5)}, pulumi.Transforms([]pulumi.ResourceTransform{
+		_, err = NewRandom(ctx, "res9", &RandomArgs{Length: pulumi.Int(7)}, pulumi.Transforms([]pulumi.ResourceTransform{
 			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-				rta.Opts.Import = pulumi.ID("test-id")
+				rta.Opts.Import = pulumi.ID("stackDefault:test-id")
 				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
 					Opts:  rta.Opts,

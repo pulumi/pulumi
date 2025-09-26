@@ -111,7 +111,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 		}
 		if res.URN.Name() == "res9" {
 			foundRes9 = true
-			assert.Equal(t, "test-id", res.ImportID)
+			assert.Equal(t, resource.ID("stackDefault:test-id"), res.ImportID)
 		}
 	}
 	assert.True(t, foundRes1)

@@ -156,12 +156,12 @@ async () => {
     }
  };
 
- const res9 = new Random("res9", { length: 5 }, {
+ const res9 = new Random("res9", { length: 7 }, {
     transforms: [
         async ({ props, opts }) => {
             return {
                 props: props,
-                opts: pulumi.mergeOptions(opts, { import: "test-id" }),
+                opts: pulumi.mergeOptions(opts, { import: "stackDefault:test-id" }),
             };
         },
     ],
