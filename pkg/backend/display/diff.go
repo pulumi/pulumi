@@ -114,8 +114,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.PolicyAnalyzeStackSummaryEvent:
 		return ""
 
-		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
-		// progress displays.
+	// Currently, prelude, summary, and stdout events are printed the same for both the diff and
+	// progress displays.
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
@@ -123,9 +123,9 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
-		// Resource operations have very specific displays for either diff or progress displays.
-		// These functions should not be directly used by the progress display without validating
-		// that the display is appropriate for both.
+	// Resource operations have very specific displays for either diff or progress displays.
+	// These functions should not be directly used by the progress display without validating
+	// that the display is appropriate for both.
 	case engine.ResourceOperationFailed:
 		return renderDiffResourceOperationFailedEvent(event.Payload().(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:

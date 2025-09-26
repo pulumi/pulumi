@@ -1680,6 +1680,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		IgnoreChanges:           s.new.IgnoreChanges,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
+		HideDetailedDiff:        s.new.HideDetailedDiff,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,
 	}.Make()
