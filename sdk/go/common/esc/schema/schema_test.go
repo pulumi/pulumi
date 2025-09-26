@@ -177,3 +177,23 @@ func TestCompile(t *testing.T) {
 		})
 	}
 }
+
+func TestRotateOnly(t *testing.T) {
+	root := &Schema{
+		Type: "object",
+		Defs: map[string]*Schema{
+			"foo": String().Schema(),
+		},
+		Properties: map[string]*Schema{
+			"rotateOnly": Array().Items(Ref("#/$defs/foo")).Schema(),
+			"standard":   Ref("#/$defs/foo"),
+		},
+		RotateOnly: []string{"rotateOnly"},
+	}
+	err := root.Compile()
+	require.NoError(t, err)
+
+	assert.True(t, root.Property("rotateOnly").IsRotateOnly())
+	assert.True(t, root.Property("rotateOnly").Item(0).IsRotateOnly())
+	assert.False(t, root.Property("standard").IsRotateOnly())
+}

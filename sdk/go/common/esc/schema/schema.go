@@ -19,11 +19,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+
+	fxm "github.com/pgavlin/fx/v2/maps"
+	fxs "github.com/pgavlin/fx/v2/slices"
 )
 
 type Builder interface {
@@ -244,6 +249,27 @@ func (s *Schema) Compile() error {
 	return s.compile(s)
 }
 
+// setRotateOnly transitively sets the rotateOnly flag on the input schema, making a copy if necessary.
+func setRotateOnly(s *Schema) *Schema {
+	if s == nil || s.rotateOnly {
+		return s
+	}
+
+	copy := *s
+	copy.rotateOnly = true
+
+	copy.ref = setRotateOnly(s.ref)
+	copy.AnyOf = slices.Collect(fxs.Map(s.AnyOf, setRotateOnly))
+	copy.OneOf = slices.Collect(fxs.Map(s.OneOf, setRotateOnly))
+	copy.PrefixItems = slices.Collect(fxs.Map(s.PrefixItems, setRotateOnly))
+	copy.Items = setRotateOnly(s.Items)
+	copy.AdditionalProperties = setRotateOnly(s.AdditionalProperties)
+	copy.Properties = maps.Collect(fxm.Map(s.Properties, func(k string, s *Schema) (string, *Schema) { return k, setRotateOnly(s) }))
+	copy.RotateOnly = slices.Collect(maps.Keys(s.Properties))
+
+	return &copy
+}
+
 func (s *Schema) compile(root *Schema) error {
 	if s == nil || s.compiled {
 		return nil
@@ -290,7 +316,7 @@ func (s *Schema) compile(root *Schema) error {
 	for _, name := range s.RotateOnly {
 		// need to push the rotateOnly flag down onto the actual properties, so it is available to the evaluator while evaluating object properties
 		if p, ok := s.Properties[name]; ok {
-			p.rotateOnly = true
+			s.Properties[name] = setRotateOnly(p)
 		}
 	}
 
