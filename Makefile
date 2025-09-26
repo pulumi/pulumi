@@ -139,8 +139,9 @@ lint_golang:: lint_deps
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--timeout 5m && \
+		cd $(CURDIR) && \
 		echo "[requiredfield] Linting $(pkg)..." && \
-		go vet -tags all -vettool=$$(which requiredfield) ./...) \
+		go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(pkg)/...) \
 		&&) true
 
 lint_golang_fix::
