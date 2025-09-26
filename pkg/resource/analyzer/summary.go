@@ -67,9 +67,9 @@ func newPolicySummary(
 		failed[d.PolicyName] = struct{}{}
 	}
 
-	notApplicable := map[string]string{}
+	notApplicable := map[string]struct{}{}
 	for _, na := range response.NotApplicable {
-		notApplicable[na.PolicyName] = na.Reason
+		notApplicable[na.PolicyName] = struct{}{}
 	}
 
 	disabled := map[string]struct{}{}
@@ -95,20 +95,11 @@ func newPolicySummary(
 		}
 	}
 
-	notApplicableResult := make([]plugin.PolicyNotApplicable, len(notApplicable))
-	for i, name := range maputil.SortedKeys(notApplicable) {
-		notApplicableResult[i] = plugin.PolicyNotApplicable{
-			PolicyName: name,
-			Reason:     notApplicable[name],
-		}
-	}
-
 	return plugin.PolicySummary{
 		URN:               urn,
 		PolicyPackName:    info.Name,
 		PolicyPackVersion: info.Version,
 		Disabled:          maputil.SortedKeys(disabled),
-		NotApplicable:     notApplicableResult,
 		Passed:            maputil.SortedKeys(passed),
 		Failed:            maputil.SortedKeys(failed),
 	}

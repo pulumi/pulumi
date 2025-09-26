@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
@@ -228,8 +227,6 @@ type PolicyAnalyzeSummaryEventPayload struct {
 	PolicyPackVersion string
 	// Names of resource policies in the policy pack that were disabled.
 	Disabled []string
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []apitype.PolicyNotApplicable
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of resource policies that failed (i.e. produced violations).
@@ -246,8 +243,6 @@ type PolicyRemediateSummaryEventPayload struct {
 	PolicyPackVersion string
 	// Names of resource policies in the policy pack that were disabled.
 	Disabled []string
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []apitype.PolicyNotApplicable
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of resource policies that failed (i.e. produced violations).
@@ -262,8 +257,6 @@ type PolicyAnalyzeStackSummaryEventPayload struct {
 	PolicyPackVersion string
 	// Names of stack policies in the policy pack that were disabled.
 	Disabled []string
-	// Not applicable stack policies in the policy pack.
-	NotApplicable []apitype.PolicyNotApplicable
 	// The names of stack policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of stack policies that failed (i.e. produced violations).
@@ -700,19 +693,11 @@ func (e *eventEmitter) PolicyLoadEvent() {
 func (e *eventEmitter) policyAnalyzeSummaryEvent(s plugin.PolicySummary) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	notApplicable := slice.Map(s.NotApplicable, func(n plugin.PolicyNotApplicable) apitype.PolicyNotApplicable {
-		return apitype.PolicyNotApplicable{
-			PolicyName: n.PolicyName,
-			Reason:     n.Reason,
-		}
-	})
-
 	e.sendEvent(NewEvent(PolicyAnalyzeSummaryEventPayload{
 		ResourceURN:       s.URN,
 		PolicyPackName:    s.PolicyPackName,
 		PolicyPackVersion: s.PolicyPackVersion,
 		Disabled:          s.Disabled,
-		NotApplicable:     notApplicable,
 		Passed:            s.Passed,
 		Failed:            s.Failed,
 	}))
@@ -722,19 +707,11 @@ func (e *eventEmitter) policyAnalyzeSummaryEvent(s plugin.PolicySummary) {
 func (e *eventEmitter) policyRemediateSummaryEvent(s plugin.PolicySummary) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	notApplicable := slice.Map(s.NotApplicable, func(n plugin.PolicyNotApplicable) apitype.PolicyNotApplicable {
-		return apitype.PolicyNotApplicable{
-			PolicyName: n.PolicyName,
-			Reason:     n.Reason,
-		}
-	})
-
 	e.sendEvent(NewEvent(PolicyRemediateSummaryEventPayload{
 		ResourceURN:       s.URN,
 		PolicyPackName:    s.PolicyPackName,
 		PolicyPackVersion: s.PolicyPackVersion,
 		Disabled:          s.Disabled,
-		NotApplicable:     notApplicable,
 		Passed:            s.Passed,
 		Failed:            s.Failed,
 	}))
@@ -744,18 +721,10 @@ func (e *eventEmitter) policyRemediateSummaryEvent(s plugin.PolicySummary) {
 func (e *eventEmitter) policyAnalyzeStackSummaryEvent(s plugin.PolicySummary) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	notApplicable := slice.Map(s.NotApplicable, func(n plugin.PolicyNotApplicable) apitype.PolicyNotApplicable {
-		return apitype.PolicyNotApplicable{
-			PolicyName: n.PolicyName,
-			Reason:     n.Reason,
-		}
-	})
-
 	e.sendEvent(NewEvent(PolicyAnalyzeStackSummaryEventPayload{
 		PolicyPackName:    s.PolicyPackName,
 		PolicyPackVersion: s.PolicyPackVersion,
 		Disabled:          s.Disabled,
-		NotApplicable:     notApplicable,
 		Passed:            s.Passed,
 		Failed:            s.Failed,
 	}))

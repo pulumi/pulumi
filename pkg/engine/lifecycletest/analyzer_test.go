@@ -208,9 +208,6 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		summaryPayload0 := summaryEvents[0].Payload().(PolicyAnalyzeSummaryEventPayload)
 		assert.Equal(t, expectedProviderURN, summaryPayload0.ResourceURN)
 		assert.Equal(t, "analyzerA", summaryPayload0.PolicyPackName)
-		assert.Equal(t, []apitype.PolicyNotApplicable{
-			{PolicyName: "always-fails", Reason: "not the right resource type"},
-		}, summaryPayload0.NotApplicable)
 		assert.Empty(t, summaryPayload0.Disabled)
 		assert.Empty(t, summaryPayload0.Passed)
 		assert.Empty(t, summaryPayload0.Failed)
@@ -219,7 +216,6 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		summaryPayload1 := summaryEvents[1].Payload().(PolicyAnalyzeSummaryEventPayload)
 		assert.Equal(t, expectedResourceURN, summaryPayload1.ResourceURN)
 		assert.Equal(t, "analyzerA", summaryPayload1.PolicyPackName)
-		assert.Empty(t, summaryPayload1.NotApplicable)
 		assert.Empty(t, summaryPayload1.Disabled)
 		assert.Empty(t, summaryPayload1.Passed)
 		assert.Equal(t, []string{"always-fails"}, summaryPayload1.Failed)
@@ -309,7 +305,6 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		require.IsType(t, PolicyAnalyzeStackSummaryEventPayload{}, summaryEvents[0].Payload())
 		summaryPayload0 := summaryEvents[0].Payload().(PolicyAnalyzeStackSummaryEventPayload)
 		assert.Equal(t, "analyzerA", summaryPayload0.PolicyPackName)
-		assert.Empty(t, summaryPayload0.NotApplicable)
 		assert.Empty(t, summaryPayload0.Disabled)
 		assert.Empty(t, summaryPayload0.Passed)
 		assert.Equal(t, []string{"always-fails"}, summaryPayload0.Failed)
@@ -459,10 +454,6 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, expectedProviderURN, summaryPayload.ResourceURN)
 		assert.Equal(t, "analyzerA", summaryPayload.PolicyPackName)
 		assert.Equal(t, "1.0.0", summaryPayload.PolicyPackVersion)
-		assert.Equal(t, []apitype.PolicyNotApplicable{
-			{PolicyName: "ignored", Reason: "not the right resource type"},
-			{PolicyName: "real-deal", Reason: "not the right resource type"},
-		}, summaryPayload.NotApplicable)
 		assert.Empty(t, summaryPayload.Disabled)
 		assert.Empty(t, summaryPayload.Passed)
 		assert.Empty(t, summaryPayload.Failed)
@@ -472,7 +463,6 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, expectedResourceURN, summaryPayload.ResourceURN)
 		assert.Equal(t, "analyzerA", summaryPayload.PolicyPackName)
 		assert.Equal(t, "1.0.0", summaryPayload.PolicyPackVersion)
-		assert.Empty(t, summaryPayload.NotApplicable)
 		assert.Empty(t, summaryPayload.Disabled)
 		assert.Empty(t, summaryPayload.Passed)
 		assert.Equal(t, []string{"ignored", "real-deal"}, summaryPayload.Failed)

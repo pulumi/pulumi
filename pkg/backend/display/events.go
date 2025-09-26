@@ -144,7 +144,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			Disabled:             p.Disabled,
-			NotApplicable:        p.NotApplicable,
 			Passed:               p.Passed,
 			Failed:               p.Failed,
 		}
@@ -160,7 +159,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			Disabled:             p.Disabled,
-			NotApplicable:        p.NotApplicable,
 			Passed:               p.Passed,
 			Failed:               p.Failed,
 		}
@@ -175,7 +173,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			Disabled:             p.Disabled,
-			NotApplicable:        p.NotApplicable,
 			Passed:               p.Passed,
 			Failed:               p.Failed,
 		}
@@ -439,7 +436,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			Disabled:          p.Disabled,
-			NotApplicable:     p.NotApplicable,
 			Passed:            p.Passed,
 			Failed:            p.Failed,
 		})
@@ -451,7 +447,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			Disabled:          p.Disabled,
-			NotApplicable:     p.NotApplicable,
 			Passed:            p.Passed,
 			Failed:            p.Failed,
 		})
@@ -462,7 +457,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			Disabled:          p.Disabled,
-			NotApplicable:     p.NotApplicable,
 			Passed:            p.Passed,
 			Failed:            p.Failed,
 		})
