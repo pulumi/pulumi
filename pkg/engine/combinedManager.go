@@ -37,6 +37,16 @@ func (c *CombinedManager) Write(base *deploy.Snapshot) error {
 	return errors.Join(errs...)
 }
 
+func (c *CombinedManager) RebuiltBaseState() error {
+	var errs []error
+	for _, m := range c.Managers {
+		if err := m.RebuiltBaseState(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	var errs []error
 	mutations := &CombinedMutation{}

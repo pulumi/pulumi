@@ -83,13 +83,14 @@ func (sm *JournalSnapshotManager) Close() error {
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin          JournalEntryKind = 0
-	JournalEntrySuccess        JournalEntryKind = 1
-	JournalEntryFailure        JournalEntryKind = 2
-	JournalEntryRefreshSuccess JournalEntryKind = 3
-	JournalEntryOutputs        JournalEntryKind = 4
-	JournalEntryWrite          JournalEntryKind = 5
-	JournalEntrySecretsManager JournalEntryKind = 6
+	JournalEntryBegin            JournalEntryKind = 0
+	JournalEntrySuccess          JournalEntryKind = 1
+	JournalEntryFailure          JournalEntryKind = 2
+	JournalEntryRefreshSuccess   JournalEntryKind = 3
+	JournalEntryOutputs          JournalEntryKind = 4
+	JournalEntryWrite            JournalEntryKind = 5
+	JournalEntrySecretsManager   JournalEntryKind = 6
+	JournalEntryRebuiltBaseState JournalEntryKind = 7
 )
 
 func (k JournalEntryKind) String() string {
@@ -108,6 +109,8 @@ func (k JournalEntryKind) String() string {
 		return "Write"
 	case JournalEntrySecretsManager:
 		return "SecretsManager"
+	case JournalEntryRebuiltBaseState:
+		return "RebuiltBaseState"
 	default:
 		return "Unknown"
 	}
@@ -274,6 +277,10 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 	je := sm.newJournalEntry(JournalEntryWrite, 0)
 	je.NewSnapshot = snapCopy
 	return sm.journal.AddJournalEntry(je)
+}
+
+func (sm *JournalSnapshotManager) RebuiltBaseState() error {
+	return sm.journal.AddJournalEntry(sm.newJournalEntry(JournalEntryRebuiltBaseState, 0))
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
