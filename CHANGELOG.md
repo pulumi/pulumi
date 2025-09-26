@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.198.0 (2025-09-26)
+
+
+### Features
+
+- [engine] Expand snapshot integrity check for resources
+  [#20519](https://github.com/pulumi/pulumi/pull/20519)
+
+- [sdk/go] Refactor Go policy SDK to have access to a pulumi Context object
+  [#20570](https://github.com/pulumi/pulumi/pull/20570)
+
+- [sdk/python] Allow registered resources to be retrieved from the mock monitor for test assertions
+  [#20540](https://github.com/pulumi/pulumi/pull/20540)
+
+
+### Bug Fixes
+
+- [engine] Fix snapshot integrity error with `run-program --refresh`, when a provider has a dependency that isn't being created
+  [#20541](https://github.com/pulumi/pulumi/pull/20541)
+
+- [engine] Remove unneeded data from policy summary events
+  [#20589](https://github.com/pulumi/pulumi/pull/20589)
+
+- [sdk] Fix plugin killing during cancellation
+  [#20543](https://github.com/pulumi/pulumi/pull/20543)
+
+- [sdk/go] Fix [Unm/M]arshalProperties to return nil when given nil
+  [#20544](https://github.com/pulumi/pulumi/pull/20544)
+
+
+### Miscellaneous
+
+- [protobuf] Add loader_target to LanguageRuntime.LinkRequest
+  [#20552](https://github.com/pulumi/pulumi/pull/20552)
+
+- [cli/package] Move InstallPackage from cmd/packagecmd to cmd/packages
+  [#20550](https://github.com/pulumi/pulumi/pull/20550)
+
+- [cli/package] Move stdout/stderr IO out of GenSDK and LinkPackage
+  [#20546](https://github.com/pulumi/pulumi/pull/20546)
+
+- [sdk] Move PluginSpec.Install to pkg/workspace.InstallPluginContent
+  [#20537](https://github.com/pulumi/pulumi/pull/20537)
+
+- [sdk/yaml] Bump pulumi-yaml to 1.23.2
+  [#20588](https://github.com/pulumi/pulumi/pull/20588)
+
 ## 3.197.0 (2025-09-17)
 
 
