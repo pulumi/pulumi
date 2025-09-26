@@ -110,6 +110,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
+		HideDetailedDiff:        nil,
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks: map[resource.HookType][]string{

@@ -370,6 +370,8 @@ type ResourceV3 struct {
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	// HideDetailedDiff is a list of property paths that should have a compressed diff.
+	HideDetailedDiff []resource.PropertyPath `json:"hideDetailedDiff,omitempty" yaml:"hideDetailedDiff,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.

@@ -693,6 +693,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			StackTrace:              stackTrace,
 			IgnoreChanges:           res.IgnoreChanges,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
+			HideDetailedDiff:        res.HideDetailedDiff,
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
