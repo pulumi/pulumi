@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,11 @@ func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotM
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, baseSnap.SecretsManager, baseSnap)
+
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, baseSnap.SecretsManager, secretsProvider, baseSnap)
+	require.NoError(t, err)
 	return engine.NewJournalSnapshotManager(journal, baseSnap), sp
 }
 
@@ -1011,10 +1016,14 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
+
 	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	err := sm.Close()
+	err = sm.Close()
 
 	assert.ErrorContains(t, err, "failed to verify snapshot")
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
@@ -1029,10 +1038,14 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
+
 	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	err := sm.Close()
+	err = sm.Close()
 
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
@@ -1049,10 +1062,13 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
 	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	err := sm.Close()
+	err = sm.Close()
 
 	require.NoError(t, err)
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
@@ -1069,10 +1085,13 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
 	sm := engine.NewJournalSnapshotManager(journal, snap)
 
-	err := sm.Close()
+	err = sm.Close()
 
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
