@@ -17,7 +17,6 @@ package deploy
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"runtime/debug"
 
 	"github.com/go-test/deep"
@@ -272,7 +271,16 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	}
 
 	if len(snap.PendingOperations) != len(expected.PendingOperations) {
-		return errors.New("actual and expected pending operations differ")
+		var snapPendingOps string
+		for _, op := range snap.PendingOperations {
+			snapPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+		}
+		var expectedPendingOps string
+		for _, op := range expected.PendingOperations {
+			expectedPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+		}
+		return fmt.Errorf("actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.PendingOperations), snapPendingOps, len(expected.PendingOperations), expectedPendingOps)
 	}
 
 	pendingOpsMap := make(map[resource.URN][]resource.Operation)
@@ -281,15 +289,30 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
 	}
 	for _, jop := range snap.PendingOperations {
+		diffStr := ""
 		found := false
 		for _, mop := range pendingOpsMap[jop.Resource.URN] {
-			if reflect.DeepEqual(jop, mop) {
+			if diff := deep.Equal(jop, mop); diff != nil {
+				if jop.Resource.URN == mop.Resource.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
 				found = true
 				break
 			}
 		}
 		if !found {
-			return fmt.Errorf("actual and expected pending operations differ, %v not found in expected", jop)
+			var pendingOps string
+			for _, op := range snap.PendingOperations {
+				pendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+			}
+			var expectedPendingOps string
+			for _, op := range expected.PendingOperations {
+				expectedPendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+			}
+			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jop.Type, jop.Resource, pendingOps, expectedPendingOps, diffStr)
 		}
 	}
 
