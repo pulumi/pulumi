@@ -1,7 +1,7 @@
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=8e6c4ca0-be0d-4ba7-9101-f2164ce5cce9]
+<{%reset%}>    [id=83c0534a-209d-4544-b8fe-3c24a8eefd14]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=created-id]

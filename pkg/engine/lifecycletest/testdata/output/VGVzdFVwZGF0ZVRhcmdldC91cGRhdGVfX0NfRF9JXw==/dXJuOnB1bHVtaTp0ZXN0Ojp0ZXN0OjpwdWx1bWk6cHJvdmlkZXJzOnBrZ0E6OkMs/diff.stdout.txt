@@ -23,7 +23,7 @@
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::E]
 <{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::C::2]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=bd63ff6d-1a07-4ebe-9344-ea07b3546d1b]
+<{%reset%}>    [id=39d975c4-0d3a-4983-ba1e-143dd8443e02]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=5]

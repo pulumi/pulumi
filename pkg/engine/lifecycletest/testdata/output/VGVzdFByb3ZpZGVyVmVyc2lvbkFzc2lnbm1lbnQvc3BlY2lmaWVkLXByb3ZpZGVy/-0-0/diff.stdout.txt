@@ -3,7 +3,7 @@
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:r:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:r:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/download::368d22ac-0ebd-40d9-9ec0-93781ae359a8]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/download::1ef2bc6b-3c7a-4032-81c0-23f3cc18dbaa]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

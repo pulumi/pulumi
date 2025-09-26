@@ -25,7 +25,7 @@
 <{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>  + output_prop: <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=e9345147-64b1-467f-9481-2e62aee9e0e0]
+<{%reset%}>    [id=06f4bda3-45ba-41bb-b139-cb6517b0c281]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=5]

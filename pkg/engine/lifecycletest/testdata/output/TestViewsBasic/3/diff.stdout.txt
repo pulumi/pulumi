@@ -10,7 +10,7 @@
 <{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=97543f90-630b-4529-adb0-6e85c297d083]
+<{%fg 1%}>    [id=5e0ac132-2f4c-4cfa-825b-29eee663cb88]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 2 deleted<{%reset%}>

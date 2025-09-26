@@ -6,7 +6,7 @@
 <{%fg 2%}>        [urn=urn:pulumi:test-stack::test-project::pkgA:modA:type1$pulumi:providers:pkgA::prov]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:modA:type3: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test-stack::test-project::pkgA:modA:type1$pkgA:modA:type3::res3]
-<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test-stack::test-project::pkgA:modA:type1$pulumi:providers:pkgA::prov::e2c6aa66-111c-442f-8587-a7d8b8d64e28]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test-stack::test-project::pkgA:modA:type1$pulumi:providers:pkgA::prov::26242ea9-8100-4e70-a4b1-0fb093b42796]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 4 created<{%reset%}>
 

@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pkg: (same)
-<{%reset%}>    [id=9d542fd5-5b05-4bc2-aa21-ee2a8740697e]
+<{%reset%}>    [id=74923888-1fb7-4a99-a4fe-7c9b483623f2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::provA]
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    value: <{%reset%}><{%reset%}>"100"<{%reset%}><{%reset%}>

@@ -2,7 +2,7 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA:::colons]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA:::colons]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA:::colons::4f29726d-7901-42ec-b60b-7923d37bfffc]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA:::colons::d8e0d8bb-fd41-48a6-90e3-9b3b3db48846]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typB: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB:::colons]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

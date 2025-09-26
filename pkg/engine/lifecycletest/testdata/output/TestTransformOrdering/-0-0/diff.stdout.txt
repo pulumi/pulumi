@@ -2,7 +2,7 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::implicit]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::adfc1581-5bdb-4133-9e16-95b358c25acf]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::92a9d567-e07c-4073-ad91-42deae409ede]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 

@@ -16,5 +16,4 @@
 <{%reset%}>        [urn=urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     3 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 0s

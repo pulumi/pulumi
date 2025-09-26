@@ -1,17 +1,17 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=ab490190-d2a2-4466-856d-413799cd37ba]
+<{%reset%}>    [id=52fbe1ab-c0e3-45dc-9b8d-4bc54a3dc465]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=8b76b52e-7ecf-40bb-97a9-29a74220f7e8]
+<{%reset%}>    [id=c79e14e7-715e-44f4-a9a6-740c63dc7878]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resP]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=c49f1bb4-45ae-4f3a-8694-d468b7a13c8a]
+<{%reset%}>    [id=4b95b0f2-fb40-4e9e-923b-079bd3212884]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=3a8e98fd-7d41-4964-ae01-cc7d68c9765f]
+<{%reset%}>    [id=f915296d-98a8-4c3c-a936-1295cada907e]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>    <{%fg 9%}>--pkgA:m:typA: (delete-replaced)
-<{%fg 9%}>        [id=ab4162dc-c780-4548-9b59-359b2548a53b]
+<{%fg 9%}>        [id=da658d12-3567-473b-be27-b2e57f9541a2]
 <{%reset%}><{%fg 9%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     3 unchanged

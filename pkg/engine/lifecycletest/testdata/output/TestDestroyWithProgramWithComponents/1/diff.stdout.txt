@@ -1,24 +1,24 @@
 <{%reset%}>  my_component: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::my_component::parent]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=4d2002c6-3a64-4c59-a409-507b91313e68]
+<{%reset%}>    [id=db541f6e-e181-4a2a-b7c7-a6d4ed3909b0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>        [id=39f02a90-9811-43f5-92c6-9f2e84d0c92e]
+<{%reset%}>        [id=9b55c9a2-0322-4b0f-bb4f-36f3814090c1]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::my_component$pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        foo: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>        [id=39f02a90-9811-43f5-92c6-9f2e84d0c92e]
+<{%fg 1%}>        [id=9b55c9a2-0322-4b0f-bb4f-36f3814090c1]
 <{%reset%}><{%fg 1%}>        [urn=urn:pulumi:test::test::my_component$pkgA:m:typA::resA]
 <{%reset%}><{%fg 1%}>        foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>        --outputs:--<{%reset%}>
 <{%fg 1%}>      - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>- my_component: (delete)
-<{%fg 1%}>    [urn=urn:pulumi:test::test::my_component::parent]
-<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=4d2002c6-3a64-4c59-a409-507b91313e68]
+<{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=db541f6e-e181-4a2a-b7c7-a6d4ed3909b0]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 1%}>- my_component: (delete)
+<{%fg 1%}>    [urn=urn:pulumi:test::test::my_component::parent]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 2 deleted<{%reset%}>
     2 unchanged

@@ -13,7 +13,7 @@
 <{%reset%}><{%reset%}><{%fg 9%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=9c6a3944-5b61-4d2d-b9fd-129567fa3263]
+<{%fg 1%}>    [id=cc6f6a47-0cb7-42ac-97b0-bf7320fd4beb]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>

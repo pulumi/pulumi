@@ -8,7 +8,7 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::explicit]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:index:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:index:typA::unrelated]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::explicit::467e3a03-1736-43f5-951f-e7add78a7845]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::explicit::3ebfafcd-c48c-41b1-ae8d-449bea8ba66f]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 4 created<{%reset%}>
 

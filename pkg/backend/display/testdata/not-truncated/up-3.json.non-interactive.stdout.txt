@@ -20,3 +20,4 @@
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 8m22s
 
+

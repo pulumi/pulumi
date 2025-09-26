@@ -87,4 +87,5 @@
     2 unchanged
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 12s
 
+
 <%show-cursor%>

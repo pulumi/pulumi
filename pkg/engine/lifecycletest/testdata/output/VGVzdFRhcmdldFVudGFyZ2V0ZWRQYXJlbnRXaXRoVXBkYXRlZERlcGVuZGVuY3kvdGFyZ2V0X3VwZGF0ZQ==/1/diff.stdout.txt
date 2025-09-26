@@ -1,15 +1,15 @@
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=7612db48-abfc-434e-85e2-36c217206204]
+<{%reset%}>    [id=399831b4-dd63-4226-beb0-8f1e3c34a1d8]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=a3987ca7-b289-4cf2-a8f6-dad1b83dba35]
+<{%reset%}>    [id=35338a21-5a3a-4a10-8402-787220139c34]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::newResource]
 <{%reset%}><{%reset%}><{%reset%}>  component: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::component::parent]
 <{%reset%}><{%reset%}>    <{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>        [id=c807a7d3-05df-4a5c-81b0-1ae2b7f5fcc3]
+<{%reset%}>        [id=cce62b4f-5f93-4d3e-9856-850063bba18c]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::component$pkgA:m:typA::child]
 <{%reset%}><{%fg 2%}>      + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

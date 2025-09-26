@@ -20,3 +20,4 @@
     1 unchanged
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
+

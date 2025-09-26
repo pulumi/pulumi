@@ -1,13 +1,13 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=da3cbc09-1d1d-4408-8918-9b79ba1ca010]
+<{%reset%}>    [id=0c2bdc6c-6ac8-46cc-8379-da949050a357]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (refresh)
-<{%reset%}>    [id=fd31d5bc-13ab-4079-969f-2c73003fcb09]
+<{%reset%}>    [id=b096b492-c3a5-4a80-800c-12c36922cac5]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>    [id=fd31d5bc-13ab-4079-969f-2c73003fcb09]
+<{%reset%}>    [id=b096b492-c3a5-4a80-800c-12c36922cac5]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>bar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>qux<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

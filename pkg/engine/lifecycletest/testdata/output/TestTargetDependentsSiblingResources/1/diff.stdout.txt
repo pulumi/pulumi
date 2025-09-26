@@ -12,10 +12,10 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provider]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::explicitX]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::00a3996e-5452-42a5-aadf-83beb6479def]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::418992a7-9f20-40e9-9ed7-d853f2a14c37]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::explicitY]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::00a3996e-5452-42a5-aadf-83beb6479def]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::418992a7-9f20-40e9-9ed7-d853f2a14c37]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::explicitZ]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

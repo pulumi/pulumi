@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=a54814c2-cec7-4cab-8aca-65846b31f04f]
+<{%reset%}>    [id=f86a7b0d-0997-40dc-a2fa-33c303371567]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
@@ -10,13 +10,13 @@
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    foo: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=7be926ad-0ed5-44cf-9d72-8a91aed9fbee]
+<{%fg 1%}>    [id=3a2950c3-8258-476a-b92a-2ffebbd50b94]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=a54814c2-cec7-4cab-8aca-65846b31f04f]
+<{%fg 1%}>    [id=f86a7b0d-0997-40dc-a2fa-33c303371567]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>

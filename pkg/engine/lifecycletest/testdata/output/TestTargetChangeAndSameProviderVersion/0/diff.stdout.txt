@@ -9,10 +9,10 @@
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:index:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:index:typA::unrelated1]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::46f1bc67-c606-40f4-85a3-b512b834e221]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::346e161f-ee03-4507-95ad-67185d6d9340]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:index:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:index:typA::unrelated2]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::46f1bc67-c606-40f4-85a3-b512b834e221]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::346e161f-ee03-4507-95ad-67185d6d9340]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 4 created<{%reset%}>
 

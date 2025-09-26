@@ -3,7 +3,7 @@
 <{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::8e13f649-a23a-4bd6-8bbf-e9640356aefc]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::60d950e4-0099-4fc1-bdb2-ff1f30145122]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 

@@ -5,7 +5,7 @@
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - a: <{%reset%}><{%fg 1%}>"A"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=0b4b4a67-f5c1-4aa9-b8c1-5780c53440d3]
+<{%fg 1%}>    [id=07f33a0b-2f6f-4391-b429-c84cfc1acdcc]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>

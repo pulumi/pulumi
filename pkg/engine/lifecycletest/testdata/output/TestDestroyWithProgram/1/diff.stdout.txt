@@ -1,25 +1,25 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=565035e4-9aab-441b-b96e-3f45413b67a4]
+<{%reset%}>    [id=06da0752-85ae-4692-8350-e093c46ce152]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=809a4886-74dc-411e-a831-0cc858a0ed01]
+<{%reset%}>    [id=71092adb-be54-424c-b72f-cda67eb58d91]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    foo: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=c9052d3f-f9ad-448d-b7ac-a2cd5e5eee2c]
+<{%fg 1%}>    [id=71092adb-be54-424c-b72f-cda67eb58d91]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=f732895d-f4ae-4968-ba1f-0b6f8fcd897c]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=809a4886-74dc-411e-a831-0cc858a0ed01]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=565035e4-9aab-441b-b96e-3f45413b67a4]
+<{%fg 1%}>    [id=06da0752-85ae-4692-8350-e093c46ce152]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 2 deleted<{%reset%}>

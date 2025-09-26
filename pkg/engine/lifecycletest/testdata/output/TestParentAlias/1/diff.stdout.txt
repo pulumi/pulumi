@@ -3,7 +3,7 @@
 <{%reset%}><{%reset%}>    <{%reset%}>  prog:index:myType: (same)
 <{%reset%}>        [urn=urn:pulumi:test::test::prog:index:myStandardType$prog:index:myType::resB]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=f23d948d-17ba-4df7-9a9d-c18617919322]
+<{%reset%}>    [id=527e5305-ba0e-4ace-9681-16cf61bf2aa0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>        [id=1]

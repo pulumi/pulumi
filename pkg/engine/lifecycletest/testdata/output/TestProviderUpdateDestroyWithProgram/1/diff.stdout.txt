@@ -2,37 +2,37 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=a6129f9a-d570-40cc-a4e5-984c6c4d3957]
+<{%reset%}>    [id=6f635eaa-dae6-415e-8abf-7f5ac6841f73]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::46fb413f-4844-4e0d-af75-d232093fda83<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::428ffd04-04dc-41c5-b26c-b614afdf7b0a<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::49cb0b41-1624-47f5-9af2-0b2bf965cd3c<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::70fe5ef2-05c0-466b-964a-b606ffc5a4e8<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    foo: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=983e533d-25e8-4b09-aba3-976d5fc44915]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::46fb413f-4844-4e0d-af75-d232093fda83]
+<{%fg 1%}>    [id=6f635eaa-dae6-415e-8abf-7f5ac6841f73]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::70fe5ef2-05c0-466b-964a-b606ffc5a4e8]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=a6129f9a-d570-40cc-a4e5-984c6c4d3957]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::428ffd04-04dc-41c5-b26c-b614afdf7b0a]
+<{%fg 1%}>    [id=0d64a8db-6c78-4839-a70f-5a77bdcc8243]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::49cb0b41-1624-47f5-9af2-0b2bf965cd3c]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=46fb413f-4844-4e0d-af75-d232093fda83]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
-<{%reset%}><{%fg 1%}>    version   : <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=428ffd04-04dc-41c5-b26c-b614afdf7b0a]
+<{%fg 1%}>    [id=70fe5ef2-05c0-466b-964a-b606ffc5a4e8]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0]
 <{%reset%}><{%fg 1%}>    version   : <{%reset%}><{%fg 1%}>"2.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=49cb0b41-1624-47f5-9af2-0b2bf965cd3c]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%fg 1%}>    version   : <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
-<{%fg 1%}>  - version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - version: <{%reset%}><{%fg 1%}>"2.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 2 deleted<{%reset%}>
     1 unchanged

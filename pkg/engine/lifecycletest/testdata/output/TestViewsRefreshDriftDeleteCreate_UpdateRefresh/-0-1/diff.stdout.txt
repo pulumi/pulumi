@@ -3,7 +3,7 @@
 <{%reset%}><{%fg 3%}>        --outputs:--<{%reset%}>
 <{%fg 1%}>      - result: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=ab365387-ac8b-4189-b768-7547874ae601]
+<{%reset%}>    [id=2dc98198-1917-429a-9617-8e12a08768a0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=new-id]

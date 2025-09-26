@@ -1042,8 +1042,8 @@ func (display *ProgressDisplay) printSummary() {
 	if resourcesErrored > 0 {
 		errSummaryStr := fmt.Sprintf("%d errored", resourcesErrored)
 		display.println("    " + colors.Red + errSummaryStr + colors.Reset)
-		display.println("")
 	}
+	display.println("")
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(

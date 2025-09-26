@@ -3,7 +3,7 @@
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::c9e9b90c-0299-4852-ac8f-7999ddafbf27]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f4c05073-b3de-47b5-84b6-80a923db0fb3]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 

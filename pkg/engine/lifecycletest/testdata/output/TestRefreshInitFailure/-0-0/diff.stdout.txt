@@ -1,14 +1,14 @@
-<{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=0]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=c40e04a8-f8e6-48e2-8662-571cc85096b5]
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=0299c50f-0a56-47c6-a121-dacd89419e7f]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>  + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=0]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

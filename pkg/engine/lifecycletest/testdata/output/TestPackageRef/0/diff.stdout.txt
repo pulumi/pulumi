@@ -3,13 +3,13 @@
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::534b0a41-2df6-4c7a-b297-ebbcaab3708a]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::b7494bbc-eeb7-4cbc-8c8f-908bc19a5a70]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::cf3bf502-c124-49ec-8071-da3ec9fc76de]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_2_0_0::359e62c0-9578-4f7f-8f32-dd0f7401d635]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 

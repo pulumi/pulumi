@@ -2,15 +2,15 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"0.17.10"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=9ede3fe9-98d8-48cf-8632-dfe48afdc314]
+<{%reset%}>    [id=b7efa558-521d-4c92-b10d-5a54ec532776]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::b1e1418a-a05a-40c6-a548-d2cf197234d2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::[unknown]<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::688088ef-47d5-42ed-97e1-3592451da831<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::[unknown]<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=bd9dfe39-323c-4857-ad07-27ab4cc7369c]
+<{%reset%}>    [id=afd06225-6b42-4e41-8fd2-47860b188b4e]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::b1e1418a-a05a-40c6-a548-d2cf197234d2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::[unknown]<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::688088ef-47d5-42ed-97e1-3592451da831<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::[unknown]<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=b1e1418a-a05a-40c6-a548-d2cf197234d2]
+<{%fg 1%}>    [id=688088ef-47d5-42ed-97e1-3592451da831]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged

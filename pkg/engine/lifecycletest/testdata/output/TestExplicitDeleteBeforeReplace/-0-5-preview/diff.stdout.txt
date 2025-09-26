@@ -1,35 +1,35 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}>    [id=f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}><{%fg 9%}>--pkgA:index:typ: (delete-replaced)
-<{%fg 9%}>    [id=7d5ebb2e-bb22-46c1-9f17-c7cb701fe5f9]
+<{%fg 9%}>    [id=0f2e45a7-92ca-4136-99af-1faf688021f0]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:index:typ::resB]
-<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%fg 9%}>    A: <{%reset%}><{%fg 9%}>"qux"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}><{%fg 9%}>--pkgA:index:typ: (delete-replaced)
-<{%fg 9%}>    [id=ce408203-4c82-46c7-9d67-5329ceb67e4a]
+<{%fg 9%}>    [id=73705756-957a-4697-a633-01ee28e2b3a3]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:index:typ::resA]
-<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%fg 9%}>    A: <{%reset%}><{%fg 9%}>"zam"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:index:typ: (replace)
-<{%reset%}>    [id=ce408203-4c82-46c7-9d67-5329ceb67e4a]
+<{%reset%}>    [id=73705756-957a-4697-a633-01ee28e2b3a3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:typ::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%fg 3%}>  ~ A: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>zam<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>foo<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 10%}>++pkgA:index:typ: (create-replacement)
-<{%reset%}>    [id=ce408203-4c82-46c7-9d67-5329ceb67e4a]
+<{%reset%}>    [id=73705756-957a-4697-a633-01ee28e2b3a3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:typ::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%fg 3%}>  ~ A: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>zam<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>foo<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:index:typ: (replace)
-<{%reset%}>    [id=7d5ebb2e-bb22-46c1-9f17-c7cb701fe5f9]
+<{%reset%}>    [id=0f2e45a7-92ca-4136-99af-1faf688021f0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:typ::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%reset%}>    A: <{%reset%}><{%reset%}>"qux"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 10%}>++pkgA:index:typ: (create-replacement)
-<{%reset%}>    [id=7d5ebb2e-bb22-46c1-9f17-c7cb701fe5f9]
+<{%reset%}>    [id=0f2e45a7-92ca-4136-99af-1faf688021f0]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:typ::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::aa9495d1-e1bc-49e7-ab5d-27c928d8dce3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::f53e4e44-8404-4282-b84d-f912e435c831]
 <{%reset%}><{%reset%}>    A: <{%reset%}><{%reset%}>"qux"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-2 to replace<{%reset%}>

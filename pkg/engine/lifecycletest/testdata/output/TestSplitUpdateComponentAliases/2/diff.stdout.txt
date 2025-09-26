@@ -1,7 +1,7 @@
 <{%reset%}>  pkgA:m:typB: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=f207dfe7-c460-4d7f-986a-fa7ca0a3b652]
+<{%reset%}>    [id=b5d1559f-bb8c-47f3-8353-3e434342e9dd]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typC: (same)
 <{%reset%}>        [id=created-id]

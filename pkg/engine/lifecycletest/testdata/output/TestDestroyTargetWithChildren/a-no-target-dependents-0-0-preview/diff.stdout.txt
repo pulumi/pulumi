@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=76e3f909-eec4-4615-928e-7371dbcb7fd1]
+<{%reset%}>    [id=87de1c50-89c6-45c9-b33b-a63829b3a9dc]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Component: (same)
 <{%reset%}>    [id=1]
@@ -26,20 +26,20 @@
 <{%fg 1%}>    [id=8]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Resource::I]
 <{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
+<{%fg 1%}>    [id=13]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Resource::N]
+<{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}>        <{%fg 1%}>- pkgA:index:Resource: (delete)
 <{%fg 1%}>            [id=10]
 <{%reset%}><{%fg 1%}>            [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K]
 <{%reset%}><{%fg 1%}>            A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
-<{%fg 1%}>    [id=13]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Resource::N]
-<{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%fg 1%}>    [id=6]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::G]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
 <{%fg 1%}>    [id=7]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::H]
-<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
-<{%fg 1%}>    [id=6]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::G]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Component: (delete)
 <{%fg 1%}>    [id=3]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::D]
