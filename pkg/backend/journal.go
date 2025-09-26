@@ -75,6 +75,7 @@ func SerializeJournalEntry(
 	}
 
 	serializedEntry := apitype.JournalEntry{
+		Version:               1,
 		Kind:                  apitype.JournalEntryKind(je.Kind),
 		SequenceID:            je.SequenceID,
 		OperationID:           je.OperationID,
