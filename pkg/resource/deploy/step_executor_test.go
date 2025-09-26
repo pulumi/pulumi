@@ -109,6 +109,10 @@ func (e *mockEvents) OnSnapshotWrite(base *Snapshot) error {
 	return nil
 }
 
+func (e *mockEvents) OnRebuiltBaseState() error {
+	return nil
+}
+
 var _ Events = (*mockEvents)(nil)
 
 func TestStepExecutor(t *testing.T) {
