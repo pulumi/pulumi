@@ -15,6 +15,5 @@ Diagnostics:
 
 Resources:
     6 unchanged
-
 Duration: 1s
 

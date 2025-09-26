@@ -35,6 +35,5 @@ Outputs:
 Resources:
     +-1 replaced
     2 unchanged
-
 Duration: 12s
 

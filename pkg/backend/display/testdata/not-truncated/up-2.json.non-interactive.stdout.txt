@@ -12,6 +12,5 @@
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack eks-dev <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     6 unchanged
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

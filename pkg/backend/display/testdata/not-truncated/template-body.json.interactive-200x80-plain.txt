@@ -126,6 +126,5 @@ Outputs:
 Resources:
     ~ 1 updated
     57 unchanged
-
 Duration: 2s
 

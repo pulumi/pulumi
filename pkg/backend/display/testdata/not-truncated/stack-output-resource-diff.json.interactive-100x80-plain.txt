@@ -23,6 +23,5 @@ Outputs:
 
 Resources:
     3 unchanged
-
 Duration: 0s
 

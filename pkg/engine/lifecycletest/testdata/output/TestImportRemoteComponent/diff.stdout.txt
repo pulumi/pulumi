@@ -13,5 +13,4 @@
     <{%fg 2%}>+ 1 created<{%reset%}>
     <{%fg 2%}>= 2 imported<{%reset%}>
     <{%bold%}>3 changes<{%reset%}>
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
