@@ -183,8 +183,9 @@ func NewPassphraseSecretsManager(phrase string) (string, secrets.Manager, error)
 		return "", nil, fmt.Errorf("marshalling state: %w", err)
 	}
 
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	sm := &localSecretsManager{
-		crypter: crypter,
+		crypter: cachedCrypter,
 		state:   jsonState,
 	}
 	return state, sm, nil
@@ -209,8 +210,9 @@ func GetPassphraseSecretsManager(phrase string, state string) (secrets.Manager, 
 		return nil, fmt.Errorf("marshalling state: %w", err)
 	}
 
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	sm := &localSecretsManager{
-		crypter: crypter,
+		crypter: cachedCrypter,
 		state:   jsonState,
 	}
 	setCachedSecretsManager(state, sm)
