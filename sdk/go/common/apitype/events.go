@@ -86,8 +86,6 @@ type PolicyAnalyzeSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of resource policies that failed (i.e. produced violations).
@@ -104,8 +102,6 @@ type PolicyRemediateSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of resource policies that failed (i.e. produced violations).
@@ -120,8 +116,6 @@ type PolicyAnalyzeStackSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of stack policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
 	// The names of stack policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of stack policies that failed (i.e. produced violations).

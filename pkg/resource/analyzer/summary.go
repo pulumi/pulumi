@@ -72,7 +72,6 @@ func newPolicySummary(
 		notApplicable[na.PolicyName] = struct{}{}
 	}
 
-	disabled := map[string]struct{}{}
 	// Passed = All (of a given type) minus Disabled minus Not Applicable minus Failed.
 	passed := map[string]struct{}{}
 	for _, p := range info.Policies {
@@ -84,7 +83,6 @@ func newPolicySummary(
 		}
 
 		if p.EnforcementLevel == apitype.Disabled {
-			disabled[p.Name] = struct{}{}
 			continue
 		}
 
@@ -99,7 +97,6 @@ func newPolicySummary(
 		URN:               urn,
 		PolicyPackName:    info.Name,
 		PolicyPackVersion: info.Version,
-		Disabled:          maputil.SortedKeys(disabled),
 		Passed:            maputil.SortedKeys(passed),
 		Failed:            maputil.SortedKeys(failed),
 	}

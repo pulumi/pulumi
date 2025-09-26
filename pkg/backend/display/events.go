@@ -143,7 +143,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackName:       p.PolicyPackName,
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
-			Disabled:             p.Disabled,
 			Passed:               p.Passed,
 			Failed:               p.Failed,
 		}
@@ -158,7 +157,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackName:       p.PolicyPackName,
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
-			Disabled:             p.Disabled,
 			Passed:               p.Passed,
 			Failed:               p.Failed,
 		}
@@ -172,7 +170,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackName:       p.PolicyPackName,
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
-			Disabled:             p.Disabled,
 			Passed:               p.Passed,
 			Failed:               p.Failed,
 		}
@@ -435,7 +432,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			ResourceURN:       resource.URN(p.ResourceURN),
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Disabled:          p.Disabled,
 			Passed:            p.Passed,
 			Failed:            p.Failed,
 		})
@@ -446,7 +442,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			ResourceURN:       resource.URN(p.ResourceURN),
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Disabled:          p.Disabled,
 			Passed:            p.Passed,
 			Failed:            p.Failed,
 		})
@@ -456,7 +451,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		event = engine.NewEvent(engine.PolicyAnalyzeStackSummaryEventPayload{
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Disabled:          p.Disabled,
 			Passed:            p.Passed,
 			Failed:            p.Failed,
 		})

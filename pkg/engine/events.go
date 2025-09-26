@@ -225,8 +225,6 @@ type PolicyAnalyzeSummaryEventPayload struct {
 	PolicyPackName string
 	// The version of the policy pack.
 	PolicyPackVersion string
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of resource policies that failed (i.e. produced violations).
@@ -241,8 +239,6 @@ type PolicyRemediateSummaryEventPayload struct {
 	PolicyPackName string
 	// The version of the policy pack.
 	PolicyPackVersion string
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of resource policies that failed (i.e. produced violations).
@@ -255,8 +251,6 @@ type PolicyAnalyzeStackSummaryEventPayload struct {
 	PolicyPackName string
 	// The version of the policy pack.
 	PolicyPackVersion string
-	// Names of stack policies in the policy pack that were disabled.
-	Disabled []string
 	// The names of stack policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of stack policies that failed (i.e. produced violations).
@@ -697,7 +691,6 @@ func (e *eventEmitter) policyAnalyzeSummaryEvent(s plugin.PolicySummary) {
 		ResourceURN:       s.URN,
 		PolicyPackName:    s.PolicyPackName,
 		PolicyPackVersion: s.PolicyPackVersion,
-		Disabled:          s.Disabled,
 		Passed:            s.Passed,
 		Failed:            s.Failed,
 	}))
@@ -711,7 +704,6 @@ func (e *eventEmitter) policyRemediateSummaryEvent(s plugin.PolicySummary) {
 		ResourceURN:       s.URN,
 		PolicyPackName:    s.PolicyPackName,
 		PolicyPackVersion: s.PolicyPackVersion,
-		Disabled:          s.Disabled,
 		Passed:            s.Passed,
 		Failed:            s.Failed,
 	}))
@@ -724,7 +716,6 @@ func (e *eventEmitter) policyAnalyzeStackSummaryEvent(s plugin.PolicySummary) {
 	e.sendEvent(NewEvent(PolicyAnalyzeStackSummaryEventPayload{
 		PolicyPackName:    s.PolicyPackName,
 		PolicyPackVersion: s.PolicyPackVersion,
-		Disabled:          s.Disabled,
 		Passed:            s.Passed,
 		Failed:            s.Failed,
 	}))
