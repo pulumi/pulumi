@@ -190,6 +190,9 @@ func getAndSaveSecretsManager(
 	return sm, nil
 }
 
+// needsCrypter returns true if either the config or the env contains secrets.
+// We need to check if env contains secrets because later we need to encrypt these secrets with the stack's crypter
+// to bring them into the stack's config format and merge the stack config and env.
 func needsCrypter(cfg config.Map, env esc.Value) bool {
 	var hasSecrets func(v esc.Value) bool
 	hasSecrets = func(v esc.Value) bool {
