@@ -389,8 +389,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.HasField("delete_before_replace"):
             ropts.delete_before_replace = opts.delete_before_replace
 
-        if opts.HasField("import"):
-            ropts.import_ = getattr(opts, "import")
+        id = getattr(opts, "id", None)
+        if id:
+            ropts.import_ = id
 
         additional_secret_outputs = list(opts.additional_secret_outputs)
         if additional_secret_outputs:
