@@ -1420,7 +1420,7 @@ export class ComponentResource<TData = any> extends Resource {
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
     ) {
-        super(type, name, /*custom:*/ false, /*props:*/ args, opts, remote, false, packageRef);
+        super(type, name, /*custom:*/ false, args, opts, remote, false, packageRef);
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
