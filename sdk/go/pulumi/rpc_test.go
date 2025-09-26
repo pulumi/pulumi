@@ -587,7 +587,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	// in the unmarshaled value.
 	const resourceFields = 10
 	assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
-	assert.Equal(t, 0, len(deps))
+	assert.Empty(t, deps)
 	assert.Equal(t, 15, len(pdeps))
 
 	// Now just unmarshal and ensure the resulting map matches.

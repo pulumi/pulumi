@@ -2579,7 +2579,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 0, len(initialOutputs))
+	assert.Empty(t, initialOutputs)
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -2617,7 +2617,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 0, len(outputsAfterDestroy))
+	assert.Empty(t, outputsAfterDestroy)
 }
 
 func TestShallowClone(t *testing.T) {

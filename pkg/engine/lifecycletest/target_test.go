@@ -2998,7 +2998,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	assert.Equal(t, 4, len(snap.Resources))
 	unrelatedURN := snap.Resources[3].URN
 	assert.Equal(t, "unrelated", unrelatedURN.Name())
-	assert.Equal(t, 0, len(snap.Resources[2].Dependencies))
+	assert.Empty(t, snap.Resources[2].Dependencies)
 }
 
 func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
@@ -3099,7 +3099,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		assert.Equal(t, "parent", parentURN.Name())
 		assert.Equal(t, parentURN, snap.Resources[4].Parent)
 		parentDeps := snap.Resources[3].Dependencies
-		assert.Equal(t, 0, len(parentDeps))
+		assert.Empty(t, parentDeps)
 	})
 
 	//nolint:paralleltest // Requires serial access to TestPlan

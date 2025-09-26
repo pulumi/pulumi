@@ -131,9 +131,9 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	require.NotNil(t, d3)
 	require.NotNil(t, d3.Array)
 	assert.Nil(t, d3.Object)
-	assert.Equal(t, 0, len(d3.Array.Adds))
-	assert.Equal(t, 0, len(d3.Array.Deletes))
-	assert.Equal(t, 0, len(d3.Array.Sames))
+	assert.Empty(t, d3.Array.Adds)
+	assert.Empty(t, d3.Array.Deletes)
+	assert.Empty(t, d3.Array.Sames)
 	assert.Equal(t, 3, len(d3.Array.Updates))
 	for i, update := range d3.Array.Updates {
 		assert.Equal(t, d3a1.ArrayValue()[i], update.Old)
@@ -151,7 +151,7 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	require.NotNil(t, d4)
 	require.NotNil(t, d4.Array)
 	assert.Nil(t, d4.Object)
-	assert.Equal(t, 0, len(d4.Array.Adds))
+	assert.Empty(t, d4.Array.Adds)
 	assert.Equal(t, 1, len(d4.Array.Deletes))
 	for i, delete := range d4.Array.Deletes {
 		assert.Equal(t, 2, i)
@@ -186,7 +186,7 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 		assert.Equal(t, 2, i)
 		assert.Equal(t, d5a2.ArrayValue()[i], add)
 	}
-	assert.Equal(t, 0, len(d5.Array.Deletes))
+	assert.Empty(t, d5.Array.Deletes)
 	assert.Equal(t, 1, len(d5.Array.Sames))
 	for i, same := range d5.Array.Sames {
 		assert.Equal(t, 1, i)
@@ -234,9 +234,9 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 		assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(obj1), NewPropertyValue(obj2))
 		d3 := obj1.Diff(obj2)
 		require.NotNil(t, d3)
-		assert.Equal(t, 0, len(d3.Adds))
-		assert.Equal(t, 0, len(d3.Deletes))
-		assert.Equal(t, 0, len(d3.Sames))
+		assert.Empty(t, d3.Adds)
+		assert.Empty(t, d3.Deletes)
+		assert.Empty(t, d3.Sames)
 		assert.Equal(t, 3, len(d3.Updates))
 		d3pa := d3.Updates[PropertyKey("prop-a")]
 		assert.Nil(t, d3pa.Array)
@@ -255,9 +255,9 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 		d3pc := d3.Updates[PropertyKey("prop-c")]
 		assert.Nil(t, d3pc.Array)
 		require.NotNil(t, d3pc.Object)
-		assert.Equal(t, 0, len(d3pc.Object.Adds))
-		assert.Equal(t, 0, len(d3pc.Object.Deletes))
-		assert.Equal(t, 0, len(d3pc.Object.Sames))
+		assert.Empty(t, d3pc.Object.Adds)
+		assert.Empty(t, d3pc.Object.Deletes)
+		assert.Empty(t, d3pc.Object.Sames)
 		assert.Equal(t, 1, len(d3pc.Object.Updates))
 		d3pcu := d3pc.Object.Updates[PropertyKey("inner-prop-a")]
 		assert.True(t, d3pcu.Old.IsNumber())

@@ -148,7 +148,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, true, dep.Inputs["in-array"].([]interface{})[1])
 	assert.Equal(t, float64(32), dep.Inputs["in-array"].([]interface{})[2])
 	require.NotNil(t, dep.Inputs["in-empty-array"])
-	assert.Equal(t, 0, len(dep.Inputs["in-empty-array"].([]interface{})))
+	assert.Empty(t, dep.Inputs["in-empty-array"].([]interface{}))
 	require.NotNil(t, dep.Inputs["in-map"])
 	inmap := dep.Inputs["in-map"].(map[string]interface{})
 	assert.Equal(t, 4, len(inmap))
@@ -161,7 +161,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, inmap["d"])
 	assert.Equal(t, "d-dee-daw", inmap["d"].(string))
 	require.NotNil(t, dep.Inputs["in-empty-map"])
-	assert.Equal(t, 0, len(dep.Inputs["in-empty-map"].(map[string]interface{})))
+	assert.Empty(t, dep.Inputs["in-empty-map"].(map[string]interface{}))
 	assert.Equal(t, map[string]interface{}{
 		resource.SigKey:  resource.ResourceReferenceSig,
 		"urn":            "urn",
@@ -194,7 +194,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, false, dep.Outputs["out-array"].([]interface{})[0])
 	assert.Equal(t, "zzxx", dep.Outputs["out-array"].([]interface{})[1])
 	require.NotNil(t, dep.Outputs["out-empty-array"])
-	assert.Equal(t, 0, len(dep.Outputs["out-empty-array"].([]interface{})))
+	assert.Empty(t, dep.Outputs["out-empty-array"].([]interface{}))
 	require.NotNil(t, dep.Outputs["out-map"])
 	outmap := dep.Outputs["out-map"].(map[string]interface{})
 	assert.Equal(t, 3, len(outmap))
@@ -205,7 +205,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, outmap["z"])
 	assert.Equal(t, float64(999.9), outmap["z"].(float64))
 	require.NotNil(t, dep.Outputs["out-empty-map"])
-	assert.Equal(t, 0, len(dep.Outputs["out-empty-map"].(map[string]interface{})))
+	assert.Empty(t, dep.Outputs["out-empty-map"].(map[string]interface{}))
 }
 
 // TestSerializeDeploymentWithMetadata tests that the appropriate version and features are used when

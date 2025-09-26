@@ -322,7 +322,7 @@ output cidrBlock {
 `
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 }
 
@@ -350,7 +350,7 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 }
 
@@ -365,7 +365,7 @@ func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
 `
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 }
 
@@ -531,7 +531,7 @@ func TestTraversalOfOptionalObject(t *testing.T) {
 	// first assert that binding the program works
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 
 	// get the output variable
