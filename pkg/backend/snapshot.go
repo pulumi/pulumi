@@ -183,6 +183,12 @@ func (sm *SnapshotManager) Write(_ *deploy.Snapshot) error {
 	return nil
 }
 
+func (sm *SnapshotManager) RebuiltBaseState() error {
+	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
+	// same in-memory snapshot as the engine, that is already mutated.
+	return nil
+}
+
 // All SnapshotMutation implementations in this file follow the same basic formula:
 // mark the "old" state as done and mark the "new" state as new. The two special
 // cases are Create (where the "old" state does not exist) and Delete (where the "new" state

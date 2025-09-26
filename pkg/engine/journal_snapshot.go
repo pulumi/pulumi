@@ -44,6 +44,8 @@ type Journal interface {
 	// been updated, and we can't simply reuse the base snapshot from the previous plan. This
 	// needs to be called before any other mutation requests.
 	Write(newBase *deploy.Snapshot) error
+	// RebuiltBaseState records that the base state has been rebuilt after a refresh.
+	RebuiltBaseState() error
 	// Close closes the journal, flushing any pending operations.
 	Close() error
 }
@@ -92,13 +94,14 @@ func (sm *JournalSnapshotManager) Close() error {
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin          JournalEntryKind = 0
-	JournalEntrySuccess        JournalEntryKind = 1
-	JournalEntryFailure        JournalEntryKind = 2
-	JournalEntryRefreshSuccess JournalEntryKind = 3
-	JournalEntryOutputs        JournalEntryKind = 4
-	JournalEntryWrite          JournalEntryKind = 5
-	JournalEntrySecretsManager JournalEntryKind = 6
+	JournalEntryBegin            JournalEntryKind = 0
+	JournalEntrySuccess          JournalEntryKind = 1
+	JournalEntryFailure          JournalEntryKind = 2
+	JournalEntryRefreshSuccess   JournalEntryKind = 3
+	JournalEntryOutputs          JournalEntryKind = 4
+	JournalEntryWrite            JournalEntryKind = 5
+	JournalEntrySecretsManager   JournalEntryKind = 6
+	JournalEntryRebuiltBaseState JournalEntryKind = 7
 )
 
 func (k JournalEntryKind) String() string {
@@ -117,6 +120,8 @@ func (k JournalEntryKind) String() string {
 		return "Write"
 	case JournalEntrySecretsManager:
 		return "SecretsManager"
+	case JournalEntryRebuiltBaseState:
+		return "RebuiltBaseState"
 	default:
 		return "Unknown"
 	}
@@ -255,6 +260,10 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 	}
 	sm.baseSnapshot = base
 	return sm.journal.Write(base)
+}
+
+func (sm *JournalSnapshotManager) RebuiltBaseState() error {
+	return sm.journal.RebuiltBaseState()
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:

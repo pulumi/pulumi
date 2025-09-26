@@ -232,6 +232,7 @@ func (t *UrnTargets) addLiteral(urn resource.URN) {
 // StepExecutorEvents is an interface that can be used to hook resource lifecycle events.
 type StepExecutorEvents interface {
 	OnSnapshotWrite(base *Snapshot) error
+	OnRebuiltBaseState() error
 	OnResourceStepPre(step Step) (interface{}, error)
 	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
