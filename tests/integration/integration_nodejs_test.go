@@ -106,7 +106,7 @@ func TestEngineEvents(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, 3, len(preEventResourceTypes))
+			assert.Len(t, preEventResourceTypes, 3)
 			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
 			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
 			assert.Contains(t, preEventResourceTypes, "pulumi:providers:pulumi-nodejs")
@@ -218,12 +218,12 @@ func TestStackOutputsNodeJS(t *testing.T) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+			if assert.Len(t, stackInfo.Deployment.Resources, 1) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Empty(t, stackRes.Inputs)
-				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Len(t, stackRes.Outputs, 2)
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
@@ -401,7 +401,7 @@ func TestStackParenting(t *testing.T) {
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
+			if assert.Len(t, stackInfo.Deployment.Resources, 9) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
@@ -469,7 +469,7 @@ func TestStackDependencyGraph(t *testing.T) {
 				} else if strings.Contains(urn, "dynamic:Resource::second") {
 					// The second resource uses an Output property of the first resource, so it
 					// depends directly on first.
-					assert.Equal(t, 1, len(res.Dependencies))
+					assert.Len(t, res.Dependencies, 1)
 					assert.True(t, strings.Contains(string(res.Dependencies[0]), "dynamic:Resource::first"))
 					sawSecond = true
 				}
@@ -972,7 +972,7 @@ func TestConstructSlowNode(t *testing.T) {
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+			if assert.Len(t, stackInfo.Deployment.Resources, 5) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
@@ -1973,7 +1973,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
 				require.NotNil(t, stackInfo.Deployment)
-				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+				assert.Len(t, stackInfo.Deployment.Resources, 3+1000)
 			},
 		})
 	})
@@ -1998,7 +1998,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
 				require.NotNil(t, stackInfo.Deployment)
-				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+				assert.Len(t, stackInfo.Deployment.Resources, 3+1000)
 			},
 		})
 	})

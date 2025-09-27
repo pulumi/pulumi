@@ -76,7 +76,7 @@ func init() {
 					require.True(l, found, "expected to find error diagnostic for failing resource")
 
 					require.True(l, result.IsBail(err), "expected a bail result")
-					require.Equal(l, 1, len(changes), "expected 1 StepOp")
+					require.Len(l, changes, 1, "expected 1 StepOp")
 					require.Equal(l, 2, changes[deploy.OpCreate], "expected 2 Creates")
 					require.NotNil(l, snap, "expected snapshot to be non-nil")
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot") // 1 stack, 2 providers, 1 resource

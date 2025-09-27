@@ -615,7 +615,7 @@ func TestConstructSlowGo(t *testing.T) {
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+			if assert.Len(t, stackInfo.Deployment.Resources, 5) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)

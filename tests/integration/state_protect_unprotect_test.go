@@ -105,7 +105,7 @@ description: A test for protecting and unprotecting resources
 
 	// Log the output to help debug
 	t.Logf("Found %d URNs: %v", len(urns), urns)
-	assert.Equal(t, 3, len(urns), "Expected to find 3 resource URNs")
+	assert.Len(t, urns, 3, "Expected to find 3 resource URNs")
 
 	// Add safety check to prevent panic if we don't have enough URNs
 	if len(urns) < 2 {

@@ -102,7 +102,7 @@ func TestConverterPlugin_State(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(resp.Resources))
+	assert.Len(t, resp.Resources, 1)
 
 	res := resp.Resources[0]
 	assert.Equal(t, "test:type", res.Type)
@@ -144,7 +144,7 @@ func TestConverterPlugin_Program(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(resp.Diagnostics))
+	assert.Len(t, resp.Diagnostics, 1)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

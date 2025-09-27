@@ -1693,7 +1693,7 @@ func TestTaggedComponent(t *testing.T) {
 
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomPet")
 	// We expect 4 words separated by dashes.
-	require.Equal(t, 4, len(strings.Split(stdout, "-")))
+	require.Len(t, strings.Split(stdout, "-"), 4)
 	require.Equal(t, "test-", stdout[:5])
 
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomString")

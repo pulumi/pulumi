@@ -894,7 +894,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 
 	require.NoError(t, err)
 	proj := loadProject(t, tempdir)
-	require.Equal(t, 1, len(proj.Runtime.Options()))
+	require.Len(t, proj.Runtime.Options(), 1)
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 

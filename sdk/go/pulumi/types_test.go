@@ -82,7 +82,7 @@ func TestArrayOutputs(t *testing.T) {
 	{
 		assertApplied(t, out.ApplyT(func(arr []interface{}) (interface{}, error) {
 			require.NotNil(t, arr)
-			if assert.Equal(t, 3, len(arr)) {
+			if assert.Len(t, arr, 3) {
 				assert.Equal(t, nil, arr[0])
 				assert.Equal(t, 0, arr[1])
 				assert.Equal(t, "x", arr[2])

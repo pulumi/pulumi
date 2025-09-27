@@ -104,7 +104,7 @@ func TestWrappedBucket(t *testing.T) {
 		objects, err := listBucket(ctx, wrappedBucket, `.pulumi\bucket-test`)
 		mustNotHaveError(t, "listBucket", err)
 		if len(objects) != len(filenames) {
-			assert.Equal(t, 3, len(objects), "listBucket returned unexpected number of objects.")
+			assert.Len(t, objects, 3, "listBucket returned unexpected number of objects.")
 			for _, object := range objects {
 				t.Logf("Got object: %+v", object)
 			}
