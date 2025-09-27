@@ -399,6 +399,9 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+			if rpcReq.Options.Import != "" {
+				opts.Import = ID(rpcReq.Options.Import)
+			}
 
 			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
 			// optionality that the wire protocol can
@@ -544,6 +547,14 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
 			rpcRes.Options.RetainOnDelete = &opts.RetainOnDelete
 			rpcRes.Options.Version = opts.Version
+
+			if opts.Import != nil {
+				id, _, _, err := opts.Import.ToIDOutput().awaitID(ctx.ctx)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling import ID: %w", err)
+				}
+				rpcRes.Options.Import = string(id)
+			}
 
 			if opts.Hooks != nil {
 				mHooks, err := marshalResourceHooks(ctx.ctx, opts.Hooks)

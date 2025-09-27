@@ -1149,6 +1149,7 @@ type TransformResourceOptions struct {
 	Providers               map[string]string                             `protobuf:"bytes,14,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	PluginChecksums         map[string][]byte                             `protobuf:"bytes,15,rep,name=plugin_checksums,json=pluginChecksums,proto3" json:"plugin_checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Hooks                   *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,16,opt,name=hooks,proto3" json:"hooks,omitempty"`
+	Import                  string                                        `protobuf:"bytes,17,opt,name=import,proto3" json:"import,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -1293,6 +1294,13 @@ func (x *TransformResourceOptions) GetHooks() *RegisterResourceRequest_ResourceH
 		return x.Hooks
 	}
 	return nil
+}
+
+func (x *TransformResourceOptions) GetImport() string {
+	if x != nil {
+		return x.Import
+	}
+	return ""
 }
 
 type TransformRequest struct {
@@ -2462,7 +2470,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fR\aprojectR\x05stackR\x06configR\x10configSecretKeysR\x06dryRunR\bparallelR\x0fmonitorEndpointR\forganization\"\xa5\b\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fR\aprojectR\x05stackR\x06configR\x10configSecretKeysR\x06dryRunR\bparallelR\x0fmonitorEndpointR\forganization\"\xbd\b\n" +
 	"\x18TransformResourceOptions\x12\x1d\n" +
 	"\n" +
 	"depends_on\x18\x01 \x03(\tR\tdependsOn\x12\x1d\n" +
@@ -2481,7 +2489,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x19additional_secret_outputs\x18\r \x03(\tR\x17additionalSecretOutputs\x12P\n" +
 	"\tproviders\x18\x0e \x03(\v22.pulumirpc.TransformResourceOptions.ProvidersEntryR\tproviders\x12c\n" +
 	"\x10plugin_checksums\x18\x0f \x03(\v28.pulumirpc.TransformResourceOptions.PluginChecksumsEntryR\x0fpluginChecksums\x12M\n" +
-	"\x05hooks\x18\x10 \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingR\x05hooks\x1a<\n" +
+	"\x05hooks\x18\x10 \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingR\x05hooks\x12\x16\n" +
+	"\x06import\x18\x11 \x01(\tR\x06import\x1a<\n" +
 	"\x0eProvidersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
