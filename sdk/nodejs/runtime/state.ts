@@ -16,6 +16,7 @@ import { AsyncLocalStorage } from "async_hooks";
 import { ICallbackServer } from "./callbacks";
 import * as config from "./config";
 import { Stack } from "./stack";
+import { Inputs } from "../output";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
@@ -131,6 +132,7 @@ export interface Store {
     leakCandidates: Set<Promise<any>>;
     logErrorCount: number;
     terminated: boolean;
+    currentExportMap?: Inputs;
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
@@ -235,6 +237,7 @@ export class LocalStore implements Store {
         [config.configSecretKeysEnvKey]: process.env[config.configSecretKeysEnvKey] || "",
     };
     stackResource = undefined;
+    currentExportMap = undefined;
 
     /**
      * Tracks the list of potential leak candidates.
