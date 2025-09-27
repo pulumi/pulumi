@@ -76,6 +76,10 @@ const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema
 	// when not using features that require v4.
 	DeploymentSchemaVersionCurrent = 3
+
+	// DeploymentSchemaVersionLatest is the latest version of the `Deployment` schema, when
+	// using features that require v4.
+	DeploymentSchemaVersionLatest = 4
 )
 
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
