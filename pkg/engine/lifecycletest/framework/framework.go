@@ -82,10 +82,10 @@ type TB interface {
 	Failed() bool
 }
 
-// The nopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
-type nopPluginManager struct{}
+// The NopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
+type NopPluginManager struct{}
 
-func (nopPluginManager) GetPluginPath(
+func (NopPluginManager) GetPluginPath(
 	ctx context.Context,
 	d diag.Sink,
 	spec workspace.PluginSpec,
@@ -94,22 +94,22 @@ func (nopPluginManager) GetPluginPath(
 	return "installed", nil
 }
 
-func (nopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+func (NopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
 	return true
 }
 
-func (nopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (NopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
 	return true, nil
 }
 
-func (nopPluginManager) GetLatestPluginVersion(
+func (NopPluginManager) GetLatestPluginVersion(
 	ctx context.Context,
 	spec workspace.PluginSpec,
 ) (*semver.Version, error) {
 	return semver.New("1.0.0")
 }
 
-func (nopPluginManager) DownloadPlugin(
+func (NopPluginManager) DownloadPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
@@ -118,7 +118,7 @@ func (nopPluginManager) DownloadPlugin(
 	return io.NopCloser(bytes.NewReader(nil)), 0, nil
 }
 
-func (nopPluginManager) InstallPlugin(
+func (NopPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
 	content pkgWorkspace.PluginContent,
@@ -272,7 +272,7 @@ func (op TestOp) runWithContext(
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
-		PluginManager:   nopPluginManager{},
+		PluginManager:   NopPluginManager{},
 	}
 
 	updateOpts := opts.Options()

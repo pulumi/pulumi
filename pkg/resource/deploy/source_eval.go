@@ -283,6 +283,8 @@ func (iter *evalSourceIterator) forkRun(
 	go func() {
 		// Next, launch the language plugin.
 		run := func() error {
+			defer contract.IgnoreClose(iter.loaderServer)
+
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 
 			rtopts := iter.src.runinfo.Proj.Runtime.Options()
