@@ -400,7 +400,7 @@ config:
 	var config map[string]interface{}
 	jsonError := json.Unmarshal([]byte(stdout), &config)
 	assert.Nil(t, jsonError)
-	assert.Len(t, config, 3)
+	require.Len(t, config, 3)
 	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]interface{})["value"])
 	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]interface{})["value"])
 	thirdValue := config["pulumi-test:third-value"].(map[string]interface{})

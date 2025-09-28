@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -40,7 +41,7 @@ func init() {
 
 					r := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					assert.Equal(l, resource.RootStackType, r.Type, "expected a stack resource")
-					assert.Len(l, r.Outputs, 1)
+					require.Len(l, r.Outputs, 1)
 
 					AssertPropertyMapMember(
 						l,

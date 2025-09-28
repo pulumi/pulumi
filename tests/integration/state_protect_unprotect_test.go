@@ -24,6 +24,7 @@ import (
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestProtectAndUnprotectMultipleURNs tests the functionality of protecting and unprotecting multiple resources by URN.
@@ -105,7 +106,7 @@ description: A test for protecting and unprotecting resources
 
 	// Log the output to help debug
 	t.Logf("Found %d URNs: %v", len(urns), urns)
-	assert.Len(t, urns, 3, "Expected to find 3 resource URNs")
+	require.Len(t, urns, 3, "Expected to find 3 resource URNs")
 
 	// Add safety check to prevent panic if we don't have enough URNs
 	if len(urns) < 2 {

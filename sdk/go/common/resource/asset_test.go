@@ -109,7 +109,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Len(t, archDes.Assets, 1)
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsText())
 		assert.Equal(t, text, archDes.Assets["foo"].(*rasset.Asset).Text)
 		switch runtime.Version() {
@@ -152,7 +152,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Len(t, archDes.Assets, 1)
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsPath())
 		assert.Equal(t, file, archDes.Assets["foo"].(*rasset.Asset).Path)
 		switch runtime.Version() {
@@ -194,7 +194,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Len(t, archDes.Assets, 1)
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsURI())
 		assert.Equal(t, url, archDes.Assets["foo"].(*rasset.Asset).URI)
 		switch runtime.Version() {

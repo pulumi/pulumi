@@ -615,12 +615,11 @@ func TestConstructSlowGo(t *testing.T) {
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Len(t, stackInfo.Deployment.Resources, 5) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				require.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)

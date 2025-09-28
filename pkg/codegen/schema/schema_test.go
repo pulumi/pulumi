@@ -163,7 +163,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
 
-		assert.Len(t, exampleObjectType.Properties, 3)
+		require.Len(t, exampleObjectType.Properties, 3)
 		var exampleProperty *Property
 		var nonPlainProperty *Property
 		var nestedProperty *Property
@@ -203,7 +203,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		assert.True(t, ok)
 
 		check := func(properties []*Property) {
-			assert.Len(t, properties, 3)
+			require.Len(t, properties, 3)
 
 			var exampleProperty *Property
 			var nonPlainProperty *Property

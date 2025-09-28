@@ -536,7 +536,7 @@ func TestTraversalOfOptionalObject(t *testing.T) {
 
 	// get the output variable
 	outputVars := program.OutputVariables()
-	assert.Len(t, outputVars, 1, "There is only one output variable")
+	require.Len(t, outputVars, 1, "There is only one output variable")
 	fooBar := outputVars[0]
 	fooBarType := fooBar.Value.Type()
 	assert.True(t, model.IsOptionalType(fooBarType))
@@ -565,7 +565,7 @@ resource randomPet "random:index/randomPet:RandomPet" {
 
 	strictProgram, diags, strictError := ParseAndBindProgram(t, source, "program.pp")
 	require.NotNil(t, strictError, "Binding fails in strict mode")
-	assert.Len(t, diags, 2, "There are two diagnostics")
+	require.Len(t, diags, 2, "There are two diagnostics")
 	assert.Nil(t, strictProgram)
 }
 
@@ -581,7 +581,7 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
 	require.NotNil(t, program)
-	assert.Len(t, program.PackageReferences(), 2, "There are two package references")
+	require.Len(t, program.PackageReferences(), 2, "There are two package references")
 
 	packageRefExists := func(pkg string) bool {
 		for _, ref := range program.PackageReferences() {

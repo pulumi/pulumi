@@ -2274,7 +2274,7 @@ func TestTargetDependents(t *testing.T) {
 	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	// Check we only have three resources, stack, provider, and resA
-	require.Len(t, 3, len(snap.Resources))
+	require.Len(t, snap.Resources, 3)
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only resA and check
 	// only A is created but also turn on --target-dependents.
@@ -2524,7 +2524,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 			},
 		}, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
-		assert.Len(t, snap.Resources, 4)
+		require.Len(t, snap.Resources, 4)
 		parentURN := snap.Resources[1].URN
 		assert.Equal(t, "parent", parentURN.Name())
 		assert.Equal(t, parentURN, snap.Resources[3].Parent)
@@ -2545,7 +2545,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 		}, false, p.BackendClient, nil)
 		assert.ErrorContains(t, err, "untargeted create")
 		// We should have two resources the stack and the default provider we made for the child.
-		assert.Len(t, snap.Resources, 2)
+		require.Len(t, snap.Resources, 2)
 		assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 		assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
 	})
@@ -2995,7 +2995,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 		},
 	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	unrelatedURN := snap.Resources[3].URN
 	assert.Equal(t, "unrelated", unrelatedURN.Name())
 	assert.Empty(t, snap.Resources[2].Dependencies)
@@ -3094,7 +3094,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 			},
 		}, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
-		assert.Len(t, snap.Resources, 5)
+		require.Len(t, snap.Resources, 5)
 		parentURN := snap.Resources[3].URN
 		assert.Equal(t, "parent", parentURN.Name())
 		assert.Equal(t, parentURN, snap.Resources[4].Parent)
@@ -3117,7 +3117,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		}, false, p.BackendClient, nil)
 		assert.ErrorContains(t, err, "untargeted create")
 		// We should have two resources the stack and the default provider we made for the child.
-		assert.Len(t, snap.Resources, 2)
+		require.Len(t, snap.Resources, 2)
 		assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 		assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
 	})
@@ -3192,7 +3192,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
 	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
-	assert.Len(t, snap.Resources, 6)
+	require.Len(t, snap.Resources, 6)
 }
 
 func TestTargetChangeAndSameProviderVersion(t *testing.T) {
@@ -3264,7 +3264,7 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated1 has not been registered yet")
 	// Check we have 7 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2, new
 	// provider B)
-	assert.Len(t, snap.Resources, 7)
+	require.Len(t, snap.Resources, 7)
 }
 
 // Tests that resources which are modified (e.g. omitted from a program) but not
@@ -4421,7 +4421,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
 	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
-	assert.Len(t, snap.Resources, 6)
+	require.Len(t, snap.Resources, 6)
 	// unrelated shouldn't have had its provider changed
 	unrelated = snap.Resources[5]
 	assert.Equal(t, "unrelated", unrelated.URN.Name())
@@ -4524,7 +4524,7 @@ func TestUntargetedAliasedProviderChanges(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), reproOptions, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	assert.Len(t, reproSnap.Resources, 3)
+	require.Len(t, reproSnap.Resources, 3)
 
 	expectedProvRef, err := providers.NewReference(
 		resource.NewURN(

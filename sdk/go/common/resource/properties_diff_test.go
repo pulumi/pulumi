@@ -134,7 +134,7 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	assert.Empty(t, d3.Array.Adds)
 	assert.Empty(t, d3.Array.Deletes)
 	assert.Empty(t, d3.Array.Sames)
-	assert.Len(t, d3.Array.Updates, 3)
+	require.Len(t, d3.Array.Updates, 3)
 	for i, update := range d3.Array.Updates {
 		assert.Equal(t, d3a1.ArrayValue()[i], update.Old)
 		assert.Equal(t, d3a2.ArrayValue()[i], update.New)
@@ -152,18 +152,18 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	require.NotNil(t, d4.Array)
 	assert.Nil(t, d4.Object)
 	assert.Empty(t, d4.Array.Adds)
-	assert.Len(t, d4.Array.Deletes, 1)
+	require.Len(t, d4.Array.Deletes, 1)
 	for i, delete := range d4.Array.Deletes {
 		assert.Equal(t, 2, i)
 		assert.Equal(t, d4a1.ArrayValue()[i], delete)
 	}
-	assert.Len(t, d4.Array.Sames, 1)
+	require.Len(t, d4.Array.Sames, 1)
 	for i, same := range d4.Array.Sames {
 		assert.Equal(t, 1, i)
 		assert.Equal(t, d4a1.ArrayValue()[i], same)
 		assert.Equal(t, d4a2.ArrayValue()[i], same)
 	}
-	assert.Len(t, d4.Array.Updates, 1)
+	require.Len(t, d4.Array.Updates, 1)
 	for i, update := range d4.Array.Updates {
 		assert.Equal(t, 0, i)
 		assert.Equal(t, d4a1.ArrayValue()[i], update.Old)
@@ -181,19 +181,19 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	require.NotNil(t, d5)
 	require.NotNil(t, d5.Array)
 	assert.Nil(t, d5.Object)
-	assert.Len(t, d5.Array.Adds, 1)
+	require.Len(t, d5.Array.Adds, 1)
 	for i, add := range d5.Array.Adds {
 		assert.Equal(t, 2, i)
 		assert.Equal(t, d5a2.ArrayValue()[i], add)
 	}
 	assert.Empty(t, d5.Array.Deletes)
-	assert.Len(t, d5.Array.Sames, 1)
+	require.Len(t, d5.Array.Sames, 1)
 	for i, same := range d5.Array.Sames {
 		assert.Equal(t, 1, i)
 		assert.Equal(t, d5a1.ArrayValue()[i], same)
 		assert.Equal(t, d5a2.ArrayValue()[i], same)
 	}
-	assert.Len(t, d5.Array.Updates, 1)
+	require.Len(t, d5.Array.Updates, 1)
 	for i, update := range d5.Array.Updates {
 		assert.Equal(t, 0, i)
 		assert.Equal(t, d5a1.ArrayValue()[i], update.Old)
@@ -237,7 +237,7 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 		assert.Empty(t, d3.Adds)
 		assert.Empty(t, d3.Deletes)
 		assert.Empty(t, d3.Sames)
-		assert.Len(t, d3.Updates, 3)
+		require.Len(t, d3.Updates, 3)
 		d3pa := d3.Updates[PropertyKey("prop-a")]
 		assert.Nil(t, d3pa.Array)
 		assert.Nil(t, d3pa.Object)
@@ -258,7 +258,7 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 		assert.Empty(t, d3pc.Object.Adds)
 		assert.Empty(t, d3pc.Object.Deletes)
 		assert.Empty(t, d3pc.Object.Sames)
-		assert.Len(t, d3pc.Object.Updates, 1)
+		require.Len(t, d3pc.Object.Updates, 1)
 		d3pcu := d3pc.Object.Updates[PropertyKey("inner-prop-a")]
 		assert.True(t, d3pcu.Old.IsNumber())
 		assert.Equal(t, float64(673), d3pcu.Old.NumberValue())
@@ -286,18 +286,18 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 		assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(obj1), NewPropertyValue(obj2))
 		d4 := obj1.Diff(obj2)
 		require.NotNil(t, d4)
-		assert.Len(t, d4.Adds, 2)
+		require.Len(t, d4.Adds, 2)
 		assert.Equal(t, obj2[PropertyKey("prop-a-1")], d4.Adds[PropertyKey("prop-a-1")])
 		assert.Equal(t, obj2[PropertyKey("prop-a-2")], d4.Adds[PropertyKey("prop-a-2")])
-		assert.Len(t, d4.Deletes, 2)
+		require.Len(t, d4.Deletes, 2)
 		assert.Equal(t, obj1[PropertyKey("prop-d-1")], d4.Deletes[PropertyKey("prop-d-1")])
 		assert.Equal(t, obj1[PropertyKey("prop-d-2")], d4.Deletes[PropertyKey("prop-d-2")])
-		assert.Len(t, d4.Sames, 2)
+		require.Len(t, d4.Sames, 2)
 		assert.Equal(t, obj1[PropertyKey("prop-c-1")], d4.Sames[PropertyKey("prop-c-1")])
 		assert.Equal(t, obj1[PropertyKey("prop-c-2")], d4.Sames[PropertyKey("prop-c-2")])
 		assert.Equal(t, obj2[PropertyKey("prop-c-1")], d4.Sames[PropertyKey("prop-c-1")])
 		assert.Equal(t, obj2[PropertyKey("prop-c-2")], d4.Sames[PropertyKey("prop-c-2")])
-		assert.Len(t, d4.Updates, 1)
+		require.Len(t, d4.Updates, 1)
 		assert.Equal(t, obj1[PropertyKey("prop-b")], d4.Updates[PropertyKey("prop-b")].Old)
 		assert.Equal(t, obj2[PropertyKey("prop-b")], d4.Updates[PropertyKey("prop-b")].New)
 	}

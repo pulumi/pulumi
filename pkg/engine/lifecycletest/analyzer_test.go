@@ -471,12 +471,12 @@ func TestResourceRemediation(t *testing.T) {
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
+	require.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
 
 	// Ensure the rewritten properties have been applied to the inputs:
 	r := snap.Resources[1]
 	assert.Equal(t, "pkgA:m:typA", string(r.Type))
-	assert.Len(t, r.Inputs, 3)
+	require.Len(t, r.Inputs, 3)
 	assert.Equal(t, "foo", r.Inputs["a"].StringValue())
 	assert.Equal(t, true, r.Inputs["fff"].BoolValue())
 	assert.Equal(t, "bar", r.Inputs["z"].StringValue())
@@ -529,7 +529,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 	// Expect no error, valid snapshot, two resources:
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
+	require.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
 }
 
 // TestRemediateFailure tests the case where a remediation fails to execute. In this case, the whole

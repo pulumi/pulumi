@@ -93,7 +93,7 @@ func TestAssetSerialize(t *testing.T) {
 	assert.True(t, archValue.IsArchive())
 	archDes := archValue.ArchiveValue()
 	assert.True(t, archDes.IsAssets())
-	assert.Len(t, archDes.Assets, 1)
+	require.Len(t, archDes.Assets, 1)
 	assert.True(t, archDes.Assets["foo"].(*asset.Asset).IsText())
 	assert.Equal(t, text, archDes.Assets["foo"].(*asset.Asset).Text)
 	switch runtime.Version() {

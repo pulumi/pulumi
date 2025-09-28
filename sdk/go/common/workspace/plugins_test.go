@@ -1295,7 +1295,7 @@ plugins:
 	proj, err := LoadProject(pyaml)
 	require.NoError(t, err)
 	require.NotNil(t, proj.Plugins)
-	assert.Len(t, proj.Plugins.Providers, 1)
+	require.Len(t, proj.Plugins.Providers, 1)
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
 	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)

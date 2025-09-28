@@ -833,7 +833,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 9) // 2 providers + 7 resources
+	require.Len(t, snap.Resources, 9) // 2 providers + 7 resources
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
 	})
@@ -969,7 +969,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 1) // expect no default provider to be created for the invoke
+	require.Len(t, snap.Resources, 1) // expect no default provider to be created for the invoke
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19904. Registering a transform that depends on a resource

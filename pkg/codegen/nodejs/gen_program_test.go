@@ -125,6 +125,6 @@ resource "app" "scaleway:iam/application:Application" {}
 	g := generator{program: program, Formatter: &format.Formatter{Indent: "  "}}
 	imp := g.collectProgramImports(program)
 
-	assert.Len(t, imp.importStatements, 1)
+	require.Len(t, imp.importStatements, 1)
 	assert.Equal(t, `import * as scaleway from "@pulumiverse/scaleway";`, imp.importStatements[0])
 }

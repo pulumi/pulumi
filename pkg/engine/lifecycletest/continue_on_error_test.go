@@ -345,7 +345,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3) // 2 resources + 1 provider
+	require.Len(t, snap.Resources, 3) // 2 resources + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -472,7 +472,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2) // 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -482,7 +482,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 6) // 4 resources + 2 providers
+	require.Len(t, snap.Resources, 6) // 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -641,7 +641,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2) // 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -651,7 +651,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 6) // 4 resources + 2 providers
+	require.Len(t, snap.Resources, 6) // 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -770,7 +770,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed read")
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 1) // 1 provider
+	require.Len(t, snap.Resources, 1) // 1 provider
 }
 
 func TestUpContinueOnErrorFailedDependencies(t *testing.T) {

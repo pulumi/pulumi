@@ -50,7 +50,7 @@ func TestComputeUpdateStats(t *testing.T) {
 	stats := computeUpdateStats(events)
 
 	assert.Equal(t, 4, stats.numNonStackResources)
-	assert.Len(t, stats.retainedResources, 2)
+	require.Len(t, stats.retainedResources, 2)
 }
 
 func makeResourcePreEvent(urn, resType string, op display.StepOp, retainOnDelete bool) engine.Event {

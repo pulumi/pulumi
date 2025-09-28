@@ -105,7 +105,7 @@ func TestConverterServer_State(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, resp.Resources, 1)
+	require.Len(t, resp.Resources, 1)
 
 	res := resp.Resources[0]
 	assert.Equal(t, "test:type", res.Type)
@@ -137,7 +137,7 @@ func TestConverterServer_Program(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, resp.Diagnostics, 1)
+	require.Len(t, resp.Diagnostics, 1)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)

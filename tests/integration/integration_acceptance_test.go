@@ -98,8 +98,8 @@ func TestConfigSave(t *testing.T) {
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 
-	assert.Len(t, testStack1.Config, 2)
-	assert.Len(t, testStack2.Config, 2)
+	require.Len(t, testStack1.Config, 2)
+	require.Len(t, testStack2.Config, 2)
 
 	validate("configA", "value1", testStack1.Config)
 	validate("configC", "value3", testStack1.Config)

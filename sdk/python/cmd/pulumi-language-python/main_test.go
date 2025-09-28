@@ -322,7 +322,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			packages, err := determinePulumiPackages(t.Context(), opts)
 
 			require.NoError(t, err)
-			assert.Len(t, packages, 1)
+			require.Len(t, packages, 1)
 			pipInstallTest := packages[0]
 			assert.Equal(t, "pip-install-test", pipInstallTest.Name)
 			assert.NotEmpty(t, pipInstallTest.Location)
@@ -351,7 +351,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
 			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
-			assert.Len(t, packages, 1)
+			require.Len(t, packages, 1)
 			assert.Equal(t, "pulumi_foo", packages[0].Name)
 			assert.NotEmpty(t, packages[0].Location)
 
@@ -377,7 +377,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
 			assert.NotEmpty(t, packages)
-			assert.Len(t, packages, 1)
+			require.Len(t, packages, 1)
 			old := packages[0]
 			assert.Equal(t, "pulumi_old", old.Name)
 			assert.NotEmpty(t, old.Location)
