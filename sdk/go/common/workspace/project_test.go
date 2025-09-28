@@ -2084,8 +2084,8 @@ func TestGetPackageSpecs(t *testing.T) {
 	}
 	specs = proj.GetPackageSpecs()
 	assert.Empty(t, specs)
-	specs = proj.GetPackageSpecs()
-	assert.Len(t, specs, 2)
+
+	// Test with mixed packages
 	proj = &Project{
 		Name:    "test-project",
 		Runtime: NewProjectRuntimeInfo("nodejs", nil),
