@@ -176,6 +176,14 @@ func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) erro
 	return sm.journal.AddJournalEntry(journalEntry)
 }
 
+// RegisterSecretsManager records the secrets manager used for this deployment.
+func (sm *JournalSnapshotManager) RegisterSecretsManager(secretsManager secrets.Manager) error {
+	journalEntry := sm.newJournalEntry(JournalEntrySecretsManager, 0)
+	journalEntry.SecretsManager = secretsManager
+	journalEntry.ElideWrite = true
+	return sm.journal.AddJournalEntry(journalEntry)
+}
+
 // findResourceInOldOrNew looks for a resource in either the base snapshot, or in the list of new
 // resources.
 //
@@ -743,11 +751,14 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 func NewJournalSnapshotManager(
 	journal Journal,
 	baseSnap *deploy.Snapshot,
+	sm secrets.Manager,
 ) *JournalSnapshotManager {
 	manager := &JournalSnapshotManager{
 		journal:      journal,
 		baseSnapshot: baseSnap,
 	}
+
+	manager.RegisterSecretsManager(sm)
 
 	return manager
 }
