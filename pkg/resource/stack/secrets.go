@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -90,6 +91,15 @@ func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (sec
 	}
 
 	return NewBatchingCachingSecretsManager(sm), nil
+}
+
+type Base64SecretsProvider struct{}
+
+func (Base64SecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+	if ty != "b64" {
+		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
+	}
+	return NewBatchingCachingSecretsManager(b64.NewBase64SecretsManager()), nil
 }
 
 // BatchingSecretsManager is a secrets.Manager that supports batch encryption and decryption operations.

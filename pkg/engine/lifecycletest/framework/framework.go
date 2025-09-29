@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -238,8 +239,11 @@ func (op TestOp) runWithContext(
 			},
 		}
 		secretsManager := b64.NewBase64SecretsManager()
+		secretsProvider := stack.Base64SecretsProvider{}
 
-		journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot)
+		journaler, err := backend.NewSnapshotJournaler(
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+		contract.AssertNoErrorf(err, "got error setting up journaler")
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
 		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
 
