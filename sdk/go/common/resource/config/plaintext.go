@@ -140,38 +140,38 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 
 func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter Encrypter) (map[Key]object, error) {
 	// Collect all secure values
-	var locationRefs []secureLocationRef
-	var valuesChunks [][]string
-	collectSecureFromPlaintextKeyMap(plaintextMap, &locationRefs, &valuesChunks)
+	var refs []containerRef
+	var ptChunks [][]string
+	collectPlaintextSecretsFromKeyMap(plaintextMap, &refs, &ptChunks)
 
 	// Encrypt objects in batches
 	offset := 0
-	for _, valuesChunk := range valuesChunks {
-		if len(valuesChunk) == 0 {
+	for _, ptChunk := range ptChunks {
+		if len(ptChunk) == 0 {
 			continue
 		}
-		encryptedChunk, err := encrypter.BatchEncrypt(ctx, valuesChunk)
+		encryptedChunk, err := encrypter.BatchEncrypt(ctx, ptChunk)
 		if err != nil {
 			return nil, err
 		}
 		// Assign encrypted values back into original structure
-		// We are accepting that a secure Plaintext now has a ciphertext value
+		// We are accepting that a Plaintext Secret now has a ciphertext value
 		for i, encrypted := range encryptedChunk {
-			locationRef := locationRefs[offset+i]
-			switch container := locationRef.container.(type) {
+			ref := refs[offset+i]
+			switch container := ref.container.(type) {
 			case map[Key]Plaintext:
-				container[locationRef.key.(Key)] = NewSecurePlaintext(encrypted)
+				container[ref.key.(Key)] = NewPlaintext(PlaintextSecret(encrypted))
 			case map[string]Plaintext:
-				container[locationRef.key.(string)] = NewSecurePlaintext(encrypted)
+				container[ref.key.(string)] = NewPlaintext(PlaintextSecret(encrypted))
 			case []Plaintext:
-				container[locationRef.key.(int)] = NewSecurePlaintext(encrypted)
+				container[ref.key.(int)] = NewPlaintext(PlaintextSecret(encrypted))
 			}
 		}
-		offset += len(valuesChunk)
+		offset += len(ptChunk)
 	}
 
 	// Marshal each top-level object back into an object value.
-	// Note that at this point, all secure values have been encrypted.
+	// Note that at this point, all Plaintext Secrets have been encrypted.
 	// So we can use the NopEncrypter here.
 	result := map[Key]object{}
 	for k, pt := range plaintextMap {

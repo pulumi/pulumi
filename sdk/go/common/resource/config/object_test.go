@@ -46,7 +46,7 @@ func TestMarshallingRoundtrip(t *testing.T) {
 			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newSecureObject("moon"),
+			newObject(CiphertextSecret("moon")),
 		}),
 	})
 
@@ -64,7 +64,7 @@ func TestMarshallingRoundtrip(t *testing.T) {
 			newObject(float64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newSecureObject("moon"),
+			newObject(CiphertextSecret("moon")),
 		}),
 	})
 
@@ -92,24 +92,24 @@ func TestDecryptMap(t *testing.T) {
 
 	t.Run("secure values", func(t *testing.T) {
 		input := map[Key]object{
-			MustParseKey("ns:secret"): newSecureObject("ciphertext"),
+			MustParseKey("ns:secret"): newObject(CiphertextSecret("ciphertext")),
 		}
 		result, err := decryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, "ciphertext", result[MustParseKey("ns:secret")].value)
-		assert.True(t, result[MustParseKey("ns:secret")].secure)
+		assert.Equal(t, PlaintextSecret("ciphertext"), result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
 	t.Run("mixed values", func(t *testing.T) {
 		input := map[Key]object{
 			MustParseKey("ns:plain"):  newObject("value"),
-			MustParseKey("ns:secret"): newSecureObject("ciphertext"),
+			MustParseKey("ns:secret"): newObject(CiphertextSecret("ciphertext")),
 		}
 		result, err := decryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
-		assert.Equal(t, "ciphertext", result[MustParseKey("ns:secret")].value)
-		assert.True(t, result[MustParseKey("ns:secret")].secure)
+		assert.Equal(t, PlaintextSecret("ciphertext"), result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
 	t.Run("chunking", func(t *testing.T) {
@@ -118,19 +118,19 @@ func TestDecryptMap(t *testing.T) {
 		defer func() { defaultMaxChunkSize = origChunkSize }()
 
 		input := map[Key]object{
-			MustParseKey("ns:a"): newSecureObject("s1"),
-			MustParseKey("ns:b"): newSecureObject("s2"),
-			MustParseKey("ns:c"): newSecureObject("s3"),
+			MustParseKey("ns:a"): newObject(CiphertextSecret("s1")),
+			MustParseKey("ns:b"): newObject(CiphertextSecret("s2")),
+			MustParseKey("ns:c"): newObject(CiphertextSecret("s3")),
 			MustParseKey("ns:d"): newObject("plain"),
 		}
 		result, err := decryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, "s1", result[MustParseKey("ns:a")].value)
-		assert.Equal(t, "s2", result[MustParseKey("ns:b")].value)
-		assert.Equal(t, "s3", result[MustParseKey("ns:c")].value)
+		assert.Equal(t, PlaintextSecret("s1"), result[MustParseKey("ns:a")].value)
+		assert.Equal(t, PlaintextSecret("s2"), result[MustParseKey("ns:b")].value)
+		assert.Equal(t, PlaintextSecret("s3"), result[MustParseKey("ns:c")].value)
 		assert.Equal(t, "plain", result[MustParseKey("ns:d")].value)
-		assert.True(t, result[MustParseKey("ns:a")].secure)
-		assert.True(t, result[MustParseKey("ns:b")].secure)
-		assert.True(t, result[MustParseKey("ns:c")].secure)
+		assert.True(t, result[MustParseKey("ns:a")].Secure())
+		assert.True(t, result[MustParseKey("ns:b")].Secure())
+		assert.True(t, result[MustParseKey("ns:c")].Secure())
 	})
 }

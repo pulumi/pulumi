@@ -96,7 +96,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newObject(CiphertextSecret{"moon"}),
+			newObject(CiphertextSecret("moon")),
 		}),
 	})
 	assert.Equal(t, expected, actual)
@@ -121,19 +121,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 	actual, err := obj.decrypt(context.Background(), nil, NopDecrypter)
 	require.NoError(t, err)
 
-	rt := NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
-			// uint64 can't roundtrip through JSON
-			NewPlaintext(float64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
-			NewPlaintext(PlaintextSecret("moon")),
-		}),
-	})
-
-	assert.Equal(t, rt, actual)
+	assert.Equal(t, plain, actual)
 }
 
 func TestMarshalPlaintext(t *testing.T) {
@@ -185,24 +173,24 @@ func TestEncryptMap(t *testing.T) {
 
 	t.Run("secure values", func(t *testing.T) {
 		input := map[Key]Plaintext{
-			MustParseKey("ns:secret"): NewSecurePlaintext("Plaintext"),
+			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, "Plaintext", result[MustParseKey("ns:secret")].value)
-		assert.True(t, result[MustParseKey("ns:secret")].secure)
+		assert.Equal(t, CiphertextSecret("Plaintext"), result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
 	t.Run("mixed values", func(t *testing.T) {
 		input := map[Key]Plaintext{
 			MustParseKey("ns:plain"):  NewPlaintext("value"),
-			MustParseKey("ns:secret"): NewSecurePlaintext("Plaintext"),
+			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
-		assert.Equal(t, "Plaintext", result[MustParseKey("ns:secret")].value)
-		assert.True(t, result[MustParseKey("ns:secret")].secure)
+		assert.Equal(t, CiphertextSecret("Plaintext"), result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
 	t.Run("chunking", func(t *testing.T) {
@@ -211,19 +199,19 @@ func TestEncryptMap(t *testing.T) {
 		defer func() { defaultMaxChunkSize = origChunkSize }()
 
 		input := map[Key]Plaintext{
-			MustParseKey("ns:a"): NewSecurePlaintext("s1"),
-			MustParseKey("ns:b"): NewSecurePlaintext("s2"),
-			MustParseKey("ns:c"): NewSecurePlaintext("s3"),
+			MustParseKey("ns:a"): NewPlaintext(PlaintextSecret("s1")),
+			MustParseKey("ns:b"): NewPlaintext(PlaintextSecret("s2")),
+			MustParseKey("ns:c"): NewPlaintext(PlaintextSecret("s3")),
 			MustParseKey("ns:d"): NewPlaintext("plain"),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, "s1", result[MustParseKey("ns:a")].value)
-		assert.Equal(t, "s2", result[MustParseKey("ns:b")].value)
-		assert.Equal(t, "s3", result[MustParseKey("ns:c")].value)
+		assert.Equal(t, CiphertextSecret("s1"), result[MustParseKey("ns:a")].value)
+		assert.Equal(t, CiphertextSecret("s2"), result[MustParseKey("ns:b")].value)
+		assert.Equal(t, CiphertextSecret("s3"), result[MustParseKey("ns:c")].value)
 		assert.Equal(t, "plain", result[MustParseKey("ns:d")].value)
-		assert.True(t, result[MustParseKey("ns:a")].secure)
-		assert.True(t, result[MustParseKey("ns:b")].secure)
-		assert.True(t, result[MustParseKey("ns:c")].secure)
+		assert.True(t, result[MustParseKey("ns:a")].Secure())
+		assert.True(t, result[MustParseKey("ns:b")].Secure())
+		assert.True(t, result[MustParseKey("ns:c")].Secure())
 	})
 }
