@@ -27,6 +27,9 @@ const (
 )
 
 type JournalEntry struct {
+	// Version of the journal entry format.
+	Version int `json:"version"`
+	// Kind of journal entry.
 	Kind JournalEntryKind `json:"kind"`
 	// Sequence ID of the operation.
 	SequenceID int64 `json:"sequenceID"`
