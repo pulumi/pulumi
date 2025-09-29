@@ -1204,9 +1204,28 @@ class LinkRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing.final
+    class PackagesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> pulumi.plugin_pb2.PackageDependency: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: pulumi.plugin_pb2.PackageDependency | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     INFO_FIELD_NUMBER: builtins.int
     LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    PACKAGES_FIELD_NUMBER: builtins.int
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
     @property
@@ -1220,7 +1239,12 @@ class LinkRequest(google.protobuf.message.Message):
         should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
         to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
         to be used instead of the published `@pulumi/aws` package.
+        TODO: remove
         """
+
+    @property
+    def packages(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, pulumi.plugin_pb2.PackageDependency]:
+        """path -> descriptor"""
 
     def __init__(
         self,
@@ -1228,9 +1252,10 @@ class LinkRequest(google.protobuf.message.Message):
         info: global___ProgramInfo | None = ...,
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         loader_target: builtins.str = ...,
+        packages: collections.abc.Mapping[builtins.str, pulumi.plugin_pb2.PackageDependency] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["info", b"info", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "packages", b"packages"]) -> None: ...
 
 global___LinkRequest = LinkRequest
 
@@ -1240,8 +1265,13 @@ class LinkResponse(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    IMPORT_INSTRUCTIONS_FIELD_NUMBER: builtins.int
+    import_instructions: builtins.str
     def __init__(
         self,
+        *,
+        import_instructions: builtins.str = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["import_instructions", b"import_instructions"]) -> None: ...
 
 global___LinkResponse = LinkResponse

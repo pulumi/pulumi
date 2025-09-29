@@ -363,6 +363,10 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
+func (host *pluginHost) LoadPkg(name string, pkg workspace.PackageSpec) error {
+	panic("not implemented")
+}
+
 func (host *pluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed

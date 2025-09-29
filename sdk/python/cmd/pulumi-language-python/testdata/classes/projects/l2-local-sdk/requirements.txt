@@ -1,0 +1,4 @@
+ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+pyright
+
+/var/folders/4q/3skx3qb5191bjhkchcbbrmmm0000gn/T/1371576007/projects/l2-local-sdk/sdks/local

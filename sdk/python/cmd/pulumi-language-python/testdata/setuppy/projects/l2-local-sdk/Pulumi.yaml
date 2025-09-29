@@ -1,0 +1,9 @@
+name: l2-local-sdk
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    typechecker: mypy
+    virtualenv: venv
+packages:
+  local: pretend to be the path to local provider

@@ -509,7 +509,6 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	var coreArtifact string
 	if req.CoreSdkDirectory != "" {
-		// Build the core SDK, use a slightly odd version so we can test dependencies later.
 		coreArtifact, err = languageClient.Pack(
 			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 		if err != nil {
@@ -666,6 +665,17 @@ func (eng *languageTestServer) RunLanguageTest(
 	// And now replace the context host with our own test host
 	providers := make(map[string]func() plugin.Provider)
 	for _, provider := range test.Providers {
+		p := provider() // TODO: make this return p, isLocal instead and combine with the loop below
+
+		version, err := getProviderVersion(p)
+		if err != nil {
+			return nil, err
+		}
+		providers[fmt.Sprintf("%s@%s", p.Pkg(), version)] = provider
+	}
+
+	localProviderSet := make(map[string]struct{})
+	for _, provider := range test.LocalProviders {
 		p := provider()
 
 		version, err := getProviderVersion(p)
@@ -673,6 +683,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, err
 		}
 		providers[fmt.Sprintf("%s@%s", p.Pkg(), version)] = provider
+		localProviderSet[string(p.Pkg())] = struct{}{}
 	}
 
 	host := &testHost{
@@ -787,6 +798,10 @@ func (eng *languageTestServer) RunLanguageTest(
 	})
 
 	for _, pkg := range packages {
+		if _, ok := localProviderSet[pkg.Name]; ok {
+			continue // Don't generate the "global" packages for local providers
+		}
+
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
 		// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
@@ -1023,6 +1038,83 @@ func (eng *languageTestServer) RunLanguageTest(
 				err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
 				if err != nil {
 					return nil, fmt.Errorf("copy testdata: %w", err)
+				}
+
+				// Generate local packages for the local providers
+				packgesToLink := map[string]workspace.PackageDescriptor{}
+				for provider := range localProviderSet {
+					sdkOut := filepath.Join(projectDir, "sdks", provider)
+
+					var pkg *schema.Package
+					for _, p := range packages {
+						if p.Name == provider {
+							pkg = p
+							break
+						}
+					}
+					if pkg == nil {
+						return nil, fmt.Errorf("could not find schema package for local provider %q", provider)
+					}
+					schemaBytes, err := pkg.MarshalJSON()
+					if err != nil {
+						return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
+					}
+
+					diags, err := languageClient.GeneratePackage(
+						sdkOut, string(schemaBytes), nil, grpcServer.Addr(), nil /* localDependencies */, true)
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
+					}
+					if diags.HasErrors() {
+						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
+					}
+
+					packgesToLink[sdkOut] = workspace.PackageDescriptor{
+						PluginSpec: workspace.PluginSpec{
+							Name: provider,
+						},
+						Parameterization: nil, // TODO
+					}
+				}
+
+				// Link the packages into the project
+				if len(packgesToLink) > 0 {
+					project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
+					}
+					info := &engine.Projinfo{Proj: project, Root: projectDir}
+					programDirectory, main, err := info.GetPwdMain()
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
+					}
+					progInfo := plugin.NewProgramInfo(
+						projectDir,
+						programDirectory,
+						main,
+						project.Runtime.Options())
+
+					_, err = languageClient.Link(progInfo, packgesToLink, grpcServer.Addr())
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("link(%v): %v", packgesToLink, err)), nil
+					}
+
+					// Add the linked packages to the `packages` section in our `Pulumi.yaml`.
+					for _, descriptor := range packgesToLink {
+						versionString := ""
+						if descriptor.Version != nil {
+							versionString = descriptor.Version.String()
+						}
+						spec := workspace.PackageSpec{
+							Source:  "PATH_TO_LOCAL_PROVIDER_" + descriptor.Name,
+							Version: versionString,
+							// Parameters: TODO,
+						}
+						project.AddPackage(descriptor.Name, spec)
+					}
+					if err := project.Save(filepath.Join(projectDir, "Pulumi.yaml")); err != nil {
+						return nil, fmt.Errorf("failed to save project: %w", err)
+					}
 				}
 
 				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
@@ -1304,7 +1396,20 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
-			err := languageClient.Link(policyInfo, localDependencies)
+
+			// Link the core SDK into the policy pack
+			linkDeps := map[string]workspace.PackageDescriptor{}
+			for name := range localDependencies {
+				if name == "pulumi" {
+					// `pulumi` is special cased in Link to recognize it as the core SDK.
+					linkDeps[token.CoreArtifact] = workspace.PackageDescriptor{
+						PluginSpec: workspace.PluginSpec{
+							Name: "pulumi",
+						},
+					}
+				}
+			}
+			_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 			}

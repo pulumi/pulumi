@@ -136,15 +136,15 @@ func TestLanguage(t *testing.T) {
 			useTOML:     false,
 			inputTypes:  "",
 			typechecker: "mypy",
-			toolchain:   "uv",
+			toolchain:   "pip", // revert to uv, just for local testing
 		},
 		{
 			name:        "toml",
 			snapshotDir: "toml",
 			useTOML:     true,
 			inputTypes:  "classes-and-dicts",
-			typechecker: "pyright",
-			toolchain:   "uv",
+			typechecker: "mypy",
+			toolchain:   "poetry", // revert to uv, just for local testing
 		},
 		{
 			name:        "classes",
@@ -180,7 +180,8 @@ func TestLanguage(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a temp project dir for the test to run in
-			rootDir := t.TempDir()
+			// rootDir := t.TempDir()
+			rootDir, err := os.MkdirTemp("", "")
 
 			snapshotDir := "./testdata/" + config.snapshotDir
 
@@ -214,6 +215,11 @@ func TestLanguage(t *testing.T) {
 						Path:        "requirements\\.txt",
 						Pattern:     rootDir + "/artifacts",
 						Replacement: "ROOT/artifacts",
+					},
+					{
+						Path:        "requirements\\.txt",
+						Pattern:     ".*/projects/.*/sdks",
+						Replacement: "PROJECT/sdks",
 					},
 				},
 				LanguageInfo: languageInfo,

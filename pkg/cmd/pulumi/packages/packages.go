@@ -28,17 +28,16 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"slices"
 	"strings"
 
-	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -47,8 +46,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -118,15 +117,54 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
+	// Create a new plugin context that has the new provider as part of its packages.
+	// This allows Link to load its schema.
+	projPath, err := workspace.DetectProjectPath()
+	if err != nil {
+		return nil, nil, diags, err
+	}
+	var plugins *workspace.Plugins
+	var pkgs map[string]workspace.PackageSpec
+	project, err := workspace.LoadProject(projPath)
+	if err != nil {
+		return nil, nil, diags, err
+	}
+	plugins = project.Plugins
+	pkgs = project.GetPackageSpecs()
+	if pkgs == nil {
+		pkgs = make(map[string]workspace.PackageSpec)
+	}
+	pkgs[pkg.Name] = workspace.PackageSpec{
+		Source: schemaSource,
+	}
+
+	pctx, err = plugin.NewContextWithRoot(context.TODO(), cmdutil.Diag(), cmdutil.Diag(), nil, root, root, nil,
+		false, nil, plugins, pkgs, nil, nil)
+	if err != nil {
+		return nil, nil, diags, err
+	}
+	defer func() {
+		contract.IgnoreError(pctx.Close())
+	}()
+
+	pluginSpec, err := workspace.NewPluginSpec(context.TODO() /* TODO */, pkg.Name, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return nil, nil, diags, err
+	}
+
+	packageDescriptor := workspace.NewPackageDescriptor(pluginSpec, nil)
+
 	// Link the package to the project
 	if err := LinkPackage(&LinkPackageContext{
-		Writer:    os.Stdout,
-		Workspace: ws,
-		Language:  language,
-		Root:      root,
-		Pkg:       pkg,
-		Out:       out,
-		Install:   true,
+		Writer:            os.Stdout,
+		Workspace:         ws,
+		Language:          language,
+		Root:              root,
+		Pkg:               pkg,
+		PluginContext:     pctx,
+		PackageDescriptor: packageDescriptor,
+		Out:               out,
+		Install:           true,
 	}); err != nil {
 		return nil, nil, diags, err
 	}
@@ -221,6 +259,10 @@ type LinkPackageContext struct {
 	Root string
 	// The schema of the Pulumi package from which the SDK being linked was generated.
 	Pkg *schema.Package
+	// Meep
+	PluginContext *plugin.Context
+	// beep beep
+	PackageDescriptor workspace.PackageDescriptor
 	// The output directory where the SDK package to be linked is located.
 	Out string
 	// True if the linked SDK package should be installed into the project it is being added to. If this is false, the
@@ -381,160 +423,61 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 func linkPythonPackage(ctx *LinkPackageContext) error {
 	fmt.Fprintf(ctx.Writer, "Successfully generated a Python SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
 	fmt.Fprintf(ctx.Writer, "\n")
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return err
+	}
 	proj, _, err := ctx.Workspace.ReadProject()
 	if err != nil {
 		return err
 	}
-	packageSpecifier, err := filepath.Rel(ctx.Root, ctx.Out)
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, main, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
 	}
 
-	modifyRequirements := func(virtualenv string) error {
-		fPath := filepath.Join(ctx.Root, "requirements.txt")
-		fBytes, err := os.ReadFile(fPath)
-		if err != nil {
-			return fmt.Errorf("error opening requirments.txt: %w", err)
-		}
-
-		lines := regexp.MustCompile("\r?\n").Split(string(fBytes), -1)
-		if !slices.Contains(lines, packageSpecifier) {
-			// Match the file's line endings when adding the package specifier.
-			usesCRLF := strings.Contains(string(fBytes), "\r\n")
-			lineEnding := "\n"
-			if usesCRLF {
-				lineEnding = "\r\n"
-			}
-			fBytes = []byte(packageSpecifier + lineEnding + string(fBytes))
-			err = os.WriteFile(fPath, fBytes, 0o600)
-			if err != nil {
-				return fmt.Errorf("could not write requirements.txt: %w", err)
-			}
-		}
-
-		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-			Root:       ctx.Root,
-			Virtualenv: virtualenv,
-		})
-		if err != nil {
-			return fmt.Errorf("error resolving toolchain: %w", err)
-		}
-		if virtualenv != "" {
-			if err := tc.EnsureVenv(context.TODO(), ctx.Root, false, /* useLanguageVersionTools */
-				true /*showOutput*/, os.Stdout, os.Stderr); err != nil {
-				return fmt.Errorf("error ensuring virtualenv is setup: %w", err)
-			}
-		}
-
-		if ctx.Install {
-			cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
-			if err != nil {
-				return fmt.Errorf("error preparing pip install command: %w", err)
-			}
-			cmd.Stderr = os.Stderr
-			cmd.Stdout = os.Stdout
-			err = cmd.Run()
-			if err != nil {
-				return fmt.Errorf("error running %s: %w", cmd.String(), err)
-			}
-		}
-
-		return nil
+	programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
+	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	if err != nil {
+		return err
 	}
-	options := proj.Runtime.Options()
-	if toolchainOpt, ok := options["toolchain"]; ok {
-		if tc, ok := toolchainOpt.(string); ok {
-			var depAddCmd *exec.Cmd
-			switch tc {
-			case "pip":
-				virtualenv, ok := options["virtualenv"]
-				if !ok {
-					return errors.New("virtualenv option is required")
-				}
-				if virtualenv, ok := virtualenv.(string); ok {
-					if err := modifyRequirements(virtualenv); err != nil {
-						return err
-					}
-				} else {
-					return errors.New("virtualenv option must be a string")
-				}
-			case "poetry":
-				args := []string{"add"}
-				if !ctx.Install {
-					args = append(args, "--lock")
-				}
 
-				args = append(args, packageSpecifier)
-				depAddCmd = exec.Command("poetry", args...)
-			case "uv":
-				args := []string{"add"}
+	loader := schema.NewPluginLoader(ctx.PluginContext.Host)
+	loaderServer := schema.NewLoaderServer(loader)
+	grpcServer, err := plugin.NewServer(ctx.PluginContext, schema.LoaderRegistration(loaderServer))
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(grpcServer)
 
-				// Starting with version 0.8.0, uv will automatically add
-				// packages in subdirectories as workspace members. However the
-				// generated SDK might not have a `pyproject.toml`, which is
-				// required for uv workspace members. To add the generated SDK
-				// as a normal dependency, we can run `uv add --no-workspace`,
-				// but this flag is only available on version 0.8.0 and up.
-				cmd := exec.Command("uv", "--version")
-				versionString, err := cmd.Output()
-				if err != nil {
-					return fmt.Errorf("failed to get uv version: %w", err)
-				}
-				version, err := toolchain.ParseUvVersion(string(versionString))
-				if err != nil {
-					return err
-				}
-				if version.GE(semver.MustParse("0.8.0")) {
-					args = append(args, "--no-workspace")
-				}
+	out, err := filepath.Abs(ctx.Out)
+	if err != nil {
+		return err
+	}
+	packageSpecifier, err := filepath.Rel(root, out)
+	if err != nil {
+		return err
+	}
 
-				if !ctx.Install {
-					args = append(args, "--no-sync")
-				}
+	deps := map[string]workspace.PackageDescriptor{
+		packageSpecifier: ctx.PackageDescriptor,
+	}
 
-				args = append(args, packageSpecifier)
-				depAddCmd = exec.Command("uv", args...)
-			default:
-				return fmt.Errorf("unsupported package manager: %s", tc)
-			}
+	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
+	if err != nil {
+		return err
+	}
 
-			if depAddCmd != nil {
-				depAddCmd.Stderr = os.Stderr
-				depAddCmd.Stdout = os.Stdout
-				err = depAddCmd.Run()
-				if err != nil {
-					return fmt.Errorf("error running %s: %w", depAddCmd.String(), err)
-				}
-			}
-		} else {
-			return fmt.Errorf("packagemanager option must be a string: %v", toolchainOpt)
-		}
-	} else {
-		// Assume pip if no packagemanager is specified
-		if err := modifyRequirements(""); err != nil {
-			return err
+	if ctx.Install {
+		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
+			Info: programInfo,
+		}); err != nil {
+			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
 
-	pyInfo, ok := ctx.Pkg.Language["python"].(python.PackageInfo)
-	var importName string
-	var packageName string
-	if ok && pyInfo.PackageName != "" {
-		importName = pyInfo.PackageName
-		packageName = pyInfo.PackageName
-	} else {
-		importName = strings.ReplaceAll(ctx.Pkg.Name, "-", "_")
-	}
-
-	if packageName == "" {
-		packageName = python.PyPack(ctx.Pkg.Namespace, ctx.Pkg.Name)
-	}
-
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "You can then import the SDK in your Python code with:\n")
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "  import %s as %s\n", packageName, importName)
-	fmt.Fprintf(ctx.Writer, "\n")
+	fmt.Fprintln(ctx.Writer, instructions)
 	return nil
 }
 
@@ -839,6 +782,7 @@ func SchemaFromSchemaSource(
 	}
 
 	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
+	logging.V(9).Infof("XXX ProviderFromSource -> %+v %+v %+v", p.Provider, specOverride, err)
 	if err != nil {
 		return nil, nil, err
 	}

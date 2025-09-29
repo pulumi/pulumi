@@ -599,12 +599,14 @@ func generateAndLinkSdksForPackages(
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Writer:    os.Stdout,
-			Workspace: ws,
-			Language:  language,
-			Root:      "./",
-			Pkg:       pkgSchema,
-			Out:       sdkRelPath,
+			Writer:        os.Stdout,
+			Workspace:     ws,
+			Language:      language,
+			Root:          "./",
+			Pkg:           pkgSchema,
+			PluginContext: pctx,
+			// PackageDescriptor: nil, // TODO
+			Out: sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
 			Install: !generateOnly,

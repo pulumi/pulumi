@@ -247,11 +247,14 @@ func (h *PolicySimpleLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
 	if !strings.HasSuffix(req.Info.RootDirectory, filepath.Join("policy_packs", "simple")) {
-		return nil, fmt.Errorf("unexpected root directory to link %s", req.Info.RootDirectory)
+		return nil, fmt.Errorf("unexpected root directory to link %q", req.Info.RootDirectory)
 	}
-	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
-		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+
+	coreSDKPath := filepath.Join(h.tempDir, "artifacts", "core.sdk")
+	if pkg, ok := req.Packages[coreSDKPath]; !ok || pkg.Name != "pulumi" {
+		return nil, fmt.Errorf("unexpected link core SDK %+v in %v", pkg, req.Packages)
 	}
+
 	return &pulumirpc.LinkResponse{}, nil
 }
 

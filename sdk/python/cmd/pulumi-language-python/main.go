@@ -46,6 +46,7 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -68,6 +69,7 @@ import (
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -1006,7 +1008,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	if typechecker != "" {
 		typecheckerArgs := []string{"-m", typechecker}
-		if typechecker == "mypy" {
+		switch typechecker {
+		case "mypy":
 			virtualenvPath, err := tc.VirtualEnvPath(ctx)
 			if err != nil {
 				return nil, err
@@ -1015,9 +1018,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			if err != nil {
 				return nil, err
 			}
-			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath, "--exclude", "sdks",
+				req.Info.ProgramDirectory)
+		case "pyright":
+			about, err := tc.About(ctx)
+			if err != nil {
+				return nil, err
+			}
+			typecheckerArgs = append(typecheckerArgs, "--pythonpath", about.Executable)
 		}
-		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
 		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
 		if err != nil {
 			return nil, err
@@ -1699,8 +1708,159 @@ func removeReleaseCandidateSuffix(version string) string {
 func (host *pythonLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The Python language host does not support linking, so we return an empty response.
-	return &pulumirpc.LinkResponse{}, nil
+	logging.V(5).Infof("Linking %v in %s", req.Packages, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	instructions := "You can import the SDK in your Python code with:\n\n"
+
+	// Map of path to python package name
+	packages := map[string]string{}
+	for path, dep := range req.Packages {
+		if dep.Name == "pulumi" {
+			continue
+		}
+
+		var version *semver.Version
+		v, err := semver.New(dep.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Version, dep.Name)
+		} else {
+			version = v
+		}
+
+		pluginSpec, err := workspace.NewPluginSpec(ctx, dep.Name, apitype.ResourcePlugin, version, dep.Server, nil)
+		if err != nil {
+			return nil, err
+		}
+		desc := workspace.NewPackageDescriptor(pluginSpec, nil /* TODO */)
+		pkgDesc := &schema.PackageDescriptor{
+			Name:             desc.Name,
+			Version:          nil, // TODO
+			DownloadURL:      desc.PluginDownloadURL,
+			Parameterization: (*schema.ParameterizationDescriptor)(desc.Parameterization),
+		}
+
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, pkgDesc)
+		if err != nil {
+			return nil, err
+		}
+
+		info, err := pkgRef.Language("python")
+		if err != nil {
+			return nil, err
+		}
+		pyInfo, ok := info.(python.PackageInfo)
+		var importName string
+		var packageName string
+		if ok && pyInfo.PackageName != "" {
+			importName = pyInfo.PackageName
+			packageName = pyInfo.PackageName
+		} else {
+			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
+		}
+
+		if packageName == "" {
+			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
+		}
+		packages[path] = packageName
+		instructions += fmt.Sprintf("  import %s as %s\n", packageName, importName)
+	}
+
+	if opts.Toolchain != toolchain.Pip {
+		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")
+		if _, err := os.Stat(pyprojectPath); os.IsNotExist(err) {
+			requirementsPath := filepath.Join(req.Info.ProgramDirectory, "requirements.txt")
+			if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+				return nil, fmt.Errorf("no pyproject.toml or requirements.txt found in %s", req.Info.ProgramDirectory)
+			}
+			// We're not using pip, but there's no pyproject.toml, and
+			// requirements.txt still exists. This means we haven't run `pulumi
+			// install` yet.
+			// See https://github.com/pulumi/pulumi/issues/19763
+			//
+			// Pretend we're using pip so that the package gets linked into
+			// requirements.txt and then later converted into dependencies in
+			// pyproject.toml for poetry or uv.
+			opts.Toolchain = toolchain.Pip
+		}
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := tc.LinkPackages(ctx, packages); err != nil {
+		return nil, fmt.Errorf("linking packages: %w", err)
+	}
+
+	// When using Pyright as a typechecker, we need to create/update pyrightconfig.json
+	// to exlude the `sdks` folder.
+	if opts.Typechecker == toolchain.TypeCheckerPyright {
+		pyrightConfigPath := filepath.Join(req.Info.ProgramDirectory, "pyrightconfig.json")
+		var config map[string]interface{}
+		// Use an existing pyrightconfig.json if it exists
+		if _, err := os.Stat(pyrightConfigPath); err == nil {
+			configData, err := os.ReadFile(pyrightConfigPath)
+			if err != nil {
+				return nil, fmt.Errorf("reading pyrightconfig.json: %w", err)
+			}
+
+			if err := json.Unmarshal(configData, &config); err != nil {
+				return nil, fmt.Errorf("parsing pyrightconfig.json: %w", err)
+			}
+		} else {
+			config = make(map[string]interface{})
+		}
+
+		excludes := []string{
+			// The defaults if `exclude` is not set
+			"**/node_modules",
+			"**/__pycache__",
+			"**/.*.",
+			// Exclude the sdks folder
+			"sdks",
+			// When setting the `exclude` option, pyright does not auto-exclude the venv anymore, add it explicitly
+			opts.Virtualenv,
+		}
+		var currentExcludes []string
+		if existing, ok := config["exclude"]; ok {
+			if excludeSlice, ok := existing.([]interface{}); ok {
+				for _, item := range excludeSlice {
+					if str, ok := item.(string); ok {
+						currentExcludes = append(currentExcludes, str)
+					}
+				}
+			}
+		}
+		for _, pattern := range excludes {
+			if !slices.Contains(currentExcludes, pattern) {
+				currentExcludes = append(currentExcludes, pattern)
+			}
+		}
+		config["exclude"] = currentExcludes
+
+		updatedData, err := json.MarshalIndent(config, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("serializing pyrightconfig.json: %w", err)
+		}
+		if err := os.WriteFile(pyrightConfigPath, updatedData, 0o644); err != nil { //nolint:gosec
+			return nil, fmt.Errorf("writing pyrightconfig.json: %w", err)
+		}
+	}
+
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
 }
 
 func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {

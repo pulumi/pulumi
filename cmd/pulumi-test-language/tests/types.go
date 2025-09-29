@@ -219,7 +219,8 @@ var (
 )
 
 type LanguageTest struct {
-	Providers []func() plugin.Provider
+	Providers      []func() plugin.Provider
+	LocalProviders []func() plugin.Provider // TODO: make it Providers []func() (plugin.Provider, bool) instead?
 
 	// stackReferences specifies other stack data that this test depends on.
 	StackReferences map[string]resource.PropertyMap
