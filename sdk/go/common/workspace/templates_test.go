@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,158 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestGetTemplateGitRepository tests that environment variables correctly override
+// the compile-time defaults for template repository URLs.
+func TestGetTemplateGitRepository(t *testing.T) {
+	tests := []struct {
+		name            string
+		templateKind    TemplateKind
+		envVar          string
+		envValue        string
+		setEmptyString  bool
+		expectedDefault string
+	}{
+		{
+			name:            "PulumiProject without env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/pulumi/templates.git",
+		},
+		{
+			name:            "PulumiProject with empty string env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "https://github.com/pulumi/templates.git",
+		},
+		{
+			name:            "PulumiProject with env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates.git",
+		},
+		{
+			name:            "PolicyPack without env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+		},
+		{
+			name:            "PolicyPack with empty string env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+		},
+		{
+			name:            "PolicyPack with env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates-policy.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates-policy.git",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variable if specified
+			if tt.envValue != "" || tt.setEmptyString {
+				t.Setenv(tt.envVar, tt.envValue)
+			}
+
+			result := getTemplateGitRepository(tt.templateKind)
+			assert.Equal(t, tt.expectedDefault, result)
+		})
+	}
+}
+
+// TestGetTemplateBranch tests that environment variables correctly override
+// the compile-time defaults for template branch names.
+func TestGetTemplateBranch(t *testing.T) {
+	tests := []struct {
+		name            string
+		templateKind    TemplateKind
+		envVar          string
+		envValue        string
+		setEmptyString  bool
+		expectedDefault string
+	}{
+		{
+			name:            "PulumiProject without env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PulumiProject with empty string env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PulumiProject with env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
+		{
+			name:            "PolicyPack without env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PolicyPack with empty string env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PolicyPack with env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variable if specified
+			if tt.envValue != "" || tt.setEmptyString {
+				t.Setenv(tt.envVar, tt.envValue)
+			}
+
+			result := getTemplateBranch(tt.templateKind)
+			assert.Equal(t, tt.expectedDefault, result)
+		})
+	}
+}
 
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplate(t *testing.T) {
