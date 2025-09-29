@@ -86,7 +86,7 @@ func TestCrawler(t *testing.T) {
 	topic, ok := components.GetChild("cloud:topic:Topic", "countDown")
 	assert.True(t, ok)
 	require.NotNil(t, topic)
-	assert.Equal(t, 0, len(topic.State.Inputs))
+	assert.Empty(t, topic.State.Inputs)
 	assert.Equal(t, 1, len(topic.Children))
 	topic, ok = topic.GetChild("aws:sns/topic:Topic", "countDown")
 	assert.True(t, ok)

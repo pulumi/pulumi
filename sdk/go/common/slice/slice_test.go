@@ -43,7 +43,7 @@ func TestPrealloc(t *testing.T) {
 
 		result := Prealloc[string](5)
 		require.NotNil(t, result)
-		assert.Equal(t, 0, len(result))
+		assert.Empty(t, result)
 		assert.Equal(t, 5, cap(result))
 	})
 }

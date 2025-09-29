@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -34,7 +35,6 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"

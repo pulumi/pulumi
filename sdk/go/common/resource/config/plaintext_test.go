@@ -46,7 +46,7 @@ func TestPlaintextSecure(t *testing.T) {
 	plain := NewPlaintext("hello")
 	assert.False(t, plain.Secure())
 
-	plain = NewSecurePlaintext("hello")
+	plain = NewPlaintext(PlaintextSecret("hello"))
 	assert.True(t, plain.Secure())
 
 	plain = NewPlaintext(map[string]Plaintext{
@@ -56,7 +56,7 @@ func TestPlaintextSecure(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	assert.True(t, plain.Secure())
@@ -83,7 +83,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	actual, err := plain.encrypt(context.Background(), nil, NopEncrypter)
@@ -96,7 +96,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newSecureObject("moon"),
+			newObject(CiphertextSecret{"moon"}),
 		}),
 	})
 	assert.Equal(t, expected, actual)
@@ -112,7 +112,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	obj, err := plain.encrypt(context.Background(), nil, NopEncrypter)
@@ -121,7 +121,19 @@ func TestPlaintextRoundtrip(t *testing.T) {
 	actual, err := obj.decrypt(context.Background(), nil, NopDecrypter)
 	require.NoError(t, err)
 
-	assert.Equal(t, plain, actual)
+	rt := NewPlaintext(map[string]Plaintext{
+		"hello": NewPlaintext([]Plaintext{
+			NewPlaintext(true),
+			NewPlaintext(int64(42)),
+			// uint64 can't roundtrip through JSON
+			NewPlaintext(float64(math.MaxUint64)),
+			NewPlaintext(float64(3.14159)),
+			NewPlaintext("world"),
+			NewPlaintext(PlaintextSecret("moon")),
+		}),
+	})
+
+	assert.Equal(t, rt, actual)
 }
 
 func TestMarshalPlaintext(t *testing.T) {

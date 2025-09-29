@@ -106,7 +106,7 @@ func TestStackOutputsPython(t *testing.T) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Empty(t, stackRes.Inputs)
 				assert.Equal(t, 2, len(stackRes.Outputs))
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])

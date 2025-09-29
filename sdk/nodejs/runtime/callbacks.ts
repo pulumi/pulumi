@@ -218,6 +218,7 @@ export class CallbackServer implements ICallbackServer {
                 ropts = {
                     deleteBeforeReplace: opts.getDeleteBeforeReplace(),
                     additionalSecretOutputs: opts.getAdditionalSecretOutputsList(),
+                    import: opts.getImport(),
                 } as CustomResourceOptions;
             } else {
                 const providers: Record<string, ProviderResource> = {};
@@ -372,6 +373,9 @@ export class CallbackServer implements ICallbackServer {
                         }
                         if (copts.additionalSecretOutputs !== undefined) {
                             opts.setAdditionalSecretOutputsList(copts.additionalSecretOutputs);
+                        }
+                        if (copts.import !== undefined) {
+                            opts.setImport(copts.import);
                         }
                     } else {
                         const copts = result.opts as ComponentResourceOptions;

@@ -970,7 +970,7 @@ config: ./some/path`
 	project, projectError := loadProjectFromText(t, projectYaml)
 	require.NoError(t, projectError, "Shold be able to load the project")
 	assert.Equal(t, "./some/path", project.StackConfigDir, "Stack config dir is read from the config property")
-	assert.Equal(t, 0, len(project.Config), "Config should be empty")
+	assert.Empty(t, project.Config, "Config should be empty")
 }
 
 func TestDefningBothConfigAndStackConfigDirErrorsOut(t *testing.T) {

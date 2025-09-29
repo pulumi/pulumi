@@ -20,10 +20,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (Autonamer, bool, error) {
+func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (autonaming.Autonamer, bool, error) {
 	hasMode := c.Mode != nil
 	hasPattern := c.Pattern != nil
 	hasEnforce := c.Enforce != nil
@@ -38,7 +39,7 @@ func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (Autonamer
 			return nil, false, err
 		}
 
-		return &patternAutonaming{
+		return &autonaming.Pattern{
 			Pattern: pattern,
 			Enforce: hasEnforce && *c.Enforce,
 		}, true, nil
@@ -48,16 +49,16 @@ func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (Autonamer
 
 	if !hasMode {
 		// Return false as the second return value to indicate that no config was specified explicitly.
-		return &defaultAutonamingConfig, false, nil
+		return autonaming.Default(), false, nil
 	}
 
 	switch *c.Mode {
 	case "default":
-		return &defaultAutonamingConfig, true, nil
+		return autonaming.Default(), true, nil
 	case "verbatim":
-		return &verbatimAutonaming{}, true, nil
+		return autonaming.Verbatim(), true, nil
 	case "disabled":
-		return &disabledAutonaming{}, true, nil
+		return autonaming.Disabled(), true, nil
 	default:
 		return nil, false, fmt.Errorf("invalid naming mode: %s", *c.Mode)
 	}
@@ -84,7 +85,7 @@ func parseConfigSection(v config.Value) (*autonamingSectionJSON, error) {
 	return autonamingConfig, nil
 }
 
-func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decrypter) (Autonamer, error) {
+func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decrypter) (autonaming.Autonamer, error) {
 	// Get the autonaming config from the stack configuration, return nil if it's not set.
 	v, ok, err := cfg.Get(config.MustParseKey("pulumi:autonaming"), false)
 	if err != nil {
@@ -110,9 +111,9 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 	}
 
 	// Initialize the global autonaming config.
-	result := &globalAutonaming{
+	result := &autonaming.Global{
 		Default:   rootNaming,
-		Providers: make(map[string]providerAutonaming),
+		Providers: make(map[string]autonaming.Provider),
 	}
 
 	// Resolve the provider-level naming configs.
@@ -127,9 +128,9 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 			naming = rootNaming
 		}
 
-		provider := providerAutonaming{
+		provider := autonaming.Provider{
 			Default:   naming,
-			Resources: make(map[string]Autonamer),
+			Resources: make(map[string]autonaming.Autonamer),
 		}
 
 		// Resolve the resource-level naming configs.

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Refactor Go policy SDK to have access to a pulumi Context object

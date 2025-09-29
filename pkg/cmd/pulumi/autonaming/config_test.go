@@ -17,6 +17,7 @@ package autonaming
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func TestParseAutonamingConfigs(t *testing.T) {
 		name       string
 		org        string
 		configYAML string
-		wantConfig *globalAutonaming
+		wantConfig *autonaming.Global
 		wantErr    string
 	}{
 		{
@@ -43,9 +44,9 @@ func TestParseAutonamingConfigs(t *testing.T) {
 			configYAML: `
 pulumi:autonaming:
   mode: default`,
-			wantConfig: &globalAutonaming{
-				Default:   &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{},
+			wantConfig: &autonaming.Global{
+				Default:   autonaming.Default(),
+				Providers: map[string]autonaming.Provider{},
 			},
 		},
 		{
@@ -54,12 +55,12 @@ pulumi:autonaming:
 pulumi:autonaming:
   pattern: ${name}-${random(8)}
   enforce: true`,
-			wantConfig: &globalAutonaming{
-				Default: &patternAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: &autonaming.Pattern{
 					Pattern: "${name}-${random(8)}",
 					Enforce: true,
 				},
-				Providers: map[string]providerAutonaming{},
+				Providers: map[string]autonaming.Provider{},
 			},
 		},
 		{
@@ -67,9 +68,9 @@ pulumi:autonaming:
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim`,
-			wantConfig: &globalAutonaming{
-				Default:   &verbatimAutonaming{},
-				Providers: map[string]providerAutonaming{},
+			wantConfig: &autonaming.Global{
+				Default:   autonaming.Verbatim(),
+				Providers: map[string]autonaming.Provider{},
 			},
 		},
 		{
@@ -77,9 +78,9 @@ pulumi:autonaming:
 			configYAML: `
 pulumi:autonaming:
   mode: disabled`,
-			wantConfig: &globalAutonaming{
-				Default:   &disabledAutonaming{},
-				Providers: map[string]providerAutonaming{},
+			wantConfig: &autonaming.Global{
+				Default:   autonaming.Disabled(),
+				Providers: map[string]autonaming.Provider{},
 			},
 		},
 		{
@@ -90,15 +91,15 @@ pulumi:autonaming:
     aws:
       pattern: aws-${name}
       enforce: false`,
-			wantConfig: &globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: autonaming.Default(),
+				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: &patternAutonaming{
+						Default: &autonaming.Pattern{
 							Pattern: "aws-${name}",
 							Enforce: false,
 						},
-						Resources: map[string]Autonamer{},
+						Resources: map[string]autonaming.Autonamer{},
 					},
 				},
 			},
@@ -113,13 +114,13 @@ pulumi:autonaming:
         aws:s3/bucket:Bucket:
           pattern: bucket-${name}
           enforce: true`,
-			wantConfig: &globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: autonaming.Default(),
+				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: &defaultAutonamingConfig,
-						Resources: map[string]Autonamer{
-							"aws:s3/bucket:Bucket": &patternAutonaming{
+						Default: autonaming.Default(),
+						Resources: map[string]autonaming.Autonamer{
+							"aws:s3/bucket:Bucket": &autonaming.Pattern{
 								Pattern: "bucket-${name}",
 								Enforce: true,
 							},
@@ -134,11 +135,11 @@ pulumi:autonaming:
 			configYAML: `
 pulumi:autonaming:
   pattern: ${organization}-${project}-${stack}-${name}-${random(8)}`,
-			wantConfig: &globalAutonaming{
-				Default: &patternAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: &autonaming.Pattern{
 					Pattern: "myorg-myproj-mystack-${name}-${random(8)}",
 				},
-				Providers: map[string]providerAutonaming{},
+				Providers: map[string]autonaming.Provider{},
 			},
 		},
 		{
@@ -147,11 +148,11 @@ pulumi:autonaming:
 pulumi:autonaming:
   pattern: ${name}-${config.foo}
 myproj:foo: bar`,
-			wantConfig: &globalAutonaming{
-				Default: &patternAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: &autonaming.Pattern{
 					Pattern: "${name}-bar",
 				},
-				Providers: map[string]providerAutonaming{},
+				Providers: map[string]autonaming.Provider{},
 			},
 		},
 		{
@@ -270,28 +271,28 @@ pulumi:autonaming:
         azure:storage/account:Account:
           mode: disabled
 myproj:foo: bar`,
-			wantConfig: &globalAutonaming{
-				Default: &patternAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: &autonaming.Pattern{
 					Pattern: "global-${name}",
 					Enforce: false,
 				},
-				Providers: map[string]providerAutonaming{
+				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: &patternAutonaming{
+						Default: &autonaming.Pattern{
 							Pattern: "mystack-aws-${name}",
 							Enforce: true,
 						},
-						Resources: map[string]Autonamer{
-							"aws:s3/bucket:Bucket": &patternAutonaming{
+						Resources: map[string]autonaming.Autonamer{
+							"aws:s3/bucket:Bucket": &autonaming.Pattern{
 								Pattern: "bar-bucket-${name}-${uuid}",
 								Enforce: true,
 							},
 						},
 					},
 					"azure": {
-						Default: &verbatimAutonaming{},
-						Resources: map[string]Autonamer{
-							"azure:storage/account:Account": &disabledAutonaming{},
+						Default: autonaming.Verbatim(),
+						Resources: map[string]autonaming.Autonamer{
+							"azure:storage/account:Account": autonaming.Disabled(),
 						},
 					},
 				},
@@ -307,13 +308,13 @@ pulumi:autonaming:
       resources:
         aws:ec2/instance:Instance:
           pattern: instance-${name}`,
-			wantConfig: &globalAutonaming{
-				Default: &verbatimAutonaming{},
-				Providers: map[string]providerAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: autonaming.Verbatim(),
+				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: &verbatimAutonaming{},
-						Resources: map[string]Autonamer{
-							"aws:ec2/instance:Instance": &patternAutonaming{
+						Default: autonaming.Verbatim(),
+						Resources: map[string]autonaming.Autonamer{
+							"aws:ec2/instance:Instance": &autonaming.Pattern{
 								Pattern: "instance-${name}",
 							},
 						},
@@ -341,12 +342,12 @@ pulumi:autonaming:
   providers:
     aws:
       mode: default`,
-			wantConfig: &globalAutonaming{
-				Default: &verbatimAutonaming{},
-				Providers: map[string]providerAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: autonaming.Verbatim(),
+				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default:   &defaultAutonamingConfig,
-						Resources: map[string]Autonamer{},
+						Default:   autonaming.Default(),
+						Resources: map[string]autonaming.Autonamer{},
 					},
 				},
 			},
@@ -362,13 +363,13 @@ pulumi:autonaming:
       resources:
         aws:s3/bucket:Bucket:
           mode: default`,
-			wantConfig: &globalAutonaming{
-				Default: &verbatimAutonaming{},
-				Providers: map[string]providerAutonaming{
+			wantConfig: &autonaming.Global{
+				Default: autonaming.Verbatim(),
+				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: &disabledAutonaming{},
-						Resources: map[string]Autonamer{
-							"aws:s3/bucket:Bucket": &defaultAutonamingConfig,
+						Default: autonaming.Disabled(),
+						Resources: map[string]autonaming.Autonamer{
+							"aws:s3/bucket:Bucket": autonaming.Default(),
 						},
 					},
 				},
@@ -416,7 +417,7 @@ pulumi:autonaming:
 			if tt.wantConfig == nil {
 				assert.Nil(t, autonamer)
 			} else {
-				got := autonamer.(*globalAutonaming)
+				got := autonamer.(*autonaming.Global)
 				assert.Equal(t, tt.wantConfig.Default, got.Default)
 				assert.Equal(t, tt.wantConfig.Providers, got.Providers)
 			}

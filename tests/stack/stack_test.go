@@ -68,7 +68,7 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
 
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 0, len(stacks))
+		assert.Empty(t, stacks)
 	})
 
 	t.Run("StackSelect", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestStackCommands(t *testing.T) {
 
 		e.RunCommand("pulumi", "stack", "rm", "blighttown", "--yes")
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 0, len(stacks))
+		assert.Empty(t, stacks)
 
 		// Error
 		out, err := e.RunCommandExpectError("pulumi", "stack", "rm", "anor-londo", "--yes")
