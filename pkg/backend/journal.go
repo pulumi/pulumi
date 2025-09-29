@@ -202,7 +202,9 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 			r.newResources[r.operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
 		}
 	case apitype.JournalEntryKindWrite:
-		// Already handled above.
+		// Overwrite the base snapshot. Note that we expect this to happen before any other
+		// journal entries that modify the snapshot.
+		r.base = entry.NewSnapshot
 	case apitype.JournalEntryKindSecretsManager:
 		// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
 		// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
@@ -380,12 +382,6 @@ func (sj *snapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
 	//           they would have been appended to the list before r.
 	snap := sj.snapshot
-
-	if len(sj.journalEntries) > 0 {
-		if firstEntry := sj.journalEntries[0]; firstEntry.Kind == apitype.JournalEntryKindWrite {
-			snap = firstEntry.NewSnapshot
-		}
-	}
 
 	replayer := NewJournalReplayer(snap)
 
