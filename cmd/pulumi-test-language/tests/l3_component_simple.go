@@ -43,6 +43,9 @@ func init() {
 					// stack.
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+					assert.Empty(l, stack.Inputs, "expected stack to have no inputs")
+
 					component := RequireSingleResource(l, snap.Resources, "components:index:MyComponent")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
