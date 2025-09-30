@@ -1105,6 +1105,10 @@ func parsePluginSpecFromURL(
 	default:
 		return PluginSpec{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
 	}
+	// We're purposely dropping any authentication info from the URL here. The name is used as
+	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
+	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
+	// changes and 3) avoid issues with the auth info being too long for a folder name.
 	urlWithoutAuth := &url.URL{
 		Scheme: parsedURL.Scheme,
 		Host:   parsedURL.Host,
