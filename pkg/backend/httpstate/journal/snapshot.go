@@ -16,13 +16,11 @@ package journal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -98,7 +96,7 @@ func SerializeJournalEntry(
 	return serializedEntry, nil
 }
 
-func (j *cloudJournaler) BeginOperation(entry engine.JournalEntry) error {
+func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	j.wg.Add(1)
 	defer j.wg.Done()
 	serialized, err := SerializeJournalEntry(j.context, entry, j.sm.Encrypter())
@@ -106,20 +104,6 @@ func (j *cloudJournaler) BeginOperation(entry engine.JournalEntry) error {
 		return fmt.Errorf("serializing journal entry: %w", err)
 	}
 	return j.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
-}
-
-func (j *cloudJournaler) EndOperation(entry engine.JournalEntry) error {
-	j.wg.Add(1)
-	defer j.wg.Done()
-	serialized, err := SerializeJournalEntry(j.context, entry, j.sm.Encrypter())
-	if err != nil {
-		return fmt.Errorf("serializing journal entry: %w", err)
-	}
-	return j.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
-}
-
-func (j *cloudJournaler) Write(*deploy.Snapshot) error {
-	return errors.New("rebasing not implemented yet")
 }
 
 func (j *cloudJournaler) Close() error {
@@ -137,7 +121,7 @@ func NewJournaler(
 	update client.UpdateIdentifier,
 	tokenSource tokenSourceCapability,
 	sm secrets.Manager,
-) (engine.Journal, error) {
+) engine.Journal {
 	journal := &cloudJournaler{
 		context:     ctx,
 		tokenSource: tokenSource,
@@ -145,11 +129,5 @@ func NewJournaler(
 		update:      update,
 		sm:          sm,
 	}
-
-	err := journal.BeginOperation(engine.JournalEntry{
-		Kind:           engine.JournalEntrySecretsManager,
-		SecretsManager: sm,
-	})
-
-	return journal, err
+	return journal
 }

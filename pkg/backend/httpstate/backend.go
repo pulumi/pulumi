@@ -1669,10 +1669,7 @@ func (b *cloudBackend) runEngineAction(
 	persister := b.newSnapshotPersister(ctx, update, tokenSource)
 	if kind != apitype.PreviewUpdate && !dryRun {
 		if journalVersion == 1 && env.EnableJournaling.Value() {
-			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
-			if err != nil {
-				return nil, nil, fmt.Errorf("creating journaler: %w", err)
-			}
+			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
 			noopPersister := backend.ValidatingPersister{}
 			snapshotManager = backend.NewSnapshotManager(&noopPersister, op.SecretsManager, u.Target.Snapshot)
