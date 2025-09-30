@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -1658,10 +1659,7 @@ func (b *cloudBackend) runEngineAction(
 	var validationErrs []error
 	if kind != apitype.PreviewUpdate && !dryRun {
 		if journalVersion == 1 && env.EnableJournaling.Value() {
-			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
-			if err != nil {
-				return nil, nil, fmt.Errorf("creating journaler: %w", err)
-			}
+			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
 				validationErrs = append(validationErrs, err)
@@ -1678,6 +1676,7 @@ func (b *cloudBackend) runEngineAction(
 				Managers:          []engine.SnapshotManager{snapshotManager},
 				CollectErrorsOnly: []bool{false, true},
 			}
+		}
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
