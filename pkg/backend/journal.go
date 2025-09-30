@@ -599,7 +599,7 @@ func NewSnapshotJournaler(
 
 	go serviceLoop(ctx, journalEvents, done)
 
-	err := journaler.BeginOperation(engine.JournalEntry{
+	err := journaler.AddJournalEntry(engine.JournalEntry{
 		Kind:           engine.JournalEntrySecretsManager,
 		SecretsManager: secretsManager,
 		ElideWrite:     true,
@@ -647,43 +647,8 @@ func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	}
 }
 
-func (sj *snapshotJournaler) BeginOperation(entry engine.JournalEntry) error {
+func (sj *snapshotJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
-}
-
-func (sj *snapshotJournaler) EndOperation(entry engine.JournalEntry) error {
-	return sj.journalMutation(entry)
-}
-
-func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
-	snapCopy := &deploy.Snapshot{
-		Manifest:          newBase.Manifest,
-		SecretsManager:    newBase.SecretsManager,
-		Resources:         make([]*resource.State, 0, len(newBase.Resources)),
-		PendingOperations: make([]resource.Operation, 0, len(newBase.PendingOperations)),
-		Metadata:          newBase.Metadata,
-	}
-
-	// Copy the resources from the base snapshot to the new snapshot.
-	for _, res := range newBase.Resources {
-		snapCopy.Resources = append(snapCopy.Resources, res.Copy())
-	}
-	// Copy the pending operations from the base snapshot to the new snapshot.
-	for _, op := range newBase.PendingOperations {
-		snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
-	}
-
-	deployment, _, _, err := stack.SerializeDeploymentWithMetadata(
-		sj.ctx, snapCopy, true)
-	if err != nil {
-		return fmt.Errorf("serializing base snapshot: %w", err)
-	}
-
-	sj.snapshot = deployment
-	return sj.journalMutation(engine.JournalEntry{
-		Kind:        engine.JournalEntryWrite,
-		NewSnapshot: snapCopy,
-	})
 }
 
 func (sj snapshotJournaler) Close() error {
