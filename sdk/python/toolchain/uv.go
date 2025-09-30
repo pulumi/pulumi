@@ -160,7 +160,15 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 
 			if hasRequirementsTxt {
 				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
-				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
+				args := []string{"add", "-r", requirementsTxt}
+				needs, err := u.needsNoWorkspacesFlag(ctx)
+				if err != nil {
+					return err
+				}
+				if needs {
+					args = append(args, "--no-workspace")
+				}
+				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, args...)
 				if err := addCmd.Run(); err != nil {
 					return errutil.ErrorWithStderr(err, "error installing dependecies from requirements.txt")
 				}
@@ -197,22 +205,11 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 	logging.V(9).Infof("uv linking %s", packages)
 	args := []string{"add", "--no-sync"} // Don't update the venv
 
-	// Starting with version 0.8.0, uv will automatically add
-	// packages in subdirectories as workspace members. However the
-	// generated SDK might not have a `pyproject.toml`, which is
-	// required for uv workspace members. To add the generated SDK
-	// as a normal dependency, we can run `uv add --no-workspace`,
-	// but this flag is only available on version 0.8.0 and up.
-	versionCheckCmd := exec.Command("uv", "--version")
-	versionString, err := versionCheckCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to get uv version: %w", err)
-	}
-	version, err := ParseUvVersion(string(versionString))
+	needs, err := u.needsNoWorkspacesFlag(ctx)
 	if err != nil {
 		return err
 	}
-	if version.GE(semver.MustParse("0.8.0")) {
+	if needs {
 		args = append(args, "--no-workspace")
 	}
 
@@ -394,6 +391,28 @@ func (u *uv) pythonExecutable() (string, string) {
 
 func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
 	return u.virtualenvPath, nil
+}
+
+func (u *uv) needsNoWorkspacesFlag(ctx context.Context) (bool, error) {
+	// Starting with version 0.8.0, uv will automatically add
+	// packages in subdirectories as workspace members. However the
+	// generated SDK might not have a `pyproject.toml`, which is
+	// required for uv workspace members. To add the generated SDK
+	// as a normal dependency, we can run `uv add --no-workspace`,
+	// but this flag is only available on version 0.8.0 and up.
+	versionCheckCmd := exec.Command("uv", "--version")
+	versionString, err := versionCheckCmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to get uv version: %w", err)
+	}
+	version, err := ParseUvVersion(string(versionString))
+	if err != nil {
+		return false, err
+	}
+	if version.GE(semver.MustParse("0.8.0")) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func ParseUvVersion(versionString string) (semver.Version, error) {
