@@ -6,4 +6,4 @@ runtime:
     typechecker: pyright
     virtualenv: venv
 packages:
-  local: pretend to be the path to local provider
+  local: PATH_TO_LOCAL_PROVIDER_local
