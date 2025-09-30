@@ -46,7 +46,6 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -1727,6 +1726,7 @@ func (host *pythonLanguageHost) Link(
 	packages := map[string]string{}
 	for path, dep := range req.Packages {
 		if dep.Name == "pulumi" {
+			packages[path] = "pulumi"
 			continue
 		}
 
@@ -1737,20 +1737,29 @@ func (host *pythonLanguageHost) Link(
 		} else {
 			version = v
 		}
-
-		pluginSpec, err := workspace.NewPluginSpec(ctx, dep.Name, apitype.ResourcePlugin, version, dep.Server, nil)
-		if err != nil {
-			return nil, err
+		var param *schema.ParameterizationDescriptor
+		if dep.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Parameterization.Name,
+				Value: dep.Parameterization.Value,
+			}
+			if dep.Parameterization.Version != "" {
+				v, err := semver.New(dep.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Version, dep.Name)
+				} else {
+					param.Version = *v
+				}
+			}
 		}
-		desc := workspace.NewPackageDescriptor(pluginSpec, nil /* TODO */)
-		pkgDesc := &schema.PackageDescriptor{
-			Name:             desc.Name,
-			Version:          nil, // TODO
-			DownloadURL:      desc.PluginDownloadURL,
-			Parameterization: (*schema.ParameterizationDescriptor)(desc.Parameterization),
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Name,
+			Version:          version,
+			DownloadURL:      dep.Server,
+			Parameterization: param,
 		}
 
-		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, pkgDesc)
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
 		if err != nil {
 			return nil, err
 		}

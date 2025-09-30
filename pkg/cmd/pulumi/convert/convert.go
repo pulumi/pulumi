@@ -549,7 +549,7 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, _, err := packages.SchemaFromSchemaSource(
+		pkgSchema, _, backedByProvider, err := packages.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
@@ -590,6 +590,10 @@ func generateAndLinkSdksForPackages(
 		returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
 		if err != nil {
 			return fmt.Errorf("could not change to output directory: %w", err)
+		}
+
+		if !backedByProvider {
+			return nil
 		}
 
 		_, _, err = ws.ReadProject()

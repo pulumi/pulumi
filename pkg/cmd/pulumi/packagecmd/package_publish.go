@@ -61,7 +61,7 @@ type packagePublishCmd struct {
 	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(
 		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-	) (*schema.Package, *workspace.PackageSpec, error)
+	) (*schema.Package, *workspace.PackageSpec, bool, error)
 	pluginDir string
 }
 
@@ -151,7 +151,7 @@ func (cmd *packagePublishCmd) Run(
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry())
+	pkg, _, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry())
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}

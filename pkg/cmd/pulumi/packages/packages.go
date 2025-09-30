@@ -60,7 +60,7 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkg, specOverride, backedByProvider, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -117,6 +117,14 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
+	// If the schema loading is not backed by an actual provider, but it's just coming from a json or yaml file,
+	// we can't link the package to the project's dependencies.
+	if !backedByProvider {
+		logging.V(5).Infof("schema source %q is not backed by a provider, not linking the package into the project",
+			schemaSource)
+		return pkg, specOverride, diags, nil
+	}
+
 	// Create a new plugin context that has the new provider as part of its packages.
 	// This allows Link to load its schema.
 	projPath, err := workspace.DetectProjectPath()
@@ -137,6 +145,8 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	pkgs[pkg.Name] = workspace.PackageSpec{
 		Source: schemaSource,
 	}
+
+	fmt.Printf("pkgs = %+v, plugins = %+v\n", pkgs, plugins)
 
 	pctx, err = plugin.NewContextWithRoot(context.TODO(), cmdutil.Diag(), cmdutil.Diag(), nil, root, root, nil,
 		false, nil, plugins, pkgs, nil, nil)
@@ -736,7 +746,8 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-) (*schema.Package, *workspace.PackageSpec, error) {
+) (*schema.Package, *workspace.PackageSpec, bool, error) {
+	logging.V(9).Infof("SchemaFromSchemaSource(%s)", packageSource)
 	var spec schema.PackageSpec
 	bind := func(
 		spec schema.PackageSpec, specOverride *workspace.PackageSpec,
@@ -754,53 +765,59 @@ func SchemaFromSchemaSource(
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
+			return nil, nil, false, errors.New("parameterization arguments are not supported for yaml files")
 		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
 		err = yaml.Unmarshal(f, &spec)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
-		return bind(spec, nil)
+		pkg, override, err := bind(spec, nil)
+		return pkg, override, false, err
 	} else if ext == ".json" {
 		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for json files")
+			return nil, nil, false, errors.New("parameterization arguments are not supported for json files")
 		}
 
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
 		err = json.Unmarshal(f, &spec)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
-		return bind(spec, nil)
+		pkg, override, err := bind(spec, nil)
+		return pkg, override, false, err
 	}
 
 	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
-	logging.V(9).Infof("XXX ProviderFromSource -> %+v %+v %+v", p.Provider, specOverride, err)
 	if err != nil {
-		return nil, nil, err
+		logging.V(9).Infof("no provider %+v, err=%s", p.Provider, err)
+		return nil, nil, false, err
 	}
 	defer func() {
 		contract.IgnoreError(pctx.Host.CloseProvider(p.Provider))
 	}()
 
+	// TODO: do we need to somehow add this provider to the host now?
+
+	logging.V(9).Infof("XXX have provider %+v", p.Provider)
+
 	var request plugin.GetSchemaRequest
 	if !parameters.Empty() {
 		if p.AlreadyParameterized {
-			return nil, nil,
+			return nil, nil, false,
 				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
 		}
 		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: parameters,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("parameterize: %w", err)
+			return nil, nil, false, fmt.Errorf("parameterize: %w", err)
 		}
 
 		request = plugin.GetSchemaRequest{
@@ -811,21 +828,22 @@ func SchemaFromSchemaSource(
 
 	schema, err := p.Provider.GetSchema(pctx.Request(), request)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	err = json.Unmarshal(schema.Schema, &spec)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return bind(spec, specOverride)
+	pkg, override, err := bind(spec, specOverride)
+	return pkg, override, true, err
 }
 
 type Provider struct {
@@ -840,6 +858,7 @@ type Provider struct {
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 ) (Provider, *workspace.PackageSpec, error) {
+	logging.V(9).Infof("ProviderFromSource(%s)", packageSource)
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return Provider{}, nil, err
