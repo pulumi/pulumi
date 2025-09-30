@@ -2,7 +2,7 @@ name: l2-local-sdk
 runtime:
   name: python
   options:
-    toolchain: pip
+    toolchain: uv
     typechecker: mypy
     virtualenv: venv
 packages:

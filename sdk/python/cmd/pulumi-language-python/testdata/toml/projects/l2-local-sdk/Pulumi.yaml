@@ -2,8 +2,8 @@ name: l2-local-sdk
 runtime:
   name: python
   options:
-    toolchain: poetry
-    typechecker: mypy
+    toolchain: uv
+    typechecker: pyright
     virtualenv: venv
 packages:
   local: PATH_TO_LOCAL_PROVIDER_local
