@@ -977,6 +977,13 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	}
 	replaceStringInFile(filepath.Join(projectDir, "requirements.txt"), "pulumi-random>=4.0.0,<5.0.0", "")
 	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.6.3")
+
+	b, err := os.ReadFile(filepath.Join(projectDir, "Pulumi.yaml"))
+	require.NoError(t, err)
+	t.Logf("Pulumi.yaml: %s", b)
+	stdout, stderr := e.RunCommand("ls", "-ahl")
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
+
 	replaceStringInFile(filepath.Join(projectDir, "__main__.py"), "RandomPet", "Pet")
 	e.RunCommand("pulumi", "install")
 
@@ -988,7 +995,7 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	// right provider. "random" alone isn't enough to know to use the parameterized provider -- normally, it would use the
 	// github.com/pulumi/pulumi-random bridged version. For packages that aren't bridged this would result would result in
 	// an error (e.g. https://github.com/pulumi/pulumi/issues/17289)
-	stdout, _ := e.RunCommand("pulumi", "import", "--yes", "random:index/id:Id", "identifier", "p-9hUg")
+	stdout, _ = e.RunCommand("pulumi", "import", "--yes", "random:index/id:Id", "identifier", "p-9hUg")
 	// Check it wrote out the expected Python code.
 	assert.Contains(t, stdout, "identifier = random.Id(\"identifier\"")
 

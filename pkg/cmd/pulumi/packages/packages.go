@@ -146,8 +146,6 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		Source: schemaSource,
 	}
 
-	fmt.Printf("pkgs = %+v, plugins = %+v\n", pkgs, plugins)
-
 	pctx, err = plugin.NewContextWithRoot(context.TODO(), cmdutil.Diag(), cmdutil.Diag(), nil, root, root, nil,
 		false, nil, plugins, pkgs, nil, nil)
 	if err != nil {
