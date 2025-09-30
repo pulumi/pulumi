@@ -14,6 +14,11 @@
 
 package apitype
 
+import (
+	"fmt"
+	"strings"
+)
+
 type JournalEntryKind int
 
 const (
@@ -25,6 +30,27 @@ const (
 	JournalEntryKindWrite          JournalEntryKind = 5
 	JournalEntryKindSecretsManager JournalEntryKind = 6
 )
+
+func (k JournalEntryKind) String() string {
+	switch k {
+	case JournalEntryKindBegin:
+		return "begin"
+	case JournalEntryKindSuccess:
+		return "success"
+	case JournalEntryKindFailure:
+		return "failure"
+	case JournalEntryKindRefreshSuccess:
+		return "refresh-success"
+	case JournalEntryKindOutputs:
+		return "outputs"
+	case JournalEntryKindWrite:
+		return "write"
+	case JournalEntryKindSecretsManager:
+		return "secrets-manager"
+	default:
+		return "invalid"
+	}
+}
 
 type JournalEntry struct {
 	// Version of the journal entry format.
@@ -58,6 +84,47 @@ type JournalEntry struct {
 
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
+}
+
+func (e JournalEntry) String() string {
+	var sb strings.Builder
+
+	fmt.Fprintf(&sb, "(%v, %v): %v", e.SequenceID, e.OperationID, e.Kind)
+	if e.RemoveOld != nil {
+		fmt.Fprintf(&sb, ", removeOld:%v", *e.RemoveOld)
+	}
+	if e.RemoveNew != nil {
+		fmt.Fprintf(&sb, ", removeNew:%v", *e.RemoveNew)
+	}
+	if e.PendingReplacementOld != nil {
+		fmt.Fprintf(&sb, ", removePendingReplacementOld:%v", *e.PendingReplacementOld)
+	}
+	if e.PendingReplacementNew != nil {
+		fmt.Fprintf(&sb, ", removePendingReplacementNew:%v", *e.PendingReplacementNew)
+	}
+	if e.DeleteOld != nil {
+		fmt.Fprintf(&sb, ", deleteOld:%v", *e.DeleteOld)
+	}
+	if e.DeleteNew != nil {
+		fmt.Fprintf(&sb, ", deleteNew:%v", *e.DeleteNew)
+	}
+	if e.State != nil {
+		fmt.Fprintf(&sb, ", state(%v)", e.State.URN)
+	}
+	if e.Operation != nil {
+		fmt.Fprintf(&sb, ", operation(%v)", e.Operation.Type)
+	}
+	if e.IsRefresh {
+		fmt.Fprintf(&sb, ", isRefresh")
+	}
+	if e.SecretsProvider != nil {
+		fmt.Fprintf(&sb, ", secretsProvider(%v)", e.SecretsProvider.Type)
+	}
+	if e.NewSnapshot != nil {
+		fmt.Fprintf(&sb, ", +snap")
+	}
+
+	return sb.String()
 }
 
 type JournalEntries struct {

@@ -353,7 +353,7 @@ func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []st
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sj *snapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error) {
+func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error) {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -401,7 +401,7 @@ func (sj *snapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 // metadata about this write operation is added to the snapshot before it is
 // written, in order to aid debugging should future operations fail with an
 // error.
-func (sj *snapshotJournaler) saveSnapshot(ctx context.Context) error {
+func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 	snap, err := sj.snap(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to generate snapshot: %w", err)
@@ -448,7 +448,7 @@ func (sj *snapshotJournaler) saveSnapshot(ctx context.Context) error {
 }
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
-func (sj *snapshotJournaler) defaultServiceLoop(
+func (sj *SnapshotJournaler) defaultServiceLoop(
 	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
@@ -487,7 +487,7 @@ serviceLoop:
 // unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
-func (sj *snapshotJournaler) unsafeServiceLoop(
+func (sj *SnapshotJournaler) unsafeServiceLoop(
 	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
@@ -503,7 +503,7 @@ func (sj *snapshotJournaler) unsafeServiceLoop(
 	}
 }
 
-type snapshotJournaler struct {
+type SnapshotJournaler struct {
 	ctx             context.Context
 	persister       SnapshotPersister
 	snapshot        *apitype.DeploymentV3
@@ -540,7 +540,7 @@ func NewSnapshotJournaler(
 	secretsManager secrets.Manager,
 	secretsProvider secrets.Provider,
 	baseSnap *deploy.Snapshot,
-) (engine.Journal, error) {
+) (*SnapshotJournaler, error) {
 	snapCopy := &deploy.Snapshot{}
 	if baseSnap != nil {
 		snapCopy = &deploy.Snapshot{
@@ -579,7 +579,7 @@ func NewSnapshotJournaler(
 		deployment = &apitype.DeploymentV3{}
 	}
 
-	journaler := snapshotJournaler{
+	journaler := SnapshotJournaler{
 		ctx:             ctx,
 		persister:       persister,
 		snapshot:        deployment,
@@ -608,13 +608,17 @@ func NewSnapshotJournaler(
 	return &journaler, err
 }
 
+func (sj *SnapshotJournaler) Entries() []apitype.JournalEntry {
+	return sj.journalEntries
+}
+
 type writeJournalEntryRequest struct {
 	journalEntry apitype.JournalEntry
 	elideWrite   bool
 	result       chan error
 }
 
-func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
+func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	var completeBatch stack.CompleteCrypterBatch
 	enc := sj.secretsManager.Encrypter()
 
@@ -647,11 +651,11 @@ func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	}
 }
 
-func (sj *snapshotJournaler) AddJournalEntry(entry engine.JournalEntry) error {
+func (sj *SnapshotJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
 }
 
-func (sj snapshotJournaler) Close() error {
+func (sj SnapshotJournaler) Close() error {
 	sj.cancel <- true
 	return <-sj.done
 }
