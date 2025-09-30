@@ -1440,14 +1440,22 @@ export class ComponentResource<TData = any> extends Resource {
         );
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
-        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        this.__data =
+            remote || opts?.urn
+                ? Promise.resolve(<TData>{})
+                : this.initializeAndRegisterOutputs(args, opts, name, type);
     }
 
     /**
      * @internal
      */
-    private async initializeAndRegisterOutputs(args: Inputs) {
-        const data = await this.initialize(args);
+    private async initializeAndRegisterOutputs(
+        args: Inputs,
+        opts: ComponentResourceOptions,
+        name: string,
+        type: string,
+    ) {
+        const data = await this.initialize(args, opts, name, type);
         this.registerOutputs();
         return data;
     }
@@ -1457,7 +1465,12 @@ export class ComponentResource<TData = any> extends Resource {
      * automatically when constructed. The data will be available immediately for subclass
      * constructors to use. To access the data use {@link getData}.
      */
-    protected async initialize(args: Inputs): Promise<TData> {
+    protected async initialize(
+        args: Inputs,
+        opts: ComponentResourceOptions,
+        name: string,
+        type: string,
+    ): Promise<TData> {
         return <TData>undefined!;
     }
 
