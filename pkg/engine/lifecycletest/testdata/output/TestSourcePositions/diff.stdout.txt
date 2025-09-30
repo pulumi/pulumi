@@ -5,9 +5,9 @@
 <{%reset%}><{%reset%}><{%fg 14%}>> pkgA:m:typA: (read)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB/resA]
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resC/resA]
 <{%reset%}><{%reset%}><{%fg 14%}>> pkgA:m:typA: (read)
-<{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB/resB]
+<{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resC/resB]
 <{%reset%}><{%reset%}><{%fg 14%}>> pkgA:m:typA: (read)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::progCall/resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
