@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1656,7 +1657,7 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
-	var journal *backend.SnapshotJournaler
+	var snapshotJournal *backend.SnapshotJournaler
 	var validationErrs []error
 	journalPersister := &backend.ValidatingPersister{
 		ErrorFunc: func(err error) {
@@ -1668,10 +1669,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		if journalVersion == 1 && env.EnableJournaling.Value() {
-			journal, err := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
-			if err != nil {
-				return nil, nil, fmt.Errorf("creating journaler: %w", err)
-			}
+			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
 				validationErrs = append(validationErrs, err)
@@ -1683,12 +1681,12 @@ func (b *cloudBackend) runEngineAction(
 			}
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
-			journal, err = backend.NewSnapshotJournaler(
+			snapshotJournal, err = backend.NewSnapshotJournaler(
 				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
-			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournal, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
@@ -1715,8 +1713,8 @@ func (b *cloudBackend) runEngineAction(
 			err = errors.Join(err, combinedManager.Close())
 			snapshotManagerClosed = true
 			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
-			if journal != nil {
-				for _, e := range journal.Errors() {
+			if snapshotJournal != nil {
+				for _, e := range snapshotJournal.Errors() {
 					err = errors.Join(err, e)
 				}
 			}
