@@ -155,16 +155,23 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		contract.IgnoreError(pctx.Close())
 	}()
 
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), pkg.Name, apitype.ResourcePlugin, pkg.Version,
-		pkg.PluginDownloadURL, nil)
+	version := pkg.Version
+	if pkg.Parameterization != nil {
+		version = &pkg.Parameterization.BaseProvider.Version
+	}
+	name := pkg.Name
+	if pkg.Parameterization != nil {
+		name = pkg.Parameterization.BaseProvider.Name
+	}
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version, "", nil)
 	if err != nil {
 		return nil, nil, diags, err
 	}
 	var parameterization *workspace.Parameterization
 	if pkg.Parameterization != nil {
 		parameterization = &workspace.Parameterization{
-			Name:    pkg.Parameterization.BaseProvider.Name,
-			Version: pkg.Parameterization.BaseProvider.Version,
+			Name:    pkg.Name,
+			Version: *pkg.Version,
 			Value:   pkg.Parameterization.Parameter,
 		}
 	}
