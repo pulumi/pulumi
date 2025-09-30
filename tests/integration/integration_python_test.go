@@ -1503,6 +1503,7 @@ func TestPackageAddPython(t *testing.T) {
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
+			_, _ = e.RunCommand("pulumi", "install")
 
 			assert.True(t, e.PathExists("sdks/random"))
 
@@ -1514,7 +1515,9 @@ func TestPackageAddPython(t *testing.T) {
 				path := strings.Split(pm.pyprojectPath, ".")
 				data := pyprojectToml
 				for _, p := range path {
-					data = data[p].(map[string]any)
+					d, ok := data[p].(map[string]any)
+					require.True(t, ok, "%q not found in %+v", path, data)
+					data = d
 				}
 
 				pkgSpec, ok := data["pulumi-random"]

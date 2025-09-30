@@ -216,7 +216,7 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 		args = append(args, "--no-workspace")
 	}
 
-	paths := slices.Collect(maps.Values(packages))
+	paths := slices.Collect(maps.Keys(packages))
 	args = append(args, paths...)
 	cmd := exec.Command("uv", args...)
 	if err := cmd.Run(); err != nil {
