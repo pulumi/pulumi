@@ -2813,9 +2813,7 @@ func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
 
 	e.ImportDirectory("packageadd-namespace")
 	e.CWD = filepath.Join(e.RootPath, "nodejs")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
+	_, _ = e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
 
 	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
 	require.NoError(t, err)

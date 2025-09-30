@@ -155,12 +155,20 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		contract.IgnoreError(pctx.Close())
 	}()
 
-	pluginSpec, err := workspace.NewPluginSpec(context.TODO() /* TODO */, pkg.Name, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), pkg.Name, apitype.ResourcePlugin, pkg.Version,
+		pkg.PluginDownloadURL, nil)
 	if err != nil {
 		return nil, nil, diags, err
 	}
-
-	packageDescriptor := workspace.NewPackageDescriptor(pluginSpec, nil)
+	var parameterization *workspace.Parameterization
+	if pkg.Parameterization != nil {
+		parameterization = &workspace.Parameterization{
+			Name:    pkg.Parameterization.BaseProvider.Name,
+			Version: pkg.Parameterization.BaseProvider.Version,
+			Value:   pkg.Parameterization.Parameter,
+		}
+	}
+	packageDescriptor := workspace.NewPackageDescriptor(pluginSpec, parameterization)
 
 	// Link the package to the project
 	if err := LinkPackage(&LinkPackageContext{

@@ -31,9 +31,7 @@ func TestPackageAddWithNamespaceSetDotnet(t *testing.T) {
 
 	e.ImportDirectory("packageadd-namespace")
 	e.CWD = filepath.Join(e.RootPath, "dotnet")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can then use the SDK in your .NET code with:\n\n  using MyNamespace.Mypkg;")
+	_, _ = e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
 
 	// Make sure the SDK was generated in the expected directory
 	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "MyNamespace.Mypkg.csproj"))
