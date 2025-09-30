@@ -1105,13 +1105,17 @@ func parsePluginSpecFromURL(
 	default:
 		return PluginSpec{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
 	}
-
-	gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+	urlWithoutAuth := &url.URL{
+		Scheme: parsedURL.Scheme,
+		Host:   parsedURL.Host,
+		Path:   parsedURL.Path,
+	}
+	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(gitURL, "https://"), "/", "_"),
+		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
 		Kind:    kind,
 		Version: version,
 		// Prefix the url with `git://`, so we can later recognize this as a git URL.
@@ -1125,6 +1129,10 @@ func parsePluginSpecFromURL(
 	// is used, so the user gets a consistent experience.
 	if pluginSpec.Version == nil {
 		var err error
+		gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+		if err != nil {
+			return PluginSpec{}, inference, err
+		}
 		pluginSpec.Version, err = gitutil.GetLatestTagOrHash(ctx, gitURL)
 		if err != nil {
 			return pluginSpec, inference, PluginVersionNotFoundError(err)

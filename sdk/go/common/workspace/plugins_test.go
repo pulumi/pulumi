@@ -1982,6 +1982,17 @@ func TestNewPluginSpec(t *testing.T) {
 			kind:   apitype.ResourcePlugin,
 			Error:  errors.New("VERSION must be valid semver or git commit hash: v1.0.0.0"),
 		},
+		{
+			name:   "url with auth info",
+			source: "https://abc:token@github.com/pulumi/pulumi-example@v1.0.0",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example.git",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "git://abc:token@github.com/pulumi/pulumi-example",
+			},
+		},
 	}
 
 	for _, c := range cases {
