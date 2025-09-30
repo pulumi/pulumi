@@ -1669,7 +1669,10 @@ func (b *cloudBackend) runEngineAction(
 		if err != nil {
 			validationErrs = append(validationErrs, err)
 		}
-		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+		journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 		combinedManager = &engine.CombinedManager{
 			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
@@ -1692,8 +1695,10 @@ func (b *cloudBackend) runEngineAction(
 			err = errors.Join(err, combinedManager.Close())
 			snapshotManagerClosed = true
 			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
-			for _, e := range journal.Errors() {
-				err = errors.Join(err, e)
+			if journal != nil {
+				for _, e := range journal.Errors() {
+					err = errors.Join(err, e)
+				}
 			}
 			if err != nil {
 				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{

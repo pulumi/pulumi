@@ -259,7 +259,8 @@ func (op TestOp) runWithContext(
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
-		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		require.NoError(opts.T, err)
 
 		combined = &engine.CombinedManager{
 			Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},

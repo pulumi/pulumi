@@ -752,13 +752,13 @@ func NewJournalSnapshotManager(
 	journal Journal,
 	baseSnap *deploy.Snapshot,
 	sm secrets.Manager,
-) *JournalSnapshotManager {
+) (*JournalSnapshotManager, error) {
 	manager := &JournalSnapshotManager{
 		journal:      journal,
 		baseSnapshot: baseSnap,
 	}
 
-	manager.RegisterSecretsManager(sm)
+	err := manager.RegisterSecretsManager(sm)
 
-	return manager
+	return manager, err
 }
