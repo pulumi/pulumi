@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -938,4 +939,124 @@ func TestDBRParallel(t *testing.T) {
 			require.Len(t, snap.Resources, 3)
 		})
 	}
+}
+
+func TestDBRProviderUpgrade(t *testing.T) {
+	t.Parallel()
+
+	pkgAProvider := &deploytest.Provider{
+		DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+			if !req.OldInputs["version"].DeepEquals(req.NewInputs["version"]) {
+				return plugin.DiffResult{
+					Changes:     plugin.DiffSome,
+					ChangedKeys: []resource.PropertyKey{"version"},
+				}, nil
+			}
+			return plugin.DiffResult{}, nil
+		},
+		DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+			if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+				return plugin.DiffResult{
+					Changes:     plugin.DiffSome,
+					ChangedKeys: []resource.PropertyKey{"foo"},
+				}, nil
+			}
+			return plugin.DiffResult{}, nil
+		},
+		DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+			return plugin.DeleteResponse{
+				Status: resource.StatusOK,
+			}, nil
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.1.1"), func() (plugin.Provider, error) {
+			return pkgAProvider, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.2.1"), func() (plugin.Provider, error) {
+			return pkgAProvider, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldInputs["length"].DeepEquals(req.NewInputs["length"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ChangedKeys: []resource.PropertyKey{"length"},
+							ReplaceKeys: []resource.PropertyKey{"length"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var step int
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		length, provAVersion := 16.0, "1.1.1"
+		if step == 1 {
+			length, provAVersion = 17.0, "1.2.1"
+		}
+
+		provAPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			return monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
+				deploytest.ResourceOptions{
+					Version: provAVersion,
+				})
+		})
+
+		resBPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			dbr := true
+			return monitor.RegisterResource("pkgB:m:typB", "resB", true, deploytest.ResourceOptions{
+				Inputs:              resource.PropertyMap{"length": resource.NewProperty(length)},
+				DeleteBeforeReplace: &dbr,
+			})
+		})
+
+		resAPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			provA, err := provAPromise.Result(context.Background())
+			require.NoError(t, err)
+
+			provRef, err := providers.NewReference(provA.URN, provA.ID)
+			require.NoError(t, err)
+
+			resB, err := resBPromise.Result(context.Background())
+			require.NoError(t, err)
+
+			return monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Provider:     provRef.String(),
+				Inputs:       resource.PropertyMap{"foo": resource.NewProperty("foo")},
+				PropertyDeps: map[resource.PropertyKey][]resource.URN{"foo": {resB.URN}},
+			})
+		})
+
+		_, err := resAPromise.Result(context.Background())
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				Parallel: 2,
+			},
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	step = 1
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
 }
