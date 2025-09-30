@@ -89,7 +89,7 @@ func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) erro
 	}
 
 	packageNameRegex := regexp.MustCompile(`^([a-zA-Z0-9_-]+)`)
-	var filteredLines []string
+	filteredLines := make([]string, 0, len(lines))
 	for _, originalLine := range lines {
 		line := strings.TrimSpace(originalLine)
 		if line == "" { // preserve whitespace only lines
