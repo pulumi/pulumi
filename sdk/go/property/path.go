@@ -151,7 +151,6 @@ func getForPath(v Value, p path) ([]Value, error) {
 	queue := []Value{v}
 	for segment := range p { // For each segment in the path
 		for idx := len(queue) - 1; idx >= 0; idx-- {
-
 			// Values to the right of idx are processed by this segment, while
 			// values to the left are unprocessed by segment.
 
@@ -248,6 +247,8 @@ func (p Path) Get(v Value) (Value, error) {
 	contract.Assertf(len(values) == 1, "If p.Get(v) applied cleanly, it should return exactly 1 value")
 	return values[0], nil
 }
+
+func (p Path) Delete(v Value) (Value, error) { panic("TODO") }
 
 // Set the value described by the path in src to newValue.
 //

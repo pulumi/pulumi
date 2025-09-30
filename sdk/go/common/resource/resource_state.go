@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // State is a structure containing state associated with a resource. This resource may have been serialized and
@@ -63,7 +64,7 @@ type State struct {
 	StackTrace              []StackFrame          // If set, the stack trace at time of registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
-	HideDetailedDiff        []PropertyPath        // If set, the list of properties that should hide their detailed diffs.
+	HideDetailedDiff        []property.GlobPath   // If set, the list of properties that should hide their detailed diffs.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
 	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type.
@@ -209,7 +210,7 @@ type NewState struct {
 	ReplaceOnChanges []string // required
 
 	// If set, the list of properties that should hide their detailed diffs.
-	HideDetailedDiff []PropertyPath // required
+	HideDetailedDiff []property.GlobPath // required
 
 	// true if this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool // required

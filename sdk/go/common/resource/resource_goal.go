@@ -16,6 +16,7 @@ package resource
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Goal is a desired state for a resource object. Normally it represents a subset of the resource's state expressed by
@@ -38,7 +39,7 @@ type Goal struct {
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
-	HideDetailedDiff        []PropertyPath        // a list of property paths that should be collapsed in detailed diff.
+	HideDetailedDiff        []property.GlobPath   // a list of property paths that should be collapsed in detailed diff.
 	// if set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource

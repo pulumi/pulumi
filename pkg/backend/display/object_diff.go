@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // getIndent computes a step's parent indentation.
@@ -202,10 +203,10 @@ func getResourcePropertiesDetails(
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets)
+			summary, truncateOutput, debug, showSecrets, step.New.State.HideDetailedDiff)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets)
+			summary, truncateOutput, debug, showSecrets, step.New.State.HideDetailedDiff)
 	}
 
 	return b.String()
@@ -692,10 +693,12 @@ func shortHash(hash string) string {
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hideDetailedDiff []property.GlobPath,
 ) {
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets)
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets,
+			hideDetailedDiff)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -705,6 +708,7 @@ func printOldNewDiffs(
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hideDetailedDiff []property.GlobPath,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -716,8 +720,62 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		truncateOutput: truncateOutput,
 		showSecrets:    showSecrets,
 	}
+	diff, hidden := applyHideDetailedDiff(diff, hideDetailedDiff)
+	for _, v := range hidden {
+		p.printElidedDiff(v)
+	}
 	p.printObjectDiff(diff, include)
 }
+
+// applyHideDetailedDiff returns a new object diff with hidden fields removed, along with
+// the set of hidden fields that were actually applied.
+func applyHideDetailedDiff(
+	diff resource.ObjectDiff, hideDetailedDiff []property.GlobPath,
+) (resource.ObjectDiff, []property.GlobPath) {
+	if len(hideDetailedDiff) == 0 || !diff.AnyChanges() {
+		return diff, nil
+	}
+
+	var ignored []property.GlobPath
+
+	switchTo := func(src, dst *property.Map, glob property.GlobPath) {
+		var hasTriggered bool
+		for _, path := range glob.Expand(property.New(*src)) {
+			deleted, err := path.Get(property.New(*src))
+			srcProp, delErr := path.Delete(property.New(*src))
+			if err == nil && delErr == nil {
+				*src = srcProp.AsMap()
+				samesProp, err := path.Set(property.New(*dst), deleted)
+				if err != nil {
+					*dst = samesProp.AsMap()
+					if !hasTriggered {
+						hasTriggered = true
+						ignored = append(ignored, glob)
+					}
+				}
+			}
+		}
+	}
+
+	adds := resource.FromResourcePropertyMap(diff.Adds)
+	deletes := resource.FromResourcePropertyMap(diff.Deletes)
+	sames := resource.FromResourcePropertyMap(diff.Sames)
+	for _, globPath := range hideDetailedDiff {
+		switchTo(&adds, &sames, globPath)
+		switchTo(&deletes, &sames, globPath)
+	}
+
+	updates := make(map[resource.PropertyKey]resource.ValueDiff, len(diff.Updates))
+	// TODO: Implement updates
+	return resource.ObjectDiff{
+		Adds:    resource.ToResourcePropertyMap(adds),
+		Deletes: resource.ToResourcePropertyMap(deletes),
+		Sames:   resource.ToResourcePropertyMap(sames),
+		Updates: updates,
+	}, ignored
+}
+
+func (p *propertyPrinter) printElidedDiff(path property.GlobPath) { panic("TODO") }
 
 func (p *propertyPrinter) printObjectDiff(diff resource.ObjectDiff, include []resource.PropertyKey) {
 	contract.Assertf(p.indent > 0, "indentation must be > 0 to print object diffs")
