@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,8 @@
 package policy
 
 import (
-	"bytes"
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -28,6 +26,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,37 +123,24 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	t.Parallel()
 
-	tmpDir := t.TempDir()
-	subDir := filepath.Join(tmpDir, "subdirectory")
-	err := os.MkdirAll(subDir, 0o755)
-	require.NoError(t, err)
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
 
-	runCommand := func(dir, name string, args ...string) (string, string) {
-		var outBuffer, errBuffer bytes.Buffer
-
-		cmd := exec.Command(name, args...)
-		cmd.Dir = dir
-		cmd.Stdout = &outBuffer
-		cmd.Stderr = &errBuffer
-
-		err := cmd.Run()
-		require.NoError(t, err)
-
-		return outBuffer.String(), errBuffer.String()
-	}
+	subDir := filepath.Join(e.RootPath, "subdirectory")
 
 	// Initialize a git repo with a commit in it.
-	runCommand(tmpDir, "git", "init", "-b", "master")
-	runCommand(tmpDir, "git", "config", "user.email", "repo-user@example.com")
-	runCommand(tmpDir, "git", "config", "user.name", "repo-user")
-	runCommand(tmpDir, "git", "remote", "add", "origin", "git@github.com:repo-owner-name/repo-repo-name")
-	runCommand(tmpDir, "git", "checkout", "-b", "master")
-	err = os.WriteFile(filepath.Join(subDir, "PulumiPolicy.yml"), []byte("runtime: mock\nversion: 0.0.1\n"), 0o600)
-	require.NoError(t, err)
-	runCommand(tmpDir, "git", "add", ".")
-	runCommand(tmpDir, "git", "commit", "-m", "repo-message")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.email", "repo-user@example.com")
+	e.RunCommand("git", "config", "user.name", "repo-user")
+	e.RunCommand("git", "remote", "add", "origin", "git@github.com:repo-owner-name/repo-repo-name")
+	e.RunCommand("git", "checkout", "-b", "master")
+	e.CWD = subDir
+	e.WriteTestFile("PulumiPolicy.yml", "runtime: mock\nversion: 0.0.1\n")
+	e.CWD = e.RootPath
+	e.RunCommand("git", "add", ".")
+	e.RunCommand("git", "commit", "-m", "repo-message")
 
-	gitHead, _ := runCommand(tmpDir, "git", "rev-parse", "HEAD")
+	gitHead, _ := e.RunCommand("git", "rev-parse", "HEAD")
 
 	var metadata map[string]string
 
@@ -185,21 +171,19 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 
 	cmd := policyPublishCmd{
 		getwd: func() (string, error) {
+			// Return the sub directory to ensure we get the subdirectory metadata.
 			return subDir, nil
 		},
 	}
 
-	err = cmd.Run(context.Background(), lm, []string{})
+	err := cmd.Run(context.Background(), lm, []string{})
 	require.NoError(t, err)
 
 	assertEnvValue := func(env map[string]string, key, val string) {
 		t.Helper()
 		got, ok := env[key]
-		if !ok {
-			t.Errorf("Didn't find expected metadata key %q (full env %+v)", key, env)
-		} else {
-			assert.EqualValues(t, val, got, "got different value for metadata %v than expected", key)
-		}
+		require.True(t, ok, "Didn't find expected metadata key %q (full env %+v)", key, env)
+		assert.Equal(t, val, got, "got different value for metadata %v than expected", key)
 	}
 
 	assertEnvValue(metadata, backend.VCSRepoOwner, "repo-owner-name")
