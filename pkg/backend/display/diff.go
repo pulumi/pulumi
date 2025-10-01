@@ -99,6 +99,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
+	case engine.DiagEvent:
+		return ""
 	case engine.PolicyLoadEvent:
 		return ""
 	case engine.StartDebuggingEvent:
@@ -112,8 +114,6 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.PolicyRemediateSummaryEvent:
 		return ""
 	case engine.PolicyAnalyzeStackSummaryEvent:
-		return ""
-        case engine.DiagEvent:
 		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
