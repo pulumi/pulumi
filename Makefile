@@ -138,6 +138,8 @@ lint_golang:: lint_deps
 		echo "[golangci-lint] Linting $(pkg)..." && \
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
+			--max-same-issues 0 \
+			--max-issues-per-linter 0 \
 			--timeout 5m && \
 		echo "[requiredfield] Linting $(pkg)..." && \
 		go vet -tags all -vettool=$$(which requiredfield) ./...) \
