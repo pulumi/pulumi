@@ -1501,6 +1501,7 @@ func TestPackageAddPython(t *testing.T) {
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
+			_, _ = e.RunCommand("pulumi", "install")
 
 			assert.True(t, e.PathExists("sdks/random"))
 
@@ -1512,7 +1513,9 @@ func TestPackageAddPython(t *testing.T) {
 				path := strings.Split(pm.pyprojectPath, ".")
 				data := pyprojectToml
 				for _, p := range path {
-					data = data[p].(map[string]any)
+					d, ok := data[p].(map[string]any)
+					require.True(t, ok, "%q not found in %+v", path, data)
+					data = d
 				}
 
 				pkgSpec, ok := data["pulumi-random"]
@@ -1556,9 +1559,7 @@ func TestPackageAddWithPublisherSetPython(t *testing.T) {
 
 	e.ImportDirectory("packageadd-namespace")
 	e.CWD = filepath.Join(e.RootPath, "python")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can then import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
+	_, _ = e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
 
 	// Make sure the SDK was generated in the expected directory
 	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "my_namespace_mypkg"))

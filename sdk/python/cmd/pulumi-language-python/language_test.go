@@ -181,6 +181,7 @@ func TestLanguage(t *testing.T) {
 
 			// Create a temp project dir for the test to run in
 			rootDir := t.TempDir()
+			// rootDir, err := os.MkdirTemp("", "")
 
 			snapshotDir := "./testdata/" + config.snapshotDir
 
@@ -214,6 +215,11 @@ func TestLanguage(t *testing.T) {
 						Path:        "requirements\\.txt",
 						Pattern:     rootDir + "/artifacts",
 						Replacement: "ROOT/artifacts",
+					},
+					{
+						Path:        "requirements\\.txt",
+						Pattern:     ".*/projects/.*/sdks",
+						Replacement: "PROJECT/sdks",
 					},
 				},
 				LanguageInfo: languageInfo,

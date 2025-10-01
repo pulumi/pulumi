@@ -2157,9 +2157,11 @@ type LinkRequest struct {
 	// should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
 	// to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
 	// to be used instead of the published `@pulumi/aws` package.
-	LocalDependencies map[string]string `protobuf:"bytes,2,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	LocalDependencies map[string]string `protobuf:"bytes,2,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // TODO: remove
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget  string `protobuf:"bytes,3,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget string `protobuf:"bytes,3,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	// path -> descriptor
+	Packages      map[string]*PackageDependency `protobuf:"bytes,4,rep,name=packages,proto3" json:"packages,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2215,11 +2217,19 @@ func (x *LinkRequest) GetLoaderTarget() string {
 	return ""
 }
 
+func (x *LinkRequest) GetPackages() map[string]*PackageDependency {
+	if x != nil {
+		return x.Packages
+	}
+	return nil
+}
+
 // `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
 type LinkResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ImportInstructions string                 `protobuf:"bytes,1,opt,name=import_instructions,json=importInstructions,proto3" json:"import_instructions,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *LinkResponse) Reset() {
@@ -2250,6 +2260,13 @@ func (x *LinkResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use LinkResponse.ProtoReflect.Descriptor instead.
 func (*LinkResponse) Descriptor() ([]byte, []int) {
 	return file_pulumi_language_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *LinkResponse) GetImportInstructions() string {
+	if x != nil {
+		return x.ImportInstructions
+	}
+	return ""
 }
 
 // `RuntimeOptionValue` is a struct that captures the value of a runtime option.
@@ -2495,15 +2512,20 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x11program_directory\x18\x03 \x01(\tH\x01R\x10programDirectory\x88\x01\x01B\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directory\"\x1b\n" +
-	"\x19LanguageHandshakeResponse\"\x82\x02\n" +
+	"\x19LanguageHandshakeResponse\"\x9f\x03\n" +
 	"\vLinkRequest\x12*\n" +
 	"\x04info\x18\x01 \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\x12\\\n" +
 	"\x12local_dependencies\x18\x02 \x03(\v2-.pulumirpc.LinkRequest.LocalDependenciesEntryR\x11localDependencies\x12#\n" +
-	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\x1aD\n" +
+	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\x12@\n" +
+	"\bpackages\x18\x04 \x03(\v2$.pulumirpc.LinkRequest.PackagesEntryR\bpackages\x1aD\n" +
 	"\x16LocalDependenciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x0e\n" +
-	"\fLinkResponse2\xc0\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aY\n" +
+	"\rPackagesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.pulumirpc.PackageDependencyR\x05value:\x028\x01\"?\n" +
+	"\fLinkResponse\x12/\n" +
+	"\x13import_instructions\x18\x01 \x01(\tR\x12importInstructions2\xc0\n" +
 	"\n" +
 	"\x0fLanguageRuntime\x12X\n" +
 	"\tHandshake\x12#.pulumirpc.LanguageHandshakeRequest\x1a$.pulumirpc.LanguageHandshakeResponse\"\x00\x12f\n" +
@@ -2536,7 +2558,7 @@ func file_pulumi_language_proto_rawDescGZIP() []byte {
 }
 
 var file_pulumi_language_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pulumi_language_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_pulumi_language_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
 var file_pulumi_language_proto_goTypes = []any{
 	(RuntimeOptionPrompt_RuntimeOptionType)(0),     // 0: pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
 	(*ProgramInfo)(nil),                            // 1: pulumirpc.ProgramInfo
@@ -2579,25 +2601,26 @@ var file_pulumi_language_proto_goTypes = []any{
 	nil,                        // 38: pulumirpc.GeneratePackageRequest.ExtraFilesEntry
 	nil,                        // 39: pulumirpc.GeneratePackageRequest.LocalDependenciesEntry
 	nil,                        // 40: pulumirpc.LinkRequest.LocalDependenciesEntry
-	(*structpb.Struct)(nil),    // 41: google.protobuf.Struct
-	(*PluginDependency)(nil),   // 42: pulumirpc.PluginDependency
-	(*PackageDependency)(nil),  // 43: pulumirpc.PackageDependency
-	(*codegen.Diagnostic)(nil), // 44: pulumirpc.codegen.Diagnostic
-	(*emptypb.Empty)(nil),      // 45: google.protobuf.Empty
-	(*PluginInfo)(nil),         // 46: pulumirpc.PluginInfo
+	nil,                        // 41: pulumirpc.LinkRequest.PackagesEntry
+	(*structpb.Struct)(nil),    // 42: google.protobuf.Struct
+	(*PluginDependency)(nil),   // 43: pulumirpc.PluginDependency
+	(*PackageDependency)(nil),  // 44: pulumirpc.PackageDependency
+	(*codegen.Diagnostic)(nil), // 45: pulumirpc.codegen.Diagnostic
+	(*emptypb.Empty)(nil),      // 46: google.protobuf.Empty
+	(*PluginInfo)(nil),         // 47: pulumirpc.PluginInfo
 }
 var file_pulumi_language_proto_depIdxs = []int32{
-	41, // 0: pulumirpc.ProgramInfo.options:type_name -> google.protobuf.Struct
+	42, // 0: pulumirpc.ProgramInfo.options:type_name -> google.protobuf.Struct
 	1,  // 1: pulumirpc.AboutRequest.info:type_name -> pulumirpc.ProgramInfo
 	32, // 2: pulumirpc.AboutResponse.metadata:type_name -> pulumirpc.AboutResponse.MetadataEntry
 	1,  // 3: pulumirpc.GetProgramDependenciesRequest.info:type_name -> pulumirpc.ProgramInfo
 	5,  // 4: pulumirpc.GetProgramDependenciesResponse.dependencies:type_name -> pulumirpc.DependencyInfo
 	1,  // 5: pulumirpc.GetRequiredPluginsRequest.info:type_name -> pulumirpc.ProgramInfo
-	42, // 6: pulumirpc.GetRequiredPluginsResponse.plugins:type_name -> pulumirpc.PluginDependency
+	43, // 6: pulumirpc.GetRequiredPluginsResponse.plugins:type_name -> pulumirpc.PluginDependency
 	1,  // 7: pulumirpc.GetRequiredPackagesRequest.info:type_name -> pulumirpc.ProgramInfo
-	43, // 8: pulumirpc.GetRequiredPackagesResponse.packages:type_name -> pulumirpc.PackageDependency
+	44, // 8: pulumirpc.GetRequiredPackagesResponse.packages:type_name -> pulumirpc.PackageDependency
 	33, // 9: pulumirpc.RunRequest.config:type_name -> pulumirpc.RunRequest.ConfigEntry
-	41, // 10: pulumirpc.RunRequest.configPropertyMap:type_name -> google.protobuf.Struct
+	42, // 10: pulumirpc.RunRequest.configPropertyMap:type_name -> google.protobuf.Struct
 	1,  // 11: pulumirpc.RunRequest.info:type_name -> pulumirpc.ProgramInfo
 	1,  // 12: pulumirpc.InstallDependenciesRequest.info:type_name -> pulumirpc.ProgramInfo
 	1,  // 13: pulumirpc.RuntimeOptionsRequest.info:type_name -> pulumirpc.ProgramInfo
@@ -2607,53 +2630,55 @@ var file_pulumi_language_proto_depIdxs = []int32{
 	16, // 17: pulumirpc.RuntimeOptionsResponse.prompts:type_name -> pulumirpc.RuntimeOptionPrompt
 	1,  // 18: pulumirpc.RunPluginRequest.info:type_name -> pulumirpc.ProgramInfo
 	35, // 19: pulumirpc.GenerateProgramRequest.source:type_name -> pulumirpc.GenerateProgramRequest.SourceEntry
-	44, // 20: pulumirpc.GenerateProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	45, // 20: pulumirpc.GenerateProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	36, // 21: pulumirpc.GenerateProgramResponse.source:type_name -> pulumirpc.GenerateProgramResponse.SourceEntry
 	37, // 22: pulumirpc.GenerateProjectRequest.local_dependencies:type_name -> pulumirpc.GenerateProjectRequest.LocalDependenciesEntry
-	44, // 23: pulumirpc.GenerateProjectResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	45, // 23: pulumirpc.GenerateProjectResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	38, // 24: pulumirpc.GeneratePackageRequest.extra_files:type_name -> pulumirpc.GeneratePackageRequest.ExtraFilesEntry
 	39, // 25: pulumirpc.GeneratePackageRequest.local_dependencies:type_name -> pulumirpc.GeneratePackageRequest.LocalDependenciesEntry
-	44, // 26: pulumirpc.GeneratePackageResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	45, // 26: pulumirpc.GeneratePackageResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	1,  // 27: pulumirpc.LinkRequest.info:type_name -> pulumirpc.ProgramInfo
 	40, // 28: pulumirpc.LinkRequest.local_dependencies:type_name -> pulumirpc.LinkRequest.LocalDependenciesEntry
-	0,  // 29: pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.promptType:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
-	28, // 30: pulumirpc.LanguageRuntime.Handshake:input_type -> pulumirpc.LanguageHandshakeRequest
-	7,  // 31: pulumirpc.LanguageRuntime.GetRequiredPlugins:input_type -> pulumirpc.GetRequiredPluginsRequest
-	9,  // 32: pulumirpc.LanguageRuntime.GetRequiredPackages:input_type -> pulumirpc.GetRequiredPackagesRequest
-	11, // 33: pulumirpc.LanguageRuntime.Run:input_type -> pulumirpc.RunRequest
-	45, // 34: pulumirpc.LanguageRuntime.GetPluginInfo:input_type -> google.protobuf.Empty
-	13, // 35: pulumirpc.LanguageRuntime.InstallDependencies:input_type -> pulumirpc.InstallDependenciesRequest
-	15, // 36: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:input_type -> pulumirpc.RuntimeOptionsRequest
-	2,  // 37: pulumirpc.LanguageRuntime.About:input_type -> pulumirpc.AboutRequest
-	4,  // 38: pulumirpc.LanguageRuntime.GetProgramDependencies:input_type -> pulumirpc.GetProgramDependenciesRequest
-	18, // 39: pulumirpc.LanguageRuntime.RunPlugin:input_type -> pulumirpc.RunPluginRequest
-	20, // 40: pulumirpc.LanguageRuntime.GenerateProgram:input_type -> pulumirpc.GenerateProgramRequest
-	22, // 41: pulumirpc.LanguageRuntime.GenerateProject:input_type -> pulumirpc.GenerateProjectRequest
-	24, // 42: pulumirpc.LanguageRuntime.GeneratePackage:input_type -> pulumirpc.GeneratePackageRequest
-	26, // 43: pulumirpc.LanguageRuntime.Pack:input_type -> pulumirpc.PackRequest
-	30, // 44: pulumirpc.LanguageRuntime.Link:input_type -> pulumirpc.LinkRequest
-	45, // 45: pulumirpc.LanguageRuntime.Cancel:input_type -> google.protobuf.Empty
-	29, // 46: pulumirpc.LanguageRuntime.Handshake:output_type -> pulumirpc.LanguageHandshakeResponse
-	8,  // 47: pulumirpc.LanguageRuntime.GetRequiredPlugins:output_type -> pulumirpc.GetRequiredPluginsResponse
-	10, // 48: pulumirpc.LanguageRuntime.GetRequiredPackages:output_type -> pulumirpc.GetRequiredPackagesResponse
-	12, // 49: pulumirpc.LanguageRuntime.Run:output_type -> pulumirpc.RunResponse
-	46, // 50: pulumirpc.LanguageRuntime.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	14, // 51: pulumirpc.LanguageRuntime.InstallDependencies:output_type -> pulumirpc.InstallDependenciesResponse
-	17, // 52: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:output_type -> pulumirpc.RuntimeOptionsResponse
-	3,  // 53: pulumirpc.LanguageRuntime.About:output_type -> pulumirpc.AboutResponse
-	6,  // 54: pulumirpc.LanguageRuntime.GetProgramDependencies:output_type -> pulumirpc.GetProgramDependenciesResponse
-	19, // 55: pulumirpc.LanguageRuntime.RunPlugin:output_type -> pulumirpc.RunPluginResponse
-	21, // 56: pulumirpc.LanguageRuntime.GenerateProgram:output_type -> pulumirpc.GenerateProgramResponse
-	23, // 57: pulumirpc.LanguageRuntime.GenerateProject:output_type -> pulumirpc.GenerateProjectResponse
-	25, // 58: pulumirpc.LanguageRuntime.GeneratePackage:output_type -> pulumirpc.GeneratePackageResponse
-	27, // 59: pulumirpc.LanguageRuntime.Pack:output_type -> pulumirpc.PackResponse
-	31, // 60: pulumirpc.LanguageRuntime.Link:output_type -> pulumirpc.LinkResponse
-	45, // 61: pulumirpc.LanguageRuntime.Cancel:output_type -> google.protobuf.Empty
-	46, // [46:62] is the sub-list for method output_type
-	30, // [30:46] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	41, // 29: pulumirpc.LinkRequest.packages:type_name -> pulumirpc.LinkRequest.PackagesEntry
+	0,  // 30: pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.promptType:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
+	44, // 31: pulumirpc.LinkRequest.PackagesEntry.value:type_name -> pulumirpc.PackageDependency
+	28, // 32: pulumirpc.LanguageRuntime.Handshake:input_type -> pulumirpc.LanguageHandshakeRequest
+	7,  // 33: pulumirpc.LanguageRuntime.GetRequiredPlugins:input_type -> pulumirpc.GetRequiredPluginsRequest
+	9,  // 34: pulumirpc.LanguageRuntime.GetRequiredPackages:input_type -> pulumirpc.GetRequiredPackagesRequest
+	11, // 35: pulumirpc.LanguageRuntime.Run:input_type -> pulumirpc.RunRequest
+	46, // 36: pulumirpc.LanguageRuntime.GetPluginInfo:input_type -> google.protobuf.Empty
+	13, // 37: pulumirpc.LanguageRuntime.InstallDependencies:input_type -> pulumirpc.InstallDependenciesRequest
+	15, // 38: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:input_type -> pulumirpc.RuntimeOptionsRequest
+	2,  // 39: pulumirpc.LanguageRuntime.About:input_type -> pulumirpc.AboutRequest
+	4,  // 40: pulumirpc.LanguageRuntime.GetProgramDependencies:input_type -> pulumirpc.GetProgramDependenciesRequest
+	18, // 41: pulumirpc.LanguageRuntime.RunPlugin:input_type -> pulumirpc.RunPluginRequest
+	20, // 42: pulumirpc.LanguageRuntime.GenerateProgram:input_type -> pulumirpc.GenerateProgramRequest
+	22, // 43: pulumirpc.LanguageRuntime.GenerateProject:input_type -> pulumirpc.GenerateProjectRequest
+	24, // 44: pulumirpc.LanguageRuntime.GeneratePackage:input_type -> pulumirpc.GeneratePackageRequest
+	26, // 45: pulumirpc.LanguageRuntime.Pack:input_type -> pulumirpc.PackRequest
+	30, // 46: pulumirpc.LanguageRuntime.Link:input_type -> pulumirpc.LinkRequest
+	46, // 47: pulumirpc.LanguageRuntime.Cancel:input_type -> google.protobuf.Empty
+	29, // 48: pulumirpc.LanguageRuntime.Handshake:output_type -> pulumirpc.LanguageHandshakeResponse
+	8,  // 49: pulumirpc.LanguageRuntime.GetRequiredPlugins:output_type -> pulumirpc.GetRequiredPluginsResponse
+	10, // 50: pulumirpc.LanguageRuntime.GetRequiredPackages:output_type -> pulumirpc.GetRequiredPackagesResponse
+	12, // 51: pulumirpc.LanguageRuntime.Run:output_type -> pulumirpc.RunResponse
+	47, // 52: pulumirpc.LanguageRuntime.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	14, // 53: pulumirpc.LanguageRuntime.InstallDependencies:output_type -> pulumirpc.InstallDependenciesResponse
+	17, // 54: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:output_type -> pulumirpc.RuntimeOptionsResponse
+	3,  // 55: pulumirpc.LanguageRuntime.About:output_type -> pulumirpc.AboutResponse
+	6,  // 56: pulumirpc.LanguageRuntime.GetProgramDependencies:output_type -> pulumirpc.GetProgramDependenciesResponse
+	19, // 57: pulumirpc.LanguageRuntime.RunPlugin:output_type -> pulumirpc.RunPluginResponse
+	21, // 58: pulumirpc.LanguageRuntime.GenerateProgram:output_type -> pulumirpc.GenerateProgramResponse
+	23, // 59: pulumirpc.LanguageRuntime.GenerateProject:output_type -> pulumirpc.GenerateProjectResponse
+	25, // 60: pulumirpc.LanguageRuntime.GeneratePackage:output_type -> pulumirpc.GeneratePackageResponse
+	27, // 61: pulumirpc.LanguageRuntime.Pack:output_type -> pulumirpc.PackResponse
+	31, // 62: pulumirpc.LanguageRuntime.Link:output_type -> pulumirpc.LinkResponse
+	46, // 63: pulumirpc.LanguageRuntime.Cancel:output_type -> google.protobuf.Empty
+	48, // [48:64] is the sub-list for method output_type
+	32, // [32:48] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_language_proto_init() }
@@ -2674,7 +2699,7 @@ func file_pulumi_language_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_language_proto_rawDesc), len(file_pulumi_language_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   40,
+			NumMessages:   41,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

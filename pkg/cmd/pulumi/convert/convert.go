@@ -549,7 +549,7 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, _, err := packages.SchemaFromSchemaSource(
+		pkgSchema, _, backedByProvider, err := packages.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
@@ -592,19 +592,49 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not change to output directory: %w", err)
 		}
 
+		if !backedByProvider {
+			return nil
+		}
+
 		_, _, err = ws.ReadProject()
 		if err != nil {
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
+		version := pkgSchema.Version
+		if pkgSchema.Parameterization != nil {
+			version = &pkgSchema.Parameterization.BaseProvider.Version
+		}
+		name := pkgSchema.Name
+		if pkgSchema.Parameterization != nil {
+			name = pkgSchema.Parameterization.BaseProvider.Name
+		}
+
+		pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version,
+			pkgSchema.PluginDownloadURL, nil)
+		if err != nil {
+			return err
+		}
+		var parameterization *workspace.Parameterization
+		if pkg.Parameterization != nil {
+			parameterization = &workspace.Parameterization{
+				Name:    pkg.Parameterization.Name,
+				Version: pkg.Parameterization.Version,
+				Value:   pkg.Parameterization.Value,
+			}
+		}
+		packageDescriptor := workspace.NewPackageDescriptor(pluginSpec, parameterization)
+
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Writer:    os.Stdout,
-			Workspace: ws,
-			Language:  language,
-			Root:      "./",
-			Pkg:       pkgSchema,
-			Out:       sdkRelPath,
+			Writer:            os.Stdout,
+			Workspace:         ws,
+			Language:          language,
+			Root:              "./",
+			Pkg:               pkgSchema,
+			PluginContext:     pctx,
+			PackageDescriptor: packageDescriptor,
+			Out:               sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
 			Install: !generateOnly,
@@ -615,6 +645,8 @@ func generateAndLinkSdksForPackages(
 
 		returnToStartingDir()
 	}
+
+	// TODO: I think need to project.AddPackage() here for all the
 
 	return nil
 }

@@ -7430,7 +7430,8 @@ proto.pulumirpc.LinkRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
 localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : [],
-loaderTarget: jspb.Message.getFieldWithDefault(msg, 3, "")
+loaderTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
+packagesMap: (f = msg.getPackagesMap()) ? f.toObject(includeInstance, proto.pulumirpc.PackageDependency.toObject) : []
   };
 
   if (includeInstance) {
@@ -7482,6 +7483,12 @@ proto.pulumirpc.LinkRequest.deserializeBinaryFromReader = function(msg, reader) 
       var value = /** @type {string} */ (reader.readString());
       msg.setLoaderTarget(value);
       break;
+    case 4:
+      var value = msg.getPackagesMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.PackageDependency.deserializeBinaryFromReader, "", new proto.pulumirpc.PackageDependency());
+         });
+      break;
     default:
       reader.skipField();
       break;
@@ -7529,6 +7536,10 @@ proto.pulumirpc.LinkRequest.serializeBinaryToWriter = function(message, writer) 
       3,
       f
     );
+  }
+  f = message.getPackagesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.PackageDependency.serializeBinaryToWriter);
   }
 };
 
@@ -7611,6 +7622,29 @@ proto.pulumirpc.LinkRequest.prototype.setLoaderTarget = function(value) {
 };
 
 
+/**
+ * map<string, PackageDependency> packages = 4;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!proto.pulumirpc.PackageDependency>}
+ */
+proto.pulumirpc.LinkRequest.prototype.getPackagesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!proto.pulumirpc.PackageDependency>} */ (
+      jspb.Message.getMapField(this, 4, opt_noLazyCreate,
+      proto.pulumirpc.PackageDependency));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.LinkRequest} returns this
+ */
+proto.pulumirpc.LinkRequest.prototype.clearPackagesMap = function() {
+  this.getPackagesMap().clear();
+  return this;
+};
+
+
 
 
 
@@ -7643,7 +7677,7 @@ proto.pulumirpc.LinkResponse.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.LinkResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+importInstructions: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -7680,6 +7714,10 @@ proto.pulumirpc.LinkResponse.deserializeBinaryFromReader = function(msg, reader)
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setImportInstructions(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7709,6 +7747,31 @@ proto.pulumirpc.LinkResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.LinkResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getImportInstructions();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string import_instructions = 1;
+ * @return {string}
+ */
+proto.pulumirpc.LinkResponse.prototype.getImportInstructions = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.LinkResponse} returns this
+ */
+proto.pulumirpc.LinkResponse.prototype.setImportInstructions = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

@@ -230,7 +230,7 @@ func TestBindPrograms(t *testing.T) {
 		}
 
 		src := filepath.Join("tests/testdata", name)
-		loader := &inMemoryProviderLoader{providers: test.Providers}
+		loader := &inMemoryProviderLoader{providers: append(test.Providers, test.LocalProviders...)}
 		_, diags, err := pcl.BindDirectory(src, loader)
 		for _, diag := range diags {
 			t.Logf("%s: %v", name, diag)

@@ -411,11 +411,11 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				defaultOrg: defaultOrg,
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-				) (*schema.Package, *workspace.PackageSpec, error) {
+				) (*schema.Package, *workspace.PackageSpec, bool, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
-						return nil, nil, errors.New("mock schema extraction failed")
+						return nil, nil, false, errors.New("mock schema extraction failed")
 					}
-					return tt.mockSchema, nil, tt.schemaExtractionErr
+					return tt.mockSchema, nil, false, tt.schemaExtractionErr
 				},
 				pluginDir: pluginDir,
 			}
@@ -510,8 +510,8 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				},
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-				) (*schema.Package, *workspace.PackageSpec, error) {
-					return tt.mockSchema, nil, nil
+				) (*schema.Package, *workspace.PackageSpec, bool, error) {
+					return tt.mockSchema, nil, false, nil
 				},
 			}
 
@@ -570,8 +570,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				},
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-				) (*schema.Package, *workspace.PackageSpec, error) {
-					return validSchema, nil, nil
+				) (*schema.Package, *workspace.PackageSpec, bool, error) {
+					return validSchema, nil, false, nil
 				},
 			}
 
@@ -612,12 +612,12 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			packageSource string,
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
-		) (*schema.Package, *workspace.PackageSpec, error) {
+		) (*schema.Package, *workspace.PackageSpec, bool, error) {
 			pkg := &schema.Package{
 				Name:    "test-package",
 				Version: &semver.Version{Major: 1, Minor: 0, Patch: 0},
 			}
-			return pkg, nil, nil
+			return pkg, nil, false, nil
 		},
 	}
 

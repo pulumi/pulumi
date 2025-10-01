@@ -307,7 +307,7 @@ message RunRequest {
     // registrations](resource-registration) and other calls to.
     string monitor_address = 9;
 
-    // This is deprecated, query mode is no longer a supported feature. 
+    // This is deprecated, query mode is no longer a supported feature.
     bool queryMode = 10 [deprecated = true];
 
     // A list of configuration keys whose values should be treated as secrets.
@@ -615,12 +615,16 @@ message LinkRequest {
     // should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
     // to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
     // to be used instead of the published `@pulumi/aws` package.
-    map<string, string> local_dependencies = 2;
-    
+    map<string, string> local_dependencies = 2; // TODO: remove
+
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 3;
+
+    // path -> descriptor
+    map<string, PackageDependency> packages = 4;
 }
 
 // `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
 message LinkResponse {
+    string import_instructions = 1;
 }

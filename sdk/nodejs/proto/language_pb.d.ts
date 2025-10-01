@@ -929,6 +929,9 @@ export class LinkRequest extends jspb.Message {
     getLoaderTarget(): string;
     setLoaderTarget(value: string): LinkRequest;
 
+    getPackagesMap(): jspb.Map<string, pulumi_plugin_pb.PackageDependency>;
+    clearPackagesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkRequest.AsObject;
     static toObject(includeInstance: boolean, msg: LinkRequest): LinkRequest.AsObject;
@@ -945,10 +948,14 @@ export namespace LinkRequest {
 
         localDependenciesMap: Array<[string, string]>,
         loaderTarget: string,
+
+        packagesMap: Array<[string, pulumi_plugin_pb.PackageDependency.AsObject]>,
     }
 }
 
 export class LinkResponse extends jspb.Message { 
+    getImportInstructions(): string;
+    setImportInstructions(value: string): LinkResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkResponse.AsObject;
@@ -962,5 +969,6 @@ export class LinkResponse extends jspb.Message {
 
 export namespace LinkResponse {
     export type AsObject = {
+        importInstructions: string,
     }
 }
