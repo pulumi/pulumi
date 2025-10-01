@@ -1652,6 +1652,7 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
+	var journal *backend.SnapshotJournaler
 	var validationErrs []error
 	journalPersister := &backend.ValidatingPersister{
 		ErrorFunc: func(err error) {
@@ -1663,12 +1664,15 @@ func (b *cloudBackend) runEngineAction(
 	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		journal, err := backend.NewSnapshotJournaler(
+		journal, err = backend.NewSnapshotJournaler(
 			ctx, journalPersister, op.SecretsManager, stack.DefaultSecretsProvider, u.Target.Snapshot)
 		if err != nil {
 			validationErrs = append(validationErrs, err)
 		}
-		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+		journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 		combinedManager = &engine.CombinedManager{
 			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
@@ -1691,6 +1695,11 @@ func (b *cloudBackend) runEngineAction(
 			err = errors.Join(err, combinedManager.Close())
 			snapshotManagerClosed = true
 			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
+			if journal != nil {
+				for _, e := range journal.Errors() {
+					err = errors.Join(err, e)
+				}
+			}
 			if err != nil {
 				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
 					Error: fmt.Sprintf("snapshot mismatch: %s", err),

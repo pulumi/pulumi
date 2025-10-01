@@ -233,7 +233,7 @@ func (op TestOp) runWithContext(
 	var journal *engine.TestJournal
 	var persister *backend.ValidatingPersister
 	var journalPersister *backend.ValidatingPersister
-	var snapshotJournaler *backend.SnapshotJournaler
+	var journaler *backend.SnapshotJournaler
 	if !dryRun {
 		journal = engine.NewTestJournal()
 		persister = &backend.ValidatingPersister{
@@ -253,13 +253,14 @@ func (op TestOp) runWithContext(
 		secretsManager := b64.NewBase64SecretsManager()
 		secretsProvider := stack.Base64SecretsProvider{}
 
-		journaler, err := backend.NewSnapshotJournaler(
+		var err error
+		journaler, err = backend.NewSnapshotJournaler(
 			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
-		snapshotJournaler = journaler
 
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
-		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
+		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		require.NoError(opts.T, err)
 
 		combined = &engine.CombinedManager{
 			Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},
@@ -364,6 +365,8 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	errs = append(errs, journaler.Errors()...)
+
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
 	errs = append(errs, snap.AssertEqual(persister.Snap))
 
@@ -407,7 +410,7 @@ func (op TestOp) runWithContext(
 		}
 		opts.T.Log()
 		opts.T.Log("journal:")
-		for _, entry := range snapshotJournaler.Entries() {
+		for _, entry := range journaler.Entries() {
 			opts.T.Logf("%v\n", entry)
 		}
 	}

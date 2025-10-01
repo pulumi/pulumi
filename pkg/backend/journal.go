@@ -406,9 +406,6 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to generate snapshot: %w", err)
 	}
-	if snap == nil {
-		return nil
-	}
 	snap, err = snap.NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
@@ -461,6 +458,9 @@ serviceLoop:
 		select {
 		case request := <-journalEvents:
 			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
+			if request.journalEntry.SequenceID == 0 {
+				sj.errors = append(sj.errors, fmt.Errorf("journal entry has no sequence ID %v", request.journalEntry))
+			}
 			if request.elideWrite {
 				hasElidedWrites = true
 				if request.result != nil {
@@ -513,6 +513,7 @@ type SnapshotJournaler struct {
 	done            chan error
 	secretsManager  secrets.Manager
 	secretsProvider secrets.Provider
+	errors          []error
 }
 
 // NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
@@ -599,13 +600,7 @@ func NewSnapshotJournaler(
 
 	go serviceLoop(ctx, journalEvents, done)
 
-	err := journaler.AddJournalEntry(engine.JournalEntry{
-		Kind:           engine.JournalEntrySecretsManager,
-		SecretsManager: secretsManager,
-		ElideWrite:     true,
-	})
-
-	return &journaler, err
+	return &journaler, nil
 }
 
 func (sj *SnapshotJournaler) Entries() []apitype.JournalEntry {
@@ -653,6 +648,10 @@ func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 
 func (sj *SnapshotJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
+}
+
+func (sj SnapshotJournaler) Errors() []error {
+	return sj.errors
 }
 
 func (sj SnapshotJournaler) Close() error {
