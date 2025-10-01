@@ -20,7 +20,7 @@ node = "20"
 "npm:yarn" = "latest"
 bun = "latest"
 python = '3.11'
-uv = "0.6.16"
+uv = "0.8.22"
 "go:github.com/mitranim/gow" = "latest"
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.7.1"
 
