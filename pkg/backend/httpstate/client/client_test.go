@@ -254,7 +254,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	}
 
 	// It should have more than one line as json.Marshal would produce.
-	assert.Equal(t, newlines+1, len(strings.Split(string(request.UntypedDeployment), "\n")))
+	require.Len(t, strings.Split(string(request.UntypedDeployment), "\n"), newlines+1)
 
 	// Compacting should recover the same form as json.Marshal would produce.
 	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))

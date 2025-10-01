@@ -145,7 +145,7 @@ func createConfigValue(rawValue interface{}) (config.Value, error) {
 func envConfigValue(v esc.Value) config.Plaintext {
 	if v.Unknown {
 		if v.Secret {
-			return config.NewSecurePlaintext("[unknown]")
+			return config.NewPlaintext(config.PlaintextSecret("[unknown]"))
 		}
 		return config.NewPlaintext("[unknown]")
 	}
@@ -165,7 +165,7 @@ func envConfigValue(v esc.Value) config.Plaintext {
 		return config.NewPlaintext(string(repr))
 	case string:
 		if v.Secret {
-			return config.NewSecurePlaintext(repr)
+			return config.NewPlaintext(config.PlaintextSecret(repr))
 		}
 		return config.NewPlaintext(repr)
 	case []esc.Value:

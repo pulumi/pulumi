@@ -333,7 +333,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					require.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 6)
 					var hasExpectedResource bool
 					var result string
 					for _, res := range stackInfo.Deployment.Resources {
@@ -341,7 +341,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 							hasExpectedResource = true
 							result = res.Outputs["result"].(string)
 							assert.Equal(t, float64(10), res.Inputs["length"])
-							assert.Equal(t, 10, len(result))
+							require.Len(t, result, 10)
 						}
 					}
 					assert.True(t, hasExpectedResource)

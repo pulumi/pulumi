@@ -191,7 +191,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (local-plugin and relative-plugin)
-	assert.Equal(t, 2, len(projectPlugins))
+	require.Len(t, projectPlugins, 2)
 
 	// Create a map of plugin names to paths for easier verification
 	pluginMap := make(map[string]string)
@@ -255,7 +255,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (1 from plugins, 1 from packages)
-	assert.Equal(t, 2, len(projectPlugins))
+	require.Len(t, projectPlugins, 2)
 
 	// Check that all expected plugins are present
 	pluginNames := map[string]bool{}

@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -215,12 +216,24 @@ func (op TestOp) runWithContext(
 		}
 	}()
 
+	var originalBase *deploy.Snapshot
+	if target.Snapshot != nil {
+		originalBase = &deploy.Snapshot{
+			Manifest:          target.Snapshot.Manifest,
+			SecretsManager:    target.Snapshot.SecretsManager,
+			Resources:         slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
+			PendingOperations: target.Snapshot.PendingOperations,
+			Metadata:          target.Snapshot.Metadata,
+		}
+	}
+
 	errs := []error{}
 	events := make(chan engine.Event)
 	var combined *engine.CombinedManager
 	var journal *engine.TestJournal
 	var persister *backend.ValidatingPersister
 	var journalPersister *backend.ValidatingPersister
+	var snapshotJournaler *backend.SnapshotJournaler
 	if !dryRun {
 		journal = engine.NewTestJournal()
 		persister = &backend.ValidatingPersister{
@@ -238,8 +251,13 @@ func (op TestOp) runWithContext(
 			},
 		}
 		secretsManager := b64.NewBase64SecretsManager()
+		secretsProvider := stack.Base64SecretsProvider{}
 
-		journaler := backend.NewSnapshotJournaler(journalPersister, secretsManager, target.Snapshot)
+		journaler, err := backend.NewSnapshotJournaler(
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+		require.NoErrorf(opts.T, err, "got error setting up journaler")
+		snapshotJournaler = journaler
+
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
 		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
 
@@ -348,7 +366,51 @@ func (op TestOp) runWithContext(
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
 	errs = append(errs, snap.AssertEqual(persister.Snap))
-	errs = append(errs, snap.AssertEqual(journalPersister.Snap))
+
+	journalErr := journalPersister.Snap.AssertEqual(snap)
+	errs = append(errs, journalErr)
+
+	if journalErr != nil {
+		opts.T.Log("original base snapshot:")
+		if originalBase != nil {
+			for i, r := range originalBase.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		opts.T.Log()
+		opts.T.Log("base snapshot:")
+		if target.Snapshot != nil {
+			for i, r := range target.Snapshot.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+		opts.T.Log()
+		opts.T.Log("test journal snapshot:")
+		if snap != nil {
+			for i, r := range snap.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+		opts.T.Log()
+		opts.T.Log("journal snapshot:")
+		if journalPersister.Snap != nil {
+			for i, r := range journalPersister.Snap.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		opts.T.Log()
+		opts.T.Log("test journal:")
+		for i, e := range entries {
+			opts.T.Logf("%v: %v %v %v\n", i, e.Kind, e.Step.Op(), e.Step.URN())
+		}
+		opts.T.Log()
+		opts.T.Log("journal:")
+		for _, entry := range snapshotJournaler.Entries() {
+			opts.T.Logf("%v\n", entry)
+		}
+	}
 
 	return nil, snap, errors.Join(errs...)
 }

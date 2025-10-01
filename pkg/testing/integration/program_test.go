@@ -51,7 +51,7 @@ func TestRunCommandLog(t *testing.T) {
 
 	matches, err := filepath.Glob(filepath.Join(tempdir, commandOutputFolderName, "node.*"))
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(matches))
+	require.Len(t, matches, 1)
 
 	output, err := os.ReadFile(matches[0])
 	require.NoError(t, err)

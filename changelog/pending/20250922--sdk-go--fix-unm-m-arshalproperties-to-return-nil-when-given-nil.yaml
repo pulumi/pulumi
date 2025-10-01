@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Fix [Unm/M]arshalProperties to return nil when given nil
