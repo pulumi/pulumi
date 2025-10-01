@@ -43,7 +43,7 @@ func (m *Map[K, V]) Load(k K) (value V, ok bool) {
 	if ok {
 		value = s.(V)
 	}
-	return
+	return value, ok
 }
 
 // LoadOrStore returns the existing value for the key if present. Otherwise, it stores and returns the given value. The
@@ -52,7 +52,7 @@ func (m *Map[K, V]) LoadOrStore(k K, v V) (value V, ok bool) {
 	var s any
 	s, ok = m.m.LoadOrStore(k, v)
 	value = s.(V)
-	return
+	return value, ok
 }
 
 // LoadAndDelete deletes the value for a key, returning the previous value if any.
@@ -63,7 +63,7 @@ func (m *Map[K, V]) LoadAndDelete(k K) (value V, ok bool) {
 	if ok {
 		value = s.(V)
 	}
-	return
+	return value, ok
 }
 
 // Range calls f sequentially for each key and value present in the map. If f returns false, range stops the iteration.

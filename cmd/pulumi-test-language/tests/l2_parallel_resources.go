@@ -31,7 +31,7 @@ func init() {
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider {
 				return &providers.SyncProvider{
-					CreateLimit: func() (w sync.WaitGroup) { w.Add(3); return }(),
+					CreateLimit: func() (w sync.WaitGroup) { w.Add(3); return w }(),
 				}
 			},
 		},

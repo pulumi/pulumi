@@ -154,21 +154,21 @@ func File(filename string, config Config) (*Tail, error) {
 // the chan(tail.Lines) may have been read already.
 func (tail *Tail) Tell() (offset int64, err error) {
 	if tail.file == nil {
-		return
+		return offset, err
 	}
 	offset, err = tail.file.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return
+		return offset, err
 	}
 
 	tail.lk.Lock()
 	defer tail.lk.Unlock()
 	if tail.reader == nil {
-		return
+		return offset, err
 	}
 
 	offset -= int64(tail.reader.Buffered())
-	return
+	return offset, err
 }
 
 // Stop stops the tailing activity.

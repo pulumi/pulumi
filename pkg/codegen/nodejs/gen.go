@@ -206,7 +206,7 @@ func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *mo
 			compatibility: info.Compatibility,
 		}
 	}
-	return
+	return namingCtx, pkgName, external
 }
 
 func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDetails, tok string, input, args, enum bool) string {

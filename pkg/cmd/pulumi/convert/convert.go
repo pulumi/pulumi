@@ -151,7 +151,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 	}
 
 	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-	return
+	return program, diagnostics, err
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files

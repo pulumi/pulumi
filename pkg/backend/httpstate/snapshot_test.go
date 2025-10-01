@@ -504,14 +504,14 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim", lastRequest.URL.Path)
 		require.NoError(t, err)
-		return
+		return ret
 	}
 
 	lastRequestAsDelta := func() (ret apitype.PatchUpdateCheckpointDeltaRequest) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointdelta", lastRequest.URL.Path)
 		require.NoError(t, err)
-		return
+		return ret
 	}
 
 	handleVerbatim := func(req apitype.PatchUpdateVerbatimCheckpointRequest) {
