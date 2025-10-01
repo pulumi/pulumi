@@ -864,10 +864,10 @@ type diffStackCase interface {
 	getSnaps(t testing.TB) []*apitype.DeploymentV3
 }
 
-func testOrBenchmarkDiffStack[TB testingTB[TB]](
+func testOrBenchmarkDiffStack[TB testingTB[TB], Case diffStackCase](
 	tb TB,
 	inner diffStackTestFunc[TB],
-	cases []diffStackCase,
+	cases []Case,
 ) {
 	for _, c := range cases {
 		name, snaps := c.getName(), c.getSnaps(tb)
@@ -894,43 +894,50 @@ func (c dynamicStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
 	return generateSnapshots(tb, r, c.resourceCount, c.resourcePayloadBytes)
 }
 
-var dynamicCases = []diffStackCase{
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
+func (c dynamicStackCase) pseudoRandomString(r *rand.Rand, desiredLength int) string {
+	buf := make([]byte, desiredLength)
+	r.Read(buf)
+	text := base64.StdEncoding.EncodeToString(buf)
+	return text[0:desiredLength]
+}
+
+var dynamicCases = []dynamicStackCase{
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
 }
 
 func BenchmarkDiffStack(b *testing.B) {

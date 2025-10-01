@@ -1231,6 +1231,20 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
+// AppendUpdateJournalEntry appends a new entry to the journal for the given update.
+func (pc *Client) AppendUpdateJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry,
+	token UpdateTokenSource,
+) error {
+	req := apitype.AppendUpdateJournalEntryRequest{
+		Entry: entry,
+	}
+
+	// It is safe to retry because SequenceNumber serves as an idempotency key.
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
 	// It is safe to retry this PATCH operation, because it is logically idempotent.

@@ -79,7 +79,9 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	if p.closed {
 		return "", false, ErrLanguageRuntimeIsClosed
 	}
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	monitor, err := dialMonitor(ctx, info.MonitorAddress)
 	if err != nil {
 		return "", false, err
 	}
