@@ -1114,7 +1114,7 @@ description: A Pulumi program testing config set-all --json.
 	assert.Equal(t, "[\"foo\"]", myList["value"])
 	myListObjectValue := myList["objectValue"].([]interface{})
 	assert.Contains(t, myListObjectValue, "foo")
-	assert.Len(t, myListObjectValue, 1)
+	require.Len(t, myListObjectValue, 1)
 
 	// Assert that myList[0], a scalar (--json input does _not_ set --path), has the correct value.
 	myList0, ok := config["pulumi-test:myList[0]"].(map[string]interface{})
