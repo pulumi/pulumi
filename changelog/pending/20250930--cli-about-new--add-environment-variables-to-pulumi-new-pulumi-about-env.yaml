@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/about,new
+  description: Add environment variables to override template repository settings. The new PULUMI_TEMPLATE_GIT_REPOSITORY, PULUMI_TEMPLATE_BRANCH, PULUMI_POLICY_TEMPLATE_GIT_REPOSITORY, and PULUMI_POLICY_TEMPLATE_BRANCH environment variables allow runtime customization of template sources

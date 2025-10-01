@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -38,14 +39,6 @@ const (
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
 	legacyPulumiTemplateManifestFile = ".pulumi.template.yaml"
-
-	// pulumiLocalTemplatePathEnvVar is a path to the folder where templates are stored.
-	// It is used in sandboxed environments where the classic template folder may not be writable.
-	pulumiLocalTemplatePathEnvVar = "PULUMI_TEMPLATE_PATH"
-
-	// pulumiLocalPolicyTemplatePathEnvVar is a path to the folder where policy templates are stored.
-	// It is used in sandboxed environments where the classic template folder may not be writable.
-	pulumiLocalPolicyTemplatePathEnvVar = "PULUMI_POLICY_TEMPLATE_PATH"
 )
 
 // These are variables instead of constants in order that they can be set using the `-X`
@@ -60,6 +53,44 @@ var (
 	// The branch name for the policy pack template repository
 	pulumiPolicyTemplateBranch = "master"
 )
+
+// getTemplateGitRepository returns the Git URL for the template repository.
+// It checks the environment variable first, then falls back to the compile-time default.
+func getTemplateGitRepository(templateKind TemplateKind) string {
+	if templateKind == TemplateKindPolicyPack {
+		if repo := env.PolicyTemplateGitRepository.Value(); repo != "" {
+			logging.V(5).Infof("Using custom policy template repository from %s: %s",
+				env.PolicyTemplateGitRepository.Var().Name(), repo)
+			return repo
+		}
+		return pulumiPolicyTemplateGitRepository
+	}
+	if repo := env.TemplateGitRepository.Value(); repo != "" {
+		logging.V(5).Infof("Using custom template repository from %s: %s",
+			env.TemplateGitRepository.Var().Name(), repo)
+		return repo
+	}
+	return pulumiTemplateGitRepository
+}
+
+// getTemplateBranch returns the branch name for the template repository.
+// It checks the environment variable first, then falls back to the compile-time default.
+func getTemplateBranch(templateKind TemplateKind) string {
+	if templateKind == TemplateKindPolicyPack {
+		if branch := env.PolicyTemplateBranch.Value(); branch != "" {
+			logging.V(5).Infof("Using custom policy template branch from %s: %s",
+				env.PolicyTemplateBranch.Var().Name(), branch)
+			return branch
+		}
+		return pulumiPolicyTemplateBranch
+	}
+	if branch := env.TemplateBranch.Value(); branch != "" {
+		logging.V(5).Infof("Using custom template branch from %s: %s",
+			env.TemplateBranch.Var().Name(), branch)
+		return branch
+	}
+	return pulumiTemplateBranch
+}
 
 // TemplateKind describes the form of a template.
 type TemplateKind int
@@ -248,12 +279,7 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	// The template directory is a Git repository. We want to make sure that it has the same remote as the one that
 	// we want to pull from. If it doesn't have the same remote, we'll delete it, so that the clone later succeeds.
 	// Select the appropriate remote
-	var url string
-	if templateKind == TemplateKindPolicyPack {
-		url = pulumiPolicyTemplateGitRepository
-	} else {
-		url = pulumiTemplateGitRepository
-	}
+	url := getTemplateGitRepository(templateKind)
 	remotes, err := repo.Remotes()
 	if err != nil {
 		return fmt.Errorf("getting template repo remotes: %w", err)
@@ -367,12 +393,8 @@ func retrievePulumiTemplates(
 
 	if !offline {
 		// Clone or update the pulumi/templates repo.
-		repo := pulumiTemplateGitRepository
-		branch := plumbing.NewBranchReferenceName(pulumiTemplateBranch)
-		if templateKind == TemplateKindPolicyPack {
-			repo = pulumiPolicyTemplateGitRepository
-			branch = plumbing.NewBranchReferenceName(pulumiPolicyTemplateBranch)
-		}
+		repo := getTemplateGitRepository(templateKind)
+		branch := plumbing.NewBranchReferenceName(getTemplateBranch(templateKind))
 		err := gitutil.GitCloneOrPull(ctx, repo, branch, templateDir, false /*shallow*/)
 		if err != nil {
 			return TemplateRepository{}, fmt.Errorf("cloning templates repo: %w", err)
@@ -627,12 +649,12 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 
 // GetTemplateDir returns the directory in which templates on the current machine are stored.
 func GetTemplateDir(templateKind TemplateKind) (string, error) {
-	envVar := pulumiLocalTemplatePathEnvVar
+	envVar := env.TemplatePath
 	if templateKind == TemplateKindPolicyPack {
-		envVar = pulumiLocalPolicyTemplatePathEnvVar
+		envVar = env.PolicyTemplatePath
 	}
 	// Allow the folder we use to store templates to be overridden.
-	dir := os.Getenv(envVar)
+	dir := env.Global().GetString(envVar)
 	if dir != "" {
 		return dir, nil
 	}
