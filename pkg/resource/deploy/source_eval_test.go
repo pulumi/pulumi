@@ -2001,6 +2001,10 @@ func TestEvalSource(t *testing.T) {
 								decrypterCalled = true
 								return "", errors.New("expected fail")
 							},
+							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
+								decrypterCalled = true
+								return nil, errors.New("expected fail")
+							},
 						},
 					},
 				},
@@ -2035,6 +2039,15 @@ func TestEvalSource(t *testing.T) {
 									return "", nil
 								}
 								return "", errors.New("expected fail")
+							},
+							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
+								decrypterCalled = true
+								if called == 0 {
+									// Will cause the next invocation to fail.
+									called++
+									return []string{}, nil
+								}
+								return nil, errors.New("expected fail")
 							},
 						},
 					},
@@ -2728,7 +2741,7 @@ func TestCall(t *testing.T) {
 							"test": resource.NewProperty("test-value"),
 						},
 						req.Args)
-					require.Equal(t, 1, len(req.Options.ArgDependencies))
+					require.Len(t, req.Options.ArgDependencies, 1)
 					assert.ElementsMatch(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",

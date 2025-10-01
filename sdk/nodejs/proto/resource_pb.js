@@ -5904,7 +5904,8 @@ deleteBeforeReplace: (f = jspb.Message.getBooleanField(msg, 12)) == null ? undef
 additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
 providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
 pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
+hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
+pb_import: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
   if (includeInstance) {
@@ -6011,6 +6012,10 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
       var value = new proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding;
       reader.readMessage(value,proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.deserializeBinaryFromReader);
       msg.setHooks(value);
+      break;
+    case 17:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setImport(value);
       break;
     default:
       reader.skipField();
@@ -6148,6 +6153,13 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
       16,
       f,
       proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.serializeBinaryToWriter
+    );
+  }
+  f = message.getImport();
+  if (f.length > 0) {
+    writer.writeString(
+      17,
+      f
     );
   }
 };
@@ -6636,6 +6648,24 @@ proto.pulumirpc.TransformResourceOptions.prototype.clearHooks = function() {
  */
 proto.pulumirpc.TransformResourceOptions.prototype.hasHooks = function() {
   return jspb.Message.getField(this, 16) != null;
+};
+
+
+/**
+ * optional string import = 17;
+ * @return {string}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getImport = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setImport = function(value) {
+  return jspb.Message.setProto3StringField(this, 17, value);
 };
 
 

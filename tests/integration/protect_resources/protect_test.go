@@ -38,7 +38,7 @@ func TestProtectedResources(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// A single synthetic stack and a single "eternal" resource.
 			require.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
+			require.Len(t, stackInfo.Deployment.Resources, 3)
 			stackRes := stackInfo.Deployment.Resources[0]
 			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 			providerRes := stackInfo.Deployment.Resources[1]
@@ -54,7 +54,7 @@ func TestProtectedResources(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// An update to "eternal"; should still be there.
 					require.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 3)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
@@ -72,7 +72,7 @@ func TestProtectedResources(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// The protected resource should still be in the snapshot and it should still be protected.
 					require.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 3)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
@@ -88,7 +88,7 @@ func TestProtectedResources(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// "eternal" should now be unprotected.
 					require.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 3)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
@@ -104,7 +104,7 @@ func TestProtectedResources(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// Finally, "eternal" should be deleted.
 					require.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 1, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 1)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				},

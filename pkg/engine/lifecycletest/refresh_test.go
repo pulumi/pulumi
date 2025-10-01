@@ -1080,7 +1080,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
 	assert.ErrorContains(t, err, "BAIL: canceled")
-	assert.Equal(t, 1, len(refreshed))
+	require.Len(t, refreshed, 1)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
@@ -1237,7 +1237,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, old)
-	assert.Equal(t, 0, len(snap.Resources))
+	assert.Empty(t, snap.Resources)
 }
 
 // Test that we can run a simple refresh by executing the program for it.

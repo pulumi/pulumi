@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Don't attempt to serialise function values for resource inputs/outputs

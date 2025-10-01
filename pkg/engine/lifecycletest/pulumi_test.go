@@ -460,8 +460,8 @@ func TestConfigPropertyMapMatches(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Check that the config property map matches what we expect.
-		assert.Equal(t, 8, len(info.Config))
-		assert.Equal(t, 8, len(info.ConfigPropertyMap))
+		require.Len(t, info.Config, 8)
+		require.Len(t, info.ConfigPropertyMap, 8)
 
 		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
 		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
@@ -970,9 +970,9 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 
 	// Assert that CREATE pending operations are retained
 	// TODO: should revisit whether non-CREATE pending operations should also be retained
-	assert.Equal(t, 1, len(new.PendingOperations))
+	require.Len(t, new.PendingOperations, 1)
 	createOperations := findPendingOperationsByType(resource.OperationTypeCreating, new)
-	assert.Equal(t, 1, len(createOperations))
+	require.Len(t, createOperations, 1)
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
 
@@ -2579,12 +2579,13 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 	}
 
 	stop := make(chan bool)
-	port, _, err := rpcutil.Serve(0, stop, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: stop,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, ctx)
 			return nil
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -2593,7 +2594,7 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Runtime: "client",
 		RuntimeOptions: map[string]interface{}{
-			"address": fmt.Sprintf("127.0.0.1:%d", port),
+			"address": fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		},
 	}
 

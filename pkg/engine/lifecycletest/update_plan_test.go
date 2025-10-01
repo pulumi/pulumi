@@ -1710,8 +1710,8 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	require.NotNil(t, plan)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typA::resA"].Ops))
-	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typB::resB"].Ops))
+	require.Len(t, plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typA::resA"].Ops, 3)
+	require.Len(t, plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typB::resB"].Ops, 3)
 
 	// Now try and run with the plan
 	p.Options.Plan = plan.Clone()

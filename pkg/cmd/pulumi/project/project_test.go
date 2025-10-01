@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewProjectCmd(t *testing.T) {
@@ -25,7 +26,7 @@ func TestNewProjectCmd(t *testing.T) {
 	cmd := NewProjectCmd()
 	assert.Equal(t, "project", cmd.Use)
 	assert.Equal(t, "Manage Pulumi projects", cmd.Short)
-	assert.Equal(t, 1, len(cmd.Commands()))
+	require.Len(t, cmd.Commands(), 1)
 
 	// Check ls command
 	lsCmd := cmd.Commands()[0]

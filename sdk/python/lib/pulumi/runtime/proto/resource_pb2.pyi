@@ -926,6 +926,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
     PROVIDERS_FIELD_NUMBER: builtins.int
     PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
     HOOKS_FIELD_NUMBER: builtins.int
+    IMPORT_FIELD_NUMBER: builtins.int
     protect: builtins.bool
     version: builtins.str
     provider: builtins.str
@@ -972,7 +973,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
         hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "hooks", b"hooks", "protect", b"protect", "retain_on_delete", b"retain_on_delete"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "hooks", b"hooks", "ignore_changes", b"ignore_changes", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "hooks", b"hooks", "ignore_changes", b"ignore_changes", "import", b"import", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_delete_before_replace", b"_delete_before_replace"]) -> typing.Literal["delete_before_replace"] | None: ...
     @typing.overload

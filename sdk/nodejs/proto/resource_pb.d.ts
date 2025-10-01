@@ -727,6 +727,8 @@ export class TransformResourceOptions extends jspb.Message {
     clearHooks(): void;
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): TransformResourceOptions;
+    getImport(): string;
+    setImport(value: string): TransformResourceOptions;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
@@ -758,6 +760,7 @@ export namespace TransformResourceOptions {
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        pb_import: string,
     }
 }
 

@@ -109,7 +109,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Equal(t, 1, len(archDes.Assets))
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsText())
 		assert.Equal(t, text, archDes.Assets["foo"].(*rasset.Asset).Text)
 		switch runtime.Version() {
@@ -152,7 +152,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Equal(t, 1, len(archDes.Assets))
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsPath())
 		assert.Equal(t, file, archDes.Assets["foo"].(*rasset.Asset).Path)
 		switch runtime.Version() {
@@ -194,7 +194,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Equal(t, 1, len(archDes.Assets))
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsURI())
 		assert.Equal(t, url, archDes.Assets["foo"].(*rasset.Asset).URI)
 		switch runtime.Version() {
@@ -355,7 +355,7 @@ func TestArchiveSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarchive)
 		assert.True(t, archiveDes.IsAssets())
-		assert.Equal(t, 0, len(archiveDes.Assets))
+		assert.Empty(t, archiveDes.Assets)
 	})
 	t.Run("empty archive", func(t *testing.T) {
 		t.Parallel()
@@ -363,7 +363,7 @@ func TestArchiveSerialize(t *testing.T) {
 		// Check that a fully empty archive is treated as an empty assets archive.
 		empty := &rarchive.Archive{}
 		assert.True(t, empty.IsAssets())
-		assert.Equal(t, 0, len(empty.Assets))
+		assert.Empty(t, empty.Assets)
 		emptySer := empty.Serialize()
 		emptyDes, isarchive, err := rarchive.Deserialize(emptySer)
 		require.NoError(t, err)

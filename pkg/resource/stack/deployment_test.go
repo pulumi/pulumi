@@ -125,7 +125,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.ID)
 	assert.Equal(t, resource.ID("test-resource-x"), dep.ID)
 	assert.Equal(t, tokens.Type("Test"), dep.Type)
-	assert.Equal(t, 2, len(dep.Dependencies))
+	require.Len(t, dep.Dependencies, 2)
 	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
 	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
 	assert.Equal(t, map[resource.HookType][]string{
@@ -143,15 +143,15 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.Inputs["in-string"])
 	assert.Equal(t, "lumilumilo", dep.Inputs["in-string"].(string))
 	require.NotNil(t, dep.Inputs["in-array"])
-	assert.Equal(t, 3, len(dep.Inputs["in-array"].([]interface{})))
+	require.Len(t, dep.Inputs["in-array"].([]interface{}), 3)
 	assert.Equal(t, "a", dep.Inputs["in-array"].([]interface{})[0])
 	assert.Equal(t, true, dep.Inputs["in-array"].([]interface{})[1])
 	assert.Equal(t, float64(32), dep.Inputs["in-array"].([]interface{})[2])
 	require.NotNil(t, dep.Inputs["in-empty-array"])
-	assert.Equal(t, 0, len(dep.Inputs["in-empty-array"].([]interface{})))
+	assert.Empty(t, dep.Inputs["in-empty-array"].([]interface{}))
 	require.NotNil(t, dep.Inputs["in-map"])
 	inmap := dep.Inputs["in-map"].(map[string]interface{})
-	assert.Equal(t, 4, len(inmap))
+	require.Len(t, inmap, 4)
 	require.NotNil(t, inmap["a"])
 	assert.Equal(t, true, inmap["a"].(bool))
 	require.NotNil(t, inmap["b"])
@@ -161,7 +161,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, inmap["d"])
 	assert.Equal(t, "d-dee-daw", inmap["d"].(string))
 	require.NotNil(t, dep.Inputs["in-empty-map"])
-	assert.Equal(t, 0, len(dep.Inputs["in-empty-map"].(map[string]interface{})))
+	assert.Empty(t, dep.Inputs["in-empty-map"].(map[string]interface{}))
 	assert.Equal(t, map[string]interface{}{
 		resource.SigKey:  resource.ResourceReferenceSig,
 		"urn":            "urn",
@@ -190,14 +190,14 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.Outputs["out-string"])
 	assert.Equal(t, "loyolumiloom", dep.Outputs["out-string"].(string))
 	require.NotNil(t, dep.Outputs["out-array"])
-	assert.Equal(t, 2, len(dep.Outputs["out-array"].([]interface{})))
+	require.Len(t, dep.Outputs["out-array"].([]interface{}), 2)
 	assert.Equal(t, false, dep.Outputs["out-array"].([]interface{})[0])
 	assert.Equal(t, "zzxx", dep.Outputs["out-array"].([]interface{})[1])
 	require.NotNil(t, dep.Outputs["out-empty-array"])
-	assert.Equal(t, 0, len(dep.Outputs["out-empty-array"].([]interface{})))
+	assert.Empty(t, dep.Outputs["out-empty-array"].([]interface{}))
 	require.NotNil(t, dep.Outputs["out-map"])
 	outmap := dep.Outputs["out-map"].(map[string]interface{})
-	assert.Equal(t, 3, len(outmap))
+	require.Len(t, outmap, 3)
 	require.NotNil(t, outmap["x"])
 	assert.Equal(t, false, outmap["x"].(bool))
 	require.NotNil(t, outmap["y"])
@@ -205,7 +205,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, outmap["z"])
 	assert.Equal(t, float64(999.9), outmap["z"].(float64))
 	require.NotNil(t, dep.Outputs["out-empty-map"])
-	assert.Equal(t, 0, len(dep.Outputs["out-empty-map"].(map[string]interface{})))
+	assert.Empty(t, dep.Outputs["out-empty-map"].(map[string]interface{}))
 }
 
 // TestSerializeDeploymentWithMetadata tests that the appropriate version and features are used when

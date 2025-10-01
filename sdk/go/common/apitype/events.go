@@ -76,14 +76,6 @@ type PolicyRemediationEvent struct {
 	After                map[string]interface{} `json:"after,omitempty"`
 }
 
-// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
-type PolicyNotApplicable struct {
-	// The name of the policy that was not applicable.
-	PolicyName string `json:"policyName"`
-	// An optional reason why the policy was not applicable.
-	Reason string `json:"reason,omitempty"`
-}
-
 // PolicyAnalyzeSummaryEvent is emitted after a call to Analyze on an analyzer, summarizing the results.
 type PolicyAnalyzeSummaryEvent struct {
 	// The URN of the resource being analyzed.
@@ -94,10 +86,6 @@ type PolicyAnalyzeSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of resource policies that failed (i.e. produced violations).
@@ -114,10 +102,6 @@ type PolicyRemediateSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of resource policies that failed (i.e. produced violations).
@@ -132,10 +116,6 @@ type PolicyAnalyzeStackSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of stack policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
-	// Not applicable stack policies in the policy pack.
-	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
 	// The names of stack policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of stack policies that failed (i.e. produced violations).

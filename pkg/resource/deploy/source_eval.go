@@ -2061,7 +2061,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
-	id := resource.ID(req.GetImportId())
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -2166,6 +2165,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	opts := &pulumirpc.TransformResourceOptions{
+		Import:                  req.ImportId,
 		DependsOn:               req.GetDependencies(),
 		Protect:                 req.Protect,
 		IgnoreChanges:           req.GetIgnoreChanges(),
@@ -2442,6 +2442,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
 	}
 	customTimeouts := opts.CustomTimeouts
+	id := resource.ID(opts.Import)
 
 	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
