@@ -61,24 +61,25 @@ func (r *recordingEncrypter) BatchEncrypt(ctx context.Context, secrets []string)
 	return out, nil
 }
 
-//nolint:paralleltest // subtests will use parallelism of root test
 func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 
 	t.Run("EncryptValue stores mapping", func(t *testing.T) {
+		t.Parallel()
+
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, NewPanicCrypter())
 		ct, err := c.EncryptValue(ctx, "secret")
 		require.NoError(t, err)
 		require.Equal(t, "secret", ct)
 
-		got, ok := c.ciphertextToPlaintextCache[ct]
+		got, ok := c.ciphertextToPlaintextCache.Load(ct)
 		require.True(t, ok)
 		require.Equal(t, "secret", got)
 	})
 
 	t.Run("EncryptValue always calls underlying encrypter and produces new ciphertexts", func(t *testing.T) {
+		t.Parallel()
+
 		rec := &recordingEncrypter{}
 		// Use panic decrypter to ensure decrypt isn't used in this test.
 		c := NewCiphertextToPlaintextCachedCrypter(rec, NewPanicCrypter())
@@ -92,8 +93,8 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 		require.Equal(t, 2, rec.producedSecretsCount, "underlying encrypter should have been called twice")
 
 		// Both ciphertexts should be cached to plaintext after encryption.
-		got1, ok1 := c.ciphertextToPlaintextCache[ct1]
-		got2, ok2 := c.ciphertextToPlaintextCache[ct2]
+		got1, ok1 := c.ciphertextToPlaintextCache.Load(ct1)
+		got2, ok2 := c.ciphertextToPlaintextCache.Load(ct2)
 		require.True(t, ok1)
 		require.True(t, ok2)
 		require.Equal(t, "duplicate", got1)
@@ -101,6 +102,8 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 	})
 
 	t.Run("BatchEncrypt stores mapping", func(t *testing.T) {
+		t.Parallel()
+
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, NewPanicCrypter())
 		pts := []string{"a", "b", "c"}
 		cts, err := c.BatchEncrypt(ctx, pts)
@@ -109,13 +112,15 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 
 		for i, ct := range cts {
 			require.Equal(t, pts[i], ct)
-			got, ok := c.ciphertextToPlaintextCache[ct]
+			got, ok := c.ciphertextToPlaintextCache.Load(ct)
 			require.True(t, ok)
 			require.Equal(t, pts[i], got)
 		}
 	})
 
 	t.Run("BatchEncrypt produces unique ciphertexts for duplicates and increments call count", func(t *testing.T) {
+		t.Parallel()
+
 		rec := &recordingEncrypter{}
 		c := NewCiphertextToPlaintextCachedCrypter(rec, NewPanicCrypter())
 
@@ -130,13 +135,15 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 
 		// All ciphertexts should be cached.
 		for i, ct := range cts {
-			got, ok := c.ciphertextToPlaintextCache[ct]
+			got, ok := c.ciphertextToPlaintextCache.Load(ct)
 			require.True(t, ok)
 			require.Equal(t, pts[i], got)
 		}
 	})
 
 	t.Run("DecryptValue uses cache and avoids underlying decrypter", func(t *testing.T) {
+		t.Parallel()
+
 		// Use panic decrypter to ensure it's not called when value is cached.
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, NewPanicCrypter())
 		// Populate cache.
@@ -157,6 +164,8 @@ func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
 	})
 
 	t.Run("BatchDecrypt uses cache and only calls underlying for misses", func(t *testing.T) {
+		t.Parallel()
+
 		rec := &recordingDecrypter{}
 		c := NewCiphertextToPlaintextCachedCrypter(NopEncrypter, rec)
 

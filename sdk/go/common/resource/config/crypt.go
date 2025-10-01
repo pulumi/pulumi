@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/crypto/pbkdf2"
@@ -338,10 +339,15 @@ func (c *base64Crypter) BatchDecrypt(ctx context.Context, ciphertexts []string) 
 	return DefaultBatchDecrypt(ctx, c, ciphertexts)
 }
 
+// CiphertextToPlaintextCachedCrypter is a Crypter that caches the mapping from ciphertext to plaintext in memory.
+// It uses the provided Encrypter and Decrypter to perform the actual encryption and decryption.
+// All encrypt operations produce a new ciphertext, even for the same plaintext, so the cache is only
+// populated after encryption operations. Decrypt operations will populate the cache if the ciphertext is not
+// already present. Caching is safe for concurrent use.
 type CiphertextToPlaintextCachedCrypter struct {
 	encrypter                  Encrypter
 	decrypter                  Decrypter
-	ciphertextToPlaintextCache map[string]string
+	ciphertextToPlaintextCache sync.Map
 }
 
 func NewCiphertextToPlaintextCachedCrypter(
@@ -350,7 +356,7 @@ func NewCiphertextToPlaintextCachedCrypter(
 	return &CiphertextToPlaintextCachedCrypter{
 		encrypter:                  encrypter,
 		decrypter:                  decrypter,
-		ciphertextToPlaintextCache: make(map[string]string),
+		ciphertextToPlaintextCache: sync.Map{},
 	}
 }
 
@@ -359,7 +365,7 @@ func (c *CiphertextToPlaintextCachedCrypter) EncryptValue(ctx context.Context, p
 	if err != nil {
 		return "", err
 	}
-	c.ciphertextToPlaintextCache[ciphertext] = plaintext
+	c.ciphertextToPlaintextCache.Store(ciphertext, plaintext)
 	return ciphertext, nil
 }
 
@@ -369,20 +375,20 @@ func (c *CiphertextToPlaintextCachedCrypter) BatchEncrypt(ctx context.Context, p
 		return nil, err
 	}
 	for i, ciphertext := range ciphertexts {
-		c.ciphertextToPlaintextCache[ciphertext] = plaintexts[i]
+		c.ciphertextToPlaintextCache.Store(ciphertext, plaintexts[i])
 	}
 	return ciphertexts, nil
 }
 
 func (c *CiphertextToPlaintextCachedCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	if cachedPlaintext, ok := c.ciphertextToPlaintextCache[ciphertext]; ok {
-		return cachedPlaintext, nil
+	if cachedPlaintext, ok := c.ciphertextToPlaintextCache.Load(ciphertext); ok {
+		return cachedPlaintext.(string), nil
 	}
 	plaintext, err := c.decrypter.DecryptValue(ctx, ciphertext)
 	if err != nil {
 		return "", err
 	}
-	c.ciphertextToPlaintextCache[ciphertext] = plaintext
+	c.ciphertextToPlaintextCache.Store(ciphertext, plaintext)
 	return plaintext, nil
 }
 
@@ -394,8 +400,8 @@ func (c *CiphertextToPlaintextCachedCrypter) BatchDecrypt(ctx context.Context, c
 	var cacheMissedResultIndexes []int
 	var cacheMissedCiphertexts []string
 	for i, ct := range ciphertexts {
-		if cached, ok := c.ciphertextToPlaintextCache[ct]; ok {
-			result[i] = cached
+		if cached, ok := c.ciphertextToPlaintextCache.Load(ct); ok {
+			result[i] = cached.(string)
 		} else {
 			cacheMissedResultIndexes = append(cacheMissedResultIndexes, i)
 			cacheMissedCiphertexts = append(cacheMissedCiphertexts, ct)
@@ -410,7 +416,7 @@ func (c *CiphertextToPlaintextCachedCrypter) BatchDecrypt(ctx context.Context, c
 	}
 	for i, ciphertext := range cacheMissedCiphertexts {
 		plaintext := plaintexts[i]
-		c.ciphertextToPlaintextCache[ciphertext] = plaintext
+		c.ciphertextToPlaintextCache.Store(ciphertext, plaintext)
 		resultIndex := cacheMissedResultIndexes[i]
 		result[resultIndex] = plaintext
 	}
