@@ -15,6 +15,8 @@
 package backend
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -23,13 +25,201 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
+
+func SerializeJournalEntry(
+	ctx context.Context, je engine.JournalEntry, enc config.Encrypter,
+) (apitype.JournalEntry, error) {
+	var state *apitype.ResourceV3
+
+	if je.State != nil {
+		s, err := stack.SerializeResource(ctx, je.State, enc, false)
+		if err != nil {
+			return apitype.JournalEntry{}, fmt.Errorf("serializing resource state: %w", err)
+		}
+		state = &s
+	}
+
+	var operation *apitype.OperationV2
+	if je.Operation != nil {
+		op, err := stack.SerializeOperation(ctx, *je.Operation, enc, false)
+		if err != nil {
+			return apitype.JournalEntry{}, fmt.Errorf("serializing operation: %w", err)
+		}
+		operation = &op
+	}
+	var secretsManager *apitype.SecretsProvidersV1
+	if je.SecretsManager != nil {
+		secretsManager = &apitype.SecretsProvidersV1{
+			Type:  je.SecretsManager.Type(),
+			State: je.SecretsManager.State(),
+		}
+	}
+
+	var snapshot *apitype.DeploymentV3
+	if je.NewSnapshot != nil {
+		var err error
+		snapshot, err = stack.SerializeDeployment(ctx, je.NewSnapshot, false)
+		if err != nil {
+			return apitype.JournalEntry{}, fmt.Errorf("serializing new snapshot: %w", err)
+		}
+	}
+
+	serializedEntry := apitype.JournalEntry{
+		Version:               1,
+		Kind:                  apitype.JournalEntryKind(je.Kind),
+		SequenceID:            je.SequenceID,
+		OperationID:           je.OperationID,
+		RemoveOld:             je.RemoveOld,
+		RemoveNew:             je.RemoveNew,
+		State:                 state,
+		Operation:             operation,
+		SecretsProvider:       secretsManager,
+		PendingReplacementOld: je.PendingReplacementOld,
+		PendingReplacementNew: je.PendingReplacementNew,
+		DeleteOld:             je.DeleteOld,
+		DeleteNew:             je.DeleteNew,
+		IsRefresh:             je.IsRefresh,
+		NewSnapshot:           snapshot,
+	}
+
+	return serializedEntry, nil
+}
+
+type JournalReplayer struct {
+	// toRemove tracks operation IDs of resources that are to be removed.
+	toRemove map[int64]struct{}
+	// toDeleteInSnapshot tracks the indices of resources in the snapshot that are to be deleted.
+	toDeleteInSnapshot map[int64]struct{}
+	// toReplaceInSnapshot tracks indices of resources in the snapshot that are to be replaced.
+	toReplaceInSnapshot map[int64]*apitype.ResourceV3
+	// markAsDeletion tracks indices of resources in the snapshot that are to be marked for deletion.
+	markAsDeletion map[int64]struct{}
+	// markAsPendingReplacement tracks indices of resources in the snapshot that are to be marked for pending replacement.
+	markAsPendingReplacement map[int64]struct{}
+
+	// operationIDToResourceIndex maps operation IDs to resource indices in the new resource list.
+	// This is used to replace resources that are being replaced, and remove new resources that are being deleted.
+	operationIDToResourceIndex map[int64]int64
+
+	// incompleteOps tracks operations that have begun but not yet completed.
+	incompleteOps map[int64]apitype.JournalEntry
+
+	// hasRefresh indicates whether any of the journal entries were part of a refresh operation.
+	hasRefresh bool
+
+	// index is the current index in the new resource list.
+	index int64
+
+	// base is the base snapshot.
+	base *apitype.DeploymentV3
+
+	// newResources is the list of new resources created by the current plan.
+	newResources []*apitype.ResourceV3
+}
+
+func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
+	replayer := JournalReplayer{
+		toRemove:                   make(map[int64]struct{}),
+		toDeleteInSnapshot:         make(map[int64]struct{}),
+		toReplaceInSnapshot:        make(map[int64]*apitype.ResourceV3),
+		markAsDeletion:             make(map[int64]struct{}),
+		markAsPendingReplacement:   make(map[int64]struct{}),
+		operationIDToResourceIndex: make(map[int64]int64),
+		incompleteOps:              make(map[int64]apitype.JournalEntry),
+		newResources:               make([]*apitype.ResourceV3, 0),
+		base:                       base,
+	}
+	return &replayer
+}
+
+func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
+	switch entry.Kind {
+	case apitype.JournalEntryKindBegin:
+		r.incompleteOps[entry.OperationID] = entry
+	case apitype.JournalEntryKindSuccess:
+		delete(r.incompleteOps, entry.OperationID)
+		// If this is a success, we need to add the resource to the list of resources.
+		if entry.State != nil {
+			r.newResources = append(r.newResources, entry.State)
+			r.operationIDToResourceIndex[entry.OperationID] = r.index
+			r.index++
+		}
+		if entry.RemoveOld != nil {
+			r.toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
+		}
+		if entry.RemoveNew != nil {
+			r.toRemove[*entry.RemoveNew] = struct{}{}
+		}
+		if entry.DeleteOld != nil {
+			r.markAsDeletion[*entry.DeleteOld] = struct{}{}
+		}
+		if entry.DeleteNew != nil {
+			r.newResources[r.operationIDToResourceIndex[*entry.DeleteNew]].Delete = true
+		}
+		if entry.PendingReplacementOld != nil {
+			r.markAsPendingReplacement[*entry.PendingReplacementOld] = struct{}{}
+		}
+		if entry.PendingReplacementNew != nil {
+			r.newResources[r.operationIDToResourceIndex[*entry.PendingReplacementNew]].PendingReplacement = true
+		}
+
+		if entry.IsRefresh {
+			r.hasRefresh = true
+		}
+	case apitype.JournalEntryKindRefreshSuccess:
+		delete(r.incompleteOps, entry.OperationID)
+		r.hasRefresh = true
+		if entry.RemoveOld != nil {
+			if entry.State == nil {
+				r.toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
+			} else {
+				r.toReplaceInSnapshot[*entry.RemoveOld] = entry.State
+			}
+		}
+		if entry.RemoveNew != nil {
+			if entry.State == nil {
+				r.toRemove[*entry.RemoveNew] = struct{}{}
+			} else {
+				r.newResources[r.operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
+			}
+		}
+	case apitype.JournalEntryKindFailure:
+		delete(r.incompleteOps, entry.OperationID)
+	case apitype.JournalEntryKindOutputs:
+		if entry.State != nil && entry.RemoveOld != nil {
+			r.toReplaceInSnapshot[*entry.RemoveOld] = entry.State
+		}
+		if entry.State != nil && entry.RemoveNew != nil {
+			r.newResources[r.operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
+		}
+	case apitype.JournalEntryKindWrite:
+		// Overwrite the base snapshot. Note that we expect this to happen before any other
+		// journal entries that modify the snapshot.
+		r.base = entry.NewSnapshot
+	case apitype.JournalEntryKindSecretsManager:
+		// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
+		// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
+		// to ensure that secrets are not re-encrypted on each update.
+		secretsProvider := entry.SecretsProvider
+		if r.base.SecretsProviders != nil &&
+			(secretsProvider.Type == r.base.SecretsProviders.Type &&
+				bytes.Equal(secretsProvider.State, r.base.SecretsProviders.State)) {
+			return
+		}
+
+		r.base.SecretsProviders = entry.SecretsProvider
+	}
+}
 
 // rebuildDependencies rebuilds the dependencies of the resources in the snapshot based on the
 // resources that are present in the snapshot. This is necessary if a refresh happens, because
@@ -39,32 +229,25 @@ import (
 // rebuilding the resource list, since that's already done correctly by the journal.
 //
 // Note that this function assumes that resources are in reverse-dependency order.
-func (sj *snapshotJournaler) rebuildDependencies(resources []*resource.State) {
+func rebuildDependencies(resources []apitype.ResourceV3) {
 	referenceable := make(map[resource.URN]bool)
 	for i := range resources {
 		newDeps := []resource.URN{}
-		newPropDeps := map[resource.PropertyKey][]resource.URN{}
-
-		_, allDeps := resources[i].GetAllDependencies()
-		for _, dep := range allDeps {
-			switch dep.Type {
-			case resource.ResourceParent:
-				// We handle parents separately later on (see undangleParentResources),
-				// so we'll skip over them here.
-				continue
-			case resource.ResourceDependency:
-				if referenceable[dep.URN] {
-					newDeps = append(newDeps, dep.URN)
-				}
-			case resource.ResourcePropertyDependency:
-				if referenceable[dep.URN] {
-					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
-				}
-			case resource.ResourceDeletedWith:
-				if !referenceable[dep.URN] {
-					resources[i].DeletedWith = ""
+		newPropDeps := make(map[resource.PropertyKey][]resource.URN)
+		for _, dep := range resources[i].Dependencies {
+			if referenceable[dep] {
+				newDeps = append(newDeps, dep)
+			}
+		}
+		for k := range resources[i].PropertyDependencies {
+			for _, dep := range resources[i].PropertyDependencies[k] {
+				if referenceable[dep] {
+					newPropDeps[k] = append(newPropDeps[k], dep)
 				}
 			}
+		}
+		if !referenceable[resources[i].DeletedWith] {
+			resources[i].DeletedWith = ""
 		}
 		if len(resources[i].Dependencies) > 0 {
 			resources[i].Dependencies = newDeps
@@ -76,9 +259,101 @@ func (sj *snapshotJournaler) rebuildDependencies(resources []*resource.State) {
 	}
 }
 
+func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []string) {
+	features := make(map[string]bool)
+	removeIndices := make(map[int64]struct{})
+	for k := range r.toRemove {
+		removeIndices[r.operationIDToResourceIndex[k]] = struct{}{}
+	}
+
+	resources := make([]apitype.ResourceV3, 0)
+	for i, res := range r.newResources {
+		if _, ok := removeIndices[int64(i)]; !ok {
+			resources = append(resources, *res)
+			stack.ApplyFeatures(*res, features)
+		}
+	}
+
+	// Append any resources from the base plan that were not produced by the current plan.
+	if r.base != nil {
+		for i, res := range r.base.Resources {
+			if _, ok := r.toDeleteInSnapshot[int64(i)]; !ok {
+				if _, ok := r.markAsPendingReplacement[int64(i)]; ok {
+					res.PendingReplacement = true
+				}
+
+				if state, ok := r.toReplaceInSnapshot[int64(i)]; ok {
+					// If this is a resource that was replaced, we want to
+					// replace it in the snapshot.  We only do so if the same
+					// resource has not been marked for deletion.  This
+					// could happen, e.g. if a refresh happens first (so
+					// we're supposed to replace the resource), and then a
+					// delete happens (so we're supposed to delete the resource).
+					resources = append(resources, *state)
+					stack.ApplyFeatures(*state, features)
+				} else {
+					if _, ok := r.markAsDeletion[int64(i)]; ok {
+						res.Delete = true
+					}
+					resources = append(resources, res)
+					stack.ApplyFeatures(res, features)
+				}
+			}
+		}
+	}
+
+	// Record any pending operations, if there are any outstanding that have not completed yet.
+	var operations []apitype.OperationV2
+	for _, op := range r.incompleteOps {
+		if op.Operation != nil {
+			operations = append(operations, *op.Operation)
+			stack.ApplyFeatures(op.Operation.Resource, features)
+		}
+	}
+
+	// Track pending create operations from the base snapshot
+	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+	// because these must require user intervention to be cleared or resolved.
+	if base := r.base; base != nil {
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == apitype.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+				stack.ApplyFeatures(pendingOperation.Resource, features)
+			}
+		}
+	}
+
+	if r.hasRefresh {
+		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
+		// which may cause other resources to have dangling dependencies.
+		rebuildDependencies(resources)
+	}
+
+	manifest := deploy.Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
+	}
+	manifest.Magic = manifest.NewMagic()
+
+	deployment := &apitype.DeploymentV3{}
+	deployment.SecretsProviders = r.base.SecretsProviders
+	deployment.Resources = resources
+	deployment.PendingOperations = operations
+	deployment.Metadata = r.base.Metadata
+	deployment.Manifest = manifest.Serialize()
+
+	version := apitype.DeploymentSchemaVersionCurrent
+	if len(features) > 0 {
+		version = apitype.DeploymentSchemaVersionLatest
+	}
+
+	return deployment, version, maputil.SortedKeys(features)
+}
+
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sj *snapshotJournaler) snap() *deploy.Snapshot {
+func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error) {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -107,187 +382,18 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 	//           relative order w.r.t. r has not changed.
 	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
 	//           they would have been appended to the list before r.
-
-	newResources := make([]*resource.State, 0)
-
 	snap := sj.snapshot
 
-	if len(sj.journalEntries) != 0 {
-		firstEntry := sj.journalEntries[0]
-		if firstEntry.Kind == engine.JournalEntryWrite {
-			snap = firstEntry.NewSnapshot
-			contract.Assertf(firstEntry.OperationID == 0, "rebase journal entry must not have an operation ID")
-		}
-	}
+	replayer := NewJournalReplayer(snap)
 
-	// toRemove tracks operation IDs of resources that are to be removed.
-	toRemove := make(map[int64]struct{})
-	// toDeleteInSnapshot tracks the indices of resources in the snapshot that are to be deleted.
-	toDeleteInSnapshot := make(map[int64]struct{})
-	// toReplaceInSnapshot tracks indices of resources in the snapshot that are to be replaced.
-	toReplaceInSnapshot := make(map[int64]*resource.State)
-	// markAsDeletion tracks indices of resources in the snapshot that are to be marked for deletion.
-	markAsDeletion := make(map[int64]struct{})
-	// markAsPendingReplacement tracks indices of resources in the snapshot that are to be marked for pending replacement.
-	markAsPendingReplacement := make(map[int64]struct{})
-
-	// operationIDToResourceIndex maps operation IDs to resource indices in the new resource list.
-	// This is used to replace resources that are being replaced, and remove new resources that are being deleted.
-	operationIDToResourceIndex := make(map[int64]int64)
-
-	incompleteOps := make(map[int64]engine.JournalEntry)
-	hasRefresh := false
-	index := int64(0)
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sj.journalEntries {
-		switch entry.Kind {
-		case engine.JournalEntryBegin:
-			incompleteOps[entry.OperationID] = entry
-		case engine.JournalEntrySuccess:
-			delete(incompleteOps, entry.OperationID)
-			// If this is a success, we need to add the resource to the list of resources.
-			if entry.State != nil {
-				newResources = append(newResources, entry.State)
-				operationIDToResourceIndex[entry.OperationID] = index
-				index++
-			}
-			if entry.RemoveOld != nil {
-				toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
-			}
-			if entry.RemoveNew != nil {
-				toRemove[*entry.RemoveNew] = struct{}{}
-			}
-			if entry.DeleteOld != nil {
-				markAsDeletion[*entry.DeleteOld] = struct{}{}
-			}
-			if entry.DeleteNew != nil {
-				newResources[operationIDToResourceIndex[*entry.DeleteNew]].Delete = true
-			}
-			if entry.PendingReplacementOld != nil {
-				markAsPendingReplacement[*entry.PendingReplacementOld] = struct{}{}
-			}
-			if entry.PendingReplacementNew != nil {
-				newResources[operationIDToResourceIndex[*entry.PendingReplacementNew]].PendingReplacement = true
-			}
-
-			if entry.IsRefresh {
-				hasRefresh = true
-			}
-		case engine.JournalEntryRefreshSuccess:
-			delete(incompleteOps, entry.OperationID)
-			hasRefresh = true
-			if entry.RemoveOld != nil {
-				if entry.State == nil {
-					toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
-				} else {
-					toReplaceInSnapshot[*entry.RemoveOld] = entry.State
-				}
-			}
-			if entry.RemoveNew != nil {
-				if entry.State == nil {
-					toRemove[*entry.RemoveNew] = struct{}{}
-				} else {
-					newResources[operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
-				}
-			}
-		case engine.JournalEntryFailure:
-			delete(incompleteOps, entry.OperationID)
-		case engine.JournalEntryOutputs:
-			if entry.State != nil && !entry.ElideWrite && entry.RemoveOld != nil {
-				toReplaceInSnapshot[*entry.RemoveOld] = entry.State
-			}
-			if entry.State != nil && !entry.ElideWrite && entry.RemoveNew != nil {
-				newResources[operationIDToResourceIndex[*entry.RemoveNew]] = entry.State
-			}
-		case engine.JournalEntryWrite:
-			// Already handled above.
-		}
+		replayer.Add(entry)
 	}
 
-	removeIndices := make(map[int64]struct{})
-	for k := range toRemove {
-		removeIndices[operationIDToResourceIndex[k]] = struct{}{}
-	}
+	deploymentV3, _, _ := replayer.GenerateDeployment()
 
-	resources := make([]*resource.State, 0)
-	for i, res := range newResources {
-		if _, ok := removeIndices[int64(i)]; !ok {
-			resources = append(resources, res)
-		}
-	}
-
-	// Append any resources from the base plan that were not produced by the current plan.
-	if snap != nil {
-		for i, res := range snap.Resources {
-			if _, ok := toDeleteInSnapshot[int64(i)]; !ok {
-				if _, ok := markAsPendingReplacement[int64(i)]; ok {
-					res.PendingReplacement = true
-				}
-
-				if state, ok := toReplaceInSnapshot[int64(i)]; ok {
-					// If this is a resource that was replaced, we want to
-					// replace it in the snapshot.  We only do so if the same
-					// resource has not been marked for deletion.  This
-					// could happen, e.g. if a refresh happens first (so
-					// we're supposed to replace the resource), and then a
-					// delete happens (so we're supposed to delete the resource).
-					resources = append(resources, state)
-				} else {
-					if _, ok := markAsDeletion[int64(i)]; ok {
-						res.Delete = true
-					}
-					resources = append(resources, res)
-				}
-			}
-		}
-	}
-
-	// Record any pending operations, if there are any outstanding that have not completed yet.
-	var operations []resource.Operation
-	for _, op := range incompleteOps {
-		if op.Operation != nil {
-			operations = append(operations, *op.Operation)
-		}
-	}
-
-	// Track pending create operations from the base snapshot
-	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
-	// because these must require user intervention to be cleared or resolved.
-	if base := snap; base != nil {
-		for _, pendingOperation := range base.PendingOperations {
-			if pendingOperation.Type == resource.OperationTypeCreating {
-				operations = append(operations, pendingOperation)
-			}
-		}
-	}
-
-	manifest := deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
-	}
-
-	if hasRefresh {
-		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
-		// which may cause other resources to have dangling dependencies.
-		sj.rebuildDependencies(resources)
-	}
-
-	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
-	// to ensure that secrets are not re-encrypted on each update.
-	secretsManager := sj.secretsManager
-	if snap != nil && secrets.AreCompatible(secretsManager, snap.SecretsManager) {
-		secretsManager = snap.SecretsManager
-	}
-
-	var metadata deploy.SnapshotMetadata
-	if snap != nil {
-		metadata = snap.Metadata
-	}
-
-	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
+	return stack.DeserializeDeploymentV3(ctx, *deploymentV3, sj.secretsProvider)
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
@@ -295,8 +401,15 @@ func (sj *snapshotJournaler) snap() *deploy.Snapshot {
 // metadata about this write operation is added to the snapshot before it is
 // written, in order to aid debugging should future operations fail with an
 // error.
-func (sj *snapshotJournaler) saveSnapshot() error {
-	snap, err := sj.snap().NormalizeURNReferences()
+func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
+	snap, err := sj.snap(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to generate snapshot: %w", err)
+	}
+	if snap == nil {
+		return nil
+	}
+	snap, err = snap.NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
@@ -335,7 +448,8 @@ func (sj *snapshotJournaler) saveSnapshot() error {
 }
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
-func (sj *snapshotJournaler) defaultServiceLoop(
+func (sj *SnapshotJournaler) defaultServiceLoop(
+	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	// True if we have elided writes since the last actual write.
@@ -346,8 +460,8 @@ serviceLoop:
 	for {
 		select {
 		case request := <-journalEvents:
-			sj.journalEntries = append(sj.journalEntries, request.JournalEntry)
-			if request.JournalEntry.ElideWrite {
+			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
+			if request.elideWrite {
 				hasElidedWrites = true
 				if request.result != nil {
 					request.result <- nil
@@ -355,7 +469,7 @@ serviceLoop:
 				continue
 			}
 			hasElidedWrites = false
-			request.result <- sj.saveSnapshot()
+			request.result <- sj.saveSnapshot(ctx)
 		case <-sj.cancel:
 			break serviceLoop
 		}
@@ -365,7 +479,7 @@ serviceLoop:
 	var err error
 	if hasElidedWrites {
 		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-		err = sj.saveSnapshot()
+		err = sj.saveSnapshot(ctx)
 	}
 	done <- err
 }
@@ -373,32 +487,32 @@ serviceLoop:
 // unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
-func (sj *snapshotJournaler) unsafeServiceLoop(
+func (sj *SnapshotJournaler) unsafeServiceLoop(
+	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	for {
 		select {
 		case request := <-journalEvents:
-			if request.JournalEntry.Kind == engine.JournalEntryWrite {
-				contract.Assertf(len(sj.journalEntries) == 0, "should not have seen an jornalentry before a rebase")
-			}
-			sj.journalEntries = append(sj.journalEntries, request.JournalEntry)
+			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
 			request.result <- nil
 		case <-sj.cancel:
-			done <- sj.saveSnapshot()
+			done <- sj.saveSnapshot(ctx)
 			return
 		}
 	}
 }
 
-type snapshotJournaler struct {
-	persister      SnapshotPersister
-	snapshot       *deploy.Snapshot
-	journalEvents  chan writeJournalEntryRequest
-	journalEntries []engine.JournalEntry
-	cancel         chan bool
-	done           chan error
-	secretsManager secrets.Manager
+type SnapshotJournaler struct {
+	ctx             context.Context
+	persister       SnapshotPersister
+	snapshot        *apitype.DeploymentV3
+	journalEvents   chan writeJournalEntryRequest
+	journalEntries  []apitype.JournalEntry
+	cancel          chan bool
+	done            chan error
+	secretsManager  secrets.Manager
+	secretsProvider secrets.Provider
 }
 
 // NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
@@ -421,10 +535,12 @@ type snapshotJournaler struct {
 // meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
 // are flushed by the next non-elided write or the next call to Close.
 func NewSnapshotJournaler(
+	ctx context.Context,
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
+	secretsProvider secrets.Provider,
 	baseSnap *deploy.Snapshot,
-) engine.Journal {
+) (*SnapshotJournaler, error) {
 	snapCopy := &deploy.Snapshot{}
 	if baseSnap != nil {
 		snapCopy = &deploy.Snapshot{
@@ -442,19 +558,37 @@ func NewSnapshotJournaler(
 		for _, op := range baseSnap.PendingOperations {
 			snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
 		}
+
+		if snapCopy.SecretsManager == nil {
+			snapCopy.SecretsManager = secretsManager
+		}
 	}
 
 	journalEvents := make(chan writeJournalEntryRequest)
 	done, cancel := make(chan error), make(chan bool)
 
-	journaler := snapshotJournaler{
-		persister:      persister,
-		snapshot:       snapCopy,
-		journalEvents:  journalEvents,
-		journalEntries: make([]engine.JournalEntry, 0),
-		secretsManager: secretsManager,
-		cancel:         cancel,
-		done:           done,
+	var deployment *apitype.DeploymentV3
+	if baseSnap != nil {
+		var err error
+		deployment, _, _, err = stack.SerializeDeploymentWithMetadata(
+			ctx, snapCopy, false)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		deployment = &apitype.DeploymentV3{}
+	}
+
+	journaler := SnapshotJournaler{
+		ctx:             ctx,
+		persister:       persister,
+		snapshot:        deployment,
+		journalEvents:   journalEvents,
+		journalEntries:  make([]apitype.JournalEntry, 0),
+		secretsManager:  secretsManager,
+		secretsProvider: secretsProvider,
+		cancel:          cancel,
+		done:            done,
 	}
 
 	serviceLoop := journaler.defaultServiceLoop
@@ -463,20 +597,52 @@ func NewSnapshotJournaler(
 		serviceLoop = journaler.unsafeServiceLoop
 	}
 
-	go serviceLoop(journalEvents, done)
+	go serviceLoop(ctx, journalEvents, done)
 
-	return &journaler
+	err := journaler.AddJournalEntry(engine.JournalEntry{
+		Kind:           engine.JournalEntrySecretsManager,
+		SecretsManager: secretsManager,
+		ElideWrite:     true,
+	})
+
+	return &journaler, err
+}
+
+func (sj *SnapshotJournaler) Entries() []apitype.JournalEntry {
+	return sj.journalEntries
 }
 
 type writeJournalEntryRequest struct {
-	JournalEntry engine.JournalEntry
+	journalEntry apitype.JournalEntry
+	elideWrite   bool
 	result       chan error
 }
 
-func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
+func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
+	var completeBatch stack.CompleteCrypterBatch
+	enc := sj.secretsManager.Encrypter()
+
+	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
+		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+	}
+	serializedEntry, err := SerializeJournalEntry(
+		sj.ctx, entry, enc)
+	if err != nil {
+		return fmt.Errorf("failed to serialize journal entry: %w", err)
+	}
+	if completeBatch != nil {
+		if err := completeBatch(sj.ctx); err != nil {
+			return fmt.Errorf("failed to complete batch encryption: %w", err)
+		}
+	}
+
 	result := make(chan error)
 	select {
-	case sj.journalEvents <- writeJournalEntryRequest{JournalEntry: entry, result: result}:
+	case sj.journalEvents <- writeJournalEntryRequest{
+		journalEntry: serializedEntry,
+		elideWrite:   entry.ElideWrite,
+		result:       result,
+	}:
 		// We don't need to check for cancellation here, as the service loop guarantees
 		// that it will return a result for every journal entry that it processes.
 		return <-result
@@ -485,39 +651,11 @@ func (sj *snapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	}
 }
 
-func (sj *snapshotJournaler) BeginOperation(entry engine.JournalEntry) error {
+func (sj *SnapshotJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
 }
 
-func (sj *snapshotJournaler) EndOperation(entry engine.JournalEntry) error {
-	return sj.journalMutation(entry)
-}
-
-func (sj *snapshotJournaler) Write(newBase *deploy.Snapshot) error {
-	snapCopy := &deploy.Snapshot{
-		Manifest:          newBase.Manifest,
-		SecretsManager:    newBase.SecretsManager,
-		Resources:         make([]*resource.State, 0, len(newBase.Resources)),
-		PendingOperations: make([]resource.Operation, 0, len(newBase.PendingOperations)),
-		Metadata:          newBase.Metadata,
-	}
-
-	// Copy the resources from the base snapshot to the new snapshot.
-	for _, res := range newBase.Resources {
-		snapCopy.Resources = append(snapCopy.Resources, res.Copy())
-	}
-	// Copy the pending operations from the base snapshot to the new snapshot.
-	for _, op := range newBase.PendingOperations {
-		snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
-	}
-	sj.snapshot = snapCopy
-	return sj.journalMutation(engine.JournalEntry{
-		Kind:        engine.JournalEntryWrite,
-		NewSnapshot: snapCopy,
-	})
-}
-
-func (sj snapshotJournaler) Close() error {
+func (sj SnapshotJournaler) Close() error {
 	sj.cancel <- true
 	return <-sj.done
 }

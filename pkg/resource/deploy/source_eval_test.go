@@ -2741,7 +2741,7 @@ func TestCall(t *testing.T) {
 							"test": resource.NewProperty("test-value"),
 						},
 						req.Args)
-					require.Equal(t, 1, len(req.Options.ArgDependencies))
+					require.Len(t, req.Options.ArgDependencies, 1)
 					assert.ElementsMatch(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",
