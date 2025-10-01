@@ -138,9 +138,9 @@ define lint_golang_pkg
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--max-same-issues 0 \
 			--max-issues-per-linter 0 \
-			--timeout 5m && cd - > /dev/null)
+			--timeout 5m)
 	@echo "[requiredfield] Linting $(1)..."
-	@go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...
+	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
 endef
 
