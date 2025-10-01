@@ -1259,7 +1259,7 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 	err error,
 ) {
 	if len(props) == 0 {
-		return
+		return required, specs, err
 	}
 
 	specs = make(map[string]PropertySpec, len(props))

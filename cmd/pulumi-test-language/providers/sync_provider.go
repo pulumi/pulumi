@@ -34,7 +34,7 @@ import (
 type SyncProvider struct {
 	plugin.UnimplementedProvider
 
-	CreateLimit sync.WaitGroup
+	CreateLimit *sync.WaitGroup
 }
 
 var syncVersion = semver.MustParse("3.0.0-alpha.1.internal+exp.sha.2143768")
@@ -111,7 +111,7 @@ func (p *SyncProvider) Create(
 	// Block until p.CreateLimit is done or we time out.
 	//
 	// This is how we ensure that there are at least N parallel creates at once.
-	if err := p.waitWithTimeout(&p.CreateLimit); err != nil {
+	if err := p.waitWithTimeout(p.CreateLimit); err != nil {
 		return plugin.CreateResponse{}, err
 	}
 

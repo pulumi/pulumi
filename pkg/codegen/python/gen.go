@@ -211,7 +211,7 @@ func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type
 	if modName != "" {
 		modName = strings.ReplaceAll(modName, "/", ".") + "."
 	}
-	return
+	return modName, name
 }
 
 func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input bool) string {
@@ -1214,7 +1214,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 	baseName = pyClassName(tokenToName(tok))
 	awaitableName = "Awaitable" + baseName
-	return
+	return baseName, awaitableName
 }
 
 func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) string {
