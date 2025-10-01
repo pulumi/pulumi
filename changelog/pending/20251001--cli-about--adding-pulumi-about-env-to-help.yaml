@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/about
-  description: Adding `pulumi about env` to help
+  description: Add `pulumi about env` to help
