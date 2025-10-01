@@ -882,6 +882,7 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
+	metadata map[string]string,
 ) (string, error) {
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -924,6 +925,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Provider:    analyzerInfo.Provider,
 		Tags:        analyzerInfo.Tags,
 		Repository:  analyzerInfo.Repository,
+		Metadata:    metadata,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
