@@ -601,8 +601,17 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
-		pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), pkg.Name, apitype.ResourcePlugin, pkg.Version,
-			pkg.DownloadURL, nil)
+		version := pkgSchema.Version
+		if pkgSchema.Parameterization != nil {
+			version = &pkgSchema.Parameterization.BaseProvider.Version
+		}
+		name := pkgSchema.Name
+		if pkgSchema.Parameterization != nil {
+			name = pkgSchema.Parameterization.BaseProvider.Name
+		}
+
+		pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version,
+			pkgSchema.PluginDownloadURL, nil)
 		if err != nil {
 			return err
 		}
@@ -636,6 +645,8 @@ func generateAndLinkSdksForPackages(
 
 		returnToStartingDir()
 	}
+
+	// TODO: I think need to project.AddPackage() here for all the
 
 	return nil
 }

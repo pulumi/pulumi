@@ -163,7 +163,8 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	if pkg.Parameterization != nil {
 		name = pkg.Parameterization.BaseProvider.Name
 	}
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version,
+		pkg.PluginDownloadURL, nil)
 	if err != nil {
 		return nil, nil, diags, err
 	}
