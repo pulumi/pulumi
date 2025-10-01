@@ -1,10 +1,8 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=2ba9dfc3-49d5-4b0e-b3c4-5569eee266b8]
+<{%reset%}>    [id=16a605b5-d73b-480a-993c-8962222a327a]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%reset%}><{%reset%}>cannot ignore changes in added or removed elements of the path: "foo.bar"<{%reset%}>
-<{%reset%}>cannot ignore changes in added or removed elements of the path: "foo.bar"<{%reset%}>
-<{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>    [id=e430826f-f293-4faa-9951-b6ceda29af1d]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=a1e13f24-c889-4928-8023-a6b9a7e343b8]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>{
 <{%reset%}><{%fg 1%}>      - bar: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
