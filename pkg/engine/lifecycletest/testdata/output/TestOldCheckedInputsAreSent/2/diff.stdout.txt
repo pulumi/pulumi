@@ -8,7 +8,7 @@
 <{%reset%}><{%fg 1%}>  - default : <{%reset%}><{%fg 1%}>"default"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - foo     : <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=72d2c4ff-b9da-43bb-a71d-60ef2ad19a0b]
+<{%fg 1%}>    [id=bf50f372-9da9-442b-83d6-19236288414a]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>

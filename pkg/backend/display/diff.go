@@ -41,6 +41,8 @@ import (
 // ShowDiffEvents displays the engine events with the diff view.
 func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
+	// track resources errored
+	resourcesErrored := 0
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -82,8 +84,15 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 					out = stderr
 				}
 			}
+			if event.Type == engine.ResourceOperationFailed {
+				resourcesErrored++
+			}
 
 			msg := RenderDiffEvent(event, seen, opts)
+			if event.Type == engine.SummaryEvent {
+				msg = renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
+			}
+
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -111,7 +120,7 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), 0, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -219,7 +228,7 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int, diffStyleSummary bool, opts Options) string {
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
@@ -284,6 +293,12 @@ func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool,
 		}
 
 		fprintIgnoreError(out, "\n")
+	}
+
+	// add error summary to output
+	if resourcesErrored > 0 {
+		errSummaryStr := "    " + colors.Red + fmt.Sprintf("%d errored", resourcesErrored) + colors.Reset + "\n"
+		out.WriteString(errSummaryStr)
 	}
 
 	if diffStyleSummary {

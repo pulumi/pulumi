@@ -3,6 +3,6 @@
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
 <{%reset%}><{%fg 1%}>    name: <{%reset%}><{%fg 1%}>"other"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pulumi: (delete)
-<{%fg 1%}>    [id=135463df-9eb6-4832-9496-638e2c271e9f]
+<{%fg 1%}>    [id=c73b7e4c-6795-4450-8c5c-683dfb6888dd]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

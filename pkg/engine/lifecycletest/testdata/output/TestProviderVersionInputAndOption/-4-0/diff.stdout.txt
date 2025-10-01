@@ -1,11 +1,11 @@
 <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=b1c1c826-43eb-430f-8906-7fcc943eb787]
+<{%fg 1%}>    [id=ce9d1158-7468-490f-88de-aecb8127e7f4]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::01c04d40-2401-4e85-bc99-b754cec5d419]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::22b0043e-f8e4-436e-9024-2b8090deee34]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=01c04d40-2401-4e85-bc99-b754cec5d419]
+<{%fg 1%}>    [id=22b0043e-f8e4-436e-9024-2b8090deee34]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
-<{%reset%}><{%fg 1%}>    version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    version   : <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

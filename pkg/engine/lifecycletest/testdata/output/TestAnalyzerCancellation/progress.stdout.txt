@@ -13,6 +13,7 @@
     <{%fg 1%}>error: <{%reset%}><{%reset%}>update canceled<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>1 errored<{%reset%}>
 
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 2s
 

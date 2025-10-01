@@ -1,9 +1,9 @@
 <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=4a2413a2-e342-4d66-aed4-91c8cbea2374]
+<{%fg 1%}>    [id=726a5600-0b16-46cb-9bdc-82d042cf718f]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::2459c8f9-7ee3-4342-89b3-8eab0d8f6720]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::9c80947e-d7cd-4abc-83d8-219e53977513]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=2459c8f9-7ee3-4342-89b3-8eab0d8f6720]
+<{%fg 1%}>    [id=9c80947e-d7cd-4abc-83d8-219e53977513]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
