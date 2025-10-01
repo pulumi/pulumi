@@ -157,15 +157,7 @@ func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter E
 		// Assign encrypted values back into original structure
 		// We are accepting that a Plaintext Secret now has a ciphertext value
 		for i, encrypted := range encryptedChunk {
-			ref := refs[offset+i]
-			switch container := ref.container.(type) {
-			case map[Key]Plaintext:
-				container[ref.key.(Key)] = NewPlaintext(PlaintextSecret(encrypted))
-			case map[string]Plaintext:
-				container[ref.key.(string)] = NewPlaintext(PlaintextSecret(encrypted))
-			case []Plaintext:
-				container[ref.key.(int)] = NewPlaintext(PlaintextSecret(encrypted))
-			}
+			refs[offset+i].setPlaintext(NewPlaintext(PlaintextSecret(encrypted)))
 		}
 		offset += len(ptChunk)
 	}

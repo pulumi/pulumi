@@ -88,15 +88,7 @@ func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypt
 		// Assign decrypted values back into original structure
 		// We are accepting that a Ciphertext Secret now has a Plaintext value
 		for i, decrypted := range decryptedChunk {
-			ref := refs[offset+i]
-			switch container := ref.container.(type) {
-			case map[Key]object:
-				container[ref.key.(Key)] = newObject(CiphertextSecret(decrypted))
-			case map[string]object:
-				container[ref.key.(string)] = newObject(CiphertextSecret(decrypted))
-			case []object:
-				container[ref.key.(int)] = newObject(CiphertextSecret(decrypted))
-			}
+			refs[offset+i].setObject(newObject(CiphertextSecret(decrypted)))
 		}
 		offset += len(ctChunk)
 	}

@@ -20,11 +20,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//nolint:paralleltest // subtests will use parallelism of root test
 func TestAddStringToChunks(t *testing.T) {
-	t.Parallel()
-
 	t.Run("Empty Chunks", func(t *testing.T) {
+		t.Parallel()
 		var chunks [][]string
 		addStringToChunks(&chunks, "foo", 10)
 		assert.Equal(t, 1, len(chunks))
@@ -32,6 +30,7 @@ func TestAddStringToChunks(t *testing.T) {
 	})
 
 	t.Run("Add To Existing Chunk", func(t *testing.T) {
+		t.Parallel()
 		chunks := [][]string{{"foo"}}
 		// "foo" is 3 bytes, "bar" is 3 bytes, maxChunkSize is 10
 		addStringToChunks(&chunks, "bar", 10)
@@ -40,6 +39,7 @@ func TestAddStringToChunks(t *testing.T) {
 	})
 
 	t.Run("New Chunk When Too Large", func(t *testing.T) {
+		t.Parallel()
 		chunks := [][]string{{"12345"}}
 		// "12345" is 5 bytes, "67890" is 6 bytes, maxChunkSize is 10
 		addStringToChunks(&chunks, "678901", 10)
@@ -49,6 +49,7 @@ func TestAddStringToChunks(t *testing.T) {
 	})
 
 	t.Run("New Chunk When Full", func(t *testing.T) {
+		t.Parallel()
 		chunks := [][]string{{"12345"}}
 		// "12345" is 5 bytes, "67890" is 5 bytes, maxChunkSize is 5
 		addStringToChunks(&chunks, "67890", 5)
@@ -58,6 +59,7 @@ func TestAddStringToChunks(t *testing.T) {
 	})
 
 	t.Run("Exact Fit", func(t *testing.T) {
+		t.Parallel()
 		chunks := [][]string{{"abc"}}
 		// "abc" is 3 bytes, "de" is 2 bytes, maxChunkSize is 5
 		addStringToChunks(&chunks, "de", 5)
@@ -66,6 +68,7 @@ func TestAddStringToChunks(t *testing.T) {
 	})
 
 	t.Run("Multiple Adds", func(t *testing.T) {
+		t.Parallel()
 		var chunks [][]string
 		addStringToChunks(&chunks, "a", 2)
 		addStringToChunks(&chunks, "b", 2)

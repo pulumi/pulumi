@@ -14,6 +14,8 @@
 
 package config
 
+// As of time of writing, the Pulumi Service batch encrypt and decrypt endpoints have a limit of 200MB per request.
+// To avoid hitting this limit, we chunk secrets into pieces no larger than half this size as conservative limit.
 var defaultMaxChunkSize = 100 * 1024 * 1024 // 100MB
 
 // A "reference" to where a value is located in a container (slice or map).
@@ -22,22 +24,25 @@ type containerRef struct {
 	key       any // string (for map) or int (for slice)
 }
 
-// addStringToChunks adds a value to the last values chunk or creates a new chunk if needed.
-func addStringToChunks(valuesChunks *[][]string, value string, maxChunkSize int) {
-	valueLength := len(value)
-	if len(*valuesChunks) == 0 {
-		*valuesChunks = append(*valuesChunks, []string{value})
-		return
+func (r *containerRef) setObject(obj object) {
+	switch container := r.container.(type) {
+	case map[Key]object:
+		container[r.key.(Key)] = obj
+	case map[string]object:
+		container[r.key.(string)] = obj
+	case []object:
+		container[r.key.(int)] = obj
 	}
-	lastChunk := &(*valuesChunks)[len(*valuesChunks)-1]
-	currentSize := 0
-	for _, lastChunkValue := range *lastChunk {
-		currentSize += len(lastChunkValue)
-	}
-	if currentSize+valueLength <= maxChunkSize {
-		*lastChunk = append(*lastChunk, value)
-	} else {
-		*valuesChunks = append(*valuesChunks, []string{value})
+}
+
+func (r *containerRef) setPlaintext(pt Plaintext) {
+	switch container := r.container.(type) {
+	case map[Key]Plaintext:
+		container[r.key.(Key)] = pt
+	case map[string]Plaintext:
+		container[r.key.(string)] = pt
+	case []Plaintext:
+		container[r.key.(int)] = pt
 	}
 }
 
@@ -146,5 +151,24 @@ func collectPlaintextSecretsFromArray(
 			*refs = append(*refs, containerRef{container: ptArray, key: i})
 			addStringToChunks(ptChunks, string(value), defaultMaxChunkSize)
 		}
+	}
+}
+
+// addStringToChunks adds a value to the last values chunk or creates a new chunk if needed.
+func addStringToChunks(valuesChunks *[][]string, value string, maxChunkSize int) {
+	valueLength := len(value)
+	if len(*valuesChunks) == 0 {
+		*valuesChunks = append(*valuesChunks, []string{value})
+		return
+	}
+	lastChunk := &(*valuesChunks)[len(*valuesChunks)-1]
+	currentSize := 0
+	for _, lastChunkValue := range *lastChunk {
+		currentSize += len(lastChunkValue)
+	}
+	if currentSize+valueLength <= maxChunkSize {
+		*lastChunk = append(*lastChunk, value)
+	} else {
+		*valuesChunks = append(*valuesChunks, []string{value})
 	}
 }
