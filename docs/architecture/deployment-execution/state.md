@@ -190,6 +190,15 @@ as mentioned above. The only field set here is `NewSnapshot`, which contains the
 new snapshot, which will be deep copied to make sure we don't change any
 pointers.
 
+##### JournalEntryRebuiltBaseState
+
+This is another special journal entry, that is only allowed when we either have
+no new resources yet, or if it is emitted as the last journal entry. It's an
+indicator that the engine has internally called `rebuildBaseState`, and some
+resources might be gone from the base snapshot. At that point we also rebuild the
+deployment within the journaler, so resources that have been deleted by refreshes
+are removed from the state, and we're indexing it the right way.
+
 #### Pseudocode
 
 Following is the pseudocode for constructing the snapshot from journal entries:

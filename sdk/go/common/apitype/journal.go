@@ -48,6 +48,8 @@ func (k JournalEntryKind) String() string {
 		return "write"
 	case JournalEntryKindSecretsManager:
 		return "secrets-manager"
+	case JournalEntryKindRebuiltBaseState:
+		return "rebuilt-base-state"
 	default:
 		return "invalid"
 	}
