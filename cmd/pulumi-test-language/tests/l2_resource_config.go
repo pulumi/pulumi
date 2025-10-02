@@ -28,7 +28,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-config"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ConfigProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ConfigProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Config: config.Map{
@@ -51,7 +53,7 @@ func init() {
 					})
 					expectedInputs := deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
-					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
 						resource.NewPropertyMapFromMap(map[string]interface{}{
 							"pluginDownloadURL": "http://example.com",
 						}))
@@ -66,7 +68,7 @@ func init() {
 					})
 					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
-					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
 						resource.NewPropertyMapFromMap(map[string]interface{}{
 							"pluginDownloadURL": "http://example.com",
 						}))

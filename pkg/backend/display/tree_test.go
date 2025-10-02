@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Table Test using different terminal widths and heights to ensure that the display does not panic.
@@ -197,7 +198,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		assert.Falsef(t, treeRenderer.dirty, "Expecting the renderer to not be dirty after a frame is called")
 
 		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
-		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
+		require.Len(t, treeRenderer.systemMessages, 1000,
 			"Expecting 1000 system messages to now be in the tree renderer")
 	}()
 

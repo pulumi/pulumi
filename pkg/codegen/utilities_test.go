@@ -64,7 +64,7 @@ func TestResolvingPackageReferences(t *testing.T) {
 	require.Empty(t, diags)
 	// ensure that package references return aws because awsx depends on aws
 	references := PackageReferences(pkg)
-	require.Equal(t, 1, len(references))
+	require.Len(t, references, 1)
 	assert.Equal(t, "aws", references[0].Name())
 }
 

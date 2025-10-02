@@ -267,6 +267,25 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// kills its children, so we have no problem here. On Windows however, it
 	// does not, and we end up with an orphaned Python process that's
 	// busy-waiting in the eventloop and never exits.
+	// See https://github.com/astral-sh/uv/issues/11817
+	//
+	// To maintain uv's behaviour that `uv run ...` should keep the venv
+	// up-to-date, we run `uv sync` first, provided there is a `pyproject.toml`.
+	pyprojectTomlDir, err := searchup(u.root, "pyproject.toml")
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", u.root, err)
+		}
+	}
+	if pyprojectTomlDir != "" {
+		// uv run does an "inexact" sync, that is it leaves extraneous
+		// dependencies alone and does not remove them.
+		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
+		if err := venvCmd.Run(); err != nil {
+			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
+		}
+	}
+
 	var cmd *exec.Cmd
 	_, cmdPath := u.pythonExecutable()
 	cmd = exec.CommandContext(ctx, cmdPath, args...)

@@ -3,7 +3,7 @@
 import * as pulumi from "@pulumi/pulumi";
 
 class Component extends pulumi.ComponentResource {
-    public readonly result!: pulumi.Output<string>;
+    declare public readonly result: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         const inputs = {

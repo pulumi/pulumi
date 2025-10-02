@@ -31,7 +31,7 @@ import {
     PulumiCommand,
     Stack,
 } from "../../automation";
-import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
+import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output, ResourceHook } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -684,9 +684,48 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.kind, "update");
         assert.strictEqual(upRes.summary.result, "succeeded");
 
+        // pulumi destroy --preview-only
+        const previewDestroyRes = await stack.previewDestroy({ userAgent });
+        assert.deepStrictEqual(previewDestroyRes.changeSummary, { delete: 1 });
+
         // pulumi destroy
-        const destroyRes = await stack.destroy({ userAgent, previewOnly: true });
-        assert.strictEqual(destroyRes.summary.kind, "update");
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.deepStrictEqual(destroyRes.summary.resourceChanges, { delete: 1 });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`previews a destroy with inline program`, async () => {
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
+        };
+
+        const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName: "inline_node", program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi destroy --preview-only
+        const previewDestroyRes = await stack.previewDestroy({ userAgent });
+        assert.deepStrictEqual(previewDestroyRes.changeSummary, { delete: 2 });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.deepStrictEqual(destroyRes.summary.resourceChanges, { delete: 2 });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
@@ -1883,6 +1922,50 @@ describe("LocalWorkspace", () => {
         }
 
         await stack.workspace.removeStack(stackName);
+    });
+
+    it("hooks", async function () {
+        let beforeCreateCalled = false;
+        let beforeDeleteCalled = false;
+
+        const program = async () => {
+            const beforeDelete = new ResourceHook("beforeDelete", async (args) => {
+                beforeDeleteCalled = true;
+            });
+            const beforeCreate = new ResourceHook("beforeCreate", async (args) => {
+                beforeCreateCalled = true;
+            });
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res", {
+                hooks: {
+                    beforeCreate: [beforeCreate],
+                    beforeDelete: [beforeDelete],
+                },
+            });
+        };
+
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up();
+        assert.strictEqual(true, beforeCreateCalled);
+        let state = await stack.exportStack();
+        assert.strictEqual(state.deployment.resources.length, 2);
+        const res = state.deployment.resources[1];
+        assert.strictEqual(res.type, "my:module:MyResource");
+
+        await stack.destroy({ runProgram: true });
+        assert.strictEqual(true, beforeDeleteCalled);
+        state = await stack.exportStack();
+        assert.strictEqual(state.deployment.resources, undefined);
     });
 });
 

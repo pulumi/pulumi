@@ -57,6 +57,15 @@ type mockResourceMonitorWithRegisterResourceOutput interface {
 	RegisterResourceOutputs() (*emptypb.Empty, error)
 }
 
+// mockResourceMonitorWithSignalAndWaitForShutdown is a mock resource monitor
+// that also implements the SignalAndWaitForShutdown method. A new resource
+// monitor interface is created to avoid needing to implement additional methods
+// for existing implementations of MockResourceMonitor.
+type mockResourceMonitorWithSignalAndWaitForShutdown interface {
+	MockResourceMonitor
+	SignalAndWaitForShutdown() (*emptypb.Empty, error)
+}
+
 func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	return func(info *RunInfo) {
 		info.Project, info.Stack, info.Mocks = project, stack, mocks
@@ -247,9 +256,9 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
 	m.resources.Store(urn, resource.PropertyMap{
-		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
-		resource.PropertyKey("id"):    resource.NewStringProperty(id),
-		resource.PropertyKey("state"): resource.NewObjectProperty(state),
+		resource.PropertyKey("urn"):   resource.NewProperty(urn),
+		resource.PropertyKey("id"):    resource.NewProperty(id),
+		resource.PropertyKey("state"): resource.NewProperty(state),
 	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
@@ -299,9 +308,9 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
 	m.resources.Store(urn, resource.PropertyMap{
-		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
-		resource.PropertyKey("id"):    resource.NewStringProperty(id),
-		resource.PropertyKey("state"): resource.NewObjectProperty(state),
+		resource.PropertyKey("urn"):   resource.NewProperty(urn),
+		resource.PropertyKey("id"):    resource.NewProperty(id),
+		resource.PropertyKey("state"): resource.NewProperty(state),
 	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
@@ -317,6 +326,16 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		Id:     id,
 		Object: stateOut,
 	}, nil
+}
+
+// Return the currently registered resources in the mock monitor.
+func (m *mockMonitor) GetRegisteredResources() map[string]resource.PropertyMap {
+	resources := make(map[string]resource.PropertyMap)
+	m.resources.Range(func(key, value any) bool {
+		resources[key.(string)] = value.(resource.PropertyMap)
+		return true
+	})
+	return resources
 }
 
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
@@ -366,6 +385,10 @@ func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.Registe
 func (m *mockMonitor) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Empty,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
+	if m, ok := m.mocks.(mockResourceMonitorWithSignalAndWaitForShutdown); ok {
+		return m.SignalAndWaitForShutdown()
+	}
+
 	return &emptypb.Empty{}, nil
 }
 

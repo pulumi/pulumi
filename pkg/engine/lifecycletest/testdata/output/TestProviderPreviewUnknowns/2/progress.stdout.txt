@@ -1,0 +1,24 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA provA <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA provA <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>updating<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>updated<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typB resB <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typB resB-resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typB resB-resB <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%fg 1%}>deleted<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+    This preview may not correctly represent the changes that will be applied during an update.<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 2 to update<{%reset%}>
+    <{%fg 1%}>- 1 to delete<{%reset%}>
+    <{%bold%}>3 changes<{%reset%}>. 1 unchanged
+

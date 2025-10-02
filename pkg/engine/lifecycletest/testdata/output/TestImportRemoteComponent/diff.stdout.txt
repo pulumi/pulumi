@@ -5,7 +5,7 @@
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>        <{%fg 2%}>= pkgA:m:typA: (import)
-<{%reset%}>            [id=imported-id]
+<{%reset%}>            [id=4]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::mlc:index:Component$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>            foo : <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            frob: <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>

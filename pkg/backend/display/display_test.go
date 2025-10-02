@@ -76,3 +76,20 @@ func TestShowEvents(t *testing.T) {
 	assert.Contains(t, string(read), "not-filtered")
 	assert.Contains(t, string(read), "this-is-filtered-from-display")
 }
+
+func TestEscapeURN(t *testing.T) {
+	t.Parallel()
+
+	// Most characters can safely be displayed as is, including double quotes.
+	require.Equal(t, "\"double quotes\"", escapeURN("\"double quotes\""))
+	require.Equal(t, "escaped double quote \\\"", escapeURN("escaped double quote \\\""))
+	require.Equal(t, "backslashes\\\\\\\\", escapeURN("backslashes\\\\\\\\"))
+	require.Equal(t, "C:\\windows\\paths", escapeURN("C:\\windows\\paths"))
+	require.Equal(t, "Emoji 🦄", escapeURN("Emoji 🦄"))
+	require.Equal(t, "Non breaking space: <\u00a0>", escapeURN("Non breaking space: <\u00a0>"))
+
+	// Non graphic characters need to be escaped, as they can mess up the display layout.
+	require.Equal(t, "newline\\n", escapeURN("newline\n"))
+	require.Equal(t, "tab\\t", escapeURN("tab\t"))
+	require.Equal(t, "ZWJ: <\\u200d>", escapeURN("ZWJ: <\u200d>"))
+}

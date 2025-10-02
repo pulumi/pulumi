@@ -339,4 +339,4 @@ signalAndWaitForShutdown: {
   },
 };
 
-exports.ResourceMonitorClient = grpc.makeGenericClientConstructor(ResourceMonitorService);
+exports.ResourceMonitorClient = grpc.makeGenericClientConstructor(ResourceMonitorService, 'ResourceMonitor');

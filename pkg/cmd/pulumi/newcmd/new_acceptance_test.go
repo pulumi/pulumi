@@ -111,6 +111,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithNumericName(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
@@ -240,6 +241,72 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, backendURL, b.URL())
 }
 
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesNoTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "", // empty
+		prompt:            ui.PromptForValue,
+		chooseTemplate:    ChooseTemplate,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
+}
+
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "yaml",
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+	}
+
+	err := runNew(context.Background(), args)
+	require.NoError(t, err)
+	proj := loadProject(t, args.dir)
+	require.Equal(t, "yaml", proj.Runtime.Name())
+}
+
+// pulumi new --language yaml --yes --non-interactive
+//
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithAILanguage(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		yes:                   true,
+		interactive:           false,
+		aiLanguage:            "yaml",
+		aiPrompt:              "", // empty
+		prompt:                ui.PromptForValue,
+		chooseTemplate:        ChooseTemplate,
+		secretsProvider:       "default",
+		stack:                 stackName,
+		generateOnly:          true,
+		promptForAIProjectURL: promptForAIProjectURL,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err,
+		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
+}
+
 const (
 	projectName = "test_project"
 	stackName   = "test_stack"
@@ -294,7 +361,7 @@ func removeStack(t *testing.T, dir, name string) {
 	require.NoError(t, err)
 	stack, err := b.GetStack(context.Background(), ref)
 	require.NoError(t, err)
-	_, err = b.RemoveStack(context.Background(), stack, false)
+	_, err = b.RemoveStack(context.Background(), stack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 }
 

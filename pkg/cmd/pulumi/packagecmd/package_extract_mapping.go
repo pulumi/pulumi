@@ -19,6 +19,7 @@ import (
 	"os"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -63,7 +64,7 @@ empty string.`,
 			}()
 
 			registry := cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-			p, _, err := ProviderFromSource(pctx, source, registry)
+			p, _, err := packages.ProviderFromSource(pctx, source, registry)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}

@@ -110,7 +110,7 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 			Name:    plugin.Name,
 			Kind:    string(plugin.Kind),
 			Version: version,
-			Size:    plugin.Size,
+			Size:    plugin.Size(),
 		}
 
 		if !plugin.InstallTime.IsZero() {
@@ -136,10 +136,10 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 			version = plugin.Version.String()
 		}
 		var bytes string
-		if plugin.Size == 0 {
+		if plugin.Size() == 0 {
 			bytes = naString
 		} else {
-			bytes = humanize.Bytes(plugin.Size)
+			bytes = humanize.Bytes(plugin.Size())
 		}
 		var installTime string
 		if plugin.InstallTime.IsZero() {
@@ -158,7 +158,7 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
 		})
 
-		totalSize += plugin.Size
+		totalSize += plugin.Size()
 	}
 
 	ui.PrintTable(cmdutil.Table{

@@ -43,6 +43,7 @@ class OutputAllTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         number = 0
         if name == "testResource1":

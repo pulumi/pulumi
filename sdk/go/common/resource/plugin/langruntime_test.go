@@ -32,7 +32,7 @@ func TestMakeExecutablePromptChoices(t *testing.T) {
 
 	// Not found executables come after the found ones, and have a [not found] suffix.
 	choices := MakeExecutablePromptChoices("executable_that_does_not_exist_in_path", "ls")
-	require.Equal(t, 2, len(choices))
+	require.Len(t, choices, 2)
 	require.Equal(t, choices[0].StringValue, "ls")
 	require.Equal(t, choices[0].DisplayName, "ls")
 	require.Equal(t, choices[1].StringValue, "executable_that_does_not_exist_in_path")
@@ -142,6 +142,12 @@ func (m *MockLanguageRuntimeClient) Link(
 func (m *MockLanguageRuntimeClient) Handshake(
 	ctx context.Context, req *pulumirpc.LanguageHandshakeRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.LanguageHandshakeResponse, error) {
+	panic("not implemented")
+}
+
+func (m *MockLanguageRuntimeClient) Cancel(
+	ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
 	panic("not implemented")
 }
 

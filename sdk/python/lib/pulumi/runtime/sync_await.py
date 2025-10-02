@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from typing import Awaitable, TypeVar
+from typing import TypeVar
+from collections.abc import Awaitable
 
 T = TypeVar("T")
 

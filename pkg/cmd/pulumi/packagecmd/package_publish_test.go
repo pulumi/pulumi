@@ -46,7 +46,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 		name                string
 		args                publishPackageArgs
 		packageSource       string
-		packageParams       []string
+		packageParams       plugin.ParameterizeParameters
 		mockSchema          *schema.Package
 		schemaExtractionErr error
 		mockOrg             string
@@ -64,7 +64,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:      "testpkg",
 				Publisher: "testpublisher",
@@ -81,7 +80,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "cmdpublisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -96,7 +94,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -113,7 +110,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -149,7 +145,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source:    "pulumi",
 				publisher: "publisher",
 			},
-			packageParams: []string{},
 			packageSource: "testpackage",
 			mockSchema: &schema.Package{
 				Name:     "testpackage",
@@ -176,7 +171,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -192,7 +186,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -210,7 +203,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource:  "testpackage",
-			packageParams:  []string{},
 			mockSchema:     nil,
 			expectedErr:    "failed to get schema",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -223,7 +215,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Version:  &version,
 				Provider: &schema.Resource{},
@@ -239,7 +230,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Provider: &schema.Resource{},
@@ -255,7 +245,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -304,7 +293,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage@not-a-valid-version",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -422,7 +410,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			cmd := &packagePublishCmd{
 				defaultOrg: defaultOrg,
 				extractSchema: func(
-					pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 				) (*schema.Package, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, nil, errors.New("mock schema extraction failed")
@@ -521,13 +509,13 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 					return "default-org", nil
 				},
 				extractSchema: func(
-					pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 				) (*schema.Package, *workspace.PackageSpec, error) {
 					return tt.mockSchema, nil, nil
 				},
 			}
 
-			err := cmd.Run(context.Background(), tt.args, "testpackage", []string{})
+			err := cmd.Run(context.Background(), tt.args, "testpackage", nil /* packageParams */)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
@@ -581,7 +569,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 					return "default-org", nil
 				},
 				extractSchema: func(
-					pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 				) (*schema.Package, *workspace.PackageSpec, error) {
 					return validSchema, nil, nil
 				},
@@ -591,7 +579,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				source:     "pulumi",
 				publisher:  "publisher",
 				readmePath: readmePath,
-			}, "testpackage", []string{})
+			}, "testpackage", nil /* packageParams */)
 
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
@@ -620,7 +608,10 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			return "", nil
 		},
 		extractSchema: func(
-			pctx *plugin.Context, packageSource string, args []string, registry registry.Registry,
+			pctx *plugin.Context,
+			packageSource string,
+			parameters plugin.ParameterizeParameters,
+			registry registry.Registry,
 		) (*schema.Package, *workspace.PackageSpec, error) {
 			pkg := &schema.Package{
 				Name:    "test-package",
@@ -635,7 +626,8 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	t.Cleanup(func() { pkgWorkspace.Instance = originalWorkspace })
 	pkgWorkspace.Instance = &mockWorkspace{readProjectErr: customErr}
 
-	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"}, "test-source", []string{})
+	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"},
+		"test-source", nil /* packageParams */)
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, customErr)

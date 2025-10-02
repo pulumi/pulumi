@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-camel-names"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.CamelNamesProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.CamelNamesProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -44,13 +46,13 @@ func init() {
 					second := RequireSingleNamedResource(l, snap.Resources, "secondResource")
 
 					wantInputs := resource.NewPropertyMapFromMap(map[string]any{
-						"theInput": resource.NewBoolProperty(true),
+						"theInput": resource.NewProperty(true),
 					})
 					assert.Equal(l, wantInputs, first.Inputs, "expected inputs to be %v", wantInputs)
 					assert.Equal(l, wantInputs, second.Inputs, "expected inputs to be %v", wantInputs)
 
 					wantOutputs := resource.NewPropertyMapFromMap(map[string]any{
-						"theOutput": resource.NewBoolProperty(true),
+						"theOutput": resource.NewProperty(true),
 					})
 					assert.Equal(l, wantOutputs, first.Outputs, "expected outputs to be %v", wantOutputs)
 					assert.Equal(l, wantOutputs, second.Outputs, "expected outputs to be %v", wantOutputs)

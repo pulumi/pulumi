@@ -16,28 +16,21 @@ import os
 import pathlib
 import traceback
 from typing import (
-    Awaitable,
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    List,
-    Mapping,
     NamedTuple,
     Optional,
-    Sequence,
-    Set,
-    Tuple,
     Union,
 )
+from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
 from google.protobuf import struct_pb2
 
 from .. import _types, log
 from .. import urn as urn_util
-from ..output import Input, Output
-from .._output import _safe_str
+from ..output import Input, Output, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
@@ -78,7 +71,7 @@ class ResourceResolverOperations(NamedTuple):
     This resource's input properties, serialized into protobuf structures.
     """
 
-    dependencies: Set[str]
+    dependencies: set[str]
     """
     The set of URNs, corresponding to the resources that this resource depends on.
     """
@@ -88,17 +81,17 @@ class ResourceResolverOperations(NamedTuple):
     An optional reference to a provider that should be used for this resource's CRUD operations.
     """
 
-    provider_refs: Dict[str, str]
+    provider_refs: dict[str, str]
     """
     An optional dict of references to providers that should be used for this resource's CRUD operations.
     """
 
-    property_dependencies: Dict[str, List[str]]
+    property_dependencies: dict[str, list[str]]
     """
     A map from property name to the URNs of the resources the property depends on.
     """
 
-    aliases: List[alias_pb2.Alias]
+    aliases: list[alias_pb2.Alias]
     """
     A list of aliases applied to this resource.
     """
@@ -120,8 +113,8 @@ async def prepare_aliases(
     resource: "Resource",
     resource_options: Optional["ResourceOptions"],
     supports_alias_specs: bool,
-) -> List[alias_pb2.Alias]:
-    aliases: List[alias_pb2.Alias] = []
+) -> list[alias_pb2.Alias]:
+    aliases: list[alias_pb2.Alias] = []
     if resource_options is None or resource_options.aliases is None:
         return aliases
 
@@ -179,7 +172,7 @@ async def prepare_resource(
     typ: Optional[type] = None,
 ) -> ResourceResolverOperations:
     # Before we can proceed, all our dependencies must be finished.
-    explicit_urn_dependencies: Set[str] = set()
+    explicit_urn_dependencies: set[str] = set()
     if opts is not None and opts.depends_on is not None:
         explicit_urn_dependencies = await _resolve_depends_on_urns(
             opts._depends_on_list(), from_resource=res
@@ -187,7 +180,7 @@ async def prepare_resource(
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-    property_dependencies_resources: Dict[str, List["Resource"]] = {}
+    property_dependencies_resources: dict[str, list[Resource]] = {}
 
     # If we have type information, we'll use it for translations rather than the resource's translate_input_property.
     translate: Optional[Callable[[str], str]] = res.translate_input_property
@@ -236,14 +229,14 @@ async def prepare_resource(
 
     # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
     # resolved provider refs.
-    provider_refs: Dict[str, str] = {}
+    provider_refs: dict[str, str] = {}
     if (remote or not custom) and opts is not None:
         providers = convert_providers(opts.provider, opts.providers)
         for name, provider in providers.items():
             provider_refs[name] = await _create_provider_ref(provider)
 
-    dependencies: Set[str] = set(explicit_urn_dependencies)
-    property_dependencies: Dict[str, List[str]] = {}
+    dependencies: set[str] = set(explicit_urn_dependencies)
+    property_dependencies: dict[str, list[str]] = {}
     for key, deps in property_dependencies_resources.items():
         expanded_deps = await _expand_dependencies(deps, from_resource=res)
         urns = set(expanded_deps.keys())
@@ -369,7 +362,7 @@ def inherited_child_alias(
 
 
 # Extract the type and name parts of a URN
-def urn_type_and_name(urn: str) -> Tuple[str, str]:
+def urn_type_and_name(urn: str) -> tuple[str, str]:
     parts = urn.split("::")
     type_parts = parts[2].split("$")
     return (parts[3], type_parts[-1])
@@ -380,13 +373,13 @@ def all_aliases(
     child_name: str,
     child_type: str,
     parent: Optional["Resource"],
-) -> "List[Input[str]]":
+) -> list[Input[str]]:
     """
     Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
     If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
     or, as calculated in the logic below, N+(M*(1+N)).
     """
-    aliases: "List[Input[str]]" = []
+    aliases: list[Input[str]] = []
 
     for child_alias in child_aliases or []:
         aliases.append(
@@ -444,10 +437,10 @@ def collapse_alias_to_urn(
         name: str = inner.name if inner.name is not ... else defaultName  # type: ignore
         type_: str = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
         parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: "Input[str]" = settings.get_project()
+        project: Input[str] = settings.get_project()
         if inner.project is not ... and inner.project is not None:
             project = inner.project
-        stack: "Input[str]" = settings.get_stack()
+        stack: Input[str] = settings.get_stack()
         if inner.stack is not ... and inner.stack is not None:
             stack = inner.stack
 
@@ -462,7 +455,7 @@ def collapse_alias_to_urn(
             lambda args: create_urn(name, type_, parent, args[0], args[1])
         )
 
-    inputAlias: "Output[Union[Alias, str]]" = Output.from_input(alias)
+    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
@@ -504,7 +497,7 @@ def create_urn(
 
 def resource_output(
     res: "Resource",
-) -> Tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
+) -> tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
     value_future: asyncio.Future[Any] = asyncio.Future()
     known_future: asyncio.Future[bool] = asyncio.Future()
     secret_future: asyncio.Future[bool] = asyncio.Future()
@@ -569,7 +562,6 @@ def get_resource(
                     return monitor.Invoke(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
 
@@ -615,8 +607,8 @@ def get_resource(
 
 
 def _translate_ignore_changes(
-    res: "Resource", typ: Optional[type], ignore_changes: Optional[List[str]]
-) -> Optional[List[str]]:
+    res: "Resource", typ: Optional[type], ignore_changes: Optional[list[str]]
+) -> Optional[list[str]]:
     if ignore_changes is not None:
         if typ is not None:
             # If `typ` is specified, use its type/name metadata for translation.
@@ -630,8 +622,8 @@ def _translate_ignore_changes(
 
 
 def _translate_additional_secret_outputs(
-    res: "Resource", typ: Optional[type], additional_secret_outputs: Optional[List[str]]
-) -> Optional[List[str]]:
+    res: "Resource", typ: Optional[type], additional_secret_outputs: Optional[list[str]]
+) -> Optional[list[str]]:
     if additional_secret_outputs is not None:
         if typ is not None:
             # If a `typ` is specified, we've opt-ed in to doing translations using type/name metadata rather
@@ -651,8 +643,8 @@ def _translate_additional_secret_outputs(
 
 
 def _translate_replace_on_changes(
-    res: "Resource", typ: Optional[type], replace_on_changes: Optional[List[str]]
-) -> Optional[List[str]]:
+    res: "Resource", typ: Optional[type], replace_on_changes: Optional[list[str]]
+) -> Optional[list[str]]:
     if replace_on_changes is not None:
         if typ is not None:
             # If `typ` is specified, use its type/name metadata for translation.
@@ -667,16 +659,35 @@ def _translate_replace_on_changes(
     return replace_on_changes
 
 
-def _get_source_position() -> Optional[source_pb2.SourcePosition]:
+def _get_source_position_for_frame(
+    frame: traceback.FrameSummary,
+) -> Optional[source_pb2.SourcePosition]:
     """
-    Returns the source position of the first stack frame in user code. This should look up to find what called into the
-    core sdk (i.e. Resource.__init__) and then skip that caller type if it is a Resource or ComponentResource.
+    Returns the source position for a stack frame. Returns None if the frame summary does not contain valid position
+    information.
+    """
 
-    This is used to compute the source position of the user code that instantiated a resource.
+    if frame.filename == "" or frame.lineno is None:
+        return None
+
+    # Convert the frame info to a source position URI by converting the filename to a URI and appending
+    # the line and column fragment.
+    try:
+        uri = pathlib.Path(frame.filename).as_uri()
+    except BaseException:  # noqa: BLE001 catch blind exception
+        return None
+
+    return source_pb2.SourcePosition(uri=uri, line=frame.lineno)
+
+
+def _get_stack_trace() -> source_pb2.StackTrace:
+    """
+    Returns an RPC stack trace that corresponds to the frames on the stack at the time of the call. The top of the stack
+    is the first frame that is not in runtime or SDK code.
     """
 
     # This is somewhat brittle in that it expects a call stack of the form:
-    # - register_resource/read_resource
+    # - runtime frames...
     # - Resource class constructor
     # - abstract Resource subclass constructor (CustomResource or ComponentResource)
     # - concrete Resource subclass constructor (this maybe split into __internal_init__)
@@ -684,8 +695,7 @@ def _get_source_position() -> Optional[source_pb2.SourcePosition]:
     #
     # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
 
-    # Capture a stack that includes the last 7 frames, this should be enough to cover the above.
-    stack = traceback.extract_stack(limit=7)
+    stack = traceback.extract_stack()
 
     # Look up the stack to find the third __init__ frame (the first is Resource, the second is
     # CustomResource/ComponentResource, the third should be the concrete resource, including skipping any __internal_init__ function)
@@ -693,27 +703,34 @@ def _get_source_position() -> Optional[source_pb2.SourcePosition]:
     for i in range(len(stack) - 1, -1, -1):
         f = stack[i]
         if f.name == "__init__":
-            n = n + 1
+            n += 1
             if n == 3:
                 break
 
     # If we didn't find the third init frame before the end then just return None
     if i < 1:
-        return None
+        return source_pb2.StackTrace()
 
-    # Extract the Ith stack frame. If that frame is missing file or line information, return the empty string.
-    caller = stack[i - 1]
-    if caller.filename == "" or caller.lineno is None:
-        return None
+    def rpc_frame(frame: traceback.FrameSummary) -> source_pb2.StackFrame:
+        pos = _get_source_position_for_frame(frame)
+        return source_pb2.StackFrame(pc=pos)
 
-    try:
-        uri = pathlib.Path(caller.filename).as_uri()
-    except BaseException:  # noqa: BLE001 catch blind exception
-        return None
+    # Reverse the stack before returning it. RPC stack traces put the topmost frame at index 0.
+    frames = list(map(rpc_frame, reversed(stack[:i])))
+    return source_pb2.StackTrace(frames=frames)
 
-    # Convert the Ith source position to a source position URI by converting the filename to a URI and appending
-    # the line and column fragment.
-    return source_pb2.SourcePosition(uri=uri, line=caller.lineno)
+
+def _get_source_position(
+    stack: source_pb2.StackTrace,
+) -> Optional[source_pb2.SourcePosition]:
+    """
+    Returns the source position of the first stack frame in user code. This should look up to find what called into the
+    core sdk (i.e. Resource.__init__) and then skip that caller type if it is a Resource or ComponentResource.
+
+    This is used to compute the source position of the user code that instantiated a resource.
+    """
+
+    return None if len(stack.frames) < 1 else stack.frames[0].pc
 
 
 def read_resource(
@@ -754,8 +771,12 @@ def read_resource(
     custom = True  # Reads are always for custom resources (non-components)
     resolvers = rpc.transfer_properties(res, props, custom)
 
-    # Get the source position.
-    source_position = _get_source_position()
+    # Get the stack trace and source position.
+    stack_trace = _get_stack_trace()
+    source_position = _get_source_position(stack_trace)
+
+    # Get the stack trace.
+    stack_trace = _get_stack_trace()
 
     async def do_read():
         try:
@@ -804,6 +825,7 @@ def read_resource(
                 acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
                 sourcePosition=source_position,
+                stackTrace=stack_trace,
                 packageRef=package_ref_str or "",
             )
 
@@ -821,7 +843,6 @@ def read_resource(
                     return monitor.ReadResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
@@ -919,8 +940,9 @@ def register_resource(
     # passed to.  However, those futures won't actually resolve until the RPC returns
     resolvers = rpc.transfer_properties(res, props, custom)
 
-    # Get the source position.
-    source_position = _get_source_position()
+    # Get the stack trace and source position.
+    stack_trace = _get_stack_trace()
+    source_position = _get_source_position(stack_trace)
 
     async def do_register() -> None:
         try:
@@ -956,7 +978,7 @@ def register_resource(
                 ) from e
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
-            callbacks: List[callback_pb2.Callback] = []
+            callbacks: list[callback_pb2.Callback] = []
             if opts.transforms:
                 if not _sync_monitor_supports_transforms():
                     raise Exception(
@@ -999,8 +1021,8 @@ def register_resource(
                 "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
             ).upper() not in {"TRUE", "1"}
 
-            full_aliases_specs: Optional[List[alias_pb2.Alias]] = None
-            alias_urns: Optional[List[str]] = None
+            full_aliases_specs: Optional[list[alias_pb2.Alias]] = None
+            alias_urns: Optional[list[str]] = None
             if resolver.supports_alias_specs:
                 full_aliases_specs = resolver.aliases
             else:
@@ -1038,6 +1060,7 @@ def register_resource(
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
+                stackTrace=stack_trace,
                 transforms=callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
@@ -1046,9 +1069,9 @@ def register_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call() -> (
-                Optional[Union[RegisterResponse, resource_pb2.RegisterResourceResponse]]
-            ):
+            def do_rpc_call() -> Optional[
+                Union[RegisterResponse, resource_pb2.RegisterResourceResponse]
+            ]:
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
@@ -1060,12 +1083,11 @@ def register_resource(
                     return monitor.RegisterResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
             log.debug(
-                f"exception when preparing or executing rpc: {traceback.format_exc()}"
+                f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
             )
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn(None, True, False, exn)
@@ -1122,7 +1144,9 @@ def register_resource(
             resolve_outputs_called = True
 
         except Exception as exn:
-            log.debug(f"exception after executing rpc: {traceback.format_exc()}")
+            log.debug(
+                f"exception after executing rpc for {ty=} {name=}: {traceback.format_exc()}"
+            )
 
             if not resolve_outputs_called:
                 rpc.resolve_outputs_due_to_exception(resolvers, exn)
@@ -1163,7 +1187,6 @@ def register_resource_outputs(
                 return monitor.RegisterResourceOutputs(req)
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
-                return None
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(
@@ -1178,9 +1201,9 @@ def register_resource_outputs(
 
 
 class PropertyDependencies:
-    urns: List[str]
+    urns: list[str]
 
-    def __init__(self, urns: List[str]):
+    def __init__(self, urns: list[str]):
         self.urns = urns
 
 
@@ -1188,7 +1211,7 @@ class RegisterResponse:
     urn: str
     id: Optional[str]
     object: struct_pb2.Struct
-    propertyDependencies: Optional[Dict[str, PropertyDependencies]]
+    propertyDependencies: Optional[dict[str, PropertyDependencies]]
     result: Optional[resource_pb2.Result.ValueType]
 
     def __init__(
@@ -1196,7 +1219,7 @@ class RegisterResponse:
         urn: str,
         id: Optional[str],
         object: struct_pb2.Struct,
-        propertyDependencies: Optional[Dict[str, PropertyDependencies]],
+        propertyDependencies: Optional[dict[str, PropertyDependencies]],
         result: Optional[resource_pb2.Result.ValueType],
     ):
         self.urn = urn
@@ -1259,7 +1282,7 @@ async def _prepare_resource_hooks(
         "before_delete",
         "after_delete",
     ]:
-        hooks_for_type: list[Union["ResourceHook", "ResourceHookFunction"]] = getattr(
+        hooks_for_type: list[Union[ResourceHook, ResourceHookFunction]] = getattr(
             hooks, hook_type, []
         )
         for i, _hook in enumerate(hooks_for_type or []):

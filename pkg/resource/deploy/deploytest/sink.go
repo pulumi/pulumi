@@ -39,9 +39,3 @@ func (s *NoopSink) Infoerrf(diag *diag.Diag, args ...interface{}) {}
 func (s *NoopSink) Errorf(diag *diag.Diag, args ...interface{}) {}
 
 func (s *NoopSink) Warningf(diag *diag.Diag, args ...interface{}) {}
-
-func (s *NoopSink) Stringify(
-	sev diag.Severity, diag *diag.Diag, args ...interface{},
-) (string, string) {
-	return "", ""
-}

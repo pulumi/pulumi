@@ -43,6 +43,7 @@ const (
 
 var providerSchema = pschema.PackageSpec{
 	Name:        "testprovider",
+	Version:     "0.0.1", // So that this provider can be installed without additional arguments
 	Description: "A test provider.",
 	DisplayName: "testprovider",
 

@@ -15,19 +15,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import builtins
-import google.protobuf.descriptor
-import google.protobuf.message
-import sys
 
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import builtins
+import collections.abc
+import google.protobuf.descriptor
+import google.protobuf.internal.containers
+import google.protobuf.message
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class SourcePosition(google.protobuf.message.Message):
     """A SourcePosition represents a position in a source file."""
 
@@ -49,6 +47,47 @@ class SourcePosition(google.protobuf.message.Message):
         line: builtins.int = ...,
         column: builtins.int = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["column", b"column", "line", b"line", "uri", b"uri"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["column", b"column", "line", b"line", "uri", b"uri"]) -> None: ...
 
 global___SourcePosition = SourcePosition
+
+@typing.final
+class StackFrame(google.protobuf.message.Message):
+    """A StackFrame represents a single stack frame."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PC_FIELD_NUMBER: builtins.int
+    @property
+    def pc(self) -> global___SourcePosition:
+        """The position of the frame's program counter. Optional."""
+
+    def __init__(
+        self,
+        *,
+        pc: global___SourcePosition | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["pc", b"pc"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["pc", b"pc"]) -> None: ...
+
+global___StackFrame = StackFrame
+
+@typing.final
+class StackTrace(google.protobuf.message.Message):
+    """A StackTrace represents the frames on the stack at the point of an RPC call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    FRAMES_FIELD_NUMBER: builtins.int
+    @property
+    def frames(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___StackFrame]:
+        """The frames on the stack."""
+
+    def __init__(
+        self,
+        *,
+        frames: collections.abc.Iterable[global___StackFrame] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["frames", b"frames"]) -> None: ...
+
+global___StackTrace = StackTrace

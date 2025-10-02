@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,14 @@
 package terminal
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
-	gotty "github.com/ijc/Gotty"
+	"github.com/xo/terminfo"
 )
 
+// Info provides methods to print ANSI escape codes to a writer.
 type Info interface {
-	Parse(attr string, params ...interface{}) (string, error)
-
 	ClearEnd(out io.Writer)
 	ClearLine(out io.Writer)
 	CarriageReturn(out io.Writer)
@@ -34,54 +32,35 @@ type Info interface {
 	ShowCursor(out io.Writer)
 }
 
-/* Satisfied by gotty.TermInfo as well as noTermInfo from below */
-type termInfo interface {
-	Parse(attr string, params ...interface{}) (string, error)
+// OpenInfo returns a new Info instance for the given terminal, ensuring that the
+// correct ANSI escape codes are used. If the terminal is not found in the
+// terminfo database, a fallback implementation is used.
+func OpenInfo(terminal string) Info {
+	ti, err := terminfo.Load(terminal)
+	if err != nil {
+		return defaultInfo{}
+	}
+	return info{ti}
 }
 
-type noTermInfo int // canary used when no terminfo.
-
-func (ti noTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	return "", errors.New("noTermInfo")
-}
-
+// info implements the Info interface, using the terminfo database to determine
+// the correct terminal codes.
 type info struct {
-	termInfo
+	ti *terminfo.Terminfo
 }
 
 var _ = Info(info{})
 
-func OpenInfo(terminal string) Info {
-	if i, err := gotty.OpenTermInfo(terminal); err == nil {
-		return info{i}
-	}
-	return info{noTermInfo(0)}
-}
-
 func (i info) ClearLine(out io.Writer) {
-	// el2 (clear whole line) is not exposed by terminfo.
-
 	// First clear line from beginning to cursor
-	if attr, err := i.Parse("el1"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[1K")
-	}
+	i.ti.Fprintf(out, terminfo.ClrBol)
 	// Then clear line from cursor to end
-	if attr, err := i.Parse("el"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[K")
-	}
+	i.ti.Fprintf(out, terminfo.ClrEol)
 }
 
 func (i info) ClearEnd(out io.Writer) {
 	// clear line from cursor to end
-	if attr, err := i.Parse("el"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[K")
-	}
+	i.ti.Fprintf(out, terminfo.ClrEol)
 }
 
 func (i info) CarriageReturn(out io.Writer) {
@@ -92,32 +71,63 @@ func (i info) CursorUp(out io.Writer, count int) {
 	if count == 0 { // Should never be the case, but be tolerant
 		return
 	}
-	if attr, err := i.Parse("cuu", count); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[%dA", count)
-	}
+	i.ti.Fprintf(out, terminfo.ParmUpCursor, count)
 }
 
 func (i info) CursorDown(out io.Writer, count int) {
 	if count == 0 { // Should never be the case, but be tolerant
 		return
 	}
-	if attr, err := i.Parse("cud", count); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[%dB", count)
-	}
+	i.ti.Fprintf(out, terminfo.ParmDownCursor, count)
 }
 
 func (i info) HideCursor(out io.Writer) {
-	if attr, err := i.Parse("civis"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	}
+	i.ti.Fprintf(out, terminfo.CursorInvisible)
 }
 
 func (i info) ShowCursor(out io.Writer) {
-	if attr, err := i.Parse("cnorm"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
+	i.ti.Fprintf(out, terminfo.CursorNormal)
+}
+
+// defaultInfo is a fallback implementation of Info interface for terminals not
+// found in the terminfo database. The terminal codes should work reasonably
+// well for any terminal.
+type defaultInfo struct{}
+
+var _ = Info(defaultInfo{})
+
+func (i defaultInfo) ClearLine(out io.Writer) {
+	// First clear line from beginning to cursor
+	fmt.Fprintf(out, "\x1b[1K")
+	// Then clear line from cursor to end
+	fmt.Fprintf(out, "\x1b[K")
+}
+
+func (i defaultInfo) ClearEnd(out io.Writer) {
+	// clear line from cursor to end
+	fmt.Fprintf(out, "\x1b[K")
+}
+
+func (i defaultInfo) CarriageReturn(out io.Writer) {
+	fmt.Fprint(out, "\r")
+}
+
+func (i defaultInfo) CursorUp(out io.Writer, count int) {
+	if count == 0 { // Should never be the case, but be tolerant
+		return
 	}
+	fmt.Fprintf(out, "\x1b[%dA", count)
+}
+
+func (i defaultInfo) CursorDown(out io.Writer, count int) {
+	if count == 0 { // Should never be the case, but be tolerant
+		return
+	}
+	fmt.Fprintf(out, "\x1b[%dB", count)
+}
+
+func (i defaultInfo) HideCursor(out io.Writer) {
+}
+
+func (i defaultInfo) ShowCursor(out io.Writer) {
 }

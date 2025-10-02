@@ -16,7 +16,6 @@ package diy
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -31,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -58,7 +56,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NotNil(t, aStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
-		_, err := b.RemoveStack(ctx, aStack, true)
+		_, err := b.RemoveStack(ctx, aStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 	deployment, err := makeUntypedDeployment("a", "abc123",
@@ -76,7 +74,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NotNil(t, bStack)
 	defer func() {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
-		_, err := b.RemoveStack(ctx, bStack, true)
+		_, err := b.RemoveStack(ctx, bStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 	deployment, err = makeUntypedDeployment("b", "123abc",
@@ -94,7 +92,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
 	require.NoError(t, err)
 	assert.Nil(t, outContToken)
-	assert.Len(t, stacks, 2)
+	require.Len(t, stacks, 2)
 	for _, stack := range stacks {
 		require.NotNil(t, stack.ResourceCount())
 		assert.Equal(t, 1, *stack.ResourceCount())
@@ -210,7 +208,7 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 	assert.False(t, backupFileExists)
 
 	// Now remove the stack
-	removed, err := b.RemoveStack(ctx, aStack, false)
+	removed, err := b.RemoveStack(ctx, aStack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 	assert.False(t, removed)
 
@@ -289,7 +287,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 	// Check we can still get the history
 	history, err := b.GetHistory(ctx, cStackRef, 10, 0)
 	require.NoError(t, err)
-	assert.Len(t, history, 1)
+	require.Len(t, history, 1)
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
@@ -303,7 +301,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
 			Inputs: resource.PropertyMap{
-				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
+				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
 			},
 		},
 	}
@@ -311,20 +309,14 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
-	require.NoError(t, err)
-
-	data, err := encoding.JSON.Marshal(sdep)
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
+		Pretty: true,
+	})
 	require.NoError(t, err)
 
 	// Ensure data has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
 	// ImportDeployment below should not modify the data
-	assert.Contains(t, string(data), "<html@tags>")
-
-	udep := &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	}
+	assert.Contains(t, string(udep.Deployment), "<html@tags>")
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
@@ -426,7 +418,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
-	assert.Len(t, stacks, numStacks)
+	require.Len(t, stacks, numStacks)
 
 	// Verify all stacks were fetched
 	stackNames := make(map[string]bool)

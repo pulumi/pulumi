@@ -206,7 +206,7 @@ func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *mo
 			compatibility: info.Compatibility,
 		}
 	}
-	return
+	return namingCtx, pkgName, external
 }
 
 func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDetails, tok string, input, args, enum bool) string {
@@ -706,7 +706,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if mod.compatibility == kubernetes20 {
 			propertyType = codegen.RequiredType(prop)
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		fmt.Fprintf(w, "    declare public %sreadonly %s: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -750,7 +750,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired() {
-				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
+				fmt.Fprintf(w, "            if (args?.%s === undefined && !opts.urn) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -770,11 +770,16 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults("args." + prop.Name)
+			argRef := "args." + prop.Name
+			argValue := applyDefaults(argRef)
 			if prop.Secret {
 				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
-				arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				if argRef == argValue {
+					arg = "args?." + prop.Name
+				} else {
+					arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				}
 			}
 
 			prefix := "            "
@@ -835,7 +840,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
-				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
+				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state?.%[1]s;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
@@ -2407,13 +2412,25 @@ func genNPMPackageMetadata(
 		}
 	}
 
-	devDependencies := map[string]string{}
-	if info.TypeScriptVersion != "" {
-		devDependencies["typescript"] = info.TypeScriptVersion
-	} else {
-		devDependencies["typescript"] = MinimumTypescriptVersion
+	typescriptVersion := info.TypeScriptVersion
+	if typescriptVersion == "" {
+		typescriptVersion = MinimumTypescriptVersion
 	}
-	devDependencies["@types/node"] = MinimumNodeTypesVersion
+
+	dependencies := map[string]string{}
+	if pkg.Parameterization != nil {
+		dependencies["async-mutex"] = "^0.5.0"
+	}
+	devDependencies := map[string]string{}
+	// Local SDKs require typescript as a normal dependency, so that we can
+	// compile the SDK in the postinstall script.
+	if localSDK {
+		dependencies["typescript"] = typescriptVersion
+		dependencies["@types/node"] = MinimumNodeTypesVersion
+	} else {
+		devDependencies["typescript"] = typescriptVersion
+		devDependencies["@types/node"] = MinimumNodeTypesVersion
+	}
 
 	version := "${VERSION}"
 	pluginVersion := ""
@@ -2449,11 +2466,6 @@ func genNPMPackageMetadata(
 			Name:     pkg.Name,
 			Version:  pluginVersion,
 		}
-	}
-
-	dependencies := map[string]string{}
-	if pkg.Parameterization != nil {
-		dependencies["async-mutex"] = "^0.5.0"
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2549,17 +2561,32 @@ func genNPMPackageMetadata(
 	return string(npmjson) + "\n", nil
 }
 
+// genPostInstallScript generates the postinstall script for local SDKs. The
+// local SDKs declare typescript as a dependencies. When the script is run via a
+// package manager, the package manager will add `node_modules/.bin` to the
+// path, ensuring we run the intended version of `tsc`.
+// We also limit the `@types` packages that are used to those the SDK itself
+// depends on. Otherwise typescript will use all `@types` packages in the
+// project, which can lead to it trying to use type packages that are not
+// compatible with the SDK's typescript version.
 func genPostInstallScript() []byte {
 	return []byte(`const fs = require("node:fs");
-const path = require("node:path")
-const process = require("node:process")
+const path = require("node:path");
+const process = require("node:process");
 const { execSync } = require('node:child_process');
+// We want to run "tsc --types node --types something-else ..." for each @types package.
+const packageJSON = JSON.parse(fs.readFileSync("package.json") ?? "{}");
+const deps = Object.keys(packageJSON.dependencies ?? []).concat(Object.keys(packageJSON.devDependencies ?? []));
+const types = deps.filter(d => d.startsWith("@types/")).map(d => d.slice("@types/".length)).join(",");
+const typesFlag = types.length > 0 ? " --types " + types : "";
 try {
-  const out = execSync('tsc')
-  console.log(out.toString())
+  execSync("tsc"+typesFlag);
 } catch (error) {
-  console.error(error.message + ": " + error.stdout.toString() + "\n" + error.stderr.toString())
-  process.exit(1)
+  console.error("Failed to run 'tsc'", {
+    stdout: error.stdout.toString(),
+    stderr: error.stderr.toString(),
+  });
+  process.exit(1);
 }
 // TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
 fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
@@ -2572,7 +2599,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 	fmt.Fprintf(w, `{
     "compilerOptions": {
         "outDir": "bin",
-        "target": "es2016",
+        "target": "ES2020",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,

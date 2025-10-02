@@ -55,12 +55,12 @@ def test_depends_on_accepts_outputs(dep_tracker):
     def check(urns):
         (dep1_urn, dep2_urn, res_urn) = urns
         res_deps = dep_tracker.dependencies[res_urn]
-        assert (
-            dep1_urn in res_deps
-        ), "Failed to propagate indirect dependencies via depends_on"
-        assert (
-            dep2_urn in res_deps
-        ), "Failed to propagate direct dependencies via depends_on"
+        assert dep1_urn in res_deps, (
+            "Failed to propagate indirect dependencies via depends_on"
+        )
+        assert dep2_urn in res_deps, (
+            "Failed to propagate direct dependencies via depends_on"
+        )
 
     return pulumi.Output.all(dep1.urn, dep2.urn, res.urn).apply(check)
 
@@ -197,9 +197,9 @@ def test_component_resource_propagates_provider() -> None:
         opts=pulumi.ResourceOptions(parent=component),
     )
 
-    assert (
-        provider == custom._provider
-    ), "Failed to propagate provider to child resource"
+    assert provider == custom._provider, (
+        "Failed to propagate provider to child resource"
+    )
 
 
 @pulumi.runtime.test
@@ -218,9 +218,9 @@ def test_component_resource_propagates_providers_list() -> None:
         opts=pulumi.ResourceOptions(parent=component),
     )
 
-    assert (
-        provider == custom._provider
-    ), "Failed to propagate provider to child resource"
+    assert provider == custom._provider, (
+        "Failed to propagate provider to child resource"
+    )
 
 
 def output_depending_on_resource(

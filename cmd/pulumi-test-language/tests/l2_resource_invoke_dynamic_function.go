@@ -22,11 +22,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
 	LanguageTests["l2-resource-invoke-dynamic-function"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.AnyTypeFunctionProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.AnyTypeFunctionProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -38,15 +41,15 @@ func init() {
 
 					r := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					assert.Equal(l, resource.RootStackType, r.Type, "expected a stack resource")
-					assert.Equal(l, 1, len(r.Outputs))
+					require.Len(l, r.Outputs, 1)
 
 					AssertPropertyMapMember(
 						l,
 						r.Outputs,
 						"dynamic",
-						resource.NewObjectProperty(
+						resource.NewProperty(
 							resource.NewPropertyMapFromMap(
-								map[string]any{"resultProperty": resource.NewStringProperty("resultValue")},
+								map[string]any{"resultProperty": resource.NewProperty("resultValue")},
 							),
 						),
 					)

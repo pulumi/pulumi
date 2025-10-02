@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -132,7 +134,7 @@ type ProgressDisplay struct {
 	systemEventPayloads []engine.StdoutEventPayload
 
 	// Any active download progress events that we've received.
-	progressEventPayloads map[string]engine.ProgressEventPayload
+	progressEventPayloads *gsync.Map[string, engine.ProgressEventPayload]
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -154,7 +156,7 @@ type ProgressDisplay struct {
 	isTerminal bool
 
 	// If all progress messages are done and we can print out the final display.
-	done bool
+	done atomic.Bool
 
 	// True if one or more resource operations have failed.
 	failed bool
@@ -270,6 +272,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		opStopwatch:           newOpStopwatch(),
 		permalink:             permalink,
 	}
+	defer func() {
+		contract.IgnoreClose(display.renderer)
+		// let our caller know we're done.
+		close(done)
+	}()
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -277,11 +284,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		ticker.Stop()
 	}
 	display.processEvents(ticker, events)
-	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
-
-	// let our caller know we're done.
-	close(done)
 }
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
@@ -655,7 +658,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Transition the display to the 'done' state.  This will transitively cause all
 	// rows to become done.
-	display.done = true
+	display.done.Store(true)
 
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
@@ -821,7 +824,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showCopilotLink {
 		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
 		display.println("")
@@ -1009,8 +1012,14 @@ func (display *ProgressDisplay) printOutputs() {
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
 	props := getResourceOutputsPropertiesString(
-		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources, display.opts.ShowSecrets)
+		stackStep,
+		1, /* indent */
+		display.isPreview,
+		display.opts.Debug,
+		false, /* refresh */
+		display.opts.ShowSameResources,
+		display.opts.ShowSecrets,
+		display.opts.TruncateOutput)
 	if props != "" {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)
@@ -1168,6 +1177,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
 		return
+	case engine.ErrorEvent:
+		return
+	case engine.PolicyAnalyzeSummaryEvent,
+		engine.PolicyAnalyzeStackSummaryEvent,
+		engine.PolicyRemediateSummaryEvent:
+		return
 	}
 
 	// At this point, all events should relate to resources.
@@ -1306,16 +1321,16 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 	display.ensureHeaderAndStackRows()
 
 	if display.progressEventPayloads == nil {
-		display.progressEventPayloads = make(map[string]engine.ProgressEventPayload)
+		display.progressEventPayloads = &gsync.Map[string, engine.ProgressEventPayload]{}
 	}
 
-	_, seen := display.progressEventPayloads[payload.ID]
+	_, seen := display.progressEventPayloads.Load(payload.ID)
 	first := !seen
 
 	if payload.Done {
-		delete(display.progressEventPayloads, payload.ID)
+		display.progressEventPayloads.Delete(payload.ID)
 	} else {
-		display.progressEventPayloads[payload.ID] = payload
+		display.progressEventPayloads.Store(payload.ID, payload)
 	}
 
 	// We have to release the lock before we call renderer.progress, because that may call back into a method that wants
@@ -1624,7 +1639,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display
 	// * During preview -- we'll show a single "replace" plan.
 	// * During update -- we'll show the individual steps.
 	// * When done -- we'll show a single "replaced" step.
-	if display.isPreview || display.done {
+	if display.isPreview || display.done.Load() {
 		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
 			return deploy.OpReplace
 		}

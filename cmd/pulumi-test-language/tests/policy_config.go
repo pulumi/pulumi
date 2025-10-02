@@ -46,7 +46,7 @@ func init() {
 			},
 		}
 
-		assert.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
+		require.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
 
 		for _, violation := range expectedViolations {
 			assert.Contains(l, policyViolations, violation, "expected policy violation %v", violation)
@@ -54,7 +54,9 @@ func init() {
 	}
 
 	LanguageTests["policy-config"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				PolicyPacks: map[string]map[string]any{

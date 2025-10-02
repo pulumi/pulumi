@@ -55,7 +55,7 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "foo")
 
 		stacks, current := integration.GetStacks(e)
-		assert.Equal(t, 1, len(stacks))
+		require.Len(t, stacks, 1)
 		require.NotNil(t, current)
 		if current == nil {
 			t.Logf("stacks: %v, current: %v", stacks, current)
@@ -68,7 +68,7 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
 
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 0, len(stacks))
+		assert.Empty(t, stacks)
 	})
 
 	t.Run("StackSelect", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestStackCommands(t *testing.T) {
 			assert.Equal(t, "second", *current)
 		}
 
-		assert.Equal(t, 3, len(stacks))
+		require.Len(t, stacks, 3)
 		assert.Contains(t, stacks, "first")
 		assert.Contains(t, stacks, "second")
 		assert.Contains(t, stacks, "third")
@@ -183,22 +183,22 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
 		stacks, _ := integration.GetStacks(e)
-		assert.Equal(t, 3, len(stacks))
+		require.Len(t, stacks, 3)
 
 		e.RunCommand("pulumi", "stack", "rm", "majula", "--yes")
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 2, len(stacks))
+		require.Len(t, stacks, 2)
 		assert.Contains(t, stacks, "blighttown")
 		assert.Contains(t, stacks, "lothric")
 
 		e.RunCommand("pulumi", "stack", "rm", "lothric", "--yes")
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 1, len(stacks))
+		require.Len(t, stacks, 1)
 		assert.Contains(t, stacks, "blighttown")
 
 		e.RunCommand("pulumi", "stack", "rm", "blighttown", "--yes")
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 0, len(stacks))
+		assert.Empty(t, stacks)
 
 		// Error
 		out, err := e.RunCommandExpectError("pulumi", "stack", "rm", "anor-londo", "--yes")
@@ -228,7 +228,7 @@ func TestStackCommands(t *testing.T) {
 				e.SetBackend(e.LocalURL())
 				e.RunCommand("pulumi", "stack", "init", "the-abyss")
 				stacks, _ := integration.GetStacks(e)
-				assert.Equal(t, 1, len(stacks))
+				require.Len(t, stacks, 1)
 
 				stackFile := path.Join(e.RootPath, "stack.json")
 				e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
@@ -266,7 +266,7 @@ func TestStackCommands(t *testing.T) {
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "install")
+		e.RunCommandWithRetry("yarn", "install")
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
 		// becomes invalid.
@@ -336,7 +336,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Build the project.
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "install")
+		e.RunCommandWithRetry("yarn", "install")
 
 		// Now run pulumi up.
 		before := time.Now().UnixNano()
@@ -348,7 +348,7 @@ func TestStackBackups(t *testing.T) {
 		require.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
-		assert.Equal(t, 1, len(files), "Files: %s", strings.Join(fileNames, ", "))
+		require.Len(t, files, 1, "Files: %s", strings.Join(fileNames, ", "))
 		fileName := files[0].Name()
 
 		// Verify the backup file.
@@ -364,7 +364,7 @@ func TestStackBackups(t *testing.T) {
 		require.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
-		assert.Equal(t, 2, len(files), "Files: %s", strings.Join(fileNames, ", "))
+		require.Len(t, files, 2, "Files: %s", strings.Join(fileNames, ", "))
 
 		// Verify the new backup file.
 		for _, file := range files {
@@ -401,7 +401,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 
 		// Build the project.
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "install")
+		e.RunCommandWithRetry("yarn", "install")
 
 		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
 
@@ -452,11 +452,13 @@ func TestStackRenameAfterCreate(t *testing.T) {
 
 // TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
 // stacks owned by organizations in the service backend.
+//
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
-	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -487,8 +489,9 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
 }
 
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestStackRemoteConfig(t *testing.T) {
-	t.Parallel()
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	// This test requires the service, as only the service supports orgs.
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
@@ -513,9 +516,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		return e, stackName, stdOut, stdErr
 	}
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("stack init creates env", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, stdOut, _ := createRemoteConfigStack(t)
 		assert.Contains(t, stdOut, "Created environment pulumi-test/"+stackName+" for stack configuration")
 		openOut, openErr := e.RunCommand("pulumi", "env", "open", "pulumi-test/"+stackName)
@@ -523,9 +525,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Equal(t, "{}\n", openOut, "creates empty env")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("set config warning", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		configSetOut, configSetErr := e.RunCommandExpectError(
 			"pulumi", "config", "set", "provider-name:key.subkey", "value")
@@ -537,9 +538,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Contains(t, configSetErr, expectedConfigSetErr, "directs user to use 'env set'")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("set secret warning", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		configSetOut, configSetErr := e.RunCommandExpectError(
 			"pulumi", "config", "set", "--secret", "secretKey", "password")
@@ -551,9 +551,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Contains(t, configSetErr, newVar, "should hide secret values")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("get", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		envSetOut, envSetErr := e.RunCommand(
 			"pulumi", "env", "set", "pulumi-test/"+stackName, "pulumiConfig.pulumi-test:key", "value")
@@ -565,9 +564,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.Equal(t, "value\n", getOut)
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("get secret", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		envSetOut, envSetErr := e.RunCommand(
 			"pulumi", "env", "set", "pulumi-test/"+stackName, "pulumiConfig.pulumi-test:key", "--secret", "password")
@@ -584,9 +582,8 @@ func TestStackRemoteConfig(t *testing.T) {
 		assert.NotContains(t, configOut, "password", "hides secret value")
 	})
 
+	//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 	t.Run("rm warning", func(t *testing.T) {
-		t.Parallel()
-
 		e, stackName, _, _ := createRemoteConfigStack(t)
 		configRmOut, configRmErr := e.RunCommandExpectError("pulumi", "config", "rm", "key")
 		assert.Empty(t, configRmOut)
@@ -613,7 +610,7 @@ func TestLocalStateLocking(t *testing.T) {
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "foo")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	count := 10
 	stderrs := make(chan string, count)
@@ -726,7 +723,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, "stack_dependencies", stackName)
@@ -765,7 +762,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	if err := json.Unmarshal([]byte(rawHistory), &history); err != nil {
 		t.Fatalf("Can't unmarshall history json")
 	}
-	assert.Equal(t, 6, len(history), "Stack history doesn't match reality")
+	require.Len(t, history, 6, "Stack history doesn't match reality")
 }
 
 func getFileNames(infos []os.DirEntry) []string {
@@ -792,7 +789,7 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, bef
 	require.NoError(t, err)
 	assert.True(t, fi.Size() > 0)
 	split := strings.Split(file.Name(), ".")
-	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
+	require.Len(t, split, 3, "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])
 	parsedTime, err := strconv.ParseInt(split[1], 10, 64)
 	require.NoError(t, err, "parsing the time in the stack backup filename")
@@ -816,9 +813,8 @@ func addRandomSuffix(s string) string {
 	return s + "-" + hex.EncodeToString(b)
 }
 
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestStackTags(t *testing.T) {
-	t.Parallel()
-
 	// This test requires the service, as only the service supports stack tags.
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
@@ -857,7 +853,7 @@ func TestStackTags(t *testing.T) {
 	assert.NotContains(t, tags, "tagA", "tagA should be removed")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	tags = lsTags()
@@ -936,9 +932,38 @@ func TestEmptyStackRm(t *testing.T) {
 		var v3deployment apitype.DeploymentV3
 		err = json.Unmarshal(deployment.Deployment, &v3deployment)
 		require.NoError(t, err)
-		assert.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
+		require.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
 
 		// Now try to remove the stack. This should succeed, even though there is the one resource in the stack.
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	}
+}
+
+// TestStackExportDoesNotEscapeHTML tests that the exported stack JSON does not escape HTML characters
+// for the diy backend.
+//
+//nolint:paralleltest // mutates environment variables
+func TestStackExportDoesNotEscapeHTML(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("testdata/html_escape")
+	e.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+	e.SetBackend(e.LocalURL())
+
+	stack, err := resource.NewUniqueHex("test-stack-", 8, -1)
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "stack", "init", stack)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+
+	// No escaped HTML characters in the exported JSON.
+	out, _ := e.RunCommand("pulumi", "stack", "export")
+	assert.Contains(t, out, "<html>'hello world'</html>")
+
+	// No escaped HTML characters in the exported JSON when showing secrets.
+	out, _ = e.RunCommand("pulumi", "stack", "export", "--show-secrets")
+	assert.Contains(t, out, "<html>'hello world'</html>")
 }

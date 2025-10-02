@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -78,6 +80,11 @@ type stepGenerator struct {
 	imports   map[resource.URN]bool // set of URNs imported in this deployment
 	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
+
+	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
+
+	// A map of original state which will be what's seen by the snapshot system to their new refreshed state.
+	refreshStates map[*resource.State]*resource.State
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
@@ -168,8 +175,13 @@ func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
 	return false
 }
 
-func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
-	return sg.deployment.opts.ReplaceTargets.IsConstrained() && sg.deployment.opts.ReplaceTargets.Contains(urn)
+func (sg *stepGenerator) isTargetedReplace(urn resource.URN, old *resource.State) bool {
+	// If this was specified by a replace target explicitly by URN, it will be replaced.
+	if sg.deployment.opts.ReplaceTargets.IsConstrained() && sg.deployment.opts.ReplaceTargets.Contains(urn) {
+		return true
+	}
+	// If the resource was marked tainted in the old state, we will replace (and implicitly untaint) it.
+	return old != nil && old.Taint
 }
 
 func (sg *stepGenerator) Errored() bool {
@@ -250,37 +262,39 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if err != nil {
 		return nil, err
 	}
-
-	newState := resource.NewState(event.Type(),
-		urn,
-		true,  /*custom*/
-		false, /*delete*/
-		event.ID(),
-		event.Properties(),
-		make(resource.PropertyMap), /* outputs */
-		parent,
-		false, /*protect*/
-		true,  /*external*/
-		event.Dependencies(),
-		nil, /* initErrors */
-		event.Provider(),
-		nil,   /* propertyDependencies */
-		false, /* deleteBeforeCreate */
-		event.AdditionalSecretOutputs(),
-		nil,   /* aliases */
-		nil,   /* customTimeouts */
-		"",    /* importID */
-		false, /* retainOnDelete */
-		"",    /* deletedWith */
-		nil,   /* created */
-		nil,   /* modified */
-		event.SourcePosition(),
-		nil,   /* ignoreChanges */
-		nil,   /* replaceOnChanges */
-		false, /* refreshBeforeUpdate */
-		"",    /* viewOf */
-		nil,   /* resourceHooks */
-	)
+	newState := resource.NewState{
+		Type:                    event.Type(),
+		URN:                     urn,
+		Custom:                  true,
+		Delete:                  false,
+		ID:                      event.ID(),
+		Inputs:                  event.Properties(),
+		Outputs:                 make(resource.PropertyMap),
+		Parent:                  parent,
+		Protect:                 false,
+		Taint:                   false,
+		External:                true,
+		Dependencies:            event.Dependencies(),
+		InitErrors:              nil,
+		Provider:                event.Provider(),
+		PropertyDependencies:    nil,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: event.AdditionalSecretOutputs(),
+		Aliases:                 nil,
+		CustomTimeouts:          nil,
+		ImportID:                "",
+		RetainOnDelete:          false,
+		DeletedWith:             "",
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          event.SourcePosition(),
+		StackTrace:              event.StackTrace(),
+		IgnoreChanges:           nil,
+		ReplaceOnChanges:        nil,
+		RefreshBeforeUpdate:     false,
+		ViewOf:                  "",
+		ResourceHooks:           nil,
+	}.Make()
 	old, hasOld := sg.deployment.Olds()[urn]
 
 	if newState.ID == "" {
@@ -312,6 +326,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 
 	if bool(logging.V(7)) && hasOld && old.ID == event.ID() {
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
+	}
+
+	// If we're in destroy mode we need to ensure this state is deleted later.
+	if sg.mode == destroyMode {
+		sg.toDelete = append(sg.toDelete, newState)
 	}
 
 	sg.reads[urn] = true
@@ -662,14 +681,39 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
-
-	new := resource.NewState(
-		goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-		refreshBeforeUpdate, "", goal.ResourceHooks)
-
+	new := resource.NewState{
+		Type:                    goal.Type,
+		URN:                     urn,
+		Custom:                  goal.Custom,
+		Delete:                  false,
+		ID:                      "",
+		Inputs:                  goal.Properties,
+		Outputs:                 nil,
+		Parent:                  goal.Parent,
+		Protect:                 protectState,
+		Taint:                   false,
+		External:                false,
+		Dependencies:            goal.Dependencies,
+		InitErrors:              goal.InitErrors,
+		Provider:                goal.Provider,
+		PropertyDependencies:    goal.PropertyDependencies,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
+		Aliases:                 aliasUrns,
+		CustomTimeouts:          &goal.CustomTimeouts,
+		ImportID:                goal.ID,
+		RetainOnDelete:          retainOnDelete,
+		DeletedWith:             goal.DeletedWith,
+		Created:                 createdAt,
+		Modified:                modifiedAt,
+		SourcePosition:          goal.SourcePosition,
+		StackTrace:              goal.StackTrace,
+		IgnoreChanges:           goal.IgnoreChanges,
+		ReplaceOnChanges:        goal.ReplaceOnChanges,
+		RefreshBeforeUpdate:     refreshBeforeUpdate,
+		ViewOf:                  "",
+		ResourceHooks:           goal.ResourceHooks,
+	}.Make()
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
@@ -691,6 +735,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			state, err := cts.Promise().Result(context.Background())
+			// alias this new "old" state in the dependency graph to it's original state.
+			if state != nil {
+				// This mutates depGraph but this in a goroutine so might race other Alias calls so we need to lock around this.
+				sg.refreshAliasLock.Lock()
+				sg.deployment.depGraph.Alias(state, old)
+				sg.refreshStates[old] = state
+				sg.refreshAliasLock.Unlock()
+			}
 			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
 				RegisterResourceEvent: event,
@@ -738,6 +790,31 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshE
 	return steps, false, err
 }
 
+func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, error) {
+	provider, allDeps := new.GetAllDependencies()
+	allDepURNs := make([]resource.URN, len(allDeps))
+	for i, dep := range allDeps {
+		allDepURNs[i] = dep.URN
+	}
+
+	if provider != "" {
+		prov, err := providers.ParseReference(provider)
+		if err != nil {
+			return false, fmt.Errorf(
+				"could not parse provider reference %s for %s: %w",
+				provider, new.URN, err)
+		}
+		allDepURNs = append(allDepURNs, prov.URN())
+	}
+
+	for _, depURN := range allDepURNs {
+		if sg.skippedCreates[depURN] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()
@@ -745,9 +822,15 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	new := event.New()
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
-	// custom non-provider resources.
+	// custom non-provider resources. We also need to skip refreshes for custom provider resources if they
+	// have dependencies that were skipped creates.
 	if sg.mode == refreshMode {
-		if goal.Custom && !providers.IsProviderType(goal.Type) {
+		hasSkippedDeps, err := sg.hasSkippedDependencies(new)
+		if err != nil {
+			return nil, false, err
+		}
+		if goal.Custom && !providers.IsProviderType(goal.Type) ||
+			providers.IsProviderType(goal.Type) && hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
 				sg.sames[urn] = true
@@ -885,12 +968,39 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			// use.
 			var newnew *resource.State
 			if err == nil {
-				newnew = resource.NewState(
-					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, new.Protect, false,
-					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-					goal.AdditionalSecretOutputs, new.Aliases, &goal.CustomTimeouts, "", new.RetainOnDelete, goal.DeletedWith,
-					new.Created, new.Modified, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-					new.RefreshBeforeUpdate, "", goal.ResourceHooks)
+				newnew = resource.NewState{
+					Type:                    goal.Type,
+					URN:                     urn,
+					Custom:                  goal.Custom,
+					Delete:                  false,
+					ID:                      "",
+					Inputs:                  goal.Properties,
+					Outputs:                 nil,
+					Parent:                  goal.Parent,
+					Protect:                 new.Protect,
+					Taint:                   false,
+					External:                false,
+					Dependencies:            goal.Dependencies,
+					InitErrors:              goal.InitErrors,
+					Provider:                goal.Provider,
+					PropertyDependencies:    goal.PropertyDependencies,
+					PendingReplacement:      false,
+					AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
+					Aliases:                 new.Aliases,
+					CustomTimeouts:          &goal.CustomTimeouts,
+					ImportID:                "",
+					RetainOnDelete:          new.RetainOnDelete,
+					DeletedWith:             goal.DeletedWith,
+					Created:                 new.Created,
+					Modified:                new.Modified,
+					SourcePosition:          goal.SourcePosition,
+					StackTrace:              goal.StackTrace,
+					IgnoreChanges:           goal.IgnoreChanges,
+					ReplaceOnChanges:        goal.ReplaceOnChanges,
+					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
+					ViewOf:                  "",
+					ResourceHooks:           goal.ResourceHooks,
+				}.Make()
 			}
 
 			sg.events <- &continueResourceImportEvent{
@@ -976,10 +1086,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	inputs := new.Inputs
 	if old != nil {
 		// Set inputs back to their old values (if any) for any "ignored" properties
-		processedInputs, err := processIgnoreChanges(inputs, old.Inputs, goal.IgnoreChanges)
-		if err != nil {
-			return nil, false, err
-		}
+		processedInputs := processIgnoreChanges(sg.deployment.Diag(), urn, inputs, old.Inputs, goal.IgnoreChanges)
 		inputs = processedInputs
 	}
 
@@ -1039,7 +1146,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || old == nil {
+		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
 				News:          goal.Properties,
@@ -1069,7 +1176,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	// If the resource is valid and we're generating plans then generate a plan
 	if !invalid && sg.deployment.opts.GeneratePlan {
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || old == nil {
+		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			oldInputs = nil
 		}
 		inputDiff := oldInputs.Diff(inputs)
@@ -1141,42 +1248,48 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 				}
 			}
 
+			info, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
+			}
+
 			if remediate {
 				// During the first pass, perform remediations. This ensures subsequent analyzers run
 				// against the transformed properties, ensuring nothing circumvents the analysis checks.
-				tresults, err := analyzer.Remediate(r)
+				response, err := analyzer.Remediate(r)
 				if err != nil {
 					return nil, false, fmt.Errorf("failed to run remediation: %w", err)
-				} else if len(tresults) > 0 {
-					for _, tresult := range tresults {
-						if tresult.Diagnostic != "" {
-							// If there is a diagnostic, we have a warning to display.
-							sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
-								PolicyName:        tresult.PolicyName,
-								PolicyPackName:    tresult.PolicyPackName,
-								PolicyPackVersion: tresult.PolicyPackVersion,
-								Description:       tresult.Description,
-								Message:           tresult.Diagnostic,
-								EnforcementLevel:  apitype.Advisory,
-								URN:               new.URN,
-							})
-						} else if tresult.Properties != nil {
-							// Emit a nice message so users know what was remediated.
-							sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
-							// Use the transformed inputs rather than the old ones from this point onwards.
-							inputs = tresult.Properties
-							new.Inputs = tresult.Properties
-						}
+				}
+				for _, tresult := range response.Remediations {
+					if tresult.Diagnostic != "" {
+						// If there is a diagnostic, we have a warning to display.
+						sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
+							PolicyName:        tresult.PolicyName,
+							PolicyPackName:    tresult.PolicyPackName,
+							PolicyPackVersion: tresult.PolicyPackVersion,
+							Description:       tresult.Description,
+							Message:           tresult.Diagnostic,
+							EnforcementLevel:  apitype.Advisory,
+							URN:               new.URN,
+						})
+					} else if tresult.Properties != nil {
+						// Emit a nice message so users know what was remediated.
+						sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
+						// Use the transformed inputs rather than the old ones from this point onwards.
+						inputs = tresult.Properties
+						new.Inputs = tresult.Properties
 					}
 				}
+				summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
+				sg.deployment.events.OnPolicyRemediateSummary(summary)
 			} else {
 				// During the second pass, perform analysis. This happens after remediations so that
 				// analyzers see properties as they were after the transformations have occurred.
-				diagnostics, err := analyzer.Analyze(r)
+				response, err := analyzer.Analyze(r)
 				if err != nil {
 					return nil, false, fmt.Errorf("failed to run policy: %w", err)
 				}
-				for _, d := range diagnostics {
+				for _, d := range response.Diagnostics {
 					if d.EnforcementLevel == apitype.Remediate {
 						// If we ran a remediation, but we are still somehow triggering a violation,
 						// "downgrade" the level we report from remediate to mandatory.
@@ -1192,6 +1305,9 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
 					sg.deployment.events.OnPolicyViolation(new.URN, d)
 				}
+
+				summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
+				sg.deployment.events.OnPolicyAnalyzeSummary(summary)
 			}
 		}
 	}
@@ -1657,7 +1773,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			// had assumed that we were going to carry them over from the old resource, which is no longer true.
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
-			if prov != nil && !sg.isTargetedReplace(urn) {
+			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
 					News:          goal.Properties,
@@ -1904,7 +2020,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 // GenerateDeletes generates delete steps for the resources that are pending delete from the snapshot, or were not
 // registered in the new snapshot. It also generates delete steps for any resources that were marked for deletion
 // because of `destroy` mode.
-func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, error) {
+func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, []Step, error) {
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
 	var allowedResourcesToDelete map[resource.URN]bool
@@ -1918,7 +2034,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	isTargeted := func(res *resource.State) bool {
@@ -1934,7 +2050,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
-	steps := slice.Prealloc[Step](len(sg.toDelete))
+	deleteSteps := []Step{}
+	sameSteps := []Step{}
 	if prev := sg.deployment.prev; prev != nil {
 		for _, res := range prev.Resources {
 			if res.ViewOf != "" {
@@ -1945,6 +2062,15 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 			if isTargeted(res) {
 				// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
+
+				// We need to check if this resource has been refreshed because in that case it will be the
+				// new refreshed state that has "Delete" set to true and that needs the DeleteStep called on
+				// it, not the old state from the original snapshot. That original snapshot state will already
+				// have been removed from the snapshot by the refresh step.
+				if state, has := sg.refreshStates[res]; has {
+					res = state
+				}
+
 				if res.Delete {
 					// The below assert is commented-out because it's believed to be wrong.
 					//
@@ -1976,15 +2102,15 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
-					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
 				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
 					if !res.PendingReplacement {
 						oldViews := sg.deployment.GetOldViews(res.URN)
-						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
+						deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
 					} else {
-						steps = append(steps, NewRemovePendingReplaceStep(sg.deployment, res))
+						deleteSteps = append(deleteSteps, NewRemovePendingReplaceStep(sg.deployment, res))
 					}
 				}
 
@@ -1992,12 +2118,18 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				if sg.deletes[res.URN] {
 					err := sg.deployment.EnsureProvider(res.Provider)
 					if err != nil {
-						return nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+						return nil, nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 					}
 				}
 			} else {
-				// Add this resource to the deployment.news so that it shows up in analysis.
-				sg.deployment.news.Store(res.URN, res)
+				// If we get here this is a resource in the state that we're skipping over due to targets. If
+				// we had registered it from the program it would have become a SameStep, so lets replicate
+				// that here.
+				if !sg.isOperatedOn(res.URN) {
+					new := res.Copy()
+					new.ID = ""
+					sameSteps = append(sameSteps, NewSameStep(sg.deployment, nil, res, new))
+				}
 			}
 		}
 	}
@@ -2009,16 +2141,16 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		if isTargeted(res) {
 			sg.deletes[res.URN] = true
 			oldViews := sg.deployment.GetOldViews(res.URN)
-			steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
+			deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
 		}
 	}
 
-	// Check each proposed delete against the relevant resource plan
-	for _, s := range steps {
+	// Check each proposed step against the relevant resource plan
+	for _, s := range slices.Concat(sameSteps, deleteSteps) {
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
-					return nil, fmt.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+					return nil, nil, fmt.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
 
 				constraint := resourcePlan.Ops[0]
@@ -2028,11 +2160,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, fmt.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					return nil, nil, fmt.Errorf(
+						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, fmt.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					return nil, nil, fmt.Errorf(
+						"%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
 		}
@@ -2051,7 +2185,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	deletingUnspecifiedTarget := false
-	for _, step := range steps {
+	for _, step := range deleteSteps {
 		urn := step.URN()
 		if !targetsOpt.Contains(urn) && !sg.deployment.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
@@ -2075,10 +2209,10 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		//
 		// Doing a normal run.  We should not proceed here at all.  We don't want to delete
 		// something the user didn't ask for.
-		return nil, result.BailErrorf("delete untargeted resource")
+		return nil, nil, result.BailErrorf("delete untargeted resource")
 	}
 
-	return steps, nil
+	return sameSteps, deleteSteps, nil
 }
 
 // getTargetDependents returns the (transitive) set of dependents on the target resources.
@@ -2094,8 +2228,7 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 
 	// Produce a dependency graph of resources, we need to graph over the new "toDelete" resources and the old
 	// resources.
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
-	dg := graph.NewDependencyGraph(allResources)
+	dg := sg.getDepgraphForScheduling()
 
 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
 	targets := make(map[resource.URN]bool)
@@ -2115,6 +2248,37 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 	}
 
 	return targets
+}
+
+func (sg *stepGenerator) getExcludeDependencies(excludesOpt UrnTargets) map[resource.URN]bool {
+	var frontier []*resource.State
+	for _, res := range sg.deployment.prev.Resources {
+		if excludesOpt.Contains(res.URN) {
+			frontier = append(frontier, res)
+		}
+	}
+
+	dg := sg.getDepgraphForScheduling()
+
+	excludes := make(map[resource.URN]bool)
+	for len(frontier) > 0 {
+		next := frontier[0]
+		frontier = frontier[1:]
+		if _, has := excludes[next.URN]; has {
+			continue
+		}
+		excludes[next.URN] = true
+
+		deps := dg.DependenciesOf(next)
+		frontier = append(frontier, deps.ToSlice()...)
+
+		if sg.deployment.opts.ExcludeDependents {
+			deps := dg.DependingOn(next, excludes, true)
+			frontier = append(frontier, deps...)
+		}
+	}
+
+	return excludes
 }
 
 // determineAllowedResourcesToDeleteFromTargets computes the full (transitive) closure of resources
@@ -2176,7 +2340,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 }
 
 // determineForbiddenResourcesToDeleteFromExcludes calculates the set of
-// resources that must _not_ be deleted in order to satisfy the `--excludes`
+// resources that must _not_ be deleted in order to satisfy the `--exclude`
 // list.
 func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	excludesOpt UrnTargets,
@@ -2185,36 +2349,20 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 		return nil, nil
 	}
 
+	// Produce a map of excludes and their dependents, including explicit and implicit
+	// DAG dependencies, as well as children (transitively).
+	excludes := sg.getExcludeDependencies(excludesOpt)
+
 	logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
 	resourcesToKeep := make(map[resource.URN]bool)
 
-	if sg.deployment.opts.ExcludeDependents {
-		resourcesToKeep = sg.getTargetDependents(excludesOpt)
-	}
-
-	for _, target := range excludesOpt.literals {
-		next := target
-
-		// We need to calculate the path from this target up to the root and mark
-		// everything en route as being "forbidden". To do this, we iteratively
-		// select the `.Parent` until we find a `nil`.
-		for {
-			current := sg.deployment.olds[next]
-
-			if current == nil {
-				break
-			}
-
-			// We also want to mark the provider of every parent as forbidden from
-			// deletion, as the parents will now also be maintained.
-			provider, err := providers.ParseReference(current.Provider)
-			if err == nil {
-				resourcesToKeep[provider.URN()] = true
-			}
-
-			resourcesToKeep[next] = true
-			next = current.Parent
+	for exclude := range excludes {
+		current := sg.deployment.olds[exclude]
+		if current == nil {
+			continue
 		}
+
+		resourcesToKeep[exclude] = true
 	}
 
 	if logging.V(7) {
@@ -2227,6 +2375,18 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	}
 
 	return resourcesToKeep, nil
+}
+
+// getDepgraphForScheduling returns a `*graph.DependencyGraph` based on all resources relevant for scheduling
+// step. This includes the new resource states to be deleted (if running in destroy mode), and all the old resource
+// states from the previous snapshot. It also handles filling in aliases for all refreshed resources.
+func (sg *stepGenerator) getDepgraphForScheduling() *graph.DependencyGraph {
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)
+	for old, new := range sg.refreshStates {
+		dg.Alias(new, old)
+	}
+	return dg
 }
 
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
@@ -2256,8 +2416,7 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	var antichains []antichain // the list of parallelizable steps we intend to return.
 
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
-	dg := graph.NewDependencyGraph(allResources)  // the current deployment's dependency graph.
+	dg := sg.getDepgraphForScheduling()           // the current deployment's dependency graph.
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
 	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 
@@ -2395,7 +2554,7 @@ func (sg *stepGenerator) diff(
 	newInputs resource.PropertyMap, prov plugin.Provider,
 ) (plugin.DiffResult, *promise.CompletionSource[plugin.DiffResult], error) {
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
-	if sg.isTargetedReplace(urn) {
+	if sg.isTargetedReplace(urn, old) {
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil, nil
 	}
 
@@ -2426,6 +2585,7 @@ func (sg *stepGenerator) diff(
 	if !sg.deployment.opts.ParallelDiff {
 		// If parallel diff isn't enabled just do the diff directly.
 		diff, err := diffResource(
+			sg.deployment.Diag(),
 			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges)
 		return diff, nil, err
 	}
@@ -2452,7 +2612,7 @@ func (sg *stepGenerator) diff(
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
-func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
+func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
@@ -2475,10 +2635,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		new, res := processIgnoreChanges(newInputs, oldInputs, ignoreChanges)
-		if res != nil {
-			return plugin.DiffResult{}, err
-		}
+		new := processIgnoreChanges(d, urn, newInputs, oldInputs, ignoreChanges)
 		tmp := oldInputs.Diff(new)
 		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
@@ -2520,9 +2677,9 @@ func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.S
 
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
 // the effect of ensuring that no changes will be made for the corresponding property.
-func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resource.PropertyMap,
 	ignoreChanges []string,
-) (resource.PropertyMap, error) {
+) resource.PropertyMap {
 	ignoredInputs := inputs.Copy()
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
@@ -2536,10 +2693,10 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 		}
 	}
 	if len(invalidPaths) != 0 {
-		return nil, fmt.Errorf("cannot ignore changes to the following properties because one or more elements of "+
-			"the path are missing: %q", strings.Join(invalidPaths, ", "))
+		d.Infof(diag.Message(urn, "cannot ignore changes in added or removed elements of the path: %q"),
+			strings.Join(invalidPaths, ", "))
 	}
-	return ignoredInputs, nil
+	return ignoredInputs
 }
 
 func (sg *stepGenerator) loadResourceProvider(
@@ -2748,7 +2905,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 			for _, propertyDep := range r.PropertyDependencies[pk] {
 				if replaceSet[propertyDep] {
 					hasDependencyInReplaceSet = true
-					pv = resource.MakeComputed(resource.NewStringProperty("<unknown>"))
+					pv = resource.MakeComputed(resource.NewProperty("<unknown>"))
 				}
 			}
 			inputsForDiff[pk] = pv
@@ -2783,7 +2940,9 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := diffResource(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges)
+		diff, err := diffResource(
+			sg.deployment.Diag(),
+			r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges)
 		if err != nil {
 			return false, nil, err
 		}
@@ -2917,11 +3076,16 @@ func (sg *stepGenerator) AnalyzeResources() error {
 	}
 
 	for _, analyzer := range analyzers {
-		diagnostics, err := analyzer.AnalyzeStack(resources)
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return fmt.Errorf("failed to get analyzer info: %w", err)
+		}
+
+		response, err := analyzer.AnalyzeStack(resources)
 		if err != nil {
 			return err
 		}
-		for _, d := range diagnostics {
+		for _, d := range response.Diagnostics {
 			if d.EnforcementLevel == apitype.Remediate {
 				// Stack policies cannot be remediated, so treat the level as mandatory.
 				d.EnforcementLevel = apitype.Mandatory
@@ -2942,6 +3106,9 @@ func (sg *stepGenerator) AnalyzeResources() error {
 			}
 			sg.deployment.events.OnPolicyViolation(urn, d)
 		}
+
+		summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
+		sg.deployment.events.OnPolicyAnalyzeStackSummary(summary)
 	}
 
 	return nil
@@ -2980,6 +3147,8 @@ func newStepGenerator(
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
+
+		refreshStates: make(map[*resource.State]*resource.State),
 
 		// We clone the targets passed as options because we will modify these sets as
 		// we compute the full sets (e.g. by expanding globs, or traversing

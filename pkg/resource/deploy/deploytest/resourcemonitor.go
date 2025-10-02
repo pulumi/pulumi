@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -116,8 +117,41 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 	return &pos, nil
 }
 
+func marshalSourceInfo(
+	sourcePosition string,
+	stackTrace []resource.StackFrame,
+) (_ *pulumirpc.SourcePosition, _ *pulumirpc.StackTrace, err error) {
+	var pos *pulumirpc.SourcePosition
+	if sourcePosition != "" {
+		pos, err = parseSourcePosition(sourcePosition)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	var trace *pulumirpc.StackTrace
+	if len(stackTrace) != 0 {
+		frames, err := fxs.TryCollect(fxs.MapUnpack(stackTrace, func(f resource.StackFrame) (*pulumirpc.StackFrame, error) {
+			position, err := parseSourcePosition(f.SourcePosition)
+			if err != nil {
+				return nil, err
+			}
+			return &pulumirpc.StackFrame{Pc: position}, nil
+		}))
+		if err != nil {
+			return nil, nil, err
+		}
+		trace = &pulumirpc.StackTrace{Frames: frames}
+	}
+	return pos, trace, nil
+}
+
 func (rm *ResourceMonitor) Close() error {
 	return rm.conn.Close()
+}
+
+func (rm *ResourceMonitor) Client() pulumirpc.ResourceMonitorClient {
+	return rm.resmon
 }
 
 func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor {
@@ -265,7 +299,10 @@ type ResourceOptions struct {
 	AdditionalSecretOutputs []resource.PropertyKey
 	AliasSpecs              bool
 
-	SourcePosition            string
+	SourcePosition         string
+	StackTrace             []resource.StackFrame
+	ParentStackTraceHandle string
+
 	DisableSecrets            bool
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
@@ -364,12 +401,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		additionalSecretOutputs[i] = string(v)
 	}
 
-	var sourcePosition *pulumirpc.SourcePosition
-	if opts.SourcePosition != "" {
-		sourcePosition, err = parseSourcePosition(opts.SourcePosition)
-		if err != nil {
-			return nil, err
-		}
+	sourcePosition, stackTrace, err := marshalSourceInfo(opts.SourcePosition, opts.StackTrace)
+	if err != nil {
+		return nil, err
 	}
 
 	resourceHooks := opts.ResourceHookBindings.marshal()
@@ -405,6 +439,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeletedWith:                string(opts.DeletedWith),
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
+		StackTrace:                 stackTrace,
+		ParentStackTraceHandle:     opts.ParentStackTraceHandle,
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
@@ -463,8 +499,18 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 	return err
 }
 
-func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider, version, sourcePosition string, packageRef string,
+func (rm *ResourceMonitor) ReadResource(
+	t tokens.Type,
+	name string,
+	id resource.ID,
+	parent resource.URN,
+	inputs resource.PropertyMap,
+	provider,
+	version,
+	sourcePosition string,
+	stackTrace []resource.StackFrame,
+	parentStackTraceHandle string,
+	packageRef string,
 ) (resource.URN, resource.PropertyMap, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
@@ -475,25 +521,24 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 		return "", nil, err
 	}
 
-	var sourcePos *pulumirpc.SourcePosition
-	if sourcePosition != "" {
-		sourcePos, err = parseSourcePosition(sourcePosition)
-		if err != nil {
-			return "", nil, err
-		}
+	sourcePos, stack, err := marshalSourceInfo(sourcePosition, stackTrace)
+	if err != nil {
+		return "", nil, err
 	}
 
 	// submit request
 	resp, err := rm.resmon.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
-		Type:           string(t),
-		Name:           name,
-		Id:             string(id),
-		Parent:         string(parent),
-		Provider:       provider,
-		Properties:     ins,
-		Version:        version,
-		SourcePosition: sourcePos,
-		PackageRef:     packageRef,
+		Type:                   string(t),
+		Name:                   name,
+		Id:                     string(id),
+		Parent:                 string(parent),
+		Provider:               provider,
+		Properties:             ins,
+		Version:                version,
+		SourcePosition:         sourcePos,
+		StackTrace:             stack,
+		ParentStackTraceHandle: parentStackTraceHandle,
+		PackageRef:             packageRef,
 	})
 	if err != nil {
 		return "", nil, err
@@ -547,10 +592,21 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 }
 
 func (rm *ResourceMonitor) Call(
-	tok tokens.ModuleMember, args resource.PropertyMap, argDependencies map[resource.PropertyKey][]resource.URN,
-	provider string, version string, packageRef string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
-	[]*pulumirpc.CheckFailure, error,
-) {
+	tok tokens.ModuleMember,
+	args resource.PropertyMap,
+	argDependencies map[resource.PropertyKey][]resource.URN,
+	provider string,
+	version string,
+	packageRef string,
+	sourcePosition string,
+	stackTrace []resource.StackFrame,
+	parentStackTraceHandle string,
+) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN, []*pulumirpc.CheckFailure, error) {
+	sourcePos, stack, err := marshalSourceInfo(sourcePosition, stackTrace)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	// marshal inputs
 	mArgs, err := plugin.MarshalProperties(args, plugin.MarshalOptions{
 		KeepUnknowns:     true,
@@ -575,12 +631,15 @@ func (rm *ResourceMonitor) Call(
 
 	// submit request
 	resp, err := rm.resmon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
-		Tok:             string(tok),
-		Provider:        provider,
-		Args:            mArgs,
-		ArgDependencies: mArgDependencies,
-		Version:         version,
-		PackageRef:      packageRef,
+		Tok:                    string(tok),
+		Provider:               provider,
+		Args:                   mArgs,
+		ArgDependencies:        mArgDependencies,
+		Version:                version,
+		PackageRef:             packageRef,
+		SourcePosition:         sourcePos,
+		StackTrace:             stack,
+		ParentStackTraceHandle: parentStackTraceHandle,
 	})
 	if err != nil {
 		return nil, nil, nil, err

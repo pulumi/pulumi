@@ -609,7 +609,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(resp.Dependencies))
+		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
@@ -666,7 +666,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(resp.Dependencies))
+		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
@@ -697,6 +697,7 @@ func TestParseOptions(t *testing.T) {
 		{"npm", npm.NpmPackageManager},
 		{"yarn", npm.YarnPackageManager},
 		{"pnpm", npm.PnpmPackageManager},
+		{"bun", npm.BunPackageManager},
 	} {
 		opts, err = parseOptions(map[string]interface{}{
 			"packagemanager": tt.input,

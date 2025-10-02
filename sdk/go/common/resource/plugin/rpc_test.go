@@ -45,7 +45,7 @@ func TestAssetSerialize(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, text, anAsset.Text)
 	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", anAsset.Hash)
-	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(anAsset), MarshalOptions{})
+	assetProps, err := MarshalPropertyValue(pk, resource.NewProperty(anAsset), MarshalOptions{})
 	require.NoError(t, err)
 	t.Logf("%v", assetProps)
 	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
@@ -86,14 +86,14 @@ func TestAssetSerialize(t *testing.T) {
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", arch.Hash)
 	}
-	archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
+	archProps, err := MarshalPropertyValue(pk, resource.NewProperty(arch), MarshalOptions{})
 	require.NoError(t, err)
 	archValue, err := UnmarshalPropertyValue("", archProps, MarshalOptions{})
 	require.NoError(t, err)
 	assert.True(t, archValue.IsArchive())
 	archDes := archValue.ArchiveValue()
 	assert.True(t, archDes.IsAssets())
-	assert.Equal(t, 1, len(archDes.Assets))
+	require.Len(t, archDes.Assets, 1)
 	assert.True(t, archDes.Assets["foo"].(*asset.Asset).IsText())
 	assert.Equal(t, text, archDes.Assets["foo"].(*asset.Asset).Text)
 	switch runtime.Version() {
@@ -134,8 +134,8 @@ func TestComputedSerialize(t *testing.T) {
 	pk := resource.PropertyKey("pk")
 	{
 		cprop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty("")}), opts)
 		require.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		require.NoError(t, err)
@@ -144,8 +144,8 @@ func TestComputedSerialize(t *testing.T) {
 	}
 	{
 		cprop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty(0.0)}), opts)
 		require.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		require.NoError(t, err)
@@ -162,15 +162,15 @@ func TestComputedSkip(t *testing.T) {
 	pk := resource.PropertyKey("pk")
 	{
 		cprop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty("")}), opts)
 		require.NoError(t, err)
 		assert.Nil(t, cprop)
 	}
 	{
 		cprop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty(0.0)}), opts)
 		require.NoError(t, err)
 		assert.Nil(t, cprop)
 	}
@@ -184,15 +184,15 @@ func TestComputedReject(t *testing.T) {
 	pk := resource.PropertyKey("pk")
 	{
 		cprop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty("")}), opts)
 		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
 		assert.Nil(t, cprop)
 	}
 	{
 		cprop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")}), MarshalOptions{KeepUnknowns: true})
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty("")}), MarshalOptions{KeepUnknowns: true})
 		require.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
@@ -212,12 +212,12 @@ func TestAssetReject(t *testing.T) {
 	asset, err := asset.FromText(text)
 	require.NoError(t, err)
 	{
-		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), opts)
+		assetProps, err := MarshalPropertyValue(pk, resource.NewProperty(asset), opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
 		assert.Nil(t, assetProps)
 	}
 	{
-		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
+		assetProps, err := MarshalPropertyValue(pk, resource.NewProperty(asset), MarshalOptions{})
 		require.NoError(t, err)
 		assetPropU, err := UnmarshalPropertyValue(pk, assetProps, opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
@@ -227,12 +227,12 @@ func TestAssetReject(t *testing.T) {
 	arch, err := archive.FromAssets(map[string]interface{}{"foo": asset})
 	require.NoError(t, err)
 	{
-		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), opts)
+		archProps, err := MarshalPropertyValue(pk, resource.NewProperty(arch), opts)
 		assert.EqualError(t, err, "unexpected Asset Archive property value for \"an asset URI\"")
 		assert.Nil(t, archProps)
 	}
 	{
-		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
+		archProps, err := MarshalPropertyValue(pk, resource.NewProperty(arch), MarshalOptions{})
 		require.NoError(t, err)
 		archValue, err := UnmarshalPropertyValue(pk, archProps, opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"foo\"")
@@ -243,7 +243,7 @@ func TestAssetReject(t *testing.T) {
 func TestUnsupportedSecret(t *testing.T) {
 	t.Parallel()
 
-	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
 	}))
@@ -260,7 +260,7 @@ func TestUnsupportedSecret(t *testing.T) {
 func TestSupportedSecret(t *testing.T) {
 	t.Parallel()
 
-	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
 	}))
@@ -278,7 +278,7 @@ func TestSupportedSecret(t *testing.T) {
 func TestUnknownSig(t *testing.T) {
 	t.Parallel()
 
-	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: "foobar",
 	}))
 	pk := resource.PropertyKey("pk")
@@ -327,7 +327,7 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "empty (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{}),
+				"foo": resource.NewProperty(resource.Output{}),
 			},
 			expected: &structpb.Struct{
 				Fields: map[string]*structpb.Value{},
@@ -336,7 +336,7 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "unknown (default)",
 			props: resource.PropertyMap{
-				"foo": resource.MakeOutput(resource.NewStringProperty("")),
+				"foo": resource.MakeOutput(resource.NewProperty("")),
 			},
 			expected: &structpb.Struct{
 				Fields: map[string]*structpb.Value{},
@@ -345,8 +345,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "unknown with deps (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty(""),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty(""),
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 				}),
 			},
@@ -357,8 +357,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "known (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 				}),
 			},
@@ -375,8 +375,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "known with deps (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("hello"),
 					Known:        true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 				}),
@@ -394,8 +394,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "secret (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 					Secret:  true,
 				}),
@@ -413,8 +413,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "secret with deps (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("hello"),
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -433,8 +433,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "unknown secret (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("shhh"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("shhh"),
 					Secret:  true,
 				}),
 			},
@@ -445,8 +445,8 @@ func TestMarshalProperties(t *testing.T) {
 		{
 			name: "unknown secret with deps (default)",
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("shhh"),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("shhh"),
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 				}),
@@ -459,7 +459,7 @@ func TestMarshalProperties(t *testing.T) {
 			name: "empty (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{}),
+				"foo": resource.NewProperty(resource.Output{}),
 			},
 			expected: &structpb.Struct{
 				Fields: map[string]*structpb.Value{
@@ -481,7 +481,7 @@ func TestMarshalProperties(t *testing.T) {
 			name: "unknown (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.MakeOutput(resource.NewStringProperty("")),
+				"foo": resource.MakeOutput(resource.NewProperty("")),
 			},
 			expected: &structpb.Struct{
 				Fields: map[string]*structpb.Value{
@@ -503,8 +503,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "unknown with deps (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty(""),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty(""),
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 				}),
 			},
@@ -538,8 +538,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "known (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("hello"),
 					Known:   true,
 				}),
 			},
@@ -566,8 +566,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "known with deps (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("hello"),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("hello"),
 					Known:        true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 				}),
@@ -605,8 +605,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "secret (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("shhh"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("shhh"),
 					Known:   true,
 					Secret:  true,
 				}),
@@ -637,8 +637,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "secret with deps (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("shhh"),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("shhh"),
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -680,8 +680,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "unknown secret (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("shhh"),
+				"foo": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("shhh"),
 					Secret:  true,
 				}),
 			},
@@ -708,8 +708,8 @@ func TestMarshalProperties(t *testing.T) {
 			name: "unknown secret with deps (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("shhh"),
+				"foo": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("shhh"),
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 				}),
@@ -773,7 +773,7 @@ func TestResourceReference(t *testing.T) {
 	opts.KeepResources = false
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	require.NoError(t, err)
-	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
+	assert.Equal(t, resource.NewProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
 
 	// Test marshaling as an ID
 	prop, err = MarshalPropertyValue(pk, rawProp, opts)
@@ -781,7 +781,7 @@ func TestResourceReference(t *testing.T) {
 	opts.KeepResources = true
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	require.NoError(t, err)
-	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
+	assert.Equal(t, resource.NewProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
 
 	// Test unmarshaling as a URN
 	rawProp = resource.MakeComponentResourceReference("fakeURN", "fakeVersion")
@@ -790,7 +790,7 @@ func TestResourceReference(t *testing.T) {
 	opts.KeepResources = false
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	require.NoError(t, err)
-	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
+	assert.Equal(t, resource.NewProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
 
 	// Test marshaling as a URN
 	prop, err = MarshalPropertyValue(pk, rawProp, opts)
@@ -798,7 +798,7 @@ func TestResourceReference(t *testing.T) {
 	opts.KeepResources = true
 	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	require.NoError(t, err)
-	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
+	assert.Equal(t, resource.NewProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
 }
 
 func TestOutputValueRoundTrip(t *testing.T) {
@@ -810,41 +810,41 @@ func TestOutputValueRoundTrip(t *testing.T) {
 	}{
 		{
 			name: "unknown",
-			raw:  resource.NewOutputProperty(resource.Output{}),
+			raw:  resource.NewProperty(resource.Output{}),
 		},
 		{
 			name: "unknown with deps",
-			raw: resource.NewOutputProperty(resource.Output{
+			raw: resource.NewProperty(resource.Output{
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
 		},
 		{
 			name: "known",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("hello"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("hello"),
 				Known:   true,
 			}),
 		},
 		{
 			name: "known with deps",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("hello"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("hello"),
 				Known:        true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
 		},
 		{
 			name: "secret",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("secret"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("secret"),
 				Known:   true,
 				Secret:  true,
 			}),
 		},
 		{
 			name: "secret with deps",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("secret"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("secret"),
 				Known:        true,
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -852,13 +852,13 @@ func TestOutputValueRoundTrip(t *testing.T) {
 		},
 		{
 			name: "unknown secret",
-			raw: resource.NewOutputProperty(resource.Output{
+			raw: resource.NewProperty(resource.Output{
 				Secret: true,
 			}),
 		},
 		{
 			name: "unknown secret with deps",
-			raw: resource.NewOutputProperty(resource.Output{
+			raw: resource.NewProperty(resource.Output{
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
@@ -890,26 +890,26 @@ func TestOutputValueMarshaling(t *testing.T) {
 	}{
 		{
 			name:     "empty (default)",
-			raw:      resource.NewOutputProperty(resource.Output{}),
+			raw:      resource.NewProperty(resource.Output{}),
 			expected: nil,
 		},
 		{
 			name:     "unknown (default)",
-			raw:      resource.MakeOutput(resource.NewStringProperty("")),
+			raw:      resource.MakeOutput(resource.NewProperty("")),
 			expected: nil,
 		},
 		{
 			name: "unknown with deps (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("hello"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("hello"),
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
 			expected: nil,
 		},
 		{
 			name: "known (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("hello"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("hello"),
 				Known:   true,
 			}),
 			expected: &structpb.Value{
@@ -918,8 +918,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		},
 		{
 			name: "known with deps (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("hello"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("hello"),
 				Known:        true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
@@ -929,8 +929,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		},
 		{
 			name: "secret (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("shhh"),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -940,8 +940,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		},
 		{
 			name: "secret with deps (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("shhh"),
 				Known:        true,
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -952,16 +952,16 @@ func TestOutputValueMarshaling(t *testing.T) {
 		},
 		{
 			name: "unknown secret (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("shhh"),
 				Secret:  true,
 			}),
 			expected: nil,
 		},
 		{
 			name: "unknown secret with deps (default)",
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("shhh"),
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
@@ -970,7 +970,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "empty (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw:  resource.NewOutputProperty(resource.Output{}),
+			raw:  resource.NewProperty(resource.Output{}),
 			expected: &structpb.Value{
 				Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
 			},
@@ -978,7 +978,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw:  resource.MakeOutput(resource.NewStringProperty("")),
+			raw:  resource.MakeOutput(resource.NewProperty("")),
 			expected: &structpb.Value{
 				Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
 			},
@@ -986,8 +986,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown with deps (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("hello"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("hello"),
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
 			expected: &structpb.Value{
@@ -997,8 +997,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown secret (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("shhh"),
 				Secret:  true,
 			}),
 			expected: &structpb.Value{
@@ -1008,8 +1008,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown secret with deps (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("shhh"),
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
@@ -1020,8 +1020,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "secret (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("shhh"),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -1032,8 +1032,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "secret with deps (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("shhh"),
 				Known:        true,
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -1045,8 +1045,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "secret (KeepSecrets)",
 			opts: MarshalOptions{KeepSecrets: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("shhh"),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -1068,8 +1068,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "secret with deps (KeepSecrets)",
 			opts: MarshalOptions{KeepSecrets: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("shhh"),
 				Known:        true,
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -1092,8 +1092,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown secret (KeepUnknowns, KeepSecrets)",
 			opts: MarshalOptions{KeepUnknowns: true, KeepSecrets: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("shhh"),
 				Secret:  true,
 			}),
 			expected: &structpb.Value{
@@ -1114,8 +1114,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown secret with deps (KeepUnknowns, KeepSecrets)",
 			opts: MarshalOptions{KeepUnknowns: true, KeepSecrets: true},
-			raw: resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("shhh"),
+			raw: resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("shhh"),
 				Secret:       true,
 				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
 			}),
@@ -1137,7 +1137,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 		{
 			name: "unknown value (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
-			raw:  resource.MakeOutput(resource.NewStringProperty("")),
+			raw:  resource.MakeOutput(resource.NewProperty("")),
 			expected: &structpb.Value{
 				Kind: &structpb.Value_StructValue{
 					StructValue: &structpb.Struct{
@@ -1206,7 +1206,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewStringProperty("hello")),
+			expected: ptr(resource.NewProperty("hello")),
 		},
 		{
 			name: "known with deps (default)",
@@ -1234,7 +1234,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewStringProperty("hello")),
+			expected: ptr(resource.NewProperty("hello")),
 		},
 		{
 			name: "secret (default)",
@@ -1255,7 +1255,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewStringProperty("shhh")),
+			expected: ptr(resource.NewProperty("shhh")),
 		},
 		{
 			name: "secret with deps (default)",
@@ -1286,7 +1286,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewStringProperty("shhh")),
+			expected: ptr(resource.NewProperty("shhh")),
 		},
 		{
 			name: "unknown secret (default)",
@@ -1348,7 +1348,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewStringProperty(""))),
+			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "unknown with deps (KeepUnknowns)",
@@ -1374,7 +1374,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewStringProperty(""))),
+			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "unknown secret (KeepUnknowns)",
@@ -1393,7 +1393,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewStringProperty(""))),
+			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "unknown secret with deps (KeepUnknowns)",
@@ -1422,7 +1422,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewStringProperty(""))),
+			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "secret (KeepUnknowns)",
@@ -1444,7 +1444,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewStringProperty("shhh")),
+			expected: ptr(resource.NewProperty("shhh")),
 		},
 		{
 			name: "secret with deps (KeepUnknowns)",
@@ -1476,7 +1476,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewStringProperty("shhh")),
+			expected: ptr(resource.NewProperty("shhh")),
 		},
 		{
 			name: "secret (KeepSecrets)",
@@ -1498,7 +1498,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.NewStringProperty("shhh"))),
+			expected: ptr(resource.MakeSecret(resource.NewProperty("shhh"))),
 		},
 		{
 			name: "secret with deps (KeepSecrets)",
@@ -1530,7 +1530,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.NewStringProperty("shhh"))),
+			expected: ptr(resource.MakeSecret(resource.NewProperty("shhh"))),
 		},
 		{
 			name: "unknown secret (KeepUnknowns, KeepSecrets)",
@@ -1549,7 +1549,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty("")))),
+			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))),
 		},
 		{
 			name: "unknown secret with deps (KeepUnknowns, KeepSecrets)",
@@ -1578,7 +1578,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty("")))),
+			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))),
 		},
 	}
 	for _, tt := range tests {
@@ -1707,9 +1707,9 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 			name: "Computed (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
 			props: resource.PropertyMap{
-				"message": resource.MakeComputed(resource.NewStringProperty("")),
-				"nested": resource.NewObjectProperty(resource.PropertyMap{
-					"value": resource.MakeComputed(resource.NewStringProperty("")),
+				"message": resource.MakeComputed(resource.NewProperty("")),
+				"nested": resource.NewProperty(resource.PropertyMap{
+					"value": resource.MakeComputed(resource.NewProperty("")),
 				}),
 			},
 			expected: &structpb.Struct{
@@ -1735,9 +1735,9 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 			name: "Output (KeepUnknowns)",
 			opts: MarshalOptions{KeepUnknowns: true},
 			props: resource.PropertyMap{
-				"message": resource.NewOutputProperty(resource.Output{}),
-				"nested": resource.NewObjectProperty(resource.PropertyMap{
-					"value": resource.NewOutputProperty(resource.Output{}),
+				"message": resource.NewProperty(resource.Output{}),
+				"nested": resource.NewProperty(resource.PropertyMap{
+					"value": resource.NewProperty(resource.Output{}),
 				}),
 			},
 			expected: &structpb.Struct{
@@ -1763,9 +1763,9 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 			name: "Output (KeepUnknowns, KeepOutputValues)",
 			opts: MarshalOptions{KeepUnknowns: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
-				"message": resource.NewOutputProperty(resource.Output{}),
-				"nested": resource.NewObjectProperty(resource.PropertyMap{
-					"value": resource.NewOutputProperty(resource.Output{}),
+				"message": resource.NewProperty(resource.Output{}),
+				"nested": resource.NewProperty(resource.PropertyMap{
+					"value": resource.NewProperty(resource.Output{}),
 				}),
 			},
 			expected: &structpb.Struct{
@@ -1832,8 +1832,8 @@ func TestUpgradeToOutputValues(t *testing.T) {
 	// Unknown
 	{
 		prop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")}), upgradeOpts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty("")}), upgradeOpts)
 		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, opts)
 		require.NoError(t, err)
@@ -1843,8 +1843,8 @@ func TestUpgradeToOutputValues(t *testing.T) {
 	}
 	{
 		prop, err := MarshalPropertyValue(pk,
-			resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+			resource.NewProperty(
+				resource.Computed{Element: resource.NewProperty("")}), opts)
 		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
 		require.NoError(t, err)
@@ -1855,9 +1855,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 
 	// Secrets
 	{
-		elem := resource.NewStringProperty("hello")
+		elem := resource.NewProperty("hello")
 		prop, err := MarshalPropertyValue(pk,
-			resource.NewSecretProperty(
+			resource.NewProperty(
 				&resource.Secret{Element: elem}), upgradeOpts)
 		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, opts)
@@ -1868,9 +1868,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		assert.Equal(t, elem, propU.OutputValue().Element)
 	}
 	{
-		elem := resource.NewStringProperty("hello")
+		elem := resource.NewProperty("hello")
 		prop, err := MarshalPropertyValue(pk,
-			resource.NewSecretProperty(
+			resource.NewProperty(
 				&resource.Secret{Element: elem}), opts)
 		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
@@ -1885,9 +1885,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 	{
 		elem := resource.ResourceReference{
 			URN: resource.CreateURN("name", "type", "", "project", "stack"),
-			ID:  resource.MakeComputed(resource.NewStringProperty("")),
+			ID:  resource.MakeComputed(resource.NewProperty("")),
 		}
-		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), upgradeOpts)
+		prop, err := MarshalPropertyValue(pk, resource.NewProperty(elem), upgradeOpts)
 		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, opts)
 		require.NoError(t, err)
@@ -1900,9 +1900,9 @@ func TestUpgradeToOutputValues(t *testing.T) {
 	{
 		elem := resource.ResourceReference{
 			URN: resource.CreateURN("name", "type", "", "project", "stack"),
-			ID:  resource.MakeComputed(resource.NewStringProperty("")),
+			ID:  resource.MakeComputed(resource.NewProperty("")),
 		}
-		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), opts)
+		prop, err := MarshalPropertyValue(pk, resource.NewProperty(elem), opts)
 		require.NoError(t, err)
 		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
 		require.NoError(t, err)

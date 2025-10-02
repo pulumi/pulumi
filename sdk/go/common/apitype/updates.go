@@ -244,6 +244,7 @@ type CompleteUpdateRequest struct {
 type PatchUpdateCheckpointRequest struct {
 	IsInvalid  bool            `json:"isInvalid"`
 	Version    int             `json:"version"`
+	Features   []string        `json:"features,omitempty"`
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 

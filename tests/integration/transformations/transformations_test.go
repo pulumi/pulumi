@@ -81,7 +81,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			// will not be correctly recorded in the state file, and so cannot be
 			// verified here.
 			//
-			// assert.Len(t, res.PropertyDependencies, 1)
+			// require.Len(t, res.PropertyDependencies, 1)
 			input := res.Inputs["length"]
 			require.NotNil(t, input)
 			assert.Equal(t, 5.0, input.(float64))

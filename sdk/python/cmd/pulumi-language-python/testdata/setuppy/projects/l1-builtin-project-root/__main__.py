@@ -1,3 +1,3 @@
 import pulumi
 
-pulumi.export("rootDirectoryOutput", pulumi.runtime.get_root_directory())
+pulumi.export("rootDirectoryOutput", pulumi.get_root_directory())

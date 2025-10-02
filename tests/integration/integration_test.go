@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -535,7 +536,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.CWD = os.TempDir()
@@ -698,12 +699,23 @@ func TestExcludeProtected(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
-	stdout, _ := e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
+	// We run the command but _also_ exclude a resource.
+	urn := "urn:pulumi:dev::exclude-protected::my:module:Resource$my:module:Resource::my-bucket-child"
+	stdout, _ := e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected", "--exclude", urn)
 	assert.Contains(t, stdout, "All unprotected resources were destroyed. There are still 7 protected resources")
+	stdout, _ = e.RunCommand("pulumi", "stack", "--show-urns")
+	assert.Contains(t, stdout, urn+"\n")
+
+	// We run the command again, but without the exclude.
+	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
+	assert.Contains(t, stdout, "All unprotected resources were destroyed. There are still 7 protected resources")
+	stdout, _ = e.RunCommand("pulumi", "stack", "--show-urns")
+	assert.NotContains(t, stdout, urn+"\n")
+
 	// We run the command again, but this time there are not unprotected resources to destroy.
 	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
 	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")
@@ -1133,7 +1145,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	newProjectName := "new_large_resource_js"
@@ -1163,9 +1175,9 @@ func TestProjectRename_LocalProject(t *testing.T) {
 	testProjectRename(e, "organization")
 }
 
+//nolint:paralleltest // TODO: https://github.com/pulumi/pulumi-service/issues/31668
 func TestProjectRename_Cloud(t *testing.T) {
-	t.Parallel()
-
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -1305,7 +1317,7 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
@@ -1332,7 +1344,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
@@ -1362,7 +1374,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
 		"--policy-pack", "advisory_policy_pack",
@@ -1374,6 +1386,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 }
 
 // regression test for https://github.com/pulumi/pulumi/issues/11092
+// and https://github.com/pulumi/pulumi/issues/20367
 func TestPolicyPluginExtraArguments(t *testing.T) {
 	t.Parallel()
 
@@ -1386,7 +1399,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
@@ -1412,7 +1425,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 
 	// Run with extra arguments
 	_, _, err = e.GetCommandResults("pulumi", "--logflow", "preview", "--logtostderr",
-		"--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
+		"-v9", "--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
 	require.NoError(t, err)
 }
 
@@ -1591,6 +1604,39 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestPulumiInstallInstallsPackagesWithExperimentalRegistry(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packageadd-remote")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.Env = append(e.Env, "PULUMI_EXPERIMENTAL=true")
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
+
+	// Manually modify Pulumi.yaml to include a GitHub URL in packages section
+	pulumiYamlContent := `name: package-add-remote-test
+description: A minimal TypeScript Pulumi program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: yarn
+packages:
+  test-provider: github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc
+`
+	e.WriteTestFile("Pulumi.yaml", pulumiYamlContent)
+
+	// Remove the plugin from the local cache and try to install it using `pulumi install`
+	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.NotContains(t, stdout, "github.com_pulumi_component-test-providers")
+
+	e.RunCommand("pulumi", "install")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+}
+
 func TestOverrideComponentNamespace(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1647,7 +1693,7 @@ func TestTaggedComponent(t *testing.T) {
 
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomPet")
 	// We expect 4 words separated by dashes.
-	require.Equal(t, 4, len(strings.Split(stdout, "-")))
+	require.Len(t, strings.Split(stdout, "-"), 4)
 	require.Equal(t, "test-", stdout[:5])
 
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomString")
@@ -1736,4 +1782,148 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 		t.Fatal("Test didn't finish in time")
 	case <-done:
 	}
+}
+
+// Test that we correctly detect an error in from a resource during an
+// automation API run and don't hang.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/20151
+func TestAutomationAPIErrorInResource(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("automation", "error"))
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommandWithRetry("yarn", "install")
+
+	// The bug was causing a hang, ensure the test times out
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	cmd := e.SetupCommandIn(ctx, e.CWD, "node", "index.js")
+	out, err := cmd.CombinedOutput()
+	require.ErrorContains(t, err, "exit status 1")
+	require.Contains(t, string(out), "error: Oops")
+}
+
+// TestRunningViaCLIWrapper tests that we can interrupt an operation when
+// running via a CLI wrapper tool like the 1Password CLI.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/20154
+func TestRunningViaCLIWrapper(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	programPath := filepath.Join(e.RootPath, "program")
+	providerPath := filepath.Join(e.RootPath, "provider")
+
+	e.ImportDirectory("interrupt")
+	// Install the provider's dependencies
+	e.RunCommand("pulumi", "install", "-C", providerPath)
+	e.CWD = programPath
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "package", "add", providerPath)
+	e.CWD = e.RootPath
+
+	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
+	// This simulates the behaviour of the 1password CLI.
+	cmd := e.SetupCommandIn(context.TODO(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
+		"pulumi", "-C", programPath, "up", "--skip-preview", "-s", "dev")
+	t.Logf("Running command %s", cmd.String())
+
+	// This test requires being run via a "real" terminal
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{
+		Rows: 24,
+		Cols: 80,
+	})
+	require.NoError(t, err)
+	defer ptmx.Close()
+
+	timeout := 3 * time.Minute
+	wait := 100 * time.Millisecond
+
+	go func() {
+		// Wait for the program to be ready before sending the interrupt signal.
+		end := time.Now().Add(timeout)
+		for time.Now().Before(end) {
+			if _, err := os.Stat(filepath.Join(programPath, "ready.txt")); err == nil {
+				t.Logf("Found `ready.txt`")
+				break
+			}
+			time.Sleep(wait)
+		}
+
+		n, err := ptmx.Write([]byte{3}) // Ctrl+C
+		require.NoError(t, err)
+		require.Equal(t, 1, n)
+	}()
+
+	processFinished := make(chan error, 1)
+	out := make(chan string, 1)
+
+	go func() {
+		var output strings.Builder
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if n > 0 {
+				output.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+		out <- output.String()
+	}()
+
+	go func() {
+		processFinished <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-processFinished:
+		t.Logf("Process finished with error: %s, output: %s", err, <-out)
+		require.ErrorContains(t, err, "exit status 1")
+
+	case <-time.After(timeout):
+		// This is the bug - process hung trying to control terminal
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+
+		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
+			" Output so far: %s", timeout.String(), <-out)
+	}
+}
+
+func TestPluginLs(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls", "--json")
+	plugins := []map[string]any{}
+	err := json.Unmarshal([]byte(stdout), &plugins)
+
+	require.NoError(t, err)
+	require.Len(t, plugins, 1)
+	random := plugins[0]
+	require.Equal(t, "random", random["name"].(string))
+	require.Equal(t, "resource", random["kind"].(string))
+	require.Greater(t, random["size"].(float64), 0.0)
 }

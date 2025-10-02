@@ -14,7 +14,8 @@
 import asyncio
 import sys
 import traceback
-from typing import Any, Awaitable, Callable, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, Optional, TypeVar
+from collections.abc import Awaitable
 
 from .. import log
 
@@ -29,7 +30,7 @@ class RPCManager:
     outstanding RPCs.
     """
 
-    rpcs: List[Awaitable]
+    rpcs: list[Awaitable]
     """
     The active RPCs.
     """
@@ -49,7 +50,7 @@ class RPCManager:
 
     def do_rpc(
         self, name: str, rpc_function: Callable[..., Awaitable[T]]
-    ) -> Callable[..., Awaitable[Tuple[T, Exception]]]:
+    ) -> Callable[..., Awaitable[tuple[T, Exception]]]:
         """
         Wraps a given RPC function by producing an awaitable function suitable to be run in the asyncio
         event loop. The wrapped function catches all unhandled exceptions and reports them to the exception

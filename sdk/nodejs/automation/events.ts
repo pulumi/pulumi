@@ -250,6 +250,11 @@ export interface StepEventStateMetadata {
     protect?: boolean;
 
     /**
+     * Taint is true to indicate that the resource should be replaced upon the next update.
+     */
+    taint?: boolean;
+
+    /**
      * RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
      */
     retainOnDelete?: boolean;

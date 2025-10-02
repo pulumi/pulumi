@@ -51,7 +51,7 @@ func TestRunCommandLog(t *testing.T) {
 
 	matches, err := filepath.Glob(filepath.Join(tempdir, commandOutputFolderName, "node.*"))
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(matches))
+	require.Len(t, matches, 1)
 
 	output, err := os.ReadFile(matches[0])
 	require.NoError(t, err)
@@ -100,7 +100,11 @@ func TestGoModEdits(t *testing.T) {
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
-	depRoot := filepath.Clean(filepath.Join(cwd, "../../../.."))
+
+	repoRoot := filepath.Clean(filepath.Join(cwd, "../../.."))
+	depRoot := filepath.Clean(filepath.Join(repoRoot, ".."))
+	// NOTE: this path may not point to the directory that contains the current worktree.
+	pulumiRepo := filepath.Join(depRoot, "pulumi")
 
 	gopath, err := GoPath()
 	require.NoError(t, err)
@@ -139,7 +143,7 @@ func TestGoModEdits(t *testing.T) {
 		{
 			name:          "valid-path",
 			dep:           "../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
 			name:          "invalid-path-non-existent",
@@ -155,22 +159,22 @@ func TestGoModEdits(t *testing.T) {
 		{
 			name:          "valid-module-name",
 			dep:           "github.com/pulumi/pulumi/sdk/v3",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(pulumiRepo, "sdk"),
 		},
 		{
 			name:          "valid-module-name-version-skew",
 			dep:           "github.com/pulumi/pulumi/sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(pulumiRepo, "sdk"),
 		},
 		{
 			name:          "valid-rel-path",
 			dep:           "github.com/pulumi/pulumi/sdk/v3=../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
 			name:          "valid-rel-path-version-skew",
 			dep:           "github.com/pulumi/pulumi/sdk=../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
 			name:          "invalid-rel-path",

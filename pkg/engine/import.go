@@ -48,5 +48,6 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 		isImport:      true,
 		imports:       imports,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }

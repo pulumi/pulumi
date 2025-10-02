@@ -150,6 +150,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	// Close the deployment when we're finished.
 	defer contract.IgnoreClose(ex.deployment)
+	if ex.deployment.writeSnapshot && ex.deployment.events != nil {
+		err := ex.deployment.events.OnSnapshotWrite(ex.deployment.prev)
+		if err != nil {
+			return nil, result.BailErrorf("failed to rebase deployment: %v", err)
+		}
+	}
 
 	// If this deployment is an import, run the imports and exit.
 	if ex.deployment.isImport {
@@ -189,11 +195,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		return nil, err
 	}
 	defer func() {
-		closeErr := src.Cancel(callerCtx)
-		if closeErr != nil {
-			logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
-			if err == nil {
-				// If we didn't see any earlier error, report the close error and bail.
+		// If we didn't see any earlier error, close the source iterator and
+		// report any errors encountered during the close.
+		if err == nil {
+			closeErr := src.Cancel(callerCtx)
+			if closeErr != nil {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
 				ex.reportError("", closeErr)
 				err = result.BailError(closeErr)
 			}
@@ -466,7 +473,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// At this point we have generated the set of resources above that we would normally want to
 		// delete.  However, if the user provided -target's we will only actually delete the specific
 		// resources that are in the set explicitly asked for.
-		deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
+		sameSteps, deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
 		if err != nil {
@@ -474,6 +481,13 @@ func (ex *deploymentExecutor) performPostSteps(
 			return err
 		}
 
+		// Execute all the same steps together. TODO: We _could_ parallelize these if we worked out the
+		// dependency graph between them, but for now we just run them serially, same steps are guaranteed to
+		// be fast.
+		tok := ex.stepExec.ExecuteSerial(sameSteps)
+		tok.Wait(ctx)
+
+		// Then schedule the deletions
 		deleteChains := ex.stepGen.ScheduleDeletes(deleteSteps)
 
 		// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed

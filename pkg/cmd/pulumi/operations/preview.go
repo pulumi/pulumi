@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -34,7 +35,6 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -273,6 +273,7 @@ func NewPreviewCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
+	var showFullOutput bool
 	var suppressOutputs bool
 	var suppressProgress bool
 	var suppressPermalink string
@@ -334,6 +335,7 @@ func NewPreviewCmd() *cobra.Command {
 				ShowSecrets:            showSecrets,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
+				TruncateOutput:         !showFullOutput,
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
@@ -579,16 +581,12 @@ func NewPreviewCmd() *cobra.Command {
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "save-plan", "",
-		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
+		"[PREVIEW] Save the operations proposed by the preview to a plan file at the given path")
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false,
 		"Show secrets in plaintext in the CLI output,"+
 			" if used with --save-plan the secrets will also be shown in the plan file. Defaults to `false`")
 
-	if !env.Experimental.Value() {
-		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
-			`Could not mark "save-plan" as hidden`)
-	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
 		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
@@ -639,7 +637,8 @@ func NewPreviewCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
-		"Serialize the preview diffs, operations, and overall output as JSON")
+		"Serialize the preview diffs, operations, and overall output as JSON."+
+			" Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -670,6 +669,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&showFullOutput, "show-full-output", false,
+		"Display full length of inputs & outputs")
 	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")

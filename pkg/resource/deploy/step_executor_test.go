@@ -93,6 +93,22 @@ func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, resou
 	panic("unimplemented")
 }
 
+func (e *mockEvents) OnPolicyAnalyzeSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyRemediateSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyAnalyzeStackSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnSnapshotWrite(base *Snapshot) error {
+	return nil
+}
+
 var _ Events = (*mockEvents)(nil)
 
 func TestStepExecutor(t *testing.T) {
@@ -210,6 +226,7 @@ func TestStepExecutor(t *testing.T) {
 						},
 					},
 					goals: &gsync.Map[resource.URN, *resource.Goal]{},
+					news:  &gsync.Map[resource.URN, *resource.State]{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}

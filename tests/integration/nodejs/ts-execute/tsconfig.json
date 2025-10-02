@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["ES2022"],
+    // The target has to be *at least* ES2022 for this test to be applicable!
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "pretty": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    // Never emit .js files for this test
+    "noEmit": true,
+    "sourceMap": false,
+    "allowJs": false,
+    "esModuleInterop": false,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": false,
+    "incremental": false,
+    "skipLibCheck": true
+  },
+  "include": ["*.ts"]
+}

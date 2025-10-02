@@ -28,7 +28,9 @@ import (
 
 func init() {
 	LanguageTests["l2-large-string"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.LargeProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.LargeProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -40,10 +42,10 @@ func init() {
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					// Check that the large string is in the snapshot
-					largeString := resource.NewStringProperty(strings.Repeat("hello world", 9532509))
+					largeString := resource.NewProperty(strings.Repeat("hello world", 9532509))
 					large := RequireSingleResource(l, snap.Resources, "large:index:String")
 					require.Equal(l,
-						resource.NewStringProperty("hello world"),
+						resource.NewProperty("hello world"),
 						large.Inputs["value"],
 					)
 					require.Equal(l,

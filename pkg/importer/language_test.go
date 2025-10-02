@@ -73,9 +73,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 			var actualState *resource.State
 			err = GenerateLanguageDefinitions(io.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
-				if !assert.Len(t, p.Nodes, 1) {
-					t.Fatal()
-				}
+				require.Len(t, p.Nodes, 1)
 
 				res, isResource := p.Nodes[0].(*pcl.Resource)
 				if !assert.True(t, isResource) {

@@ -1,0 +1,10 @@
+<{%fg 2%}>+ pulumi:providers:pulumi: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
+<{%reset%}><{%reset%}><{%fg 14%}>> pulumi:pulumi:StackReference: (read)
+<{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
+<{%reset%}><{%fg 14%}>    name: <{%reset%}><{%fg 14%}>"other"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%reset%}><{%fg 14%}>    --outputs:--<{%reset%}>
+<{%fg 14%}>    outputs          : <{%reset%}><{%fg 14%}>{
+<{%reset%}><{%fg 14%}>        foo: <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%fg 14%}>    }<{%reset%}><{%fg 14%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

@@ -1,0 +1,12 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgB:m:typB resB <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>Default provider for 'pkgB' disabled. 'urn:pulumi:test::test::pkgB:m:typB::resB' must use an explicit provider.<{%reset%}>
+ <{%reset%}>  <{%reset%}> pkgB:m:typB resB <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgB:m:typB (resB):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>Default provider for 'pkgB' disabled. 'urn:pulumi:test::test::pkgB:m:typB::resB' must use an explicit provider.<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+

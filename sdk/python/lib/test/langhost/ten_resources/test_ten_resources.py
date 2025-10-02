@@ -45,6 +45,7 @@ class TenResourcesTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual("test:index:MyResource", ty)
         if not _dry_run:

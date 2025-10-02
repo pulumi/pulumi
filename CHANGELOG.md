@@ -1,5 +1,562 @@
 # Changelog
 
+## 3.199.0 (2025-10-01)
+
+
+### Features
+
+- [cli/about] Add `pulumi about env` to help
+  [#20633](https://github.com/pulumi/pulumi/pull/20633)
+
+- [cli/{about,new}] Add environment variables to override template repository settings. The new PULUMI_TEMPLATE_GIT_REPOSITORY, PULUMI_TEMPLATE_BRANCH, PULUMI_POLICY_TEMPLATE_GIT_REPOSITORY, and PULUMI_POLICY_TEMPLATE_BRANCH environment variables allow runtime customization of template sources
+  [#20615](https://github.com/pulumi/pulumi/pull/20615)
+
+- [cli/{install,package}] Add support for package references in plugins
+  [#20524](https://github.com/pulumi/pulumi/pull/20524)
+
+- [sdk/nodejs] Pass options, name, and type to ComponentResources initialize methods
+  [#20618](https://github.com/pulumi/pulumi/pull/20618)
+
+- [cli/policy] Send vcs metadata when publishing policy packs
+  [#20528](https://github.com/pulumi/pulumi/pull/20528)
+
+
+### Bug Fixes
+
+- [cli/display] Always send diag events to stderr in the diff display
+  [#20632](https://github.com/pulumi/pulumi/pull/20632)
+
+- [components] Stop including auth info in plugin name
+  [#20620](https://github.com/pulumi/pulumi/pull/20620)
+
+- [engine] Support the import option in resource transforms
+  [#20586](https://github.com/pulumi/pulumi/pull/20586)
+
+- [programgen] Fix panic in parseProxyApply when encoutering warning diagnostics
+  [#20583](https://github.com/pulumi/pulumi/pull/20583)
+
+- [sdk/nodejs] Don't attempt to serialise function values for resource inputs/outputs
+  [#20621](https://github.com/pulumi/pulumi/pull/20621)
+
+## 3.198.0 (2025-09-26)
+
+
+### Features
+
+- [engine] Expand snapshot integrity check for resources
+  [#20519](https://github.com/pulumi/pulumi/pull/20519)
+
+- [sdk/go] Refactor Go policy SDK to have access to a pulumi Context object
+  [#20570](https://github.com/pulumi/pulumi/pull/20570)
+
+- [sdk/python] Allow registered resources to be retrieved from the mock monitor for test assertions
+  [#20540](https://github.com/pulumi/pulumi/pull/20540)
+
+
+### Bug Fixes
+
+- [engine] Fix snapshot integrity error with `run-program --refresh`, when a provider has a dependency that isn't being created
+  [#20541](https://github.com/pulumi/pulumi/pull/20541)
+
+- [engine] Remove unneeded data from policy summary events
+  [#20589](https://github.com/pulumi/pulumi/pull/20589)
+
+- [sdk] Fix plugin killing during cancellation
+  [#20543](https://github.com/pulumi/pulumi/pull/20543)
+
+- [sdk/go] Fix [Unm/M]arshalProperties to return nil when given nil
+  [#20544](https://github.com/pulumi/pulumi/pull/20544)
+
+
+### Miscellaneous
+
+- [protobuf] Add loader_target to LanguageRuntime.LinkRequest
+  [#20552](https://github.com/pulumi/pulumi/pull/20552)
+
+- [cli/package] Move InstallPackage from cmd/packagecmd to cmd/packages
+  [#20550](https://github.com/pulumi/pulumi/pull/20550)
+
+- [cli/package] Move stdout/stderr IO out of GenSDK and LinkPackage
+  [#20546](https://github.com/pulumi/pulumi/pull/20546)
+
+- [sdk] Move PluginSpec.Install to pkg/workspace.InstallPluginContent
+  [#20537](https://github.com/pulumi/pulumi/pull/20537)
+
+- [sdk/yaml] Bump pulumi-yaml to 1.23.2
+  [#20588](https://github.com/pulumi/pulumi/pull/20588)
+
+## 3.197.0 (2025-09-17)
+
+
+### Features
+
+- [cli] Send new policy fields when publishing a policy pack
+
+- [sdk/dotnet] Update dotnet to v3.88
+  [#20512](https://github.com/pulumi/pulumi/pull/20512)
+
+
+### Bug Fixes
+
+- [engine] Fix a panic in preview, that could happen in some cases when default providers get updated
+  [#20511](https://github.com/pulumi/pulumi/pull/20511)
+
+- [components/python] Fix parenting of python components
+  [#20508](https://github.com/pulumi/pulumi/pull/20508)
+
+- [sdk/python] Fix hang when shutting down in certain error conditions
+  [#20484](https://github.com/pulumi/pulumi/pull/20484)
+
+- [sdk/python] Fix license-files entry for python package
+  [#20506](https://github.com/pulumi/pulumi/pull/20506)
+
+## 3.196.0 (2025-09-12)
+
+
+### Miscellaneous
+
+- [sdk] Add policy summary events apitypes
+  [#20443](https://github.com/pulumi/pulumi/pull/20443)
+
+- [sdk] Add new policy fields apitypes
+  [#20491](https://github.com/pulumi/pulumi/pull/20491)
+
+- [protobuf] Add support for indicating "not applicable" policies
+  [#20492](https://github.com/pulumi/pulumi/pull/20492)
+
+- [protobuf] Add new analyzer policy fields
+  [#20494](https://github.com/pulumi/pulumi/pull/20494)
+
+## 3.195.0 (2025-09-10)
+
+
+### Features
+
+- [engine] Add support for capturing program stack traces as part of resource registration
+  [#20430](https://github.com/pulumi/pulumi/pull/20430)
+
+- [sdk/go] Registered resources can now be retrieved from the mock monitor for test assertions
+  [#20472](https://github.com/pulumi/pulumi/pull/20472)
+
+- [sdk/go] The current exports map is now available for unit testing through `GetCurrentExportMap`
+  [#20471](https://github.com/pulumi/pulumi/pull/20471)
+
+
+### Bug Fixes
+
+- [pkg/go] Fix an issue where v3.194.0 of the `github.com/pulumi/pulumi/pkg/v3` module depends on APIs from `github.com/pulumi/pulumi/sdk/v3` that haven't been released
+  [#20487](https://github.com/pulumi/pulumi/issues/20487)
+
+
+## 3.194.0 (2025-09-08)
+
+
+### Features
+
+- [cli] Log diagnostics to stderr instead of stdout
+  [#20461](https://github.com/pulumi/pulumi/pull/20461)
+
+- [cli/display] Change the default for --show-full-output from true to false
+  [#20467](https://github.com/pulumi/pulumi/pull/20467)
+
+- [cli/display] Fix the --show-full-output the flag
+  [#20464](https://github.com/pulumi/pulumi/pull/20464)
+
+- [sdk/go] Show a message that the Go program is being compiled
+  [#20460](https://github.com/pulumi/pulumi/pull/20460)
+
+
+### Bug Fixes
+
+- [engine] Make ignoreChanges work better for arrays
+  [#20465](https://github.com/pulumi/pulumi/pull/20465)
+
+- [programgen] Fix panic in RewriteApplies when encountering warning diagnostics
+  [#20453](https://github.com/pulumi/pulumi/pull/20453)
+
+
+### Miscellaneous
+
+- [cli] No longer require the `PULUMI_EXPERIMENTAL` flag for Private Registry template operations (`pulumi template publish`, registry-based template resolution in `pulumi new`), while registry-backed template resolution in `pulumi new` may still be disabled using `PULUMI_DISABLE_REGISTRY_RESOLVE=true pulumi new`
+  [#20458](https://github.com/pulumi/pulumi/pull/20458)
+
+- [sdk/yaml] Bump pulumi-yaml to 1.23.1
+
+## 3.193.0 (2025-09-04)
+
+
+### Bug Fixes
+
+- [cli] Use "Private Registry", not cloud or Pulumi registry, in CLI output
+  [#20436](https://github.com/pulumi/pulumi/pull/20436)
+
+- [cli/display] Avoid printing a double new line when showing secrets in the outputs
+  [#20435](https://github.com/pulumi/pulumi/pull/20435)
+
+- [cli/display] Fix coloring of cobra error messages on windows
+
+- [cli/{install,package}] Fix local package resolution when PULUMI_EXPERIMENTAL=true by including local packages in registry fallback logic
+  [#20413](https://github.com/pulumi/pulumi/pull/20413)
+
+- [cli/new] Fail when running with --language without --ai in non-interactive mode
+  [#20415](https://github.com/pulumi/pulumi/pull/20415)
+
+- [cli/package] Fix not using already-installed package in 'pulumi package add' when PULUMI_EXPERIMENTAL=1
+
+
+### Miscellaneous
+
+- [cli] Start the pprof server when receving SIGUSR1
+  [#20392](https://github.com/pulumi/pulumi/pull/20392)
+
+- [cli/display] Replace ijc/Gotty terminfo package with xo/terminfo
+  [#20446](https://github.com/pulumi/pulumi/pull/20446)
+
+- [cli/display] Use the passed through writer in ShowProgressOutput instead of loading a new terminfo
+
+## 3.192.0 (2025-08-29)
+
+
+### Features
+
+- [cli/state] Add pulumi state taint/untaint commands to force replacement of resources upon next update
+  [#20380](https://github.com/pulumi/pulumi/pull/20380)
+
+- [sdk/nodejs] Add `previewDestroy` to allow dry-runs of `destroy` commands
+  [#20371](https://github.com/pulumi/pulumi/pull/20371)
+
+
+### Bug Fixes
+
+- [engine] Fix a bug causing hooks to never pass correctly to remote Go components
+  [#20390](https://github.com/pulumi/pulumi/pull/20390)
+
+- [sdk/go] Fix source position information
+  [#20351](https://github.com/pulumi/pulumi/pull/20351)
+
+- [sdk/nodejs] Fix function serialisation that contains minified classes
+  [#19345](https://github.com/pulumi/pulumi/pull/19345)
+
+- [sdkgen/nodejs] Limit @types packages used during local SDK generation
+  [#20387](https://github.com/pulumi/pulumi/pull/20387)
+
+- [sdk/python] Set ThreadPoolExecutor max_workers to parallelism * 4
+  [#20362](https://github.com/pulumi/pulumi/pull/20362)
+
+- [sdk/python] Handle `-v` flag passed to policy packs
+  [#20373](https://github.com/pulumi/pulumi/pull/20373)
+
+- [sdk/python] Forward errors raised in callbacks to the caller
+  [#20381](https://github.com/pulumi/pulumi/pull/20381)
+
+
+### Miscellaneous
+
+- [cli] Log stack trace when interrupted when using verbose logging
+  [#20364](https://github.com/pulumi/pulumi/pull/20364)
+
+- [cli] Print the location of the log file when running with the verbose flag
+  [#20365](https://github.com/pulumi/pulumi/pull/20365)
+
+- [sdk/python] Remove custom typing stubs
+  [#20384](https://github.com/pulumi/pulumi/pull/20384)
+
+## 3.191.0 (2025-08-21)
+
+
+### Features
+
+- [cli] Document the `PULUMI_ENABLE_STREAMING_JSON_PREVIEW` envvar.
+  [#20328](https://github.com/pulumi/pulumi/pull/20328)
+
+
+### Bug Fixes
+
+- [engine] Check providers returning 'version' or '__internal' in their inputs
+  [#20313](https://github.com/pulumi/pulumi/pull/20313)
+
+- [engine] Fix a panic with `refresh --run-program`
+  [#20337](https://github.com/pulumi/pulumi/pull/20337)
+
+- [engine] Fix an infinite loop from passing unordered resources to the dependency system when using --refresh
+
+- [programgen] Emit warnings instead of errors in non-strict mode when binding resource blocks
+  [#20347](https://github.com/pulumi/pulumi/pull/20347)
+
+- [programgen] Simplify range value types when it is derived from object of objects and warn on unknown properties
+  [#20345](https://github.com/pulumi/pulumi/pull/20345)
+
+- [programgen] Warn instead of erroring out when traversing a NoneType in PCL
+  [#20342](https://github.com/pulumi/pulumi/pull/20342)
+
+- [cli/display] Escape non-graphic characters in URNs
+  [#20295](https://github.com/pulumi/pulumi/pull/20295)
+
+- [cli/import] Disambiguate duplicate resource names by their types when importing
+  [#20348](https://github.com/pulumi/pulumi/pull/20348)
+
+- [cli/new] Don't prompt for ai or template when passing --yes
+  [#20256](https://github.com/pulumi/pulumi/pull/20256)
+
+
+### Miscellaneous
+
+- [cli] Log version and CLI metadata
+  [#20334](https://github.com/pulumi/pulumi/pull/20334)
+
+- [cli/package] Pass ParameterizeParameters to SchemaFromSchemaSource
+  [#20324](https://github.com/pulumi/pulumi/pull/20324)
+
+## 3.190.0 (2025-08-15)
+
+
+### Features
+
+- [engine] Don't error on `ignoreChanges` paths that are missing old data, there is nothing to ignore in those cases and we just use the new data
+  [#20278](https://github.com/pulumi/pulumi/pull/20278)
+
+
+### Bug Fixes
+
+- [cli] Fix `destroy --exclude-protected --remove` returning an error for empty stacks that could safely be removed
+  [#20283](https://github.com/pulumi/pulumi/pull/20283)
+
+- [cli] Fix `pulumi template publish` failing with relative paths by normalizing to absolute paths before archive creation
+  [#20301](https://github.com/pulumi/pulumi/pull/20301)
+
+- [cli/import] Use mapped name instead of logical name for resource references during import code generation
+  [#20300](https://github.com/pulumi/pulumi/pull/20300)
+
+- [pkg] Make TypeScript code generation use 'declare' keyword instead of definite assertion operator, to avoid setting all fields to undefined when targeting environments new enough
+  [#20261](https://github.com/pulumi/pulumi/pull/20261)
+
+- [sdkgen/nodejs] Make TypeScript a full dependency of local SDKs
+  [#20272](https://github.com/pulumi/pulumi/pull/20272)
+
+
+### Miscellaneous
+
+- [build] Updates protobuf and grpc to v5, bumping dependencies in the Go, Node.js, and Python SDKs
+  [#19588](https://github.com/pulumi/pulumi/pull/19588)
+
+- [build] Update latest Go version to 1.25
+  [#20284](https://github.com/pulumi/pulumi/pull/20284)
+
+- [sdkgen/nodejs] Target ES2020 for generated SDKs
+  [#20276](https://github.com/pulumi/pulumi/pull/20276)
+
+## 3.189.0 (2025-08-12)
+
+
+### Features
+
+- [sdk] Remove CacheMS from CLIVersionResponse
+  [#20264](https://github.com/pulumi/pulumi/pull/20264)
+
+- [sdk/go] Calculate PluginInfo.Size on demand
+  [#20241](https://github.com/pulumi/pulumi/pull/20241)
+
+- [auto/python] Surface `json` option to `pulumi preview` calls in Python when using the `pulumi.automation` package.
+  [#20233](https://github.com/pulumi/pulumi/pull/20233)
+
+
+### Bug Fixes
+
+- [cli/package] Fix incorrect console URLs being displayed after publishing a policy
+  [#20255](https://github.com/pulumi/pulumi/pull/20255)
+
+- [engine] Fix race when reading plugin stdout
+  [#20242](https://github.com/pulumi/pulumi/pull/20242)
+
+- [sdk/nodejs] Fix component providers when using pnpm
+  [#20253](https://github.com/pulumi/pulumi/pull/20253)
+
+
+### Miscellaneous
+
+- [pkg] Make TypeScript code generation use nullish coalesce operator for required property checks, as well as state and args accessing whenever sensible
+
+- [sdk/nodejs] Fix swapped stderr/stdout callback comments in PreviewOptions interface
+  [#20250](https://github.com/pulumi/pulumi/pull/20250)
+
+- [sdkgen] Don’t create empty maps for language specific overrides
+  [#20237](https://github.com/pulumi/pulumi/pull/20237)
+
+## 3.188.0 (2025-08-07)
+
+
+### Features
+
+- [cli] Add `--remove-backups` flag to `pulumi stack rm` for DIY backends
+  [#20203](https://github.com/pulumi/pulumi/pull/20203)
+
+
+### Bug Fixes
+
+- [cli] Fix cancellation when running via some CLI wrapper tools
+  [#20195](https://github.com/pulumi/pulumi/pull/20195)
+
+- [cli] Fix concurrent read/write during plugin downloads
+  [#20223](https://github.com/pulumi/pulumi/pull/20223)
+
+- [cli] Restore terminal mode on panic
+  [#20224](https://github.com/pulumi/pulumi/pull/20224)
+
+- [engine] Fix panic in refreshes due to concurrent map writes
+  [#20206](https://github.com/pulumi/pulumi/pull/20206)
+
+- [sdkgen] Warn about refs of the form "#/resources/pulumi:providers:<pkg>"
+  [#20192](https://github.com/pulumi/pulumi/pull/20192)
+
+- [cli/display] Show changed outputs in preview
+  [#20161](https://github.com/pulumi/pulumi/pull/20161)
+
+- [cli/engine] Make `--exclude` correctly handle wildcards in all cases
+  [#20158](https://github.com/pulumi/pulumi/pull/20158)
+
+- [sdk/go] Fix running against old CLI versions without SignalAndWaitForShutdown
+  [#20212](https://github.com/pulumi/pulumi/pull/20212)
+
+- [sdk/python] Fix dependency installation in uv workspaces
+  [#20218](https://github.com/pulumi/pulumi/pull/20218)
+
+
+### Miscellaneous
+
+- [cli] Update pulumi-dotnet to 3.87.0
+  [#20222](https://github.com/pulumi/pulumi/pull/20222)
+
+- [cli/env] Bump esc to v0.17.0
+  [#20197](https://github.com/pulumi/pulumi/pull/20197)
+
+## 3.187.0 (2025-07-31)
+
+
+### Features
+
+- [cli] Support for writing v4 checkpoints/deployments
+  [#20159](https://github.com/pulumi/pulumi/pull/20159)
+
+- [cli] Add support for qualified registry template names in `pulumi new`
+  [#20138](https://github.com/pulumi/pulumi/pull/20138)
+
+- [cli/import] Enable `pulumi import` to always `--generate-resources` when converting `--from` state files
+  [#20178](https://github.com/pulumi/pulumi/pull/20178)
+
+- [yaml] Allow config values to be parsed with type `object`
+  [#20132](https://github.com/pulumi/pulumi/pull/20132)
+
+- [auto/python] Allow for `on_error` callbacks in commands to capture stderr incrementally
+  [#20019](https://github.com/pulumi/pulumi/pull/20019)
+
+- [sdk/nodejs] Add option of Bun as a package manager
+  [#18412](https://github.com/pulumi/pulumi/pull/18412)
+
+- [sdk/nodejs] Copy `getRootDirectory` to the pulumi module
+  [#20173](https://github.com/pulumi/pulumi/pull/20173)
+
+- [sdk/python] Copy `get_root_directory` to the pulumi module
+  [#20172](https://github.com/pulumi/pulumi/pull/20172)
+
+
+### Bug Fixes
+
+- [cli] Fix un-taring registry-backed templates which come in .tar.gz format
+  [#20135](https://github.com/pulumi/pulumi/pull/20135)
+
+- [cli] Stop passing Accept: application/x-tar to registry template download URLs to avoid signature mismatch
+  [#20133](https://github.com/pulumi/pulumi/pull/20133)
+
+- [engine] Fix a panic with `up --refresh --run-program` and resource replacements
+  [#20147](https://github.com/pulumi/pulumi/pull/20147)
+
+- [engine] Untargeted resources in `destroy` now correctly register as same steps
+  [#20061](https://github.com/pulumi/pulumi/pull/20061)
+
+- [cli/engine] Fix hang when waiting for program that would never complete
+  [#20153](https://github.com/pulumi/pulumi/pull/20153)
+
+- [sdk/nodejs] Fix delete hooks in inline automation API programs
+  [#20143](https://github.com/pulumi/pulumi/pull/20143)
+
+- [sdk/python] Set features inside construct
+  [#20141](https://github.com/pulumi/pulumi/pull/20141)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Bump TypeScript target to ES2020 for plugins and policy packs
+  [#20148](https://github.com/pulumi/pulumi/pull/20148)
+
+## 3.186.0 (2025-07-25)
+
+
+### Features
+
+- [engine] Send `Cancel` message to language runtime plugins on engine shutdown
+  [#20007](https://github.com/pulumi/pulumi/pull/20007)
+
+- [engine] Pass stack tags to policy plugins on startup
+  [#20084](https://github.com/pulumi/pulumi/pull/20084)
+
+- [yaml] Expose `object` as a possible config type in preparation for `pulumi-yaml` support
+  [#20129](https://github.com/pulumi/pulumi/pull/20129)
+
+
+### Bug Fixes
+
+- [cli/engine] --exclude and --exclude-protected flags now work together correctly for `destroy` commands
+  [#20120](https://github.com/pulumi/pulumi/pull/20120)
+
+- [engine] Fix a datarace in the engine event system
+  [#20105](https://github.com/pulumi/pulumi/pull/20105)
+
+- [engine] Fix a panic in the engine when running `up --refresh --run-program` and finding a deleted resource
+
+- [sdk/nodejs] Avoid "Cannot convert object to primitive value" error when running into type errors
+  [#20092](https://github.com/pulumi/pulumi/pull/20092)
+
+- [sdk/nodejs] Don’t use automatic ESM mode when `—import` or `—require` is set
+  [#20091](https://github.com/pulumi/pulumi/pull/20091)
+
+- [sdk/nodejs] Fix callback server hang & delete hooks in Node.js
+  [#20109](https://github.com/pulumi/pulumi/pull/20109)
+
+- [sdk/nodejs] Don’t report leaked promises when we exit abnormally
+  [#20128](https://github.com/pulumi/pulumi/pull/20128)
+
+- [cli/package] Force new style Go modules to be written out when using `package add`
+  [#20011](https://github.com/pulumi/pulumi/pull/20011)
+
+- [sdk/python] Run uv sync on uv command
+  [#20117](https://github.com/pulumi/pulumi/pull/20117)
+
+
+### Miscellaneous
+
+- [yaml] Update yaml to 1.21.3
+  [#20118](https://github.com/pulumi/pulumi/pull/20118)
+
+## 3.185.0 (2025-07-21)
+
+
+### Features
+
+- [cli/{install,package}] Allow using `pulumi package add` with registry identifiers
+  [#19928](https://github.com/pulumi/pulumi/pull/19928)
+
+
+### Bug Fixes
+
+- [engine] Fix a snapshot integrity issue with `destroy --run-program` and resource reads
+  [#20078](https://github.com/pulumi/pulumi/pull/20078)
+
+- [sdkgen/python] Remove unnecessary `import copy`
+  [#20089](https://github.com/pulumi/pulumi/pull/20089)
+
+- [sdkgen/python] Support properties named "builtins"
+  [#20085](https://github.com/pulumi/pulumi/pull/20085)
+
 ## 3.184.0 (2025-07-18)
 
 

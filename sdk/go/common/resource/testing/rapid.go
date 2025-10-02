@@ -171,7 +171,7 @@ func SemverStringGenerator() *rapid.Generator[string] {
 // UnknownPropertyGenerator generates the unknown resource.PropertyValue.
 func UnknownPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return rapid.Just(resource.MakeComputed(resource.NewStringProperty(""))).Draw(t, "unknowns")
+		return rapid.Just(resource.MakeComputed(resource.NewProperty(""))).Draw(t, "unknowns")
 	})
 }
 
@@ -185,21 +185,21 @@ func NullPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 // BoolPropertyGenerator generates boolean resource.PropertyValues.
 func BoolPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewBoolProperty(rapid.Bool().Draw(t, "booleans"))
+		return resource.NewProperty(rapid.Bool().Draw(t, "booleans"))
 	})
 }
 
 // NumberPropertyGenerator generates numeric resource.PropertyValues.
 func NumberPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewNumberProperty(rapid.Float64().Draw(t, "numbers"))
+		return resource.NewProperty(rapid.Float64().Draw(t, "numbers"))
 	})
 }
 
 // StringPropertyGenerator generates string resource.PropertyValues.
 func StringPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewStringProperty(rapid.String().Draw(t, "strings"))
+		return resource.NewProperty(rapid.String().Draw(t, "strings"))
 	})
 }
 
@@ -220,7 +220,7 @@ func AssetGenerator() *rapid.Generator[*asset.Asset] {
 // AssetPropertyGenerator generates asset resource.PropertyValues.
 func AssetPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewAssetProperty(AssetGenerator().Draw(t, "assets"))
+		return resource.NewProperty(AssetGenerator().Draw(t, "assets"))
 	})
 }
 
@@ -252,7 +252,7 @@ func ArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
 // ArchivePropertyGenerator generates archive resource.PropertyValues.
 func ArchivePropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewArchiveProperty(ArchiveGenerator(maxDepth).Draw(t, "archives"))
+		return resource.NewProperty(ArchiveGenerator(maxDepth).Draw(t, "archives"))
 	})
 }
 
@@ -289,7 +289,7 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.Res
 		if r.Custom {
 			id = rapid.OneOf(
 				UnknownPropertyGenerator(),
-				rapid.Just(resource.NewStringProperty(string(r.ID))),
+				rapid.Just(resource.NewProperty(string(r.ID))),
 			).Draw(t, "referenced ID")
 		}
 
@@ -308,7 +308,7 @@ func ResourceReferencePropertyGenerator() *rapid.Generator[resource.PropertyValu
 
 func resourceReferencePropertyGenerator(ctx *StackContext) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewResourceReferenceProperty(resourceReferenceGenerator(ctx).Draw(t, "resource reference"))
+		return resource.NewProperty(resourceReferenceGenerator(ctx).Draw(t, "resource reference"))
 	})
 }
 
@@ -320,7 +320,7 @@ func ArrayPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValu
 
 func arrayPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewArrayProperty(
+		return resource.NewProperty(
 			rapid.SliceOfN(propertyValueGenerator(ctx, maxDepth-1), 0, 32).
 				Draw(t, "array elements"))
 	})
@@ -359,7 +359,7 @@ func ObjectPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyVal
 
 func objectPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewObjectProperty(propertyMapGenerator(ctx, maxDepth).Draw(t, "object contents"))
+		return resource.NewProperty(propertyMapGenerator(ctx, maxDepth).Draw(t, "object contents"))
 	})
 }
 
@@ -391,7 +391,7 @@ func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[r
 			element = propertyValueGenerator(ctx, maxDepth-1).Draw(t, "output element")
 		}
 
-		return resource.NewOutputProperty(resource.Output{
+		return resource.NewProperty(resource.Output{
 			Element:      element,
 			Known:        known,
 			Secret:       rapid.Bool().Draw(t, "secret"),
@@ -408,7 +408,7 @@ func SecretPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyVal
 
 func secretPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewSecretProperty(&resource.Secret{
+		return resource.NewProperty(&resource.Secret{
 			Element: propertyValueGenerator(ctx, maxDepth-1).Draw(t, "secret element"),
 		})
 	})

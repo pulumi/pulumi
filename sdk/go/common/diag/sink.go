@@ -39,9 +39,6 @@ type Sink interface {
 	Errorf(diag *Diag, args ...interface{})
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
-
-	// Stringify stringifies a diagnostic into a prefix and message that is appropriate for printing.
-	Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string)
 }
 
 // Severity dictates the kind of diagnostic.
@@ -57,7 +54,6 @@ const (
 
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Pwd   string              // the working directory.
 	Color colors.Colorization // how output should be colorized.
 	Debug bool                // if true, debugging will be output to stdout.
 }

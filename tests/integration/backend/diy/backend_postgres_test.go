@@ -19,7 +19,6 @@ package diy
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"runtime"
 	"testing"
@@ -204,7 +203,7 @@ func TestPostgresBackend(t *testing.T) {
 	allStacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil)
 	require.NoError(t, err, "Failed to list all stacks")
 	assert.Nil(t, token, "Continuation token should be nil")
-	assert.Len(t, allStacks, 2, "Should have exactly 2 stacks")
+	require.Len(t, allStacks, 2, "Should have exactly 2 stacks")
 
 	// Test listing with organization filter
 	orgStacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{
@@ -212,7 +211,7 @@ func TestPostgresBackend(t *testing.T) {
 	}, nil)
 	require.NoError(t, err, "Failed to list stacks with org filter")
 	assert.Nil(t, token, "Continuation token should be nil")
-	assert.Len(t, orgStacks, 2, "Should have 2 stacks with org filter")
+	require.Len(t, orgStacks, 2, "Should have 2 stacks with org filter")
 
 	// Test listing with project filter
 	projName := string(projectName)
@@ -328,27 +327,18 @@ func TestPostgresBackend(t *testing.T) {
 			Custom: true,
 			ID:     "test-resource-id",
 			Inputs: resource.PropertyMap{
-				"name": resource.NewStringProperty("test-resource"),
+				"name": resource.NewProperty("test-resource"),
 			},
 			Outputs: resource.PropertyMap{
-				"name": resource.NewStringProperty("test-resource"),
-				"arn":  resource.NewStringProperty("arn:test:resource"),
+				"name": resource.NewProperty("test-resource"),
+				"arn":  resource.NewProperty("arn:test:resource"),
 			},
 		},
 	}, nil, deploy.SnapshotMetadata{})
 
 	// Test deployment serialization - simulate what would happen during a real deployment
-	deployment, err := stackpkg.SerializeDeployment(ctx, snap, false)
+	untypedDeployment, err := stackpkg.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	require.NoError(t, err, "Failed to serialize deployment")
-
-	// Convert to untyped deployment for import testing
-	serializedData, err := json.Marshal(deployment)
-	require.NoError(t, err, "Failed to marshal deployment")
-
-	untypedDeployment := &apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: json.RawMessage(serializedData),
-	}
 
 	// Verify the untyped deployment was created successfully
 	require.NotNil(t, untypedDeployment, "Untyped deployment should not be nil")
@@ -398,12 +388,12 @@ func TestPostgresBackend(t *testing.T) {
 	t.Log("Testing stack removal and cleanup")
 
 	// Test stack removal (backend level)
-	removed1, err := b.RemoveStack(ctx, stack1, true)
+	removed1, err := b.RemoveStack(ctx, stack1, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err, "Failed to remove stack 1")
 	assert.False(t, removed1, "Stack 1 should be removed without confirmation")
 
 	// Test stack removal (stack level)
-	removed2, err := backend.RemoveStack(ctx, stack2, true)
+	removed2, err := backend.RemoveStack(ctx, stack2, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err, "Failed to remove stack 2")
 	assert.False(t, removed2, "Stack 2 should be removed without confirmation")
 
@@ -420,7 +410,7 @@ func TestPostgresBackend(t *testing.T) {
 	finalStacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil)
 	require.NoError(t, err, "Failed to list stacks after removal")
 	assert.Nil(t, token, "Final continuation token should be nil")
-	assert.Len(t, finalStacks, 0, "All stacks should be removed")
+	require.Len(t, finalStacks, 0, "All stacks should be removed")
 }
 
 // TestPostgresBackendMultipleTables tests that multiple backends can use different tables
@@ -475,16 +465,16 @@ func TestPostgresBackendMultipleTables(t *testing.T) {
 	// Verify each backend only sees its own stack
 	stacks1, _, err := backend1.ListStacks(ctx, backend.ListStacksFilter{}, nil)
 	require.NoError(t, err)
-	assert.Len(t, stacks1, 1)
+	require.Len(t, stacks1, 1)
 
 	stacks2, _, err := backend2.ListStacks(ctx, backend.ListStacksFilter{}, nil)
 	require.NoError(t, err)
-	assert.Len(t, stacks2, 1)
+	require.Len(t, stacks2, 1)
 
 	// Clean up
-	_, err = backend1.RemoveStack(ctx, stack1, true)
+	_, err = backend1.RemoveStack(ctx, stack1, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
-	_, err = backend2.RemoveStack(ctx, stack2, true)
+	_, err = backend2.RemoveStack(ctx, stack2, true /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 }
 
@@ -542,11 +532,11 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	allStacks, token, err := backends[0].ListStacks(ctx, backend.ListStacksFilter{}, nil)
 	require.NoError(t, err, "Failed to list stacks")
 	assert.Nil(t, token, "Continuation token should be nil")
-	assert.Len(t, allStacks, numConcurrentOperations, "Should have all created stacks")
+	require.Len(t, allStacks, numConcurrentOperations, "Should have all created stacks")
 
 	// Clean up all stacks
 	for i := 0; i < numConcurrentOperations; i++ {
-		removed, err := backends[i].RemoveStack(ctx, stacks[i], true)
+		removed, err := backends[i].RemoveStack(ctx, stacks[i], true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err, "Failed to remove stack %d", i)
 		assert.False(t, removed, "Stack %d should be removed without confirmation", i)
 	}
@@ -555,5 +545,5 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	allStacks, token, err = backends[0].ListStacks(ctx, backend.ListStacksFilter{}, nil)
 	require.NoError(t, err, "Failed to list stacks after cleanup")
 	assert.Nil(t, token, "Continuation token should be nil")
-	assert.Len(t, allStacks, 0, "All stacks should be removed")
+	require.Len(t, allStacks, 0, "All stacks should be removed")
 }

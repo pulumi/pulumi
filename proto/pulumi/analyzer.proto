@@ -78,6 +78,9 @@ message AnalyzerStackConfigureRequest {
     repeated string config_secret_keys = 6;
     // The configuration of the stack being analyzed.
     map<string, string> config = 7;
+
+    // Tags for the current stack.
+    map<string, string> tags = 8;
 }
 
 // `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.
@@ -167,7 +170,8 @@ message AnalyzeStackRequest {
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeDiagnostic diagnostics = 2; // information about policy violations.
+    repeated AnalyzeDiagnostic diagnostics = 2;      // information about policy violations.
+    repeated PolicyNotApplicable not_applicable = 3; // information about policies that were not applicable.
 }
 
 // EnforcementLevel indicates the severity of a policy violation.
@@ -205,7 +209,8 @@ message Remediation {
 
 // RemediateResponse contains a sequence of remediations applied, in order.
 message RemediateResponse {
-    repeated Remediation remediations = 1;       // the list of remediations that were applied.
+    repeated Remediation remediations = 1;           // the list of remediations that were applied.
+    repeated PolicyNotApplicable not_applicable = 2; // information about policies that were not applicable.
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
@@ -216,16 +221,27 @@ message AnalyzerInfo {
     string version = 4;                          // Version of the Policy Pack.
     bool supportsConfig = 5;                     // Whether the Policy Pack supports config.
     map<string, PolicyConfig> initialConfig = 6; // Map of policy name to config.
+    string description = 7;                      // Description of the policy pack.
+    string readme = 8;                           // README text for the policy pack.
+    string provider = 9;                         // Cloud provider/platform associated with the policy pack.
+    repeated string tags = 10;                   // Tags for this policy pack.
+    string repository = 11;                      // A URL to the repository where the policy pack is defined.
 }
 
 // PolicyInfo provides metadata about a policy within a Policy Pack.
 message PolicyInfo {
-    string name = 1;                       // Name of the policy.
-    string displayName = 2;                // Pretty name for the policy.
-    string description = 3;                // Description of policy rule. e.g., "encryption enabled."
-    string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
-    EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
-    PolicyConfigSchema configSchema = 6;   // Config schema for the policy.
+    string name = 1;                         // Name of the policy.
+    string displayName = 2;                  // Pretty name for the policy.
+    string description = 3;                  // Description of policy rule. e.g., "encryption enabled."
+    string message = 4;                      // Message to display on policy violation, e.g., remediation steps.
+    EnforcementLevel enforcementLevel = 5;   // Severity of the policy violation.
+    PolicyConfigSchema configSchema = 6;     // Config schema for the policy.
+    PolicyType policy_type = 7;              // Type of the policy.
+    PolicySeverity severity = 8;             // Severity of the policy.
+    PolicyComplianceFramework framework = 9; // Compliance framework that this policy belongs to.
+    repeated string tags = 10;               // Tags associated with the policy.
+    string remediation_steps = 11;           // A description of the steps to take to remediate a policy violation.
+    string url = 12;                         // A URL to more information about the policy.
 }
 
 // PolicyConfigSchema provides the schema for a policy's configuration.
@@ -243,4 +259,34 @@ message PolicyConfig {
 // ConfigureAnalyzerRequest provides configuration information to the analyzer.
 message ConfigureAnalyzerRequest {
     map<string, PolicyConfig> policyConfig = 1; // Map of policy name to config.
+}
+
+// PolicyComplianceFramework provides information about the compliance framework that a policy belongs to.
+message PolicyComplianceFramework {
+    string name = 1;          // The compliance framework name.
+    string version = 2;       // The compliance framework version.
+    string reference = 3;     // The compliance framework reference.
+    string specification = 4; // The compliance framework specification.
+}
+
+// PolicyType indicates the type of a policy.
+enum PolicyType {
+    POLICY_TYPE_UNKNOWN = 0;     // Unknown policy type.
+    POLICY_TYPE_RESOURCE = 1;    // A policy that validates a resource.
+    POLICY_TYPE_STACK = 2;       // A policy that validates a stack.
+}
+
+// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
+message PolicyNotApplicable {
+    string policy_name = 1; // The name of the policy that was not applicable.
+    string reason = 2;      // An optional reason why the policy was not applicable.
+}
+
+// PolicySeverity indicates the severity of a policy.
+enum PolicySeverity {
+    POLICY_SEVERITY_UNSPECIFIED = 0; // Unspecified severity.
+    POLICY_SEVERITY_LOW = 1;         // Low severity.
+    POLICY_SEVERITY_MEDIUM = 2;      // Medium severity.
+    POLICY_SEVERITY_HIGH = 3;        // High severity.
+    POLICY_SEVERITY_CRITICAL = 4;    // Critical severity.
 }

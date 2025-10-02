@@ -171,6 +171,10 @@ type LanguageRuntime interface {
 
 	// Link links a set of local dependencies into the given program directory.
 	Link(info ProgramInfo, localDependencies map[string]string) error
+
+	// Cancel signals the language runtime to gracefully shut down and abort any ongoing operations.
+	// Operations aborted in this way will return an error.
+	Cancel() error
 }
 
 // DependencyInfo contains information about a dependency reported by a language runtime.

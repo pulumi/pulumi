@@ -28,6 +28,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -53,9 +55,10 @@ type testMonitor struct {
 	// Actually an "Invoke" by provider parlance, but is named so to be consistent with the interface.
 	CallF func(args MockCallArgs) (resource.PropertyMap, error)
 	// Actually an "Call" by provider parlance, but is named so to be consistent with the interface.
-	MethodCallF              func(args MockCallArgs) (resource.PropertyMap, error)
-	NewResourceF             func(args MockResourceArgs) (string, resource.PropertyMap, error)
-	RegisterResourceOutputsF func() (*emptypb.Empty, error)
+	MethodCallF               func(args MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF              func(args MockResourceArgs) (string, resource.PropertyMap, error)
+	RegisterResourceOutputsF  func() (*emptypb.Empty, error)
+	SignalAndWaitForShutdownF func() (*emptypb.Empty, error)
 }
 
 func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
@@ -84,6 +87,13 @@ func (m *testMonitor) RegisterResourceOutputs() (*emptypb.Empty, error) {
 		return &emptypb.Empty{}, nil
 	}
 	return m.RegisterResourceOutputsF()
+}
+
+func (m *testMonitor) SignalAndWaitForShutdown() (*emptypb.Empty, error) {
+	if m.SignalAndWaitForShutdownF == nil {
+		return &emptypb.Empty{}, nil
+	}
+	return m.SignalAndWaitForShutdownF()
 }
 
 type testResource2 struct {
@@ -143,7 +153,7 @@ func TestRegisterResource(t *testing.T) {
 				assert.Equal(t, "", args.Provider)
 				assert.Equal(t, "", args.ID)
 
-				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+				return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 			case "test:resource:complextype":
 				assert.Equal(t, "resB", args.Name)
 				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -156,9 +166,9 @@ func TestRegisterResource(t *testing.T) {
 				assert.Equal(t, "", args.ID)
 
 				return "someID", resource.PropertyMap{
-					"foo":    resource.NewStringProperty("qux"),
-					"secret": resource.MakeSecret(resource.NewStringProperty("shh")),
-					"output": resource.MakeOutput(resource.NewStringProperty("known unknown")),
+					"foo":    resource.NewProperty("qux"),
+					"secret": resource.MakeSecret(resource.NewProperty("shh")),
+					"output": resource.MakeOutput(resource.NewProperty("known unknown")),
 				}, nil
 			default:
 				assert.Fail(t, "Expected a valid resource type, got %v", args.TypeToken)
@@ -255,6 +265,35 @@ func TestRegisterResource(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetRegisteredResources(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var first testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{}, &first)
+		require.NoError(t, err)
+
+		_, known, _, _, err := await(first.URN())
+		require.NoError(t, err)
+		assert.True(t, known)
+
+		var second testResource2
+		err = ctx.RegisterResource("test:resource:type", "resB", Map{}, &second)
+		require.NoError(t, err)
+
+		_, known, _, _, err = await(second.URN())
+		require.NoError(t, err)
+		assert.True(t, known)
+
+		resources := ctx.state.monitor.(*mockMonitor).GetRegisteredResources()
+		assert.Contains(t, resources, "urn:pulumi:stack::project::test:resource:type::resA")
+		assert.Contains(t, resources, "urn:pulumi:stack::project::test:resource:type::resB")
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}
+
 func TestReadResource(t *testing.T) {
 	t.Parallel()
 
@@ -268,7 +307,7 @@ func TestReadResource(t *testing.T) {
 			assert.Equal(t, "", args.Provider)
 			assert.Equal(t, "someID", args.ID)
 
-			return args.ID, resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return args.ID, resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -361,6 +400,52 @@ func TestInvoke(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	require.NoError(t, err)
+}
+
+func TestSignalAndWaitForShutdownNotImplemented(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		// Simulate an old CLI without SignalAndWaitForShutdown
+		SignalAndWaitForShutdownF: func() (*emptypb.Empty, error) {
+			return &emptypb.Empty{}, status.Error(codes.Unimplemented, "SignalAndWaitForShutdown is not implemented")
+		},
+	}
+
+	logError := func(ctx *Context, err error) {
+		require.Fail(t, "The `Unimplemented` error should be handled gracefully and not reported", err)
+	}
+
+	err := runErrInner(func(ctx *Context) error {
+		return nil
+	}, logError, WithMocks("project", "stack", mocks))
+
+	require.NoError(t, err)
+}
+
+func TestSignalAndWaitForShutdownError(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		// Simulate a CLI that returns an error when calling SignalAndWaitForShutdown
+		SignalAndWaitForShutdownF: func() (*emptypb.Empty, error) {
+			return &emptypb.Empty{}, status.Error(codes.Unknown, "SignalAndWaitForShutdown returned some error")
+		},
+	}
+
+	errorReported := false
+
+	logError := func(ctx *Context, err error) {
+		require.ErrorContains(t, err, "SignalAndWaitForShutdown returned some error")
+		errorReported = true
+	}
+
+	err := runErrInner(func(ctx *Context) error {
+		return nil
+	}, logError, WithMocks("project", "stack", mocks))
+
+	require.ErrorContains(t, err, "SignalAndWaitForShutdown returned some error")
+	require.True(t, errorReported, "The error should have been reported")
 }
 
 type testInstanceResource struct {
@@ -513,7 +598,7 @@ func TestRemoteComponent(t *testing.T) {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
 			case "pkg:index:MyRemoteComponent":
-				outprop := resource.NewStringProperty("output: " + args.Inputs["inprop"].StringValue())
+				outprop := resource.NewProperty("output: " + args.Inputs["inprop"].StringValue())
 				return args.Name + "_id", resource.PropertyMap{
 					"inprop":  args.Inputs["inprop"],
 					"outprop": outprop,
@@ -555,7 +640,7 @@ func TestWaitOrphanedApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -584,7 +669,7 @@ func TestWaitOrphanedNestedApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -616,7 +701,7 @@ func TestWaitOrphanedAllApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -648,7 +733,7 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -690,7 +775,7 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -722,7 +807,7 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -764,7 +849,7 @@ func TestWaitOrphanedResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -788,7 +873,7 @@ func TestWaitResourceInsideApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -819,7 +904,7 @@ func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -857,7 +942,7 @@ func TestWaitRecursiveApply(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -896,7 +981,7 @@ func TestWaitOrphanedManualOutput(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -933,7 +1018,7 @@ func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -954,7 +1039,7 @@ func TestExportResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -1036,10 +1121,10 @@ func TestResourceInput(t *testing.T) {
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			switch args.TypeToken {
 			case "test:resource:type":
-				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+				return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 			case "pkg:index:MyRemoteComponent":
 				return args.Name + "_id", resource.PropertyMap{
-					"outprop": resource.NewStringProperty("bar"),
+					"outprop": resource.NewProperty("bar"),
 				}, nil
 			default:
 				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)

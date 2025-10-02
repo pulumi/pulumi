@@ -151,12 +151,13 @@ func (nopCloserT) Close() error { return nil }
 var nopCloser io.Closer = nopCloserT(0)
 
 type grpcWrapper struct {
-	stop chan bool
+	stop   chan bool
+	handle rpcutil.ServeHandle
 }
 
 func (w *grpcWrapper) Close() error {
-	go func() { w.stop <- true }()
-	return nil
+	w.stop <- true
+	return <-w.handle.Done
 }
 
 func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
@@ -172,6 +173,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
 	}
+	wrapper.handle = handle
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("127.0.0.1:%v", handle.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -195,6 +197,7 @@ type hostEngine struct {
 
 	address string
 	stop    chan bool
+	handle  rpcutil.ServeHandle
 }
 
 func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
@@ -288,6 +291,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		panic(fmt.Errorf("could not start engine service: %w", err))
 	}
 	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
+	engine.handle = handle
 
 	return &pluginHost{
 		pluginLoaders:   pluginLoaders,
@@ -310,12 +314,12 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 ) (interface{}, error) {
 	var best *PluginLoader
 	for _, l := range host.pluginLoaders {
-		if l.kind != kind || l.name != name {
+		if l.kind != kind || (l.name != name && l.name != "*") {
 			continue
 		}
 
 		if version != nil {
-			if l.version.EQ(*version) {
+			if l.name == "*" || l.version.EQ(*version) {
 				best = l
 				break
 			}
@@ -401,9 +405,16 @@ func (host *pluginHost) SignalCancellation() error {
 			err = pErr
 		}
 	}
+
 	for _, analyzer := range host.analyzers {
 		if aErr := analyzer.Cancel(context.TODO()); aErr != nil {
 			err = aErr
+		}
+	}
+
+	if host.languageRuntime != nil {
+		if lErr := host.languageRuntime.Cancel(); lErr != nil {
+			err = lErr
 		}
 	}
 	return err
@@ -419,11 +430,12 @@ func (host *pluginHost) Close() error {
 	var err error
 	for _, closer := range host.plugins {
 		if pErr := closer.Close(); pErr != nil {
-			err = pErr
+			err = errors.Join(err, pErr)
 		}
 	}
 
-	go func() { host.engine.stop <- true }()
+	host.engine.stop <- true
+	err = <-host.engine.handle.Done
 	host.closed = true
 	return err
 }

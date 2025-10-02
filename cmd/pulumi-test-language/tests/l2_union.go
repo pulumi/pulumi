@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-union"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.UnionProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.UnionProvider{} },
+		},
 		Runs: []TestRun{{
 			Assert: func(
 				l *L,
@@ -43,9 +45,9 @@ func init() {
 
 				mmu := RequireSingleNamedResource(l, snapshot.Resources, "mapMapUnionExample")
 
-				expected := resource.NewObjectProperty(resource.PropertyMap{
-					"key1": resource.NewObjectProperty(resource.PropertyMap{
-						"key1a": resource.NewStringProperty("value1a"),
+				expected := resource.NewProperty(resource.PropertyMap{
+					"key1": resource.NewProperty(resource.PropertyMap{
+						"key1a": resource.NewProperty("value1a"),
 					}),
 				})
 
@@ -57,10 +59,10 @@ func init() {
 				si1 := RequireSingleNamedResource(l, snapshot.Resources, "stringOrIntegerExample1")
 				si2 := RequireSingleNamedResource(l, snapshot.Resources, "stringOrIntegerExample2")
 
-				require.Equal(l, resource.NewNumberProperty(42),
+				require.Equal(l, resource.NewProperty(42.0),
 					si1.Outputs["stringOrIntegerProperty"])
 
-				require.Equal(l, resource.NewStringProperty("forty two"),
+				require.Equal(l, resource.NewProperty("forty two"),
 					si2.Outputs["stringOrIntegerProperty"])
 			},
 		}},

@@ -558,7 +558,10 @@ resource.
 
 ##### Results
 
-- `newInputs`: the new input `Object` for the resource. If the provider does not support
+- `id`: the new [ID](#custom-resources) of the resource. If `Read` is called for a 
+        refresh and this is returned empty (i.e. `""`) then the engine will consider it 
+        deleted.
+- `inputs`: the new input `Object` for the resource. If the provider does not support
                [detailed diffs](#detailed-diffs), these inputs may be used by the engine
                to determine whether or not the resource's actual state differs from its
                desired state during the next [preview](#preview) or [update](#update).
@@ -568,7 +571,7 @@ resource.
                computing default property values or the provider does not support
                [detailed diffs](#detailed-diffs), `newInputs` should simply reflect the
                value of `inputs`.
-- `newState`: the new state `Object` for the resource.
+- `properties`: the new state `Object` for the resource.
 
 #### Delete
 

@@ -211,7 +211,7 @@ func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type
 	if modName != "" {
 		modName = strings.ReplaceAll(modName, "/", ".") + "."
 	}
-	return
+	return modName, name
 }
 
 func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input bool) string {
@@ -446,7 +446,6 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 	relRoot := path.Dir(rel)
 	relImport := relPathToRelImport(relRoot)
 
-	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
 	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "import sys\n")
@@ -471,7 +470,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 	genStandardHeader(w, mod.tool)
 
 	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
-	fmt.Fprintf(w, "import builtins\n")
+	fmt.Fprintf(w, "import builtins as _builtins\n")
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
@@ -488,7 +487,7 @@ func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function,
 	}
 
 	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
-	fmt.Fprintf(w, "import builtins\n")
+	fmt.Fprintf(w, "import builtins as _builtins\n")
 	mod.generateCommonImports(w, imports, typings)
 }
 
@@ -1033,7 +1032,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		}
 
 		typeString := genConfigVarType(p)
-		fmt.Fprintf(w, "%s@property\n", indent)
+		fmt.Fprintf(w, "%s@_builtins.property\n", indent)
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
@@ -1215,7 +1214,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 	baseName = pyClassName(tokenToName(tok))
 	awaitableName = "Awaitable" + baseName
-	return
+	return baseName, awaitableName
 }
 
 func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) string {
@@ -1646,13 +1645,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property, setters bool, indent string,
 	propType func(prop *schema.Property) string,
 ) {
-	// Write out Python properties for each property. If there is a property named "property", it will
-	// be emitted last to avoid conflicting with the built-in `@property` decorator function. We do
-	// this instead of importing `builtins` and fully qualifying the decorator as `@builtins.property`
-	// because that wouldn't address the problem if there was a property named "builtins".
-	emitProp := func(pname string, prop *schema.Property) {
+	for _, prop := range properties {
+		pname := PyName(prop.Name)
 		ty := propType(prop)
-		fmt.Fprintf(w, "%s    @property\n", indent)
+		fmt.Fprintf(w, "%s    @_builtins.property\n", indent)
 		if pname == prop.Name {
 			fmt.Fprintf(w, "%s    @pulumi.getter\n", indent)
 		} else {
@@ -1673,19 +1669,6 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			fmt.Fprintf(w, "%s    def %s(self, value: %s):\n", indent, pname, ty)
 			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, pname)
 		}
-	}
-	var propNamedProperty *schema.Property
-	for _, prop := range properties {
-		pname := PyName(prop.Name)
-		// If there is a property named "property", skip it, and emit it last.
-		if pname == "property" {
-			propNamedProperty = prop
-			continue
-		}
-		emitProp(pname, prop)
-	}
-	if propNamedProperty != nil {
-		emitProp("property", propNamedProperty)
 	}
 }
 
@@ -1893,31 +1876,24 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		mod.collectImports(fun.Inputs.Properties, imports, true)
 	}
 
-	var returnType *schema.ObjectType
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok {
-			returnType = objectType
-		} else {
-			// TODO: remove when we add support for generalized return type for python
-			return "", fmt.Errorf("python sdk-gen doesn't support non-Object return types for function %s", fun.Token)
-		}
-	}
+	returnType := fun.ReturnType
+	returnTypeObj, _ := returnType.(*schema.ObjectType)
 
-	if returnType != nil {
-		mod.collectImports(returnType.Properties, imports, false)
+	if returnTypeObj != nil {
+		mod.collectImports(returnTypeObj.Properties, imports, false)
 	}
 
 	mod.genFunctionHeader(w, fun, imports)
 
 	var baseName, awaitableName string
-	if returnType != nil {
-		baseName, awaitableName = awaitableTypeNames(returnType.Token)
+	if returnTypeObj != nil {
+		baseName, awaitableName = awaitableTypeNames(returnTypeObj.Token)
 	}
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
-	if returnType != nil {
+	if returnTypeObj != nil {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1936,11 +1912,16 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	var retTypeName string
 	var retTypeNameOutput string
 	var rets []*schema.Property
-	if returnType != nil {
-		retTypeName, rets = mod.genAwaitableType(w, returnType), returnType.Properties
-		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+	var originalOutputTypeName string
+	if returnTypeObj != nil {
+		retTypeName, rets = mod.genAwaitableType(w, returnTypeObj), returnTypeObj.Properties
+		originalOutputTypeName, _ = awaitableTypeNames(returnTypeObj.Token)
 		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 		fmt.Fprintf(w, "\n\n")
+	} else if returnType != nil {
+		retTypeName = mod.pyType(returnType)
+		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", retTypeName)
+		originalOutputTypeName = retTypeName
 	} else {
 		retTypeName = "Awaitable[None]"
 		retTypeNameOutput = "pulumi.Output[None]"
@@ -1955,9 +1936,9 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fnName := name
 		resultType := returnTypeName
 		optionsClass := "InvokeOptions"
-		if !plain {
+		if !plain && returnType != nil {
 			fnName += "_output"
-			resultType, _ = awaitableTypeNames(returnType.Token)
+			resultType = originalOutputTypeName
 			optionsClass = "InvokeOutputOptions"
 		}
 
@@ -1975,7 +1956,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 		// Now simply invoke the runtime function with the arguments.
 		trailingArgs := ""
-		if returnType != nil {
+		if returnTypeObj != nil {
 			// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 			// the call to invoke.
 			trailingArgs += ", typ=" + baseName
@@ -2020,14 +2001,18 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 				getter = "__response__"
 			}
 
-			for i, ret := range rets {
-				if i > 0 {
-					fmt.Fprintf(w, ",")
+			if rets == nil {
+				fmt.Fprintf(w, "\n        list(%[1]s.values())[0]", getter)
+			} else {
+				for i, ret := range rets {
+					if i > 0 {
+						fmt.Fprintf(w, ",")
+					}
+					// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
+					// This avoids calling getter functions which will print deprecation messages on unused
+					// fields and should be hidden from the user during Result instantiation.
+					fmt.Fprintf(w, "\n        %[1]s=pulumi.get(%[2]s, '%[1]s')", PyName(ret.Name), getter)
 				}
-				// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
-				// This avoids calling getter functions which will print deprecation messages on unused
-				// fields and should be hidden from the user during Result instantiation.
-				fmt.Fprintf(w, "\n        %[1]s=pulumi.get(%[2]s, '%[1]s')", PyName(ret.Name), getter)
 			}
 
 			if plain {
@@ -2630,7 +2615,7 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 			if forDocs {
 				return name
 			}
-			return "builtins." + name
+			return "_builtins." + name
 		}
 
 		switch t {

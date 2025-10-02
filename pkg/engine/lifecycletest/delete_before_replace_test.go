@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -74,12 +75,12 @@ func generateComplexTestDependencyGraph(
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
-			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewStringProperty("foo")}),
+			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewProperty("foo")}),
 			newResource(urnB, "1", string(urnA)+"::0", nil, nil, nil),
 			newResource(urnC, "2", "",
 				[]resource.URN{urnA},
 				propertyDependencies{"A": []resource.URN{urnA}},
-				resource.PropertyMap{"A": resource.NewStringProperty("bar")}),
+				resource.PropertyMap{"A": resource.NewProperty("bar")}),
 			newResource(urnD, "3", "",
 				[]resource.URN{urnA},
 				propertyDependencies{"B": []resource.URN{urnA}}, nil),
@@ -117,7 +118,7 @@ func generateComplexTestDependencyGraph(
 			return resp.ID
 		}
 
-		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewStringProperty("bar")})
+		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewProperty("bar")})
 		register(urnB, string(urnA)+"::"+string(idA), nil)
 		idC := register(urnC, "", nil)
 		idD := register(urnD, "", nil)
@@ -253,12 +254,12 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		urnA = register("A", nil, nil, nil)
 		urnB = register("B", nil, nil, nil)
 		urnC = register("C", resource.PropertyMap{
-			"A": resource.NewStringProperty("foo"),
-			"B": resource.NewStringProperty("bar"),
+			"A": resource.NewProperty("foo"),
+			"B": resource.NewProperty("bar"),
 		}, nil, []resource.URN{urnA, urnB})
 		urnD = register("D", resource.PropertyMap{
-			"A": resource.NewStringProperty("foo"),
-			"B": resource.NewStringProperty("bar"),
+			"A": resource.NewProperty("foo"),
+			"B": resource.NewProperty("bar"),
 		}, propertyDependencies{
 			"A": []resource.URN{urnB},
 			"B": []resource.URN{urnA, urnC},
@@ -357,7 +358,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
-	inputsA["A"] = resource.NewStringProperty("bar")
+	inputsA["A"] = resource.NewProperty("bar")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -381,7 +382,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
-	dbrA, inputsA["A"] = &dbrValue, resource.NewStringProperty("baz")
+	dbrA, inputsA["A"] = &dbrValue, resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -406,7 +407,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the value of resB.A. Only resB should be replaced, and the replacement should be create-before-delete.
-	inputsB["A"] = resource.NewStringProperty("qux")
+	inputsB["A"] = resource.NewProperty("qux")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -430,7 +431,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it no longer requires delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
-	dbrA, inputsA["A"] = nil, resource.NewStringProperty("zam")
+	dbrA, inputsA["A"] = nil, resource.NewProperty("zam")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -454,7 +455,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the diff of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
-	dbrDiff, inputsA["A"] = true, resource.NewStringProperty("foo")
+	dbrDiff, inputsA["A"] = true, resource.NewProperty("foo")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -480,7 +481,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it disables delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
-	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewStringProperty("bar")
+	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewProperty("bar")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 
@@ -566,7 +567,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	inputsA["A"] = resource.NewStringProperty("bar")
+	inputsA["A"] = resource.NewProperty("bar")
 	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs: inputsB,
@@ -668,7 +669,7 @@ func TestDBRProtect(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return nil
@@ -683,10 +684,10 @@ func TestDBRProtect(t *testing.T) {
 	// First update just create the two resources.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Update A to trigger a replace this should error because of the protect flag on B.
-	inputsA["A"] = resource.NewStringProperty("bar")
+	inputsA["A"] = resource.NewProperty("bar")
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "unable to replace resource \"urn:pulumi:test::test::pkgA:index:typ::resB\""+
 		" as part of replacing \"urn:pulumi:test::test::pkgA:index:typ::resA\" as it is currently marked for protection.")
@@ -696,7 +697,7 @@ func TestDBRProtect(t *testing.T) {
 	snap.Resources[2].Protect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19056. If a resource has "replaceOnChanges" set and a
@@ -729,7 +730,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	}
 
 	inputsA := resource.PropertyMap{
-		"value": resource.NewStringProperty("foo"),
+		"value": resource.NewProperty("foo"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:index:typA", "resA", true, deploytest.ResourceOptions{
@@ -760,10 +761,10 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	// First update just create the two resources.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Update value to trigger a replace this should also replace resB because of the replaceOnChanges.
-	inputsA["value"] = resource.NewStringProperty("bar")
+	inputsA["value"] = resource.NewProperty("bar")
 	validate := func(
 		project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 		events []engine.Event, err error,
@@ -773,14 +774,14 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 		resADeleted := false
 		resBDeleted := false
 		for _, entry := range entries {
-			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resA" {
+			if entry.Kind == engine.TestJournalEntrySuccess && entry.Step.URN().Name() == "resA" {
 				switch entry.Step.Op() {
 				case deploy.OpDeleteReplaced:
 					resADeleted = true
 				}
 			}
 
-			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resB" {
+			if entry.Kind == engine.TestJournalEntrySuccess && entry.Step.URN().Name() == "resB" {
 				switch entry.Step.Op() {
 				case deploy.OpDeleteReplaced:
 					assert.False(t, resADeleted, "resA should not have been deleted yet")
@@ -795,7 +796,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 }
 
 // Regression test for a DBR issue with parallel diff. Given two resources A and B where B depends on A, if we
@@ -811,7 +812,7 @@ func TestDBRParallel(t *testing.T) {
 			t.Parallel()
 
 			// We're going to assert that we always delete B before A
-			diffCalled := false
+			var diffCalled atomic.Bool
 			var waitForDiff sync.WaitGroup
 			waitForDiff.Add(1)
 			var waitForDelete sync.WaitGroup
@@ -833,7 +834,7 @@ func TestDBRParallel(t *testing.T) {
 						},
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							// If we're re-creating B ensure it was deleted first
-							if diffCalled && req.URN.Name() == "resB" {
+							if diffCalled.Load() && req.URN.Name() == "resB" {
 								waitForDelete.Wait()
 							}
 							return plugin.CreateResponse{
@@ -843,7 +844,7 @@ func TestDBRParallel(t *testing.T) {
 							}, nil
 						},
 						DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-							diffCalled = true
+							diffCalled.Store(true)
 							// Make sure we always return diff for the first resource first
 							defer func() {
 								if req.URN.Name() == first {
@@ -905,7 +906,7 @@ func TestDBRParallel(t *testing.T) {
 			}
 			snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 3)
+			require.Len(t, snap.Resources, 3)
 
 			// Update A to trigger a replace with deleteBeforeReplace set, register B in parallel with no dependencies on A.
 			program = func(monitor *deploytest.ResourceMonitor) error {
@@ -934,7 +935,7 @@ func TestDBRParallel(t *testing.T) {
 
 			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 3)
+			require.Len(t, snap.Resources, 3)
 		})
 	}
 }

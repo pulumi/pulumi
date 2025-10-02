@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -498,7 +498,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 func (b *diyBackend) guessProject(ctx context.Context, old *diyBackendReference) (tokens.Name, error) {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
-	chk, err := b.getCheckpoint(ctx, old)
+	chk, _, _, err := b.getCheckpoint(ctx, old)
 	if err != nil {
 		return "", fmt.Errorf("read checkpoint: %w", err)
 	}
@@ -844,7 +844,7 @@ func (b *diyBackend) ListStacks(
 		pool.Enqueue(func() error {
 			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
 			// instead of having to call stackExists separately.
-			chk, err := b.getCheckpoint(ctx, stackRef)
+			chk, _, _, err := b.getCheckpoint(ctx, stackRef)
 			if err != nil {
 				// First check if the checkpoint exists
 				_, existsErr := b.stackExists(ctx, stackRef)
@@ -899,7 +899,7 @@ func (b *diyBackend) ListStackNames(
 	return filteredStacks, nil, nil
 }
 
-func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force, removeBackups bool) (bool, error) {
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
 		return false, err
@@ -911,7 +911,7 @@ func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force
 	}
 	defer b.Unlock(ctx, diyStackRef)
 
-	checkpoint, err := b.getCheckpoint(ctx, diyStackRef)
+	checkpoint, _, _, err := b.getCheckpoint(ctx, diyStackRef)
 	if err != nil {
 		return false, err
 	}
@@ -924,7 +924,7 @@ func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force
 		}
 	}
 
-	return false, b.removeStack(ctx, diyStackRef)
+	return false, b.removeStack(ctx, diyStackRef, removeBackups)
 }
 
 func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,
@@ -968,7 +968,7 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	}
 
 	// Get the current state from the stack to be renamed.
-	chk, err := b.getCheckpoint(ctx, oldRef)
+	chk, version, features, err := b.getCheckpoint(ctx, oldRef)
 	if err != nil {
 		return fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -988,7 +988,8 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	}
 
 	versionedCheckpoint := &apitype.VersionedCheckpoint{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Version:    version,
+		Features:   features,
 		Checkpoint: json.RawMessage(chkJSON),
 	}
 
@@ -1178,7 +1179,7 @@ func (b *diyBackend) apply(
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
 
-	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	scope := op.Scopes.NewScope(ctx, engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
@@ -1194,18 +1195,18 @@ func (b *diyBackend) apply(
 		close(eventsDone)
 	}()
 
+	engineCtx := &engine.Context{
+		Cancel:        scope.Context(),
+		Events:        engineEvents,
+		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
 		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
-	}
-	engineCtx := &engine.Context{
-		Cancel:          scope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
+		engineCtx.SnapshotManager = manager
 	}
 
 	// Perform the update
@@ -1401,7 +1402,7 @@ func (b *diyBackend) ExportDeployment(ctx context.Context,
 		return nil, err
 	}
 
-	chk, err := b.getCheckpoint(ctx, diyStackRef)
+	chk, version, features, err := b.getCheckpoint(ctx, diyStackRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -1412,7 +1413,8 @@ func (b *diyBackend) ExportDeployment(ctx context.Context,
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    3,
+		Version:    version,
+		Features:   features,
 		Deployment: json.RawMessage(data),
 	}, nil
 }
@@ -1550,7 +1552,7 @@ func (b *diyBackend) getParallel() int {
 }
 
 func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
-	return nil, errors.New("cloud registry is not supported by diy backends")
+	return nil, errors.New("Private Registry is not supported by diy backends")
 }
 
 func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {

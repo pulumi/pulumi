@@ -58,7 +58,7 @@ func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
 	internalInputs := inputs[internalKey]
 	if !internalInputs.IsObject() {
 		newMap := resource.PropertyMap{}
-		internalInputs = resource.NewObjectProperty(newMap)
+		internalInputs = resource.NewProperty(newMap)
 		inputs[internalKey] = internalInputs
 		return newMap
 	}
@@ -85,10 +85,10 @@ func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) 
 	propMap := make(resource.PropertyMap)
 	for key, checksum := range value {
 		hex := hex.EncodeToString(checksum)
-		propMap[resource.PropertyKey(key)] = resource.NewStringProperty(hex)
+		propMap[resource.PropertyKey(key)] = resource.NewProperty(hex)
 	}
 
-	internalInputs[pluginChecksumsKey] = resource.NewObjectProperty(propMap)
+	internalInputs[pluginChecksumsKey] = resource.NewProperty(propMap)
 }
 
 // GetProviderChecksums fetches a provider plugin checksums from the given property map.
@@ -121,7 +121,7 @@ func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[pluginDownloadKey] = resource.NewStringProperty(value)
+	internalInputs[pluginDownloadKey] = resource.NewProperty(value)
 }
 
 // GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
@@ -148,7 +148,7 @@ func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
 	// __internal, and don't try and look up the key from the root config where a provider may just have a config key
 	// itself of the same text.
 	addOrGetInternal(inputs)
-	inputs[versionKey] = resource.NewStringProperty(value.String())
+	inputs[versionKey] = resource.NewProperty(value.String())
 }
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the
@@ -184,7 +184,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 // Sets the provider name in the given property map.
 func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[nameKey] = resource.NewStringProperty(name.String())
+	internalInputs[nameKey] = resource.NewProperty(name.String())
 }
 
 // GetProviderName fetches and parses a provider name from the given property map. If the
@@ -219,9 +219,9 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+	inputs[versionKey] = resource.NewProperty(value.Version.String())
 	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewStringProperty(
+	internalInputs[parameterizationKey] = resource.NewProperty(
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
@@ -561,14 +561,34 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
-
-	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it
-	// the checked properties returned from the plugin.
 	if resp.Properties == nil {
 		resp.Properties = resource.PropertyMap{}
 	}
-	// Only add __internal back if it was originally in the inputs.
+
+	// If the provider tries to drop the versions field reset it back to the original value.
+	if _, ok := resp.Properties[versionKey]; !ok {
+		// Only set it if we had it originally
+		if _, ok := req.News[versionKey]; ok {
+			resp.Properties[versionKey] = req.News[versionKey]
+		}
+	}
+	// If the provider tries to change the version field return an error
+	if newV, ok := resp.Properties[versionKey]; ok {
+		if oldV, ok := req.News[versionKey]; ok {
+			if !oldV.DeepEquals(newV) {
+				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
+					req.URN, oldV.StringValue(), newV.StringValue())
+			}
+		}
+	}
+
+	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
+	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
 	if _, has := req.News[internalKey]; has {
+		// Before we reset it warn the user that the providers data is being discarded
+		if _, has := resp.Properties[internalKey]; has {
+			r.host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
+		}
 		resp.Properties[internalKey] = req.News[internalKey]
 	}
 

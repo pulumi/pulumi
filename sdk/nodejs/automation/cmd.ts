@@ -83,7 +83,7 @@ export class PulumiCommand {
      */
     static async get(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
-        const { stdout } = await exec(command, ["version"]);
+        const { stdout } = await exec(command, ["version"], undefined, { PULUMI_SKIP_UPDATE_CHECK: "true" });
         const skipVersionCheck = !!opts?.skipVersionCheck || !!process.env[SKIP_VERSION_CHECK_VAR];
         let min = minimumVersion;
         if (opts?.version && semver.gt(opts.version, minimumVersion)) {

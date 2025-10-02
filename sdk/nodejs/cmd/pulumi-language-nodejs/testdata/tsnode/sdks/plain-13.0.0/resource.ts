@@ -33,11 +33,11 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly data!: pulumi.Output<outputs.Data>;
+    declare public readonly data: pulumi.Output<outputs.Data>;
     /**
      * A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
      */
-    public readonly nonPlainData!: pulumi.Output<outputs.Data | undefined>;
+    declare public readonly nonPlainData: pulumi.Output<outputs.Data | undefined>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.
@@ -50,11 +50,11 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.data === undefined) && !opts.urn) {
+            if (args?.data === undefined && !opts.urn) {
                 throw new Error("Missing required property 'data'");
             }
-            resourceInputs["data"] = args ? args.data : undefined;
-            resourceInputs["nonPlainData"] = args ? args.nonPlainData : undefined;
+            resourceInputs["data"] = args?.data;
+            resourceInputs["nonPlainData"] = args?.nonPlainData;
         } else {
             resourceInputs["data"] = undefined /*out*/;
             resourceInputs["nonPlainData"] = undefined /*out*/;

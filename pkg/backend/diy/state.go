@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,6 +92,7 @@ func (b *diyBackend) getTarget(
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
+		Tags:         nil, // TODO: diy backend does not support tags yet, so we just return nil here.
 	}, nil
 }
 
@@ -121,7 +122,7 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 ) (*deploy.Snapshot, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	checkpoint, err := b.getCheckpoint(ctx, ref)
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -146,12 +147,16 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	return snapshot, nil
 }
 
-// GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func (b *diyBackend) getCheckpoint(ctx context.Context, ref *diyBackendReference) (*apitype.CheckpointV3, error) {
+// getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,
+// returning the checkpoint, version, and features.
+func (b *diyBackend) getCheckpoint(
+	ctx context.Context,
+	ref *diyBackendReference,
+) (*apitype.CheckpointV3, int, []string, error) {
 	chkpath := b.stackPath(ctx, ref)
 	bytes, err := b.bucket.ReadAll(ctx, chkpath)
 	if err != nil {
-		return nil, err
+		return nil, 0, nil, err
 	}
 	m := encoding.JSON
 	if encoding.IsCompressed(bytes) {
@@ -280,15 +285,53 @@ func (b *diyBackend) saveStack(
 }
 
 // removeStack removes information about a stack from the current workspace.
-func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) error {
+func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference, removeBackups bool) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	// Just make a backup of the file and don't write out anything new.
+	var resultErr error
+
 	file := b.stackPath(ctx, ref)
-	backupTarget(ctx, b.bucket, file, false)
+	if removeBackups {
+		// Remove the stack file and its backup file.
+		if err := removeTargetAndBackup(ctx, b.bucket, file); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing file for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+
+		// Remove the backups.
+		backupDir := ref.BackupDir()
+		if err := removeAllByPrefix(ctx, b.bucket, backupDir); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing backups for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+	} else {
+		// Just make a backup of the file and don't write out anything new.
+		backupTarget(ctx, b.bucket, file, false)
+	}
 
 	historyDir := ref.HistoryDir()
-	return removeAllByPrefix(ctx, b.bucket, historyDir)
+	if err := removeAllByPrefix(ctx, b.bucket, historyDir); err != nil {
+		resultErr = errors.Join(resultErr,
+			fmt.Errorf("removing history for stack %s: %w", ref.FullyQualifiedName(), err))
+	}
+
+	return resultErr
+}
+
+// removeTargetAndBackup deletes the target file and its backup, if they exist.
+func removeTargetAndBackup(ctx context.Context, bucket Bucket, file string) error {
+	contract.Requiref(file != "", "file", "must not be empty")
+	var resultErr error
+	files := []string{file, file + ".bak"}
+	for _, f := range files {
+		if err := bucket.Delete(ctx, f); err != nil {
+			// Ignore NotFound errors, as the file may not exist.
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				resultErr = errors.Join(resultErr, fmt.Errorf("removing file %s: %w", f, err))
+			}
+		}
+	}
+	return resultErr
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.

@@ -14,25 +14,25 @@
 
 from __future__ import annotations
 
+import asyncio
+import traceback
+import uuid
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
     Callable,
-    Dict,
-    List,
-    Mapping,
+    Optional,
     Union,
     cast,
-    Optional,
 )
-import uuid
+from collections.abc import Awaitable, Mapping
 
 import grpc
-from grpc import aio
-
 from google.protobuf.message import Message
+from grpc import aio
+from grpc.experimental.aio import init_grpc_aio
 
 from .. import log
+from ..invoke import InvokeOptions, InvokeTransform
 from .proto import (
     alias_pb2,
     callback_pb2,
@@ -41,7 +41,6 @@ from .proto import (
     resource_pb2_grpc,
 )
 from .rpc import deserialize_properties, serialize_properties
-from ..invoke import InvokeOptions, InvokeTransform
 
 if TYPE_CHECKING:
     from ..resource import (
@@ -56,19 +55,23 @@ if TYPE_CHECKING:
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
+# Workaround for https://github.com/grpc/grpc/issues/38679,
+# https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
+# This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
+init_grpc_aio()
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
 
 
 class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
-    _servicers: List[_CallbackServicer] = []
+    _servicers: list[_CallbackServicer] = []
 
-    _callbacks: Dict[str, _CallbackFunction]
+    _callbacks: dict[str, _CallbackFunction]
     _monitor: resource_pb2_grpc.ResourceMonitorStub
     _server: aio.Server
     _target: str
 
-    _transforms: Dict[Union[ResourceTransform, InvokeTransform], str]
+    _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
 
     def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
         log.debug("Creating CallbackServicer")
@@ -87,25 +90,61 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     @classmethod
     async def shutdown(cls):
         for servicer in cls._servicers:
-            await servicer._server.wait_for_termination(timeout=0)
+            await servicer._server.stop(grace=0)
 
-    # aio handles this being async but the pyi typings don't expect it.
     async def Invoke(
-        self, request: callback_pb2.CallbackInvokeRequest, context
+        self,
+        request: callback_pb2.CallbackInvokeRequest,
+        context: aio.ServicerContext[
+            callback_pb2.CallbackInvokeRequest, callback_pb2.CallbackInvokeResponse
+        ],
     ) -> callback_pb2.CallbackInvokeResponse:
         log.debug(f"Invoke callback {request.token}")
         callback = self._callbacks.get(request.token)
         if callback is None:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 f"Callback with token {request.token} not found!",
             )
-            raise Exception("Callback not found!")
+            raise Exception("Unreachable, abort never returns")
 
-        response = await callback(request.request)
-        return callback_pb2.CallbackInvokeResponse(
-            response=response.SerializeToString()
-        )
+        try:
+            response = await callback(request.request)
+            return callback_pb2.CallbackInvokeResponse(
+                response=response.SerializeToString()
+            )
+        except Exception as e:  # noqa: BLE001 catch blind exception
+            log.debug(
+                f"Invoke callback {request.token} error: {traceback.format_exc()}"
+            )
+            details = self.pretty_error(e)
+            await context.abort(
+                grpc.StatusCode.UNKNOWN,
+                f"Invoke callback {request.token} error: {details}",
+            )
+        except asyncio.CancelledError as e:
+            log.debug(
+                f"Invoke callback {request.token} was cancelled: {traceback.format_exc()}"
+            )
+            details = self.pretty_error(e)
+            await context.abort(
+                grpc.StatusCode.CANCELLED,
+                f"Callback with token {request.token} was cancelled: {details}",
+            )
+
+    def pretty_error(self, e: BaseException) -> str:
+        """
+        pretty_error filters a stack trace down to user code and formats it for display
+        """
+        stack = traceback.extract_tb(e.__traceback__)
+        # Drop internal stack frames
+        filtered_stack = [f for f in stack if f.filename != __file__]
+        # If there are no stack frames left after dropping internal frames,
+        # use the original stack, this is likely an internal error.
+        filtered_stack = filtered_stack if len(filtered_stack) > 0 else stack
+        pretty_stack = "".join(traceback.format_list(filtered_stack))
+        details = f"{str(e)}:\n{pretty_stack}"
+        return details
 
     def register_transform(self, transform: ResourceTransform) -> callback_pb2.Callback:
         # If this transform function has already been registered, return it.
@@ -350,6 +389,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.HasField("delete_before_replace"):
             ropts.delete_before_replace = opts.delete_before_replace
 
+        id = getattr(opts, "import", None)
+        if id:
+            ropts.import_ = id
+
         additional_secret_outputs = list(opts.additional_secret_outputs)
         if additional_secret_outputs:
             ropts.additional_secret_outputs = additional_secret_outputs
@@ -456,7 +499,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         )
         from ..output import Output
 
-        aliases: List[alias_pb2.Alias] = []
+        aliases: list[alias_pb2.Alias] = []
         if opts.aliases:
             for alias in opts.aliases:
                 resolved = await Output.from_input(alias).future()
@@ -498,6 +541,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             hooks=hooks,
         )
 
+        if opts.import_ is not None:
+            setattr(result, "import", opts.import_)
         if opts.deleted_with is not None:
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
         if opts.plugin_download_url:

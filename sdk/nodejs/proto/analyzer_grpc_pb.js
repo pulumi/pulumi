@@ -281,4 +281,4 @@ cancel: {
   },
 };
 
-exports.AnalyzerClient = grpc.makeGenericClientConstructor(AnalyzerService);
+exports.AnalyzerClient = grpc.makeGenericClientConstructor(AnalyzerService, 'Analyzer');

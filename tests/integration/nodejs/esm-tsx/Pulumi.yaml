@@ -1,0 +1,6 @@
+name: esm-tsx
+runtime:
+  name: nodejs
+  options:
+    nodeargs: "--import tsx"
+description: Use ECMAScript modules for a TS program using TSX to handle loading of TS files.

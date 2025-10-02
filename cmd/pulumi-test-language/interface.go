@@ -160,19 +160,20 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
-	port, done, err := rpcutil.Serve(0, server.cancel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: server.cancel,
+		Init: func(srv *grpc.Server) error {
 			testingrpc.RegisterLanguageTestServer(srv, server)
 			pulumirpc.RegisterEngineServer(srv, server)
 			return nil
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	server.addr = fmt.Sprintf("127.0.0.1:%d", port)
-	server.done = done
+	server.addr = fmt.Sprintf("127.0.0.1:%d", handle.Port)
+	server.done = handle.Done
 
 	return server, nil
 }
@@ -184,7 +185,7 @@ type languageTestServer struct {
 
 	ctx    context.Context
 	cancel chan bool
-	done   chan error
+	done   <-chan error
 	addr   string
 
 	sdkLocks gsync.Map[string, *sync.Mutex]
@@ -664,13 +665,15 @@ func (eng *languageTestServer) RunLanguageTest(
 		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
-	providers := make(map[string]plugin.Provider)
+	providers := make(map[string]func() plugin.Provider)
 	for _, provider := range test.Providers {
-		version, err := getProviderVersion(provider)
+		p := provider()
+
+		version, err := getProviderVersion(p)
 		if err != nil {
 			return nil, err
 		}
-		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
+		providers[fmt.Sprintf("%s@%s", p.Pkg(), version)] = provider
 	}
 
 	host := &testHost{
@@ -929,19 +932,12 @@ func (eng *languageTestServer) RunLanguageTest(
 				},
 			},
 		}
-		serializedDeployment, err := stack.SerializeDeployment(ctx, snap, false)
-		if err != nil {
-			return nil, fmt.Errorf("serialize deployment: %w", err)
-		}
-		jsonDeployment, err := json.Marshal(serializedDeployment)
+
+		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 		if err != nil {
 			return nil, fmt.Errorf("serialize deployment: %w", err)
 		}
 
-		untypedDeployment := &apitype.UntypedDeployment{
-			Version:    apitype.DeploymentSchemaVersionCurrent,
-			Deployment: jsonDeployment,
-		}
 		err = backend.ImportStackDeployment(ctx, s, untypedDeployment)
 		if err != nil {
 			return nil, fmt.Errorf("import deployment: %w", err)

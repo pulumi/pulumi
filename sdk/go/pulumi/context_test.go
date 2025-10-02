@@ -171,7 +171,7 @@ func TestCollapseAliases(t *testing.T) {
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			assert.Equal(t, "test:resource:type", args.TypeToken)
-			return "myID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "myID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -248,7 +248,7 @@ func TestCollapseAliases(t *testing.T) {
 			require.NoError(t, err)
 			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
 			require.NoError(t, err)
-			assert.Len(t, urns, testCase.totalAliasUrns)
+			require.Len(t, urns, testCase.totalAliasUrns)
 			var items []interface{}
 			for _, item := range urns {
 				items = append(items, item)
@@ -579,17 +579,27 @@ func TestSourcePosition(t *testing.T) {
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			var sourcePosition *pulumirpc.SourcePosition
+			var stackTrace *pulumirpc.StackTrace
 			switch {
 			case args.RegisterRPC != nil:
-				sourcePosition = args.RegisterRPC.SourcePosition
+				sourcePosition, stackTrace = args.RegisterRPC.SourcePosition, args.RegisterRPC.StackTrace
 			case args.ReadRPC != nil:
-				sourcePosition = args.ReadRPC.SourcePosition
+				sourcePosition, stackTrace = args.ReadRPC.SourcePosition, args.ReadRPC.StackTrace
 			}
 
 			require.NotNil(t, sourcePosition)
+			assert.True(t, strings.HasPrefix(sourcePosition.Uri, "file:///"))
 			assert.True(t, strings.HasSuffix(sourcePosition.Uri, "context_test.go"))
 
-			return "myID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			require.NotNil(t, stackTrace)
+			require.True(t, len(stackTrace.Frames) > 1)
+			require.Equal(t, stackTrace.Frames[0].Pc, sourcePosition)
+
+			t.Log(strings.Join(slice.Map(stackTrace.Frames, func(f *pulumirpc.StackFrame) string {
+				return fmt.Sprintf("%v:%v", f.Pc.Uri, f.Pc.Line)
+			}), "\n"))
+
+			return "myID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 		},
 	}
 
@@ -631,6 +641,26 @@ func TestWithValue(t *testing.T) {
 	assert.Equal(t, newCtx.state, testCtx.state)
 }
 
+func TestExportMap(t *testing.T) {
+	t.Parallel()
+
+	var output map[string]Input
+	err := RunErr(func(ctx *Context) error {
+		ctx.Export("first", String("hello"))
+		ctx.Export("second", String("world"))
+
+		output = ctx.GetCurrentExportMap()
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+
+	expected := map[string]Input{
+		"first":  String("hello"),
+		"second": String("world"),
+	}
+	assert.Equal(t, expected, output)
+}
+
 func TestInvokeOutput(t *testing.T) {
 	t.Parallel()
 
@@ -639,7 +669,7 @@ func TestInvokeOutput(t *testing.T) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
-			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+			return resource.PropertyMap{"result": resource.NewProperty("success!")}, nil
 		},
 	}
 
@@ -700,7 +730,7 @@ func TestCall(t *testing.T) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
-			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+			return resource.PropertyMap{"result": resource.NewProperty("success!")}, nil
 		},
 	}
 
@@ -742,7 +772,7 @@ func TestCallSingle(t *testing.T) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
-			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+			return resource.PropertyMap{"result": resource.NewProperty("success!")}, nil
 		},
 	}
 
@@ -782,8 +812,8 @@ func TestCallSingleFailsIfMultiField(t *testing.T) {
 				return nil, errors.New("invoke error")
 			}
 			return resource.PropertyMap{
-				"result":    resource.NewStringProperty("success!"),
-				"resultTwo": resource.NewStringProperty("but failure"),
+				"result":    resource.NewProperty("success!"),
+				"resultTwo": resource.NewProperty("but failure"),
 			}, nil
 		},
 	}
@@ -812,7 +842,7 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 
 	mocks := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
-			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+			return resource.PropertyMap{"result": resource.NewProperty("success!")}, nil
 		},
 	}
 

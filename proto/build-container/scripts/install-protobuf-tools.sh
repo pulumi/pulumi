@@ -15,6 +15,7 @@ ensureSet "${PROTOC_GEN_GO_GRPC_VERSION}" "PROTOC_GEN_GO_GRPC_VERSION" || exit 1
 ensureSet "${NODEJS_GRPC_VERSION}" "NODEJS_GRPC_VERSION" || exit 1
 ensureSet "${NODEJS_GRPC_TOOLS_VERSION}" "NODEJS_GRPC_TOOLS_VERSION" || exit 1
 ensureSet "${NODEJS_TS_PROTOC_GEN_VERSION}" "NODEJS_TS_PROTOC_GEN_VERSION" || exit 1
+ensureSet "${NODEJS_JS_PROTOC_GEN_VERSION}" "NODEJS_TS_PROTOC_GEN_VERSION" || exit 1
 ensureSet "${PYTHON_GRPCIO_VERSION}" "PYTHON_GRPCIO_VERSION" || exit 1
 ensureSet "${PYTHON_GRPCIO_TOOLS_VERSION}" "PYTHON_GRPCIO_TOOLS_VERSION" || exit 1
 
@@ -36,7 +37,7 @@ GOBIN=/usr/local/bin go install "google.golang.org/protobuf/cmd/protoc-gen-go@v$
 GOBIN=/usr/local/bin go install "google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${PROTOC_GEN_GO_GRPC_VERSION}"
 
 # Install Node gRPC Tools
-npm install --unsafe-perm -g "grpc@${NODEJS_GRPC_VERSION}" "grpc-tools@${NODEJS_GRPC_TOOLS_VERSION}" "grpc_tools_node_protoc_ts@${NODEJS_TS_PROTOC_GEN_VERSION}"
+npm install --unsafe-perm -g "@grpc/grpc-js@${NODEJS_GRPC_VERSION}" "grpc-tools@${NODEJS_GRPC_TOOLS_VERSION}" "grpc_tools_node_protoc_ts@${NODEJS_TS_PROTOC_GEN_VERSION}" protoc-gen-js@${NODEJS_JS_PROTOC_GEN_VERSION} 
 
 # Install the Python gRPC Tools
 python3 -m pip install "grpcio==${PYTHON_GRPCIO_VERSION}"

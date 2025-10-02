@@ -88,7 +88,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws2, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -98,7 +98,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, azure, opts.Provider,
@@ -109,7 +109,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -120,7 +120,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws1, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -130,7 +130,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1), Providers(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -141,7 +141,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1, aws2), Providers(aws1, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -156,7 +156,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(ProviderMap(m1), ProviderMap(m2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Nil(t, opts.Provider,
 			"Providers should not upgrade to Provider")
@@ -166,7 +166,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -177,7 +177,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws2, aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -1416,7 +1416,7 @@ func TestInvokeDependsOn(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1457,7 +1457,7 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1552,7 +1552,7 @@ func TestInvokeDependsOnIgnored(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1600,7 +1600,7 @@ func TestInvokeSecret(t *testing.T) {
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
 				// The invoke result contains a secret.
-				"echo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"echo": resource.MakeSecret(resource.NewProperty("hello")),
 			}, nil
 		},
 	}

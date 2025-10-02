@@ -24,7 +24,7 @@ export class Component extends pulumi.ComponentResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public /*out*/ readonly propertyDeps!: pulumi.Output<{[key: string]: string[]}>;
+    declare public /*out*/ readonly propertyDeps: pulumi.Output<{[key: string]: string[]}>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -37,18 +37,18 @@ export class Component extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.resource === undefined) && !opts.urn) {
+            if (args?.resource === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resource'");
             }
-            if ((!args || args.resourceList === undefined) && !opts.urn) {
+            if (args?.resourceList === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resourceList'");
             }
-            if ((!args || args.resourceMap === undefined) && !opts.urn) {
+            if (args?.resourceMap === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resourceMap'");
             }
-            resourceInputs["resource"] = args ? args.resource : undefined;
-            resourceInputs["resourceList"] = args ? args.resourceList : undefined;
-            resourceInputs["resourceMap"] = args ? args.resourceMap : undefined;
+            resourceInputs["resource"] = args?.resource;
+            resourceInputs["resourceList"] = args?.resourceList;
+            resourceInputs["resourceMap"] = args?.resourceMap;
             resourceInputs["propertyDeps"] = undefined /*out*/;
         } else {
             resourceInputs["propertyDeps"] = undefined /*out*/;

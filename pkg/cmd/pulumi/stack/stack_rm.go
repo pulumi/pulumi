@@ -42,6 +42,7 @@ func newStackRmCmd() *cobra.Command {
 	var yes bool
 	var force bool
 	var preserveConfig bool
+	var removeBackups bool
 	cmd := &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -91,7 +92,7 @@ func newStackRmCmd() *cobra.Command {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
-			hasResources, err := backend.RemoveStack(ctx, s, force)
+			hasResources, err := backend.RemoveStack(ctx, s, force, removeBackups)
 			if err != nil {
 				if hasResources {
 					return fmt.Errorf(
@@ -137,6 +138,9 @@ func newStackRmCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&preserveConfig, "preserve-config", false,
 		"Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack")
+	cmd.PersistentFlags().BoolVar(
+		&removeBackups, "remove-backups", false,
+		"Additionally remove backups of the stack, if using the DIY backend")
 
 	return cmd
 }

@@ -88,7 +88,7 @@ func TestDeletion(t *testing.T) {
 
 	err := DeleteResource(snap, b, nil, false)
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, []*resource.State{pA, a, c}, snap.Resources)
 }
 
@@ -304,7 +304,7 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 	assert.Contains(t, depErr.Dependencies, a)
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.Contains(t, depErr.Dependencies, c)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
@@ -333,7 +333,7 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 	assert.NotContains(t, depErr.Dependencies, a)
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.NotContains(t, depErr.Dependencies, c)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
@@ -479,7 +479,7 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 	assert.NotContains(t, depErr.Dependencies, a)
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.Contains(t, depErr.Dependencies, c)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
@@ -519,7 +519,7 @@ func TestLocateResourceAmbiguous(t *testing.T) {
 	})
 
 	resList := LocateResource(snap, a.URN)
-	assert.Len(t, resList, 2)
+	require.Len(t, resList, 2)
 	assert.Contains(t, resList, a)
 	assert.Contains(t, resList, aPending)
 	assert.NotContains(t, resList, pA)
@@ -541,7 +541,7 @@ func TestLocateResourceExact(t *testing.T) {
 	})
 
 	resList := LocateResource(snap, a.URN)
-	assert.Len(t, resList, 1)
+	require.Len(t, resList, 1)
 	assert.Contains(t, resList, a)
 }
 
@@ -620,7 +620,7 @@ func TestRenameStack(t *testing.T) {
 
 	// Baseline. Can locate resource A.
 	resList := locateResource(deployment, a.URN)
-	assert.Len(t, resList, 1)
+	require.Len(t, resList, 1)
 	assert.Contains(t, resList, a)
 	if t.Failed() {
 		t.Fatal("Unable to find expected resource in initial checkpoint.")
@@ -640,7 +640,7 @@ func TestRenameStack(t *testing.T) {
 		}
 
 		// Confirm the previous resource by URN isn't found.
-		assert.Len(t, locateResource(deployment, baselineResourceURN), 0)
+		require.Len(t, locateResource(deployment, baselineResourceURN), 0)
 
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
@@ -648,7 +648,7 @@ func TestRenameStack(t *testing.T) {
 			"test", // project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
+		require.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 
 	// Rename the stack and project.
@@ -665,6 +665,6 @@ func TestRenameStack(t *testing.T) {
 			"new-project",
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
+		require.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 }

@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import google.protobuf.descriptor
 import google.protobuf.internal.enum_type_wrapper
@@ -63,7 +64,7 @@ commonly used for showing deprecation notices.
 """
 global___DiagnosticSeverity = DiagnosticSeverity
 
-@typing_extensions.final
+@typing.final
 class Pos(google.protobuf.message.Message):
     """Pos represents a single position in a source file, by addressing the start byte of a unicode character
     encoded in UTF-8.
@@ -99,11 +100,11 @@ class Pos(google.protobuf.message.Message):
         column: builtins.int = ...,
         byte: builtins.int = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["byte", b"byte", "column", b"column", "line", b"line"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["byte", b"byte", "column", b"column", "line", b"line"]) -> None: ...
 
 global___Pos = Pos
 
-@typing_extensions.final
+@typing.final
 class Range(google.protobuf.message.Message):
     """Range represents a span of characters between two positions in a source file."""
 
@@ -117,6 +118,7 @@ class Range(google.protobuf.message.Message):
     @property
     def start(self) -> global___Pos:
         """Start and End represent the bounds of this range. Start is inclusive and End is exclusive."""
+
     @property
     def end(self) -> global___Pos: ...
     def __init__(
@@ -126,12 +128,12 @@ class Range(google.protobuf.message.Message):
         start: global___Pos | None = ...,
         end: global___Pos | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["end", b"end", "start", b"start"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["end", b"end", "filename", b"filename", "start", b"start"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["end", b"end", "start", b"start"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["end", b"end", "filename", b"filename", "start", b"start"]) -> None: ...
 
 global___Range = Range
 
-@typing_extensions.final
+@typing.final
 class Diagnostic(google.protobuf.message.Message):
     """Diagnostic represents information to be presented to a user about an error or anomaly in parsing or evaluating configuration."""
 
@@ -163,6 +165,7 @@ class Diagnostic(google.protobuf.message.Message):
         Some diagnostics have no source ranges at all. If Context is set then
         Subject should always also be set.
         """
+
     @property
     def context(self) -> global___Range: ...
     def __init__(
@@ -174,7 +177,7 @@ class Diagnostic(google.protobuf.message.Message):
         subject: global___Range | None = ...,
         context: global___Range | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["context", b"context", "subject", b"subject"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["context", b"context", "detail", b"detail", "severity", b"severity", "subject", b"subject", "summary", b"summary"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["context", b"context", "subject", b"subject"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "detail", b"detail", "severity", b"severity", "subject", b"subject", "summary", b"summary"]) -> None: ...
 
 global___Diagnostic = Diagnostic

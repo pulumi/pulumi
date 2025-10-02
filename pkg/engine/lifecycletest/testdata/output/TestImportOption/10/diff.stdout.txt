@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=28f50f5c-5b10-4c9e-b35c-d91e6210613a]
+<{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}>=>pkgA:m:typA: (import-replacement)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
@@ -7,14 +7,14 @@
 <{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
 <{%fg 13%}>    out: <{%reset%}><{%fg 13%}>41<{%reset%}><{%fg 13%}>
 <{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
-<{%reset%}>    [id=imported-id]
+<{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    out: <{%reset%}><{%reset%}>41<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
 <{%fg 13%}>    out: <{%reset%}><{%fg 13%}>41<{%reset%}><{%fg 13%}>
 <{%reset%}><{%fg 1%}><<pkgA:m:typA: (discard-replaced)
-<{%fg 1%}>    [id=imported-id]
+<{%fg 1%}>    [id=3]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>

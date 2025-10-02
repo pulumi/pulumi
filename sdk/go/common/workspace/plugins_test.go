@@ -1295,7 +1295,7 @@ plugins:
 	proj, err := LoadProject(pyaml)
 	require.NoError(t, err)
 	require.NotNil(t, proj.Plugins)
-	assert.Equal(t, 1, len(proj.Plugins.Providers))
+	require.Len(t, proj.Plugins.Providers, 1)
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
 	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
@@ -1744,7 +1744,7 @@ func TestPluginInfoShimless(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, pluginPath, info.Path)
-	assert.Equal(t, uint64(23), info.Size)
+	assert.Equal(t, uint64(23), info.Size())
 	assert.Equal(t, stat.ModTime(), info.InstallTime)
 	assert.Equal(t, stat.ModTime(), info.SchemaTime)
 	// schemaPaths are odd, they're one directory up from the plugin directory
@@ -1981,6 +1981,17 @@ func TestNewPluginSpec(t *testing.T) {
 			source: "github.com/pulumi/pulumi-example@v1.0.0.0",
 			kind:   apitype.ResourcePlugin,
 			Error:  errors.New("VERSION must be valid semver or git commit hash: v1.0.0.0"),
+		},
+		{
+			name:   "url with auth info",
+			source: "https://abc:token@github.com/pulumi/pulumi-example@v1.0.0",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example.git",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "git://abc:token@github.com/pulumi/pulumi-example",
+			},
 		},
 	}
 

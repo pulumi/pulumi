@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:revive // Legacy package name we don't want to change
 package utils
 
 import (

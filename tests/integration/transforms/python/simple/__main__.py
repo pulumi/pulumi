@@ -148,3 +148,11 @@ if result["length"] != 11:
     raise Exception(f"expected length to be 11, got {result['length']}")
 if result["prefix"] != "test":
     raise Exception(f"expected prefix to be test, got {result['prefix']}")
+
+def import_transform(args: ResourceTransformArgs):
+    args.opts.import_ = "stackDefault:test-id"
+    return ResourceTransformResult(
+        props=args.props,
+        opts=args.opts)
+    
+res9 = Random("res9", length=7, opts=ResourceOptions(transforms=[import_transform]))

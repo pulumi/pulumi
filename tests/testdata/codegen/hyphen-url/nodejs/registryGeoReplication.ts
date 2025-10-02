@@ -24,15 +24,15 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
     /**
      * The login server url
      */
-    public /*out*/ readonly acrLoginServerOut!: pulumi.Output<string>;
+    declare public /*out*/ readonly acrLoginServerOut: pulumi.Output<string>;
     /**
      * The Registry
      */
-    public /*out*/ readonly registry!: pulumi.Output<pulumiAzureNative.containerregistry.Registry>;
+    declare public /*out*/ readonly registry: pulumi.Output<pulumiAzureNative.containerregistry.Registry>;
     /**
      * The replication policy
      */
-    public /*out*/ readonly replication!: pulumi.Output<pulumiAzureNative.containerregistry.Replication>;
+    declare public /*out*/ readonly replication: pulumi.Output<pulumiAzureNative.containerregistry.Replication>;
 
     /**
      * Create a RegistryGeoReplication resource with the given unique name, arguments, and options.
@@ -45,10 +45,10 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.resourceGroup === undefined) && !opts.urn) {
+            if (args?.resourceGroup === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resourceGroup'");
             }
-            resourceInputs["resourceGroup"] = args ? args.resourceGroup : undefined;
+            resourceInputs["resourceGroup"] = args?.resourceGroup;
             resourceInputs["acrLoginServerOut"] = undefined /*out*/;
             resourceInputs["registry"] = undefined /*out*/;
             resourceInputs["replication"] = undefined /*out*/;

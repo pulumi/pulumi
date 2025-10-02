@@ -31,8 +31,8 @@ export class Example extends pulumi.CustomResource {
         return obj['__pulumiType'] === Example.__pulumiType;
     }
 
-    public readonly mapMapUnionProperty!: pulumi.Output<{[key: string]: {[key: string]: string | string[]}} | undefined>;
-    public readonly stringOrIntegerProperty!: pulumi.Output<string | number | undefined>;
+    declare public readonly mapMapUnionProperty: pulumi.Output<{[key: string]: {[key: string]: string | string[]}} | undefined>;
+    declare public readonly stringOrIntegerProperty: pulumi.Output<string | number | undefined>;
 
     /**
      * Create a Example resource with the given unique name, arguments, and options.
@@ -45,8 +45,8 @@ export class Example extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["mapMapUnionProperty"] = args ? args.mapMapUnionProperty : undefined;
-            resourceInputs["stringOrIntegerProperty"] = args ? args.stringOrIntegerProperty : undefined;
+            resourceInputs["mapMapUnionProperty"] = args?.mapMapUnionProperty;
+            resourceInputs["stringOrIntegerProperty"] = args?.stringOrIntegerProperty;
         } else {
             resourceInputs["mapMapUnionProperty"] = undefined /*out*/;
             resourceInputs["stringOrIntegerProperty"] = undefined /*out*/;

@@ -90,6 +90,21 @@ function marshalSourcePosition(sourcePosition?: SourcePosition) {
     return pos;
 }
 
+function marshalStackTrace(stackTrace?: (SourcePosition | undefined)[]) {
+    if (stackTrace === undefined) {
+        return undefined;
+    }
+    const trace = new sourceproto.StackTrace();
+    trace.setFramesList(
+        stackTrace.map((pos) => {
+            const frame = new sourceproto.StackFrame();
+            frame.setPc(marshalSourcePosition(pos)!);
+            return frame;
+        }),
+    );
+    return trace;
+}
+
 interface ResourceResolverOperation {
     /**
      * A resolver for a resource's URN.
@@ -304,6 +319,7 @@ export function readResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    stackTrace?: (SourcePosition | undefined)[],
     packageRef?: Promise<string | undefined>,
 ): void {
     if (!opts.id) {
@@ -353,6 +369,7 @@ export function readResource(
                 req.setAcceptresources(!utils.disableResourceReferences);
                 req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
+                req.setStacktrace(marshalStackTrace(stackTrace));
                 req.setPackageref(packageRefStr || "");
 
                 // Now run the operation, serializing the invocation if necessary.
@@ -502,6 +519,7 @@ export function registerResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    stackTrace?: (SourcePosition | undefined)[],
     packageRef?: Promise<string | undefined>,
 ): void {
     const label = `resource:${name}[${t}]`;
@@ -600,6 +618,7 @@ export function registerResource(
                 req.setDeletedwith(resop.deletedWithURN || "");
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
+                req.setStacktrace(marshalStackTrace(stackTrace));
                 req.setTransformsList(callbacks);
                 req.setSupportsresultreporting(true);
                 req.setHooks(hooks);

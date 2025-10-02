@@ -76,6 +76,10 @@ linters:
           msg: Use require.NoError instead
         - pattern: ^assert.NotNil$
           msg: Use require.NotNil instead
+        - pattern: ^assert.Len$
+          msg: Use require.Len instead
+        - pattern: ^resource.New(String|Bool|Number|Array|Asset|Archive|Object|Computed|Output|Secret|ResourceReference)Property$
+          msg: Use resource.NewProperty instead
   exclusions:
     generated: lax
     presets:

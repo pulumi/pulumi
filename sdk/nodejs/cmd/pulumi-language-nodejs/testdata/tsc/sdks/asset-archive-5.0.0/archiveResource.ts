@@ -31,7 +31,7 @@ export class ArchiveResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ArchiveResource.__pulumiType;
     }
 
-    public readonly value!: pulumi.Output<pulumi.asset.Archive>;
+    declare public readonly value: pulumi.Output<pulumi.asset.Archive>;
 
     /**
      * Create a ArchiveResource resource with the given unique name, arguments, and options.
@@ -44,10 +44,10 @@ export class ArchiveResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.value === undefined) && !opts.urn) {
+            if (args?.value === undefined && !opts.urn) {
                 throw new Error("Missing required property 'value'");
             }
-            resourceInputs["value"] = args ? args.value : undefined;
+            resourceInputs["value"] = args?.value;
         } else {
             resourceInputs["value"] = undefined /*out*/;
         }

@@ -78,7 +78,7 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 
 	// Run a preview that will try and delete both resA and resB.
@@ -163,7 +163,7 @@ func TestProtectInheritance(t *testing.T) {
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	// Assert that parent and resA are protected and resB is not
 	assert.Equal(t, "parent", snap.Resources[0].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())

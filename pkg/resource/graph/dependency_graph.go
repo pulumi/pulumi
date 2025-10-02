@@ -29,6 +29,18 @@ type DependencyGraph struct {
 	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
 }
 
+// Alias maps a new *resource.State to an existing resource in the dependency graph.
+func (dg *DependencyGraph) Alias(newRes *resource.State, existingRes *resource.State) {
+	// Ensure that the new resource is not already in the dependency graph.
+	_, exists := dg.index[newRes]
+	contract.Assertf(!exists, "new resource %s already exists in the dependency graph", newRes.URN)
+	// Ensure that the existing resource is in the dependency graph.
+	index, exists := dg.index[existingRes]
+	contract.Assertf(exists, "existing resource %s does not exist in the dependency graph", existingRes.URN)
+	// Map the new resource to the index of the existing resource.
+	dg.index[newRes] = index
+}
+
 // DependingOn returns a slice containing all resources that directly or indirectly
 // depend upon the given resource. The returned slice is guaranteed to be in topological
 // order with respect to the snapshot dependency graph.
@@ -390,7 +402,9 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		parent := res.Parent
 		for parent != "" {
 			childrenOf[parent] = append(childrenOf[parent], idx)
-			parent = resources[urnIndex[parent]].Parent
+			idx, has := urnIndex[parent]
+			contract.Assertf(has, "parent %q not found in urnIndex", parent)
+			parent = resources[idx].Parent
 		}
 	}
 

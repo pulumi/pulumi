@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
@@ -45,11 +46,13 @@ type testHost struct {
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
-	providers   map[string]plugin.Provider
+	providers   map[string]func() plugin.Provider
 
 	connections map[plugin.Provider]io.Closer
 
 	policies []plugin.Analyzer
+
+	closeMutex sync.Mutex
 }
 
 var _ plugin.Host = (*testHost)(nil)
@@ -130,14 +133,14 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 			if parts[0] == key {
 				v := semver.MustParse(parts[1])
 				if provider == nil || v.GT(version) {
-					provider = p
+					provider = p()
 					version = v
 				}
 			}
 		}
 	} else {
 		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-		provider = h.providers[key]
+		provider = h.providers[key]()
 	}
 
 	if provider == nil {
@@ -176,8 +179,9 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 	// that that returned the expected plugins (with expected versions).
 	expected := mapset.NewSet[string]()
 	for _, provider := range h.providers {
-		pkg := provider.Pkg()
-		version, err := getProviderVersion(provider)
+		p := provider()
+		pkg := p.Pkg()
+		version, err := getProviderVersion(p)
 		if err != nil {
 			return fmt.Errorf("get provider version %s: %w", pkg, err)
 		}
@@ -207,8 +211,9 @@ func (h *testHost) ResolvePlugin(
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
 		for _, provider := range h.providers {
-			pkg := provider.Pkg()
-			providerVersion, err := getProviderVersion(provider)
+			p := provider()
+			pkg := p.Pkg()
+			providerVersion, err := getProviderVersion(p)
 			if err != nil {
 				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
 			}
@@ -241,6 +246,8 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	h.closeMutex.Lock()
+	defer h.closeMutex.Unlock()
 	errs := make([]error, 0)
 	for _, closer := range h.connections {
 		if err := closer.Close(); err != nil {

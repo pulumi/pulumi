@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -47,5 +48,26 @@ func TestNodejsSingleTransforms(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 		},
 		Quick: true,
+	})
+}
+
+// Test that transforms work for a resource that is creted after we return from `stack.runInPulumiStack`.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsTransformsAsyncResource(t *testing.T) {
+	d := filepath.Join("nodejs", "async")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          d,
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			res := stack.Deployment.Resources[2]
+			require.Equal(t, res.URN.Name(), "res")
+			length := res.Inputs["length"]
+			require.Equal(t, 12.0, length)
+		},
 	})
 }

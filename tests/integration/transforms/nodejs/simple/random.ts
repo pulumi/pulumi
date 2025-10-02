@@ -8,8 +8,8 @@ interface RandomArgs {
 }
 
 export class Random extends pulumi.CustomResource {
-    public readonly length!: pulumi.Output<number>;
-    public readonly result!: pulumi.Output<string>;
+    declare public readonly length: pulumi.Output<number>;
+    declare public readonly result: pulumi.Output<string>;
     constructor(name: string, args: RandomArgs, opts?: pulumi.CustomResourceOptions) {
         super("testprovider:index:Random", name, args, opts);
     }
@@ -25,8 +25,8 @@ interface ComponentArgs {
 }
 
 export class Component extends pulumi.ComponentResource {
-    public readonly length!: pulumi.Output<number>;
-    public readonly childId!: pulumi.Output<string>;
+    declare public readonly length: pulumi.Output<number>;
+    declare public readonly childId: pulumi.Output<string>;
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("testprovider:index:Component", name, args, opts, true);
     }

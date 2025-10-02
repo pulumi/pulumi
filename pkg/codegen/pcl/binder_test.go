@@ -322,7 +322,7 @@ output cidrBlock {
 `
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 }
 
@@ -350,7 +350,7 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 }
 
@@ -365,7 +365,7 @@ func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
 `
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 }
 
@@ -531,12 +531,12 @@ func TestTraversalOfOptionalObject(t *testing.T) {
 	// first assert that binding the program works
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.Empty(t, diags, "There are no diagnostics")
 	require.NotNil(t, program)
 
 	// get the output variable
 	outputVars := program.OutputVariables()
-	assert.Equal(t, 1, len(outputVars), "There is only one output variable")
+	require.Len(t, outputVars, 1, "There is only one output variable")
 	fooBar := outputVars[0]
 	fooBarType := fooBar.Value.Type()
 	assert.True(t, model.IsOptionalType(fooBarType))
@@ -565,7 +565,7 @@ resource randomPet "random:index/randomPet:RandomPet" {
 
 	strictProgram, diags, strictError := ParseAndBindProgram(t, source, "program.pp")
 	require.NotNil(t, strictError, "Binding fails in strict mode")
-	assert.Equal(t, 2, len(diags), "There are two diagnostics")
+	require.Len(t, diags, 2, "There are two diagnostics")
 	assert.Nil(t, strictProgram)
 }
 
@@ -581,7 +581,7 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
 	require.NotNil(t, program)
-	assert.Equal(t, 2, len(program.PackageReferences()), "There are two package references")
+	require.Len(t, program.PackageReferences(), 2, "There are two package references")
 
 	packageRefExists := func(pkg string) bool {
 		for _, ref := range program.PackageReferences() {
@@ -650,7 +650,7 @@ package "random" {
 	require.NoError(t, err)
 	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
 	require.False(t, diags.HasErrors(), "There are no error diagnostics")
-	require.Equal(t, 3, len(packageDescriptors), "There are two package descriptors")
+	require.Len(t, packageDescriptors, 3, "There are two package descriptors")
 
 	require.Equal(t, "aws", packageDescriptors["aws"].Name)
 	require.Nil(t, packageDescriptors["aws"].Version)
@@ -1074,4 +1074,111 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 	assert.True(t, ok, "The value is a scope traversal expression")
 	variableName := pcl.InferVariableName(traversal)
 	assert.Equal(t, "componentFirstValue", variableName)
+}
+
+func TestRangeTraversalFromObjectOfObjectsDoesNotError(t *testing.T) {
+	t.Parallel()
+	source := `
+accounts = {
+  "us-east-1" = {
+    awsRegion = "us-east-1"
+    something = 10
+  }
+  "us-west-2" = {
+    awsRegion = "us-west-2"
+    something = 20
+  }
+  "eu-west-1" = {
+    awsRegion = "eu-west-1"
+    something = 30
+  }
+}
+
+resource "name" "random:index/randomString:RandomString" {
+  options {
+    range = accounts
+  }
+  length = range.value["aws_region"]
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NotNil(t, program)
+	require.Len(t, diags, 1, "There is one diagnostic")
+	require.Equal(t, diags[0].Severity, hcl.DiagWarning, "The diagnostic is a warning")
+	require.Contains(t, diags[0].Summary, "unknown property 'aws_region' among [awsRegion something]",
+		"The diagnostic contains the correct message about the unknown property")
+}
+
+func TestTraversingNoneTypeEmitsWarning(t *testing.T) {
+	t.Parallel()
+	source := `data = {}
+
+resource "name" "random:index/randomString:RandomString" {
+  options {
+    range = data
+  }
+  length = range.value.something
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NoError(t, err, "no error")
+	require.NotNil(t, program)
+	require.Len(t, diags, 1, "There is one node")
+	require.Equal(t, hcl.DiagWarning, diags[0].Severity, "The diagnostic is a warning")
+}
+
+type nameInfo int
+
+func (nameInfo) Format(name string) string {
+	return name
+}
+
+func TestRewriteAppliesDoesNotPanicInNonStrictMode(t *testing.T) {
+	t.Parallel()
+
+	source := `
+config "vpcId" "string" {
+  description = "The ID of the VPC"
+}
+
+resource "ptfeService" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+  __logicalName     = "ptfe_service"
+  vpcId             = vpcId
+  vpcEndpointType   = "Interface"
+  privateDnsEnabled = false
+}
+
+resource "ptfeServiceRecord" "aws:route53/record:Record" {
+  __logicalName = "ptfe_service"
+  zoneId        = "example_zone_id"
+  name          = "example"
+  type          = "CNAME"
+  ttl           = "300"
+  records       = [ptfeService.dnsEntries[0]["dns_name"]]
+}
+	`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, n := range program.Nodes {
+		if r, ok := n.(*pcl.Resource); ok && r.Name() == "ptfeServiceRecord" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "there is a resource named ptfeServiceRecord")
+
+	for _, attr := range resource.Inputs {
+		value := attr.Value
+		expr, diags := pcl.RewriteApplies(value, nameInfo(0), false)
+		require.False(t, diags.HasErrors(), "there are no diagnostics")
+		require.NotNil(t, expr, "the expression is not nil")
+	}
 }

@@ -163,7 +163,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
 
-		assert.Equal(t, 3, len(exampleObjectType.Properties))
+		require.Len(t, exampleObjectType.Properties, 3)
 		var exampleProperty *Property
 		var nonPlainProperty *Property
 		var nestedProperty *Property
@@ -203,7 +203,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		assert.True(t, ok)
 
 		check := func(properties []*Property) {
-			assert.Equal(t, 3, len(properties))
+			require.Len(t, properties, 3)
 
 			var exampleProperty *Property
 			var nonPlainProperty *Property
@@ -875,7 +875,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
-	assert.Len(t, diags, 2)
+	require.Len(t, diags, 2)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagWarning)
 		assert.True(
@@ -925,7 +925,7 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	})
 	// No error as binding should work fine even with warnings
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	require.NotNil(t, pkg)
 }
 
@@ -954,7 +954,7 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
 		fmt.Println(diag.Summary)
@@ -991,7 +991,7 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	require.NotNil(t, pkg)
 }
 
@@ -1020,7 +1020,7 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
 
@@ -1050,7 +1050,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
 		assert.True(
@@ -1087,7 +1087,7 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	require.NotNil(t, pkg)
 }
 
@@ -1117,7 +1117,7 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 		AllowDanglingReferences: true,
 	})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
 
@@ -1149,7 +1149,7 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, pkg)
 	// assert that there is 1 warning in the diagnostics because of using ID as a property
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
@@ -1168,7 +1168,7 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagError)
 	assert.Contains(t, diags[0].Summary, "version must be provided when package supports packing")
 }
@@ -1214,11 +1214,11 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-methods-1.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Resources, 1)
-				assert.Len(t, pkg.Resources[0].Methods, 1)
+				require.Len(t, pkg.Resources, 1)
+				require.Len(t, pkg.Resources[0].Methods, 1)
 
 				require.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
-				assert.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
+				require.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
 				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
 				assert.Equal(t, "__self__", inputs[0].Name)
 				assert.Equal(t, &ResourceType{
@@ -1232,12 +1232,12 @@ func TestMethods(t *testing.T) {
 				}
 
 				require.NotNil(t, objectReturnType)
-				assert.Len(t, objectReturnType.Properties, 1)
+				require.Len(t, objectReturnType.Properties, 1)
 				outputs := objectReturnType.Properties
 				assert.Equal(t, "someValue", outputs[0].Name)
 				assert.Equal(t, StringType, outputs[0].Type)
 
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 				assert.True(t, pkg.Functions[0].IsMethod)
 				assert.Same(t, pkg.Resources[0].Methods[0].Function, pkg.Functions[0])
 			},
@@ -1245,7 +1245,7 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-simplified-methods.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
@@ -1253,7 +1253,7 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-simplified-methods.yml",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
@@ -1290,19 +1290,19 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "provider-methods-1.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 			},
 		},
 		{
 			filename: "provider-methods-2.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 2)
+				require.Len(t, pkg.Functions, 2)
 			},
 		},
 		{
 			filename: "provider-methods-3.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 2)
+				require.Len(t, pkg.Functions, 2)
 			},
 		},
 	}
@@ -2092,7 +2092,6 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				Token:            "token",
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
-				Language:         map[string]interface{}{},
 			},
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
@@ -2345,7 +2344,7 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.ErrorContains(t, err, "is a reserved name, cannot name function")
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 }
 
 func TestResourceWithKeynameOverlapResource(t *testing.T) {
@@ -2365,7 +2364,7 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 	}
 
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "is a reserved name, cannot name resource")
 }
 
@@ -2398,7 +2397,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	assert.Error(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot name type")
 }
 
@@ -2589,4 +2588,38 @@ func TestFunctionToken(t *testing.T) {
 			assert.True(t, exists)
 		})
 	}
+}
+
+func TestProviderRefWarning(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name: "test",
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {
+				InputProperties: map[string]PropertySpec{
+					"provider": {
+						TypeSpec: TypeSpec{
+							Ref: "#/resources/pulumi:providers:test",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Try to bind the spec
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+
+	require.NoError(t, err)
+	expectedWarning := hcl.Diagnostics{
+		{
+			Severity: hcl.DiagWarning,
+			Summary: "#/resources/test:index:SomeResource/inputProperties/provider/$ref: " +
+				"reference to provider resource '/resources/pulumi:providers:test' is deprecated, use '#/provider' instead",
+		},
+	}
+	assert.Equal(t, expectedWarning, diags)
 }

@@ -41,6 +41,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
+// GetPolicyPublishMetadata returns optional data about the environment performing a
+// `pulumi policy publish` command.
+func GetPolicyPublishMetadata(root string) map[string]string {
+	m := &backend.UpdateMetadata{
+		Environment: make(map[string]string),
+	}
+
+	if err := addGitMetadata(root, m); err != nil {
+		logging.V(3).Infof("errors detecting git metadata: %s", err)
+	}
+
+	addCIMetadataToEnvironment(m.Environment)
+
+	return m.Environment
+}
+
 // GetUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
 func GetUpdateMetadata(

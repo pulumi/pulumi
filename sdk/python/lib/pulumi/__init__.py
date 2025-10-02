@@ -59,6 +59,7 @@ from .metadata import (
     get_organization,
     get_project,
     get_stack,
+    get_root_directory,
 )
 
 from .resource import (
@@ -155,6 +156,7 @@ __all__ = [
     "get_organization",
     "get_project",
     "get_stack",
+    "get_root_directory",
     # resource
     "Alias",
     "Resource",

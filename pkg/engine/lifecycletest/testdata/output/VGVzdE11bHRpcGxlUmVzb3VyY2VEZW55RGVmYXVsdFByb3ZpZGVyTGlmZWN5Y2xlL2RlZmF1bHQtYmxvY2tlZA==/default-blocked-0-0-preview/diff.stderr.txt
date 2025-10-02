@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>Default provider for 'pkgA' disabled. 'urn:pulumi:test::test::pkgA:m:typA::resA' must use an explicit provider.<{%reset%}>

@@ -50,16 +50,10 @@ type Registry interface {
 	// there are no matching packages in the Registry.
 	ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 
-	// GetTemplate is a preview API, and should not be used without an approved EOL
-	// plan for deprecation. The safest way to do this is to flag functionality behind
-	// `PULUMI_EXPERIMENTAL`, which removes any backwards comparability requirements.
 	GetTemplate(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
 
-	// ListTemplates is a preview API, and should not be used without an approved EOL
-	// plan for deprecation. The safest way to do this is to flag functionality behind
-	// `PULUMI_EXPERIMENTAL`, which removes any backwards comparability requirements.
 	ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
 
 	// DownloadTemplate downloads a template given the value of

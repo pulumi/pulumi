@@ -1,0 +1,3 @@
+name: test-ts-execute
+runtime:
+  name: nodejs

@@ -1,6 +1,7 @@
 import asyncio
 import copy
-from typing import Any, Awaitable, Callable, Mapping, Optional, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, Union
+from collections.abc import Awaitable, Mapping
 
 
 from .runtime.resource import register_resource_hook

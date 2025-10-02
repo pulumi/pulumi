@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -1040,6 +1041,11 @@ func TestImportParameterizedSmokeFreshState(t *testing.T) {
 	testImportParameterizedSmoke(t, false)
 }
 
+func TestImportParameterizedSmokeFreshStateWithExperimental(t *testing.T) {
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
+	testImportParameterizedSmoke(t, false)
+}
+
 // Test for https://github.com/pulumi/pulumi/issues/18814, check that --parallel respects cgroups limits.
 func TestParallelCgroups(t *testing.T) {
 	t.Parallel()
@@ -1138,4 +1144,47 @@ example = airbyte.Provider("provider")`)
 	e.RunCommand("pulumi", "install")
 
 	e.RunCommand("pulumi", "up", "--yes", "--expect-no-changes")
+}
+
+// Test that `destroy --exclude-protected --remove` removes the stack if the stack is empty.
+func TestDestroyProtectedEmpty(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--yes")
+	// Init a new empty stack
+	e.RunCommand("pulumi", "stack", "init", "empty-test-stack")
+	// Then immediately destroy it
+	e.RunCommand("pulumi", "destroy", "--yes", "--exclude-protected", "--remove")
+	// It should be removed
+	stdout, _ := e.RunCommand("pulumi", "stack", "ls")
+	assert.NotContains(t, stdout, "empty-test-stack")
+}
+
+func TestPrintLogfilePath(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stdout, _ := e.RunCommand("pulumi", "about", "-v", "10")
+	var logFilePath string
+	message := "The log file for this run is at "
+	scanner := bufio.NewScanner(strings.NewReader(stdout))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, message) {
+			parts := strings.Split(line, message)
+			if len(parts) > 1 {
+				logFilePath = strings.TrimSpace(parts[1])
+				break
+			}
+		}
+	}
+	require.NotEmpty(t, logFilePath, "log file path should be found in output")
+	_, err := os.Stat(logFilePath)
+	require.NoError(t, err, "log file should exist at %s", logFilePath)
 }

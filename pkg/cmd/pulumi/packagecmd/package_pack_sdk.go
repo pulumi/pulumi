@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -38,7 +39,7 @@ func newPackagePackSdkCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			pCtx, err := NewPluginContext(cwd)
+			pCtx, err := packages.NewPluginContext(cwd)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}

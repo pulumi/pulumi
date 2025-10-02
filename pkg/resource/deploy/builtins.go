@@ -225,6 +225,7 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
 			Inputs:  req.Inputs,
 			Outputs: outputs,
 		},
@@ -304,7 +305,7 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	secretOutputs := make([]resource.PropertyValue, 0)
 	for k, v := range outputs {
 		if v.ContainsSecrets() {
-			secretOutputs = append(secretOutputs, resource.NewStringProperty(string(k)))
+			secretOutputs = append(secretOutputs, resource.NewProperty(string(k)))
 		}
 	}
 
@@ -315,8 +316,8 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 
 	return resource.PropertyMap{
 		"name":              name,
-		"outputs":           resource.NewObjectProperty(outputs),
-		"secretOutputNames": resource.NewArrayProperty(secretOutputs),
+		"outputs":           resource.NewProperty(outputs),
+		"secretOutputNames": resource.NewProperty(secretOutputs),
 	}, nil
 }
 
@@ -336,7 +337,7 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 
 	return resource.PropertyMap{
 		"name":    name,
-		"outputs": resource.NewObjectProperty(outputs),
+		"outputs": resource.NewProperty(outputs),
 	}, nil
 }
 
@@ -362,8 +363,8 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 
 	return resource.PropertyMap{
 		"urn":      urnInput,
-		"id":       resource.NewStringProperty(string(state.ID)),
-		"provider": resource.NewStringProperty(state.Provider),
-		"state":    resource.NewObjectProperty(state.Outputs),
+		"id":       resource.NewProperty(string(state.ID)),
+		"provider": resource.NewProperty(state.Provider),
+		"state":    resource.NewProperty(state.Outputs),
 	}, nil
 }

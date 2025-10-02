@@ -210,12 +210,12 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 								continue
 							}
 							switch entry.Kind {
-							case JournalEntrySuccess:
+							case TestJournalEntrySuccess:
 								assert.Subset(t, allowedOps, []display.StepOp{entry.Step.Op()})
-							case JournalEntryFailure:
+							case TestJournalEntryFailure:
 								assert.Fail(t, "unexpected failure in journal")
-							case JournalEntryBegin:
-							case JournalEntryOutputs:
+							case TestJournalEntryBegin:
+							case TestJournalEntryOutputs:
 							}
 						}
 
@@ -339,7 +339,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t4",
 		name: "n2",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(42),
+			resource.PropertyKey("x"): resource.NewProperty(42.0),
 		},
 		aliases: []resource.Alias{
 			{Type: "pkgA:othermod:t3", Name: "n1"},
@@ -351,7 +351,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t5",
 		name: "n3",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("x"): resource.NewProperty(1000.0),
 		},
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t4", Name: "n2"},
@@ -363,7 +363,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t6",
 		name: "n4",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
 		},
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t5", Name: "n3"},
@@ -376,7 +376,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t7",
 		name: "n5",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
@@ -389,7 +389,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -402,7 +402,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
@@ -423,7 +423,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -436,7 +436,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
@@ -880,7 +880,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t4",
 		name: "n2",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(42),
+			resource.PropertyKey("x"): resource.NewProperty(42.0),
 		},
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
@@ -892,7 +892,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t5",
 		name: "n3",
 		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("x"): resource.NewProperty(1000.0),
 		},
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
@@ -904,7 +904,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t6",
 		name: "n4",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
 		},
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
@@ -917,7 +917,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t7",
 		name: "n5",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
 		},
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
@@ -930,7 +930,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -943,7 +943,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
@@ -964,7 +964,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
 		},
 		deleteBeforeReplace: true,
 	}, {
@@ -977,7 +977,7 @@ func TestAliasURNs(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
 		},
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
@@ -1306,7 +1306,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 
 	// Set mode to try and create A then a B that aliases to it, this should fail
@@ -1314,7 +1314,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 
 	// Set mode to try and create B first then a A, this should fail
@@ -1322,7 +1322,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	// Because we made the B first that's what should end up in the state file
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[1].URN)
 }
@@ -1410,7 +1410,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[3].URN)
@@ -1421,10 +1421,10 @@ func TestCorrectResourceChosen(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
-	assert.Len(t, snap.Resources[2].Aliases, 0)
+	require.Len(t, snap.Resources[2].Aliases, 0)
 }
 
 func TestComponentToCustomUpdate(t *testing.T) {
@@ -1484,7 +1484,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 1)
+	require.Len(t, snap.Resources, 1)
 	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
 	assert.False(t, snap.Resources[0].Custom)
 
@@ -1503,7 +1503,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	// Now two because we'll have a provider now
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), snap.Resources[1].Type)
 	assert.True(t, snap.Resources[1].Custom)
 
@@ -1522,7 +1522,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	// Back to one because the provider should have been cleaned up as well
-	assert.Len(t, snap.Resources, 1)
+	require.Len(t, snap.Resources, 1)
 	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
 	assert.False(t, snap.Resources[0].Custom)
 }
@@ -1596,7 +1596,7 @@ func TestParentAlias(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 
 	// Now run again with the rearranged parents, we don't expect to see any replaces
 	firstRun = false
@@ -1611,7 +1611,7 @@ func TestParentAlias(t *testing.T) {
 		}, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 }
 
 func TestEmptyParentAlias(t *testing.T) {
@@ -1672,7 +1672,7 @@ func TestEmptyParentAlias(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 
 	// Now run again with the rearranged parents, we don't expect to see any replaces
 	firstRun = false
@@ -1687,7 +1687,7 @@ func TestEmptyParentAlias(t *testing.T) {
 		}, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 }
 
 func TestSplitUpdateComponentAliases(t *testing.T) {
@@ -1795,7 +1795,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB"), snap.Resources[2].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[2].Parent)
@@ -1812,7 +1812,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	assert.Error(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN(""), snap.Resources[0].Parent)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[2].URN)
@@ -1825,7 +1825,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN(""), snap.Resources[0].Parent)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"), snap.Resources[2].URN)
@@ -1927,7 +1927,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 
 	// Run the next case, resA should be aliased
@@ -1936,7 +1936,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resAX"), snap.Resources[1].URN)
 
 	// Run the last case, resAX should try to delete and resA should be created. We can't possibly know that resA ==
@@ -1946,7 +1946,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	assert.Error(t, err)
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resAX"), snap.Resources[2].URN)
 }

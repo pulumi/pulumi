@@ -19,7 +19,7 @@ export class GoodbyeComponent extends pulumi.ComponentResource {
         return obj['__pulumiType'] === GoodbyeComponent.__pulumiType;
     }
 
-    public /*out*/ readonly parameterValue!: pulumi.Output<string>;
+    declare public /*out*/ readonly parameterValue: pulumi.Output<string>;
 
     /**
      * Create a GoodbyeComponent resource with the given unique name, arguments, and options.

@@ -64,7 +64,7 @@ resource rta "aws:ec2:RouteTableAssociation" {
 	assert.True(t, ok)
 
 	x, temps := g.lowerExpression(prop.Value, prop.Type())
-	assert.Len(t, temps, 0)
+	require.Len(t, temps, 0)
 
 	x.SetLeadingTrivia(nil)
 	x.SetTrailingTrivia(nil)

@@ -132,6 +132,9 @@ type deploymentOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc deploymentSourceFunc
 
+	// pluginManager manages plugin installations.
+	pluginManager PluginManager
+
 	// true if we should print the DOT file for this deployment.
 	DOT bool
 	// the channel to write events from the engine to.

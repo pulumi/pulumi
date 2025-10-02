@@ -205,7 +205,8 @@ func (src *source) Iterate(ctx context.Context, providers ProviderSource) (Sourc
 }
 
 type iterator struct {
-	closed bool
+	closed      bool
+	returnError bool
 }
 
 func (iter *iterator) Cancel(context.Context) error {
@@ -214,11 +215,10 @@ func (iter *iterator) Cancel(context.Context) error {
 }
 
 func (iter *iterator) Next() (SourceEvent, error) {
-	// Return an error on iteration. This makes DeploymentExecutor.Execute
-	// return fairly early, letting us get away with mocking less of the system
-	// to test the closing behaviour.
-	// It also ensures we do call `Close` in the presence of an error.
-	return nil, errors.New("error")
+	if iter.returnError {
+		return nil, errors.New("error")
+	}
+	return nil, nil
 }
 
 func TestSourceIteratorClose(t *testing.T) {
@@ -230,12 +230,36 @@ func TestSourceIteratorClose(t *testing.T) {
 			opts:   &Options{},
 			ctx: &plugin.Context{
 				Diag: &deploytest.NoopSink{},
+				Host: deploytest.NewPluginHost(nil, nil, nil),
 			},
+			newPlans: &resourcePlans{},
+		},
+		stepGen: &stepGenerator{},
+	}
+
+	_, err := ex.Execute(context.Background())
+	require.NoError(t, err)
+	require.True(t, iter.closed, "The source iterator should be closed after execution")
+}
+
+// If we run into an error, bail out and don't attempt to close the iterator.
+func TestSourceIteratorNoCloseOnError(t *testing.T) {
+	t.Parallel()
+	iter := &iterator{returnError: true}
+	ex := &deploymentExecutor{
+		deployment: &Deployment{
+			source: &source{iter},
+			opts:   &Options{},
+			ctx: &plugin.Context{
+				Diag: &deploytest.NoopSink{},
+				Host: deploytest.NewPluginHost(nil, nil, nil),
+			},
+			newPlans: &resourcePlans{},
 		},
 		stepGen: &stepGenerator{},
 	}
 
 	_, err := ex.Execute(context.Background())
 	require.ErrorContains(t, err, "BAIL")
-	require.True(t, iter.closed, "The source iterator should be closed after execution")
+	require.False(t, iter.closed)
 }

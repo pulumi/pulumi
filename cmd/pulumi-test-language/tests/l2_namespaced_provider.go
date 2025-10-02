@@ -26,7 +26,10 @@ import (
 
 func init() {
 	LanguageTests["l2-namespaced-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}, &providers.NamespacedProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+			func() plugin.Provider { return &providers.NamespacedProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -49,9 +52,9 @@ func init() {
 					//nolint:lll // Breaking the URN up makes it harder to read
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"value": true,
-						"resourceRef": resource.NewResourceReferenceProperty(resource.ResourceReference{
+						"resourceRef": resource.NewProperty(resource.ResourceReference{
 							URN: "urn:pulumi:test::l2-namespaced-provider::component:index:ComponentCustomRefOutput$component:index:Custom::componentRes-child",
-							ID:  resource.NewStringProperty("id-foo-bar-baz"),
+							ID:  resource.NewProperty("id-foo-bar-baz"),
 						}),
 					})
 					require.Equal(l, want, namespaced.Inputs)

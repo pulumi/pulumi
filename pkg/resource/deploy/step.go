@@ -1312,7 +1312,15 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
-	outputs := refreshed.Outputs
+
+	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: #%d, Outputs: #%d",
+		refreshed.ID, len(refreshed.Inputs), len(refreshed.Outputs))
+
+	// If the ID is blank treat this as a delete, and leave outputs blank.
+	var outputs resource.PropertyMap
+	if refreshed.ID != "" {
+		outputs = refreshed.Outputs
+	}
 
 	// If the provider specified new inputs for this resource, pick them up now. Otherwise, retain the current inputs.
 	inputs := s.old.Inputs
@@ -1321,10 +1329,12 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	if outputs != nil {
+		contract.Assertf(refreshed.ID != "", "refreshed.ID can not be empty")
+
 		// There is a chance that the ID has changed. We want to allow this change to happen
 		// it will have changed already in the outputs, but we need to persist this change
 		// at a state level because the Id
-		if refreshed.ID != "" && refreshed.ID != resourceID {
+		if refreshed.ID != resourceID {
 			logging.V(7).Infof("Refreshing ID; oldId=%s, newId=%s", resourceID, refreshed.ID)
 			resourceID = refreshed.ID
 		}
@@ -1390,6 +1400,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// * newOutputs where oldOutputs are expected
 			// * oldInputs where newInputs are expected
 			diff, err := diffResource(
+				s.deployment.Diag(),
 				s.new.URN, s.new.ID,
 				// pass new inputs/outputs as old inputs/outputs
 				s.new.Inputs, s.new.Outputs,
@@ -1411,7 +1422,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	complete := func() {
 		// s.cts will be empty for refreshes that are just being done on state, rather than via a program.
 		if s.cts != nil {
-			s.cts.MustFulfill(s.new)
+			s.cts.MustFulfill(s.New())
 		}
 	}
 
@@ -1525,14 +1536,15 @@ func (s *ImportStep) Op() display.StepOp {
 	return OpImport
 }
 
-func (s *ImportStep) Deployment() *Deployment { return s.deployment }
-func (s *ImportStep) Type() tokens.Type       { return s.new.Type }
-func (s *ImportStep) Provider() string        { return s.new.Provider }
-func (s *ImportStep) URN() resource.URN       { return s.new.URN }
-func (s *ImportStep) Old() *resource.State    { return s.old }
-func (s *ImportStep) New() *resource.State    { return s.new }
-func (s *ImportStep) Res() *resource.State    { return s.new }
-func (s *ImportStep) Logical() bool           { return !s.replacing }
+func (s *ImportStep) Deployment() *Deployment   { return s.deployment }
+func (s *ImportStep) Type() tokens.Type         { return s.new.Type }
+func (s *ImportStep) Provider() string          { return s.new.Provider }
+func (s *ImportStep) URN() resource.URN         { return s.new.URN }
+func (s *ImportStep) Old() *resource.State      { return s.old }
+func (s *ImportStep) Original() *resource.State { return s.original }
+func (s *ImportStep) New() *resource.State      { return s.new }
+func (s *ImportStep) Res() *resource.State      { return s.new }
+func (s *ImportStep) Logical() bool             { return !s.replacing }
 
 func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) {
 	defer func() {
@@ -1638,11 +1650,39 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
 	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
 	// differences between the old and new states are between the inputs and outputs.
-	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, inputs, outputs,
-		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
-		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.ReplaceOnChanges,
-		s.new.RefreshBeforeUpdate, s.new.ViewOf, nil)
+	s.old = resource.NewState{
+		Type:                    s.new.Type,
+		URN:                     s.new.URN,
+		Custom:                  s.new.Custom,
+		Delete:                  false,
+		ID:                      s.new.ID,
+		Inputs:                  inputs,
+		Outputs:                 outputs,
+		Parent:                  s.new.Parent,
+		Protect:                 s.new.Protect,
+		Taint:                   false,
+		External:                false,
+		Dependencies:            s.new.Dependencies,
+		InitErrors:              s.new.InitErrors,
+		Provider:                s.new.Provider,
+		PropertyDependencies:    s.new.PropertyDependencies,
+		PendingReplacement:      false,
+		AdditionalSecretOutputs: nil,
+		Aliases:                 nil,
+		CustomTimeouts:          &s.new.CustomTimeouts,
+		ImportID:                s.new.ImportID,
+		RetainOnDelete:          s.new.RetainOnDelete,
+		DeletedWith:             s.new.DeletedWith,
+		Created:                 nil,
+		Modified:                nil,
+		SourcePosition:          s.new.SourcePosition,
+		StackTrace:              s.new.StackTrace,
+		IgnoreChanges:           s.new.IgnoreChanges,
+		ReplaceOnChanges:        s.new.ReplaceOnChanges,
+		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
+		ViewOf:                  s.new.ViewOf,
+		ResourceHooks:           nil,
+	}.Make()
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()
@@ -1726,10 +1766,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	}
 
 	// Set inputs back to their old values (if any) for any "ignored" properties
-	processedInputs, err := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
-	if err != nil {
-		return resource.StatusOK, nil, err
-	}
+	processedInputs := processIgnoreChanges(s.deployment.Diag(), s.new.URN, s.new.Inputs, s.old.Inputs, s.ignoreChanges)
 	s.new.Inputs = processedInputs
 
 	// If we were asked to replace an existing, non-External resource, pend the deletion here.
@@ -2010,6 +2047,7 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	diff, err := diffResource(
+		s.deployment.Diag(),
 		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges)
 	if err != nil {
 		s.pcs.Reject(err)

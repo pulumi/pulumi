@@ -46,6 +46,6 @@ func NewDefaultRegistry(
 		if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
 			return unauthenticatedregistry.New(diag, env), nil
 		}
-		return nil, fmt.Errorf("could not get registry backend: %w", err)
+		return nil, fmt.Errorf("could not get Private Registry backend: %w", err)
 	})
 }

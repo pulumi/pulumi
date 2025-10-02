@@ -82,11 +82,11 @@ func TestArrayOutputs(t *testing.T) {
 	{
 		assertApplied(t, out.ApplyT(func(arr []interface{}) (interface{}, error) {
 			require.NotNil(t, arr)
-			if assert.Equal(t, 3, len(arr)) {
-				assert.Equal(t, nil, arr[0])
-				assert.Equal(t, 0, arr[1])
-				assert.Equal(t, "x", arr[2])
-			}
+			require.Len(t, arr, 3)
+			assert.Equal(t, nil, arr[0])
+			assert.Equal(t, 0, arr[1])
+			assert.Equal(t, "x", arr[2])
+
 			return nil, nil
 		}))
 	}
@@ -884,7 +884,7 @@ func TestApplyTOutput(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 42, v)
 		assert.Equal(t, fmt.Sprintf("%v", reflect.TypeOf(v)), "int")
-		assert.Len(t, deps, 4)
+		require.Len(t, deps, 4)
 	}
 }
 

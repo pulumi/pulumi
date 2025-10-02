@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/aliases/rename_component
 
-go 1.23.0
+go 1.23.11
 
 require github.com/pulumi/pulumi/sdk/v3 v3.156.0
 

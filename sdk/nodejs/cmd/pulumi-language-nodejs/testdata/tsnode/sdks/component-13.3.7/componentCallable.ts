@@ -22,7 +22,7 @@ export class ComponentCallable extends pulumi.ComponentResource {
         return obj['__pulumiType'] === ComponentCallable.__pulumiType;
     }
 
-    public readonly value!: pulumi.Output<string>;
+    declare public readonly value: pulumi.Output<string>;
 
     /**
      * Create a ComponentCallable resource with the given unique name, arguments, and options.
@@ -35,10 +35,10 @@ export class ComponentCallable extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.value === undefined) && !opts.urn) {
+            if (args?.value === undefined && !opts.urn) {
                 throw new Error("Missing required property 'value'");
             }
-            resourceInputs["value"] = args ? args.value : undefined;
+            resourceInputs["value"] = args?.value;
         } else {
             resourceInputs["value"] = undefined /*out*/;
         }

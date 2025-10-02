@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckpointV1ToV2(t *testing.T) {
@@ -42,7 +43,7 @@ func TestCheckpointV1ToV2(t *testing.T) {
 	assert.Equal(t, config.Map{
 		config.MustMakeKey("foo", "number"): config.NewValue("42"),
 	}, v2.Config)
-	assert.Len(t, v2.Latest.Resources, 0)
+	require.Len(t, v2.Latest.Resources, 0)
 }
 
 func TestCheckpointV1ToV2NilLatest(t *testing.T) {

@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 goog.exportSymbol('proto.codegen.GetSchemaRequest', null, global);
 goog.exportSymbol('proto.codegen.GetSchemaResponse', null, global);
@@ -113,9 +119,9 @@ proto.codegen.Parameterization.prototype.toObject = function(opt_includeInstance
  */
 proto.codegen.Parameterization.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    value: msg.getValue_asB64()
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+value: msg.getValue_asB64()
   };
 
   if (includeInstance) {
@@ -327,10 +333,10 @@ proto.codegen.GetSchemaRequest.prototype.toObject = function(opt_includeInstance
  */
 proto.codegen.GetSchemaRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    pb_package: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    parameterization: (f = msg.getParameterization()) && proto.codegen.Parameterization.toObject(includeInstance, f)
+pb_package: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
+parameterization: (f = msg.getParameterization()) && proto.codegen.Parameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -568,7 +574,7 @@ proto.codegen.GetSchemaResponse.prototype.toObject = function(opt_includeInstanc
  */
 proto.codegen.GetSchemaResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    schema: msg.getSchema_asB64()
+schema: msg.getSchema_asB64()
   };
 
   if (includeInstance) {

@@ -260,7 +260,7 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
-	if data.display.done {
+	if data.display.done.Load() {
 		// if the display is done, then we're definitely done.
 		return true
 	}
@@ -308,7 +308,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := urn.Name()
+	name := escapeURN(urn.Name())
 	typ := urn.Type().DisplayName()
 
 	done := data.IsDone()
@@ -380,7 +380,7 @@ func (data *resourceRowData) getInfoColumn() string {
 	}
 
 	diagInfo := data.diagInfo
-	if data.display.done {
+	if data.display.done.Load() {
 		// If we are done, show a summary of how many messages were printed.
 		if c := diagInfo.ErrorCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
@@ -461,9 +461,11 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		}
 
 		recordMetadataDiff("provider",
-			resource.NewStringProperty(step.Old.Provider), resource.NewStringProperty(step.New.Provider))
+			resource.NewProperty(step.Old.Provider), resource.NewProperty(step.New.Provider))
 		recordMetadataDiff("protect",
-			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
+			resource.NewProperty(step.Old.Protect), resource.NewProperty(step.New.Protect))
+		recordMetadataDiff(colors.Red+"taint"+colors.Reset,
+			resource.NewProperty(step.Old.Taint), resource.NewProperty(step.New.Taint))
 
 		writeShortDiff(changesBuf, diff, step.Diffs)
 	}

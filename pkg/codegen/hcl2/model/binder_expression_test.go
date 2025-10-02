@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -32,7 +33,7 @@ func TestBindLiteral(t *testing.T) {
 	t.Parallel()
 
 	expr, diags := BindExpressionText("false", nil, hcl.Pos{})
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assertConvertibleFrom(t, BoolType, expr.Type())
 	lit, ok := expr.(*LiteralValueExpression)
 	assert.True(t, ok)
@@ -40,7 +41,7 @@ func TestBindLiteral(t *testing.T) {
 	assert.Equal(t, "false", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText("true", nil, hcl.Pos{})
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assertConvertibleFrom(t, BoolType, expr.Type())
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
@@ -48,7 +49,7 @@ func TestBindLiteral(t *testing.T) {
 	assert.Equal(t, "true", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText("0", nil, hcl.Pos{})
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assertConvertibleFrom(t, NumberType, expr.Type())
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
@@ -56,7 +57,7 @@ func TestBindLiteral(t *testing.T) {
 	assert.Equal(t, "0", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText("3.14", nil, hcl.Pos{})
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assertConvertibleFrom(t, NumberType, expr.Type())
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
@@ -64,11 +65,11 @@ func TestBindLiteral(t *testing.T) {
 	assert.Equal(t, "3.14", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText(`"foo"`, nil, hcl.Pos{})
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assertConvertibleFrom(t, StringType, expr.Type())
 	template, ok := expr.(*TemplateExpression)
 	assert.True(t, ok)
-	assert.Len(t, template.Parts, 1)
+	require.Len(t, template.Parts, 1)
 	lit, ok = template.Parts[0].(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.StringVal("foo"), lit.Value)
@@ -140,7 +141,7 @@ func TestBindBinaryOp(t *testing.T) {
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*BinaryOpExpression)
 			assert.True(t, ok)
@@ -176,7 +177,7 @@ func TestBindConditional(t *testing.T) {
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*ConditionalExpression)
 			assert.True(t, ok)
@@ -241,7 +242,7 @@ func TestBindFor(t *testing.T) {
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*ForExpression)
 			assert.True(t, ok)
@@ -301,7 +302,7 @@ func TestBindFunctionCall(t *testing.T) {
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*FunctionCallExpression)
 			assert.True(t, ok)
@@ -373,7 +374,7 @@ func TestBindIndex(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*IndexExpression)
 			assert.True(t, ok)
@@ -419,7 +420,7 @@ func TestBindObjectCons(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*ObjectConsExpression)
 			assert.True(t, ok)
@@ -477,7 +478,7 @@ func TestBindRelativeTraversal(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*RelativeTraversalExpression)
 			assert.True(t, ok)
@@ -552,7 +553,7 @@ func TestBindScopeTraversal(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*ScopeTraversalExpression)
 			assert.True(t, ok)
@@ -624,7 +625,7 @@ func TestBindSplat(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*SplatExpression)
 			assert.True(t, ok)
@@ -690,7 +691,7 @@ func TestBindTemplate(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 
 			var ok bool
@@ -730,7 +731,7 @@ func TestBindTupleCons(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*TupleConsExpression)
 			assert.True(t, ok)
@@ -769,7 +770,7 @@ func TestBindUnaryOp(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 			assertConvertibleFrom(t, c.t, expr.Type())
 			_, ok := expr.(*UnaryOpExpression)
 			assert.True(t, ok)

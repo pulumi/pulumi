@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -27,9 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -97,7 +99,7 @@ func ShowEvents(
 		return !e.Internal()
 	})
 
-	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
+	streamPreview := env.EnableStreamingJSONPreview.Value()
 
 	// If we're in non-preview JSON display mode we need to show the stamped events, for anything else we need
 	// to show the raw events. We work out here if we're transforming the stamped events back to raw events so
@@ -251,4 +253,16 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 func fprintIgnoreError(w io.Writer, a ...interface{}) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)
+}
+
+// escapeURN escapes URNs to make them safe for display.
+// URNs can contain characters that can't be displayed, we use `QuoteToGraphic`
+// to escape these so they can be safely displayed.
+func escapeURN(urn string) string {
+	name := strconv.QuoteToGraphic(urn)
+	name = name[1 : len(name)-1] // Trim the outer quotes from `QuoteToGraphic`
+	// QuoteToGraphic escapes double quotes, but we don't want that, unescape them.
+	name = strings.ReplaceAll(name, "\\\\", "\\") // Unescape backslashes ...
+	name = strings.ReplaceAll(name, "\\\"", "\"") // ... then unescape quotes
+	return name
 }

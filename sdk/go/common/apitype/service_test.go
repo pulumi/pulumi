@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,5 +138,23 @@ func TestCapabilities(t *testing.T) {
 		actual, err := response.Parse()
 		require.NoError(t, err)
 		assert.Equal(t, Capabilities{}, actual)
+	})
+
+	t.Run("parse deployment schema v4", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    DeploymentSchemaVersion,
+					Version:       1,
+					Configuration: json.RawMessage(`{"version": 4}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			DeploymentSchemaVersion: 4,
+		}, actual)
 	})
 }

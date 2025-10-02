@@ -37,15 +37,15 @@ export class Release extends pulumi.CustomResource {
     /**
      * Chart name to be installed. A path may be used.
      */
-    public readonly chart!: pulumi.Output<string>;
+    declare public readonly chart: pulumi.Output<string>;
     /**
      * List of assets (raw yaml files). Content is read and merged with values (with values taking precedence).
      */
-    public readonly valueYamlFiles!: pulumi.Output<(pulumi.asset.Asset | pulumi.asset.Archive)[]>;
+    declare public readonly valueYamlFiles: pulumi.Output<(pulumi.asset.Asset | pulumi.asset.Archive)[]>;
     /**
      * Custom values set for the release.
      */
-    public readonly values!: pulumi.Output<{[key: string]: any}>;
+    declare public readonly values: pulumi.Output<{[key: string]: any}>;
 
     /**
      * Create a Release resource with the given unique name, arguments, and options.
@@ -58,12 +58,12 @@ export class Release extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.chart === undefined) && !opts.urn) {
+            if (args?.chart === undefined && !opts.urn) {
                 throw new Error("Missing required property 'chart'");
             }
-            resourceInputs["chart"] = args ? args.chart : undefined;
-            resourceInputs["valueYamlFiles"] = args ? args.valueYamlFiles : undefined;
-            resourceInputs["values"] = args ? args.values : undefined;
+            resourceInputs["chart"] = args?.chart;
+            resourceInputs["valueYamlFiles"] = args?.valueYamlFiles;
+            resourceInputs["values"] = args?.values;
         } else {
             resourceInputs["chart"] = undefined /*out*/;
             resourceInputs["valueYamlFiles"] = undefined /*out*/;

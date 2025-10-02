@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Mapping, Optional, Union
+from typing import Optional, Union
+from collections.abc import Mapping
 
 from pulumi.automation._local_workspace import ExecutorImage, LocalWorkspace, Secret
 from pulumi.automation._remote_stack import RemoteStack
@@ -25,7 +26,7 @@ class RemoteWorkspaceOptions:
     """
 
     env_vars: Optional[Mapping[str, Union[str, Secret]]]
-    pre_run_commands: Optional[List[str]]
+    pre_run_commands: Optional[list[str]]
     skip_install_dependencies: Optional[bool]
     executor_image: Optional[ExecutorImage]
     inherit_settings: Optional[bool]
@@ -34,7 +35,7 @@ class RemoteWorkspaceOptions:
         self,
         *,
         env_vars: Optional[Mapping[str, Union[str, Secret]]] = None,
-        pre_run_commands: Optional[List[str]] = None,
+        pre_run_commands: Optional[list[str]] = None,
         skip_install_dependencies: Optional[bool] = None,
         executor_image: Optional[ExecutorImage] = None,
         inherit_settings: Optional[bool] = None,
@@ -50,6 +51,7 @@ class RemoteGitAuth:
     """
     Authentication options for the repository that can be specified for a private Git repo.
     There are three different authentication paths:
+
      - Personal accesstoken
      - SSH private key (and its optional password)
      - Basic auth username and password

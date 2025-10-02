@@ -22,11 +22,12 @@ import (
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name         tokens.StackName // the target stack name.
-	Organization tokens.Name      // the target organization name (if any).
-	Config       config.Map       // optional configuration key/value pairs.
-	Decrypter    config.Decrypter // decrypter for secret configuration values.
-	Snapshot     *Snapshot        // the last snapshot deployed to the target.
+	Name         tokens.StackName  // the target stack name.
+	Organization tokens.Name       // the target organization name (if any).
+	Config       config.Map        // optional configuration key/value pairs.
+	Decrypter    config.Decrypter  // decrypter for secret configuration values.
+	Snapshot     *Snapshot         // the last snapshot deployed to the target.
+	Tags         map[string]string // tags for the current stack.
 }
 
 const (
@@ -59,7 +60,7 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 			return nil, err
 		}
 
-		propertyValue := resource.NewStringProperty(v)
+		propertyValue := resource.NewProperty(v)
 		if c.Secure() {
 			propertyValue = resource.MakeSecret(propertyValue)
 		}

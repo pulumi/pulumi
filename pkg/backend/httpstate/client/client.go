@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -269,11 +269,11 @@ func completePackagePublishPath(source, publisher, name, version string) string 
 }
 
 func publishTemplatePath(source, publisher, name string) string {
-	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions", source, publisher, name)
+	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions", source, publisher, name)
 }
 
 func completeTemplatePublishPath(source, publisher, name string, version semver.Version) string {
-	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
@@ -342,7 +342,7 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 func (pc *Client) GetCLIVersionInfo(
 	ctx context.Context,
 	metadata map[string]string,
-) (semver.Version, semver.Version, semver.Version, int, error) {
+) (semver.Version, semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
 
 	headers := map[string][]string{}
@@ -363,32 +363,32 @@ func (pc *Client) GetCLIVersionInfo(
 		},
 	)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	// If there is no dev version, return the latest and oldest
 	// versions.  This can happen if the server does not include
 	// https://github.com/pulumi/pulumi-service/pull/17429 yet
 	if versionInfo.LatestDevVersion == "" {
-		return latestSem, oldestSem, semver.Version{}, versionInfo.CacheMS, nil
+		return latestSem, oldestSem, semver.Version{}, nil
 	}
 
 	devSem, err := semver.ParseTolerant(versionInfo.LatestDevVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
-	return latestSem, oldestSem, devSem, versionInfo.CacheMS, nil
+	return latestSem, oldestSem, devSem, nil
 }
 
 // GetDefaultOrg lists the backend's opinion of which user organization to use, if default organization
@@ -882,6 +882,7 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
+	metadata map[string]string,
 ) (string, error) {
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -906,6 +907,11 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 			EnforcementLevel: policy.EnforcementLevel,
 			Message:          policy.Message,
 			ConfigSchema:     configSchema,
+			Severity:         policy.Severity,
+			Framework:        convertPolicyComplianceFramework(policy.Framework),
+			Tags:             policy.Tags,
+			RemediationSteps: policy.RemediationSteps,
+			URL:              policy.URL,
 		}
 	}
 
@@ -914,6 +920,12 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		DisplayName: analyzerInfo.DisplayName,
 		VersionTag:  analyzerInfo.Version,
 		Policies:    policies,
+		Description: analyzerInfo.Description,
+		Readme:      analyzerInfo.Readme,
+		Provider:    analyzerInfo.Provider,
+		Tags:        analyzerInfo.Tags,
+		Repository:  analyzerInfo.Repository,
+		Metadata:    metadata,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -988,6 +1000,19 @@ func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apit
 		Properties: properties,
 		Required:   schema.Required,
 	}, nil
+}
+
+// convertPolicyComplianceFramework converts a policy compliance framework from the analyzer to the apitype.
+func convertPolicyComplianceFramework(f *plugin.AnalyzerPolicyComplianceFramework) *apitype.PolicyComplianceFramework {
+	if f == nil {
+		return nil
+	}
+	return &apitype.PolicyComplianceFramework{
+		Name:          f.Name,
+		Version:       f.Version,
+		Reference:     f.Reference,
+		Specification: f.Specification,
+	}
 }
 
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
@@ -1147,17 +1172,16 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
+func (pc *Client) PatchUpdateCheckpoint(
+	ctx context.Context,
+	update UpdateIdentifier,
+	deployment *apitype.UntypedDeployment,
 	token UpdateTokenSource,
 ) error {
-	rawDeployment, err := json.Marshal(deployment)
-	if err != nil {
-		return err
-	}
-
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    3,
-		Deployment: rawDeployment,
+		Version:    deployment.Version,
+		Features:   deployment.Features,
+		Deployment: deployment.Deployment,
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
@@ -1169,10 +1193,10 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token UpdateTokenSource,
+	sequenceNumber int, untypedDeploymentBytes json.RawMessage, deploymentVersion int, token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateVerbatimCheckpointRequest{
-		Version:           3,
+		Version:           deploymentVersion,
 		UntypedDeployment: untypedDeploymentBytes,
 		SequenceNumber:    sequenceNumber,
 	}
@@ -1192,10 +1216,11 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 // PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
 // large stack states.
 func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token UpdateTokenSource,
+	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, deploymentVersion int,
+	token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateCheckpointDeltaRequest{
-		Version:         3,
+		Version:         deploymentVersion,
 		CheckpointHash:  checkpointHash,
 		SequenceNumber:  sequenceNumber,
 		DeploymentDelta: deploymentDelta,
@@ -1203,6 +1228,20 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
+// AppendUpdateJournalEntry appends a new entry to the journal for the given update.
+func (pc *Client) AppendUpdateJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry,
+	token UpdateTokenSource,
+) error {
+	req := apitype.AppendUpdateJournalEntryRequest{
+		Entry: entry,
+	}
+
+	// It is safe to retry because SequenceNumber serves as an idempotency key.
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
@@ -1679,8 +1718,6 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
-// GetTemplate is a preview API, and should not be used without an approved EOL plan for
-// deprecation.
 func (pc *Client) GetTemplate(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {
@@ -1688,7 +1725,7 @@ func (pc *Client) GetTemplate(
 	if version != nil {
 		v = version.String()
 	}
-	url := fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
+	url := fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
 	var resp apitype.TemplateMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
@@ -1704,8 +1741,13 @@ func (pc *Client) GetTemplate(
 // are targeting the correct URL. If we are targeting another URL, we should use a fresh
 // client without tokens.
 func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	// Presigned URLs need to be handled differently to avoid signature mismatches due to e.g. headers.
+	// See https://docs.aws.amazon.com/prescriptive-guidance/latest/presigned-url-best-practices/identifying-requests.html
+	isPresignedURL := strings.Contains(downloadURL, "X-Amz-Expires=")
 	if after, ok := strings.CutPrefix(downloadURL, pc.apiURL); ok {
 		downloadURL = after
+	} else if isPresignedURL {
+		return pc.downloadWithRawClient(ctx, downloadURL)
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
@@ -1716,10 +1758,31 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	var bytes io.ReadCloser
 	header := make(http.Header, 1)
 	header.Add("Accept", "application/x-tar")
+
 	err := pc.restCallWithOptions(ctx, "GET", downloadURL, nil, nil, &bytes, httpCallOptions{
 		Header: header,
 	})
 	return bytes, err
+}
+
+func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := pc.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	return bodyIntoReader(resp)
 }
 
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -1754,10 +1817,8 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
-// ListTemplates is a preview API, and should not be used without an approved EOL plan for
-// deprecation.
 func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-	url := "/api/preview/registry/templates?limit=499"
+	url := "/api/registry/templates?limit=499"
 	if name != nil {
 		url += "&name=" + *name
 	}

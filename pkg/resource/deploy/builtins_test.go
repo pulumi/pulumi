@@ -104,7 +104,7 @@ func TestBuiltinProvider(t *testing.T) {
 				URN:  resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				Olds: resource.PropertyMap{},
 				News: resource.PropertyMap{
-					"name": resource.NewNumberProperty(10),
+					"name": resource.NewProperty(10.0),
 				},
 				AllowUnknowns: true,
 			})
@@ -124,14 +124,14 @@ func TestBuiltinProvider(t *testing.T) {
 			resp, err := p.Check(context.Background(), plugin.CheckRequest{
 				URN: resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				News: resource.PropertyMap{
-					"name": resource.NewStringProperty("res-name"),
+					"name": resource.NewProperty("res-name"),
 				},
 				AllowUnknowns: true,
 			})
 			assert.Nil(t, resp.Failures)
 			require.NoError(t, err)
 			assert.Equal(t, resource.PropertyMap{
-				"name": resource.NewStringProperty("res-name"),
+				"name": resource.NewProperty("res-name"),
 			}, resp.Properties)
 		})
 	})
@@ -140,7 +140,7 @@ func TestBuiltinProvider(t *testing.T) {
 		assert.Panics(t, func() {
 			p := &builtinProvider{}
 
-			oldOutputs := resource.PropertyMap{"cookie": resource.NewStringProperty("yum")}
+			oldOutputs := resource.PropertyMap{"cookie": resource.NewProperty("yum")}
 			_, err := p.Update(context.Background(), plugin.UpdateRequest{
 				URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
 				ID:         "some-id",
@@ -167,7 +167,7 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
 					Args: resource.PropertyMap{
-						"name": resource.NewStringProperty("res-name"),
+						"name": resource.NewProperty("res-name"),
 					},
 				})
 				assert.ErrorContains(t, err, "no backend client is available")
@@ -180,8 +180,8 @@ func TestBuiltinProvider(t *testing.T) {
 						GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
 							called = true
 							return resource.PropertyMap{
-								"normal": resource.NewStringProperty("foo"),
-								"secret": resource.MakeSecret(resource.NewStringProperty("bar")),
+								"normal": resource.NewProperty("foo"),
+								"secret": resource.MakeSecret(resource.NewProperty("bar")),
 							}, nil
 						},
 					},
@@ -189,7 +189,7 @@ func TestBuiltinProvider(t *testing.T) {
 				resp, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
 					Args: resource.PropertyMap{
-						"name": resource.NewStringProperty("res-name"),
+						"name": resource.NewProperty("res-name"),
 					},
 				})
 				require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestBuiltinProvider(t *testing.T) {
 				assert.Equal(t, "res-name", resp.Properties["name"].V)
 
 				assert.Equal(t, "foo", resp.Properties["outputs"].ObjectValue()["normal"].StringValue())
-				assert.Len(t, resp.Properties["secretOutputNames"].V, 1)
+				require.Len(t, resp.Properties["secretOutputNames"].V, 1)
 			})
 		})
 		t.Run(readStackResourceOutputs, func(t *testing.T) {
@@ -210,7 +210,7 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
 					Args: resource.PropertyMap{
-						"stackName": resource.NewStringProperty("res-name"),
+						"stackName": resource.NewProperty("res-name"),
 					},
 				})
 				assert.ErrorContains(t, err, "no backend client is available")
@@ -229,7 +229,7 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
 					Args: resource.PropertyMap{
-						"stackName": resource.NewStringProperty("res-name"),
+						"stackName": resource.NewProperty("res-name"),
 					},
 				})
 				require.NoError(t, err)
@@ -249,7 +249,7 @@ func TestBuiltinProvider(t *testing.T) {
 
 				expected := &resource.State{
 					Outputs: resource.PropertyMap{
-						"foo": resource.NewStringProperty("bar"),
+						"foo": resource.NewProperty("bar"),
 					},
 				}
 
@@ -258,7 +258,7 @@ func TestBuiltinProvider(t *testing.T) {
 				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
-						"urn": resource.NewStringProperty("res-name"),
+						"urn": resource.NewProperty("res-name"),
 					},
 				})
 
@@ -276,7 +276,7 @@ func TestBuiltinProvider(t *testing.T) {
 
 				expected := &resource.State{
 					Outputs: resource.PropertyMap{
-						"foo": resource.NewStringProperty("bar"),
+						"foo": resource.NewProperty("bar"),
 					},
 				}
 
@@ -285,7 +285,7 @@ func TestBuiltinProvider(t *testing.T) {
 				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
-						"urn": resource.NewStringProperty("res-name"),
+						"urn": resource.NewProperty("res-name"),
 					},
 				})
 
@@ -302,7 +302,7 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
-						"urn": resource.NewStringProperty("res-name"),
+						"urn": resource.NewProperty("res-name"),
 					},
 				})
 				assert.ErrorContains(t, err, "unknown resource")

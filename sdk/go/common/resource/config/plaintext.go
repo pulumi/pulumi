@@ -25,13 +25,12 @@ import (
 
 // PlaintextType describes the allowed types for a Plaintext.
 type PlaintextType interface {
-	bool | int64 | uint64 | float64 | string | []Plaintext | map[string]Plaintext
+	bool | int64 | uint64 | float64 | string | PlaintextSecret | []Plaintext | map[string]Plaintext
 }
 
 // Plaintext is a single plaintext config value.
 type Plaintext struct {
-	value  any
-	secure bool
+	value any
 }
 
 // NewPlaintext creates a new plaintext config value.
@@ -43,11 +42,6 @@ func NewPlaintext[T PlaintextType](v T) Plaintext {
 	}
 
 	return Plaintext{value: v}
-}
-
-// NewSecurePlaintext creates a new secure string with the given plaintext.
-func NewSecurePlaintext(plaintext string) Plaintext {
-	return Plaintext{value: plaintext, secure: true}
 }
 
 // Secure returns true if the receiver is a secure string or a composite value that contains a secure string.
@@ -67,8 +61,8 @@ func (c Plaintext) Secure() bool {
 			}
 		}
 		return false
-	case string:
-		return c.secure
+	case PlaintextSecret:
+		return true
 	default:
 		return false
 	}
@@ -100,44 +94,46 @@ func (c Plaintext) GoValue() any {
 			vs[k] = v.GoValue()
 		}
 		return vs
+	case PlaintextSecret:
+		return string(v)
 	default:
 		return v
 	}
 }
 
+// PropertyValue converts a plaintext value into a resource.PropertyValue.
 func (c Plaintext) PropertyValue() resource.PropertyValue {
 	var prop resource.PropertyValue
 	switch v := c.Value().(type) {
 	case bool:
-		prop = resource.NewBoolProperty(v)
+		prop = resource.NewProperty(v)
 	case int64:
-		prop = resource.NewNumberProperty(float64(v))
+		prop = resource.NewProperty(float64(v))
 	case uint64:
-		prop = resource.NewNumberProperty(float64(v))
+		prop = resource.NewProperty(float64(v))
 	case float64:
-		prop = resource.NewNumberProperty(v)
+		prop = resource.NewProperty(v)
 	case string:
-		prop = resource.NewStringProperty(v)
+		prop = resource.NewProperty(v)
+	case PlaintextSecret:
+		prop = resource.MakeSecret(resource.NewProperty(string(v)))
 	case []Plaintext:
 		vs := make([]resource.PropertyValue, len(v))
 		for i, v := range v {
 			vs[i] = v.PropertyValue()
 		}
-		prop = resource.NewArrayProperty(vs)
+		prop = resource.NewProperty(vs)
 	case map[string]Plaintext:
-		vs := make(map[resource.PropertyKey]resource.PropertyValue, len(v))
+		vs := make(resource.PropertyMap, len(v))
 		for k, v := range v {
 			vs[resource.PropertyKey(k)] = v.PropertyValue()
 		}
-		prop = resource.NewObjectProperty(vs)
+		prop = resource.NewProperty(vs)
 	case nil:
 		prop = resource.NewNullProperty()
 	default:
 		contract.Failf("unexpected value of type %T", v)
 		return resource.PropertyValue{}
-	}
-	if c.secure {
-		prop = resource.MakeSecret(prop)
 	}
 	return prop
 }
@@ -165,14 +161,13 @@ func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encr
 	case float64:
 		return newObject(v), nil
 	case string:
-		if !c.secure {
-			return newObject(v), nil
-		}
-		ciphertext, err := encrypter.EncryptValue(ctx, v)
+		return newObject(v), nil
+	case PlaintextSecret:
+		ciphertext, err := v.Encrypt(ctx, encrypter)
 		if err != nil {
 			return object{}, fmt.Errorf("%v: %w", path, err)
 		}
-		return newSecureObject(ciphertext), nil
+		return newObject(ciphertext), nil
 	case []Plaintext:
 		vs := make([]object, len(v))
 		for i, v := range v {
@@ -201,8 +196,11 @@ func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encr
 
 // marshalText returns the text representation of the plaintext.
 func (c Plaintext) marshalText() (string, error) {
-	if str, ok := c.Value().(string); ok {
-		return str, nil
+	switch v := c.Value().(type) {
+	case string:
+		return v, nil
+	case PlaintextSecret:
+		return string(v), nil
 	}
 	bytes, err := json.Marshal(c.GoValue())
 	if err != nil {

@@ -24,8 +24,8 @@ export class ComponentCustomRefInputOutput extends pulumi.ComponentResource {
         return obj['__pulumiType'] === ComponentCustomRefInputOutput.__pulumiType;
     }
 
-    public readonly inputRef!: pulumi.Output<Custom>;
-    public /*out*/ readonly outputRef!: pulumi.Output<Custom>;
+    declare public readonly inputRef: pulumi.Output<Custom>;
+    declare public /*out*/ readonly outputRef: pulumi.Output<Custom>;
 
     /**
      * Create a ComponentCustomRefInputOutput resource with the given unique name, arguments, and options.
@@ -38,10 +38,10 @@ export class ComponentCustomRefInputOutput extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.inputRef === undefined) && !opts.urn) {
+            if (args?.inputRef === undefined && !opts.urn) {
                 throw new Error("Missing required property 'inputRef'");
             }
-            resourceInputs["inputRef"] = args ? args.inputRef : undefined;
+            resourceInputs["inputRef"] = args?.inputRef;
             resourceInputs["outputRef"] = undefined /*out*/;
         } else {
             resourceInputs["inputRef"] = undefined /*out*/;

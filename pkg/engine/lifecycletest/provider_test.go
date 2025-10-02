@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"sync"
 	"testing"
 
@@ -34,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -158,7 +158,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		}
 		snap, err := entries.Snap(target.Snapshot)
 		require.NoError(t, err)
-		assert.Len(t, snap.Resources, 2)
+		require.Len(t, snap.Resources, 2)
 		return err
 	}
 
@@ -192,10 +192,10 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			assert.Len(t, deleted, 2)
+			require.Len(t, deleted, 2)
 			snap, err := entries.Snap(target.Snapshot)
 			require.NoError(t, err)
-			assert.Len(t, snap.Resources, 0)
+			require.Len(t, snap.Resources, 0)
 			return err
 		},
 	}}
@@ -261,7 +261,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -310,7 +310,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+		resource.PropertyKey("foo"): resource.NewProperty("bar"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
@@ -341,7 +341,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the config and run an update. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	providerInputs[resource.PropertyKey("foo")] = resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -353,7 +353,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -446,7 +446,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("id"): resource.NewStringProperty("first"),
+		resource.PropertyKey("id"): resource.NewProperty("first"),
 	}
 	providerName := "provA"
 	aliases := []resource.URN{}
@@ -493,7 +493,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	// Change the provider name and configuration and remove the resource. This will cause an Update for the provider
 	// and a Delete for the resource. The updated provider instance should be used to perform the delete.
 	providerName = "provB"
-	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
+	providerInputs[resource.PropertyKey("id")] = resource.NewProperty("second")
 	registerResource = false
 
 	p.Steps = []lt.TestStep{{Op: Update}}
@@ -539,7 +539,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("id"): resource.NewStringProperty("first"),
+		resource.PropertyKey("id"): resource.NewProperty("first"),
 	}
 	providerName := "provA"
 	aliases := []resource.URN{}
@@ -597,7 +597,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the config and run an update maintaining the alias. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
+	providerInputs[resource.PropertyKey("id")] = resource.NewProperty("second")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -623,7 +623,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					}
 				}
 
-				if entry.Kind != JournalEntrySuccess || op != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || op != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -683,7 +683,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+		resource.PropertyKey("foo"): resource.NewProperty("bar"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
@@ -714,7 +714,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the config and run an update. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	providerInputs[resource.PropertyKey("foo")] = resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -727,7 +727,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 			createdProvider, createdResource := false, false
 			deletedProvider, deletedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess {
+				if entry.Kind != TestJournalEntrySuccess {
 					continue
 				}
 
@@ -819,7 +819,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 						events []Event, err error,
 					) error {
 						for _, entry := range entries {
-							if entry.Kind != JournalEntrySuccess {
+							if entry.Kind != TestJournalEntrySuccess {
 								continue
 							}
 
@@ -947,7 +947,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 						events []Event, err error,
 					) error {
 						for _, entry := range entries {
-							if entry.Kind != JournalEntrySuccess {
+							if entry.Kind != TestJournalEntrySuccess {
 								continue
 							}
 
@@ -1066,7 +1066,7 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 						events []Event, err error,
 					) error {
 						for _, entry := range entries {
-							if entry.Kind != JournalEntrySuccess {
+							if entry.Kind != TestJournalEntrySuccess {
 								continue
 							}
 
@@ -1215,7 +1215,7 @@ func TestProviderVersionInput(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"version": resource.NewStringProperty("1.0.0"),
+					"version": resource.NewProperty("1.0.0"),
 				},
 			})
 		require.NoError(t, err)
@@ -1260,7 +1260,7 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"version": resource.NewStringProperty("1.5.0"),
+					"version": resource.NewProperty("1.5.0"),
 				},
 				Version: "1.0.0",
 			})
@@ -1389,14 +1389,10 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		{
 			name: "default-blocked",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				require.Error(t, err)
-				require.Regexp(t,
-					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
-					err.Error())
-
+				_, err := monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				require.NoError(t, err)
+				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["pkgA"]`,
@@ -1424,16 +1420,20 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			expectFail: false,
 		},
 		{
-			name: "wildcard",
+			name: "wildcard-a",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				require.Error(t, err)
-				require.Regexp(t,
-					regexp.MustCompile(".*(rpc error: code = Unavailable|rpc error: code = Canceled).*"),
-					err.Error())
-
+				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				require.Fail(t, "RegisterResource should not return")
+				return nil
+			},
+			disabled:   `["*"]`,
+			expectFail: true,
+		},
+		{
+			name: "wildcard-rb",
+			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _ = monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["*"]`,
@@ -1472,7 +1472,7 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 				Steps:   update,
 				Config:  c,
 			}
-			p.Run(t, nil)
+			p.RunWithName(t, nil, tt.name)
 		})
 	}
 }
@@ -1599,7 +1599,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 3)
+				require.Len(t, snap.Resources, 3)
 				for _, r := range snap.Resources {
 					c.validate(t, r)
 				}
@@ -1719,7 +1719,7 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1852,7 +1852,7 @@ func TestRefreshLegacyState(t *testing.T) {
 				URN:  p.NewURN("providers:pulumi:pkgA", "prov", ""),
 				Inputs: map[resource.PropertyKey]resource.PropertyValue{
 					"version":           resource.NewPropertyValue("1.3.0"),
-					"pluginDownloadURL": resource.NewStringProperty("http://example.com"),
+					"pluginDownloadURL": resource.NewProperty("http://example.com"),
 				},
 			},
 		},
@@ -1973,7 +1973,7 @@ func TestInternalFiltered(t *testing.T) {
 func TestProviderSameStep(t *testing.T) {
 	t.Parallel()
 
-	providerConfigValue := resource.NewStringProperty("100")
+	providerConfigValue := resource.NewProperty("100")
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -2016,7 +2016,7 @@ func TestProviderSameStep(t *testing.T) {
 
 	// Run another update where we send a new value for the provider config, but diff reports no diff so we
 	// should same step
-	providerConfigValue = resource.NewStringProperty("200")
+	providerConfigValue = resource.NewProperty("200")
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
@@ -2066,4 +2066,235 @@ func TestMalformedProvider(t *testing.T) {
 
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
+}
+
+// TestMissingIDRefresh tests that if a provider does a refresh and doesn't return a valid ID the engine deletes the
+// resource. See https://github.com/pulumi/pulumi/issues/20186. Historically, this logic was in the grpc layer, but it
+// should be in the engine layer which this test asserts by not using the the grpc wrapper for the provider client.
+func TestMissingIDRefresh(t *testing.T) {
+	t.Parallel()
+
+	expectedID := resource.ID(uuid.Must(uuid.NewV4()).String())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         expectedID,
+						Properties: req.Properties,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					assert.Equal(t, expectedID, req.ID)
+					// Return an empty ID to indicate a delete, still return inputs and state because with a missing ID
+					// they should be ignored.
+					return plugin.ReadResponse{
+						Status: resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+			},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, expectedID, resp.ID)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, expectedID, snap.Resources[1].ID)
+	resA := snap.Resources[1].URN
+
+	_, err = lt.TestOp(Refresh).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
+			// assert the resource was deleted
+			require.NoError(t, err)
+			var foundDelete deploy.Step
+			for _, e := range entries {
+				step := e.Step
+				refreshStep, ok := step.(*deploy.RefreshStep)
+				if ok && refreshStep.ResultOp() == deploy.OpDelete {
+					foundDelete = step
+					break
+				}
+			}
+			require.NotNil(t, foundDelete, "expected a refresh delete step in the journal entries")
+			assert.Equal(t, resA, foundDelete.Old().URN)
+			return nil
+		})
+	require.NoError(t, err)
+}
+
+// TestDroppedVersion checks that if a provider drops the special "version" field the engine fills it back in.
+func TestDroppedVersion(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					news := req.News.Copy()
+					delete(news, "version")
+					return plugin.CheckConfigResponse{
+						Properties: news,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Version: "1.0.0",
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// assert the provider version is set
+	require.Len(t, snap.Resources, 2)
+	prov := snap.Resources[0]
+	version, ok := prov.Inputs["version"]
+	require.True(t, ok, "expected 'version' to be present in provider inputs")
+	require.True(t, version.IsString(), "expected 'version' to be a string")
+	assert.Equal(t, "1.0.0", version.StringValue())
+}
+
+// TestChangedVersion checks that if a provider tries to change the special "version" field the engine reports an error.
+func TestChangedVersion(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					news := req.News.Copy()
+					news["version"] = resource.NewProperty("2.0.0")
+					return plugin.CheckConfigResponse{
+						Properties: news,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Version: "1.0.0",
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "provider \"urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0\""+
+		" attempted to change version from \"1.0.0\" to \"2.0.0\"")
+}
+
+// TestInternalKey checks that if a provider tries to use the special "__internal" field the engine reports a warning.
+func TestInternalKey(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					news := req.News.Copy()
+					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+						"some": "internal data",
+					}))
+					return plugin.CheckConfigResponse{
+						Properties: news,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Version:           "1.0.0",
+			PluginDownloadURL: "http://example.com",
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	sink := &diag.MockSink{}
+	hostF := deploytest.NewPluginHostF(sink, sink, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// assert the engines __internal field is set
+	require.Len(t, snap.Resources, 2)
+	prov := snap.Resources[0]
+	internal, ok := prov.Inputs["__internal"]
+	require.True(t, ok, "expected '__internal' to be present in provider inputs")
+	require.True(t, internal.IsObject(), "expected '__internal' to be an object")
+	assert.Equal(t, resource.PropertyMap{
+		"pluginDownloadURL": resource.NewProperty("http://example.com"),
+	}, internal.ObjectValue())
+	// assert we got the warning message
+	warns := sink.Messages[diag.Warning]
+	require.Len(t, warns, 1)
+	assert.Equal(t,
+		resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com"),
+		warns[0].Diag.URN)
+	assert.Equal(t, "provider attempted to use __internal key that is reserved by the engine", warns[0].Diag.Message)
 }

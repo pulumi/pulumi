@@ -104,7 +104,7 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 		logError(ctx, err)
 	} else {
 		if _, signalErr := ctx.state.monitor.SignalAndWaitForShutdown(ctx.ctx, &pbempty.Empty{}); signalErr != nil {
-			status, ok := status.FromError(err)
+			status, ok := status.FromError(signalErr)
 			if ok && status.Code() != codes.Unimplemented {
 				// If we are running against an older version of the CLI,
 				// SignalAndWaitForShutdown might not be implemented. This is
@@ -112,7 +112,9 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 				// we check if the CLI supports the `resourceHook` feature when
 				// registering hooks, it's fine to ignore the `UNIMPLEMENTED`
 				// error here.
-				return fmt.Errorf("error waiting for shutdown: %v", signalErr)
+				err := fmt.Errorf("error waiting for shutdown: %v", signalErr)
+				logError(ctx, err)
+				return err
 			}
 		}
 	}

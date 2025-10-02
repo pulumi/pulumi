@@ -16,6 +16,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,8 +25,10 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -42,6 +45,98 @@ const (
 	preparePluginLog        = 7
 	preparePluginVerboseLog = 8
 )
+
+// A PluginManager handles plugin installation.
+type PluginManager interface {
+	GetPluginPath(
+		ctx context.Context,
+		d diag.Sink,
+		spec workspace.PluginSpec,
+		projectPlugins []workspace.ProjectPlugin,
+	) (string, error)
+	HasPlugin(spec workspace.PluginSpec) bool
+	HasPluginGTE(spec workspace.PluginSpec) (bool, error)
+
+	GetLatestPluginVersion(ctx context.Context, spec workspace.PluginSpec) (*semver.Version, error)
+	DownloadPlugin(
+		ctx context.Context,
+		plugin workspace.PluginSpec,
+		wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+		retry func(err error, attempt int, limit int, delay time.Duration),
+	) (io.ReadCloser, int64, error)
+	InstallPlugin(
+		ctx context.Context,
+		plugin workspace.PluginSpec,
+		content pkgWorkspace.PluginContent,
+		reinstall bool,
+	) error
+}
+
+// A tempFile is a wrapper around an *os.File that removes the underlying file when it is closed.
+type tempFile struct {
+	f *os.File
+}
+
+func (f tempFile) Read(b []byte) (int, error) {
+	return f.f.Read(b)
+}
+
+func (f tempFile) Close() error {
+	closeErr := f.f.Close()
+	removeErr := os.Remove(f.f.Name())
+	return errors.Join(closeErr, removeErr)
+}
+
+// The defaultPluginManager is implemented using the standard workspace methods.
+type defaultPluginManager struct{}
+
+func (defaultPluginManager) GetPluginPath(
+	ctx context.Context,
+	d diag.Sink,
+	spec workspace.PluginSpec,
+	projectPlugins []workspace.ProjectPlugin,
+) (string, error) {
+	return workspace.GetPluginPath(ctx, d, spec, projectPlugins)
+}
+
+func (defaultPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+	return workspace.HasPlugin(spec)
+}
+
+func (defaultPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+	return workspace.HasPluginGTE(spec)
+}
+
+func (defaultPluginManager) GetLatestPluginVersion(
+	ctx context.Context,
+	spec workspace.PluginSpec,
+) (*semver.Version, error) {
+	return spec.GetLatestVersion(ctx)
+}
+
+func (defaultPluginManager) DownloadPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (io.ReadCloser, int64, error) {
+	tarball, err := workspace.DownloadToFile(ctx, plugin, wrapper, retry)
+	if err != nil {
+		return nil, 0, err
+	}
+	info, err := tarball.Stat()
+	contract.IgnoreError(err)
+	return tempFile{tarball}, info.Size(), nil
+}
+
+func (defaultPluginManager) InstallPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	content pkgWorkspace.PluginContent,
+	reinstall bool,
+) error {
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
+}
 
 // PluginSet represents a set of plugins.
 type PluginSet map[string]workspace.PluginSpec
@@ -337,6 +432,14 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
 	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
+	var pluginManager PluginManager
+	if opts != nil {
+		pluginManager = opts.pluginManager
+	}
+	if pluginManager == nil {
+		pluginManager = defaultPluginManager{}
+	}
+
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
@@ -345,7 +448,7 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			continue
 		}
 
-		path, err := workspace.GetPluginPath(ctx, d, plug, projectPlugins)
+		path, err := pluginManager.GetPluginPath(ctx, d, plug, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
@@ -359,12 +462,12 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			// If the plugin already exists, don't download it unless `reinstall` was specified.
 			label := fmt.Sprintf("%s plugin %s", plug.Kind, plug)
 			if plug.Version != nil {
-				if workspace.HasPlugin(plug) {
+				if pluginManager.HasPlugin(plug) {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
 				}
 			} else {
-				if has, _ := workspace.HasPluginGTE(plug); has {
+				if has, _ := pluginManager.HasPluginGTE(plug); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}
@@ -394,7 +497,7 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(ctx, opts, info)
+			return installPlugin(ctx, opts, pluginManager, info)
 		})
 	}
 
@@ -413,6 +516,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds pl
 func installPlugin(
 	ctx context.Context,
 	opts *deploymentOptions,
+	pluginManager PluginManager,
 	plugin workspace.PluginSpec,
 ) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
@@ -422,7 +526,7 @@ func installPlugin(
 		logging.V(preparePluginVerboseLog).Infof(
 			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
 
-		version, err := plugin.GetLatestVersion(ctx)
+		version, err := pluginManager.GetLatestPluginVersion(ctx, plugin)
 		if err != nil {
 			return fmt.Errorf("could not get latest version for plugin %s: %w", plugin.Name, err)
 		}
@@ -469,11 +573,11 @@ func installPlugin(
 			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	tarball, err := workspace.DownloadToFile(ctx, plugin, withDownloadProgress, retry)
+	tarball, size, err := pluginManager.DownloadPlugin(ctx, plugin, withDownloadProgress, retry)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}
-	defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
+	defer contract.IgnoreClose(tarball)
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
@@ -482,8 +586,7 @@ func installPlugin(
 	// progress by wrapping the download stream with a progress reporting
 	// ReadCloser where possible.
 	var withInstallProgress func(io.ReadCloser) io.ReadCloser
-	stat, err := tarball.Stat()
-	if opts == nil || err != nil {
+	if opts == nil || size == 0 {
 		withInstallProgress = func(stream io.ReadCloser) io.ReadCloser {
 			return stream
 		}
@@ -497,16 +600,17 @@ func installPlugin(
 				PluginInstall,
 				string(PluginInstall)+":"+pluginID,
 				"Installing plugin "+pluginID,
-				stat.Size(),
+				size,
 				100*time.Millisecond, /*reportingInterval */
 				tarball,
 			)
 		}
 	}
 
-	if err := plugin.InstallWithContext(
+	if err := pluginManager.InstallPlugin(
 		ctx,
-		workspace.TarPlugin(withInstallProgress(tarball)),
+		plugin,
+		pkgWorkspace.TarPlugin(withInstallProgress(tarball)),
 		false,
 	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",

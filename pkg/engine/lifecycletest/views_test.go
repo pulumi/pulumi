@@ -88,10 +88,10 @@ func TestViewsBasic(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -137,10 +137,10 @@ func TestViewsBasic(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("baz"),
+								"input": resource.NewProperty("baz"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("baz"),
+								"result": resource.NewProperty("baz"),
 							},
 						},
 					}, req.OldViews)
@@ -223,10 +223,10 @@ func TestViewsBasic(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run a second update, should be same.
@@ -242,10 +242,10 @@ func TestViewsBasic(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run a third update with a change, should update.
@@ -264,10 +264,10 @@ func TestViewsBasic(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("baz"),
+		"input": resource.NewProperty("baz"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("baz"),
+		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 
 	// Run a fourth update, this time deleting the resource and its view.
@@ -332,10 +332,10 @@ func TestViewsUpdateError(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -385,7 +385,7 @@ func TestViewsUpdateError(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			assert.Error(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.Fail(t, "RegisterResource should not return")
 		} else {
 			require.NoError(t, err)
 		}
@@ -428,10 +428,10 @@ func TestViewsUpdateError(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run a second update, we should get an error for the view.
@@ -494,10 +494,10 @@ func TestViewsUpdateDelete(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -581,10 +581,10 @@ func TestViewsUpdateDelete(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run an update that will delete the view.
@@ -645,10 +645,10 @@ func TestViewsRefreshSame(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -713,10 +713,10 @@ func TestViewsRefreshSame(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
@@ -728,10 +728,10 @@ func TestViewsRefreshSame(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 }
 
@@ -913,10 +913,10 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -985,10 +985,10 @@ func TestViewsRefreshUpdate(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
@@ -1000,10 +1000,10 @@ func TestViewsRefreshUpdate(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("baz"),
+		"input": resource.NewProperty("baz"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("baz"),
+		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 }
 
@@ -1190,10 +1190,10 @@ func TestViewsRefreshDelete(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -1252,10 +1252,10 @@ func TestViewsRefreshDelete(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
@@ -1453,10 +1453,10 @@ func TestViewsImport(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[3].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[3].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[3].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[3].Outputs)
 
 	// Import.
@@ -1473,10 +1473,10 @@ func TestViewsImport(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[3].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[3].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[3].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[3].Outputs)
 	assert.Equal(t, "imported-id", snap.Resources[4].ID.String())
 }
@@ -1532,10 +1532,10 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -1653,10 +1653,10 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
@@ -1676,10 +1676,10 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("baz"),
+		"input": resource.NewProperty("baz"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("baz"),
+		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 }
 
@@ -1734,10 +1734,10 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"input": resource.NewStringProperty("bar"),
+								"input": resource.NewProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"result": resource.NewStringProperty("bar"),
+								"result": resource.NewProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -1861,10 +1861,10 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
@@ -1884,10 +1884,10 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("baz"),
+		"input": resource.NewProperty("baz"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("baz"),
+		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 }
 
@@ -2464,10 +2464,10 @@ func TestViewsDestroyPreview(t *testing.T) {
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
 	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewStringProperty("bar"),
+		"input": resource.NewProperty("bar"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewStringProperty("bar"),
+		"result": resource.NewProperty("bar"),
 	}, snap.Resources[2].Outputs)
 
 	// Run a destroy preview and ensure we got a delete event for the view.

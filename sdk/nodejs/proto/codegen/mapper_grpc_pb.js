@@ -69,4 +69,4 @@ getMapping: {
   },
 };
 
-exports.MapperClient = grpc.makeGenericClientConstructor(MapperService);
+exports.MapperClient = grpc.makeGenericClientConstructor(MapperService, 'Mapper');

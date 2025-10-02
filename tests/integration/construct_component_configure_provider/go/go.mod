@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/integration/construct_component_configure_provider
 
-go 1.23.0
+go 1.23.11
 
 require (
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1

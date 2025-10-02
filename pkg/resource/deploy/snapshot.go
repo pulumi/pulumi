@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/go-test/deep"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -256,6 +257,154 @@ func (snap *Snapshot) Toposort() error {
 	return nil
 }
 
+// Assert that the snapshot is equal to the expected snapshot. If not, return an error describing the difference.
+func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
+	// Just want to check the same operations and resources are counted, but order might be slightly different.
+	if snap == nil && expected == nil {
+		return nil
+	}
+	if snap == nil {
+		return errors.New("actual snapshot is nil")
+	}
+	if expected == nil {
+		return errors.New("expected snapshot is nil")
+	}
+
+	if len(snap.PendingOperations) != len(expected.PendingOperations) {
+		var snapPendingOps string
+		for _, op := range snap.PendingOperations {
+			snapPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+		}
+		var expectedPendingOps string
+		for _, op := range expected.PendingOperations {
+			expectedPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+		}
+		return fmt.Errorf("actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.PendingOperations), snapPendingOps, len(expected.PendingOperations), expectedPendingOps)
+	}
+
+	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+
+	for _, mop := range expected.PendingOperations {
+		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
+	}
+	for _, jop := range snap.PendingOperations {
+		diffStr := ""
+		found := false
+		for _, mop := range pendingOpsMap[jop.Resource.URN] {
+			if diff := deep.Equal(jop, mop); diff != nil {
+				if jop.Resource.URN == mop.Resource.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var pendingOps string
+			for _, op := range snap.PendingOperations {
+				pendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+			}
+			var expectedPendingOps string
+			for _, op := range expected.PendingOperations {
+				expectedPendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+			}
+			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jop.Type, jop.Resource, pendingOps, expectedPendingOps, diffStr)
+		}
+	}
+
+	if len(snap.Resources) != len(expected.Resources) {
+		var snapResources string
+		for _, r := range snap.Resources {
+			snapResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		var expectedResources string
+		for _, r := range expected.Resources {
+			expectedResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+		}
+		return fmt.Errorf("actual and expected resources differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.Resources), snapResources, len(expected.Resources), expectedResources)
+	}
+
+	resourcesMap := make(map[resource.URN][]*resource.State)
+
+	for _, mr := range expected.Resources {
+		if len(mr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range mr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			mr.PropertyDependencies = newPropDeps
+		}
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
+		if len(mr.Outputs) == 0 {
+			mr.Outputs = make(resource.PropertyMap)
+		}
+		if len(mr.Inputs) == 0 {
+			mr.Inputs = make(resource.PropertyMap)
+		}
+		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
+	}
+
+	for _, jr := range snap.Resources {
+		if len(jr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range jr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			jr.PropertyDependencies = newPropDeps
+		}
+
+		found := false
+		var diffStr string
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
+		if len(jr.Outputs) == 0 {
+			jr.Outputs = make(resource.PropertyMap)
+		}
+		if len(jr.Inputs) == 0 {
+			jr.Inputs = make(resource.PropertyMap)
+		}
+		for _, mr := range resourcesMap[jr.URN] {
+			if diff := deep.Equal(jr, mr); diff != nil {
+				if jr.URN == mr.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var snapResources string
+			for _, jr := range snap.Resources {
+				snapResources += fmt.Sprintf("Actual resource: %v\n", jr)
+			}
+			var expectedResources string
+			for _, mr := range expected.Resources {
+				expectedResources += fmt.Sprintf("Expected resource: %v\n", mr)
+			}
+			return fmt.Errorf("actual and expected resources differ, %v not found in expected.\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jr, snapResources, expectedResources, diffStr)
+		}
+	}
+
+	return nil
+}
+
 // topoVisit is a helper function for Toposort that visits a resource and its dependencies recursively.
 func topoVisit(
 	state *resource.State,
@@ -433,12 +582,21 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			return SnapshotIntegrityErrorf("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
-		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
-		// any duplicate URNs.
-		urns := make(map[resource.URN]*resource.State)
+		// Now check the resources.  Check that the resources are well formed, that there
+		// are no duplicate URNs and that all dependencies exist in the snapshot.
+		urns := make(map[resource.URN][]*resource.State)
 		provs := make(map[providers.Reference]struct{})
 		for i, state := range snap.Resources {
 			urn := state.URN
+			if urn == "" {
+				return SnapshotIntegrityErrorf("resource at index %d missing required 'urn' field", i)
+			}
+			if state.Type == "" {
+				return SnapshotIntegrityErrorf("resource '%s' missing required 'type' field", urn)
+			}
+			if !state.Custom && state.ID != "" {
+				return SnapshotIntegrityErrorf("resource '%s' has 'custom false but non-empty ID", urn)
+			}
 
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
@@ -544,12 +702,26 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
-			if _, has := urns[urn]; has && !state.Delete {
-				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
-				return SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
+			urns[urn] = append(urns[urn], state)
+		}
+
+		for urn, states := range urns {
+			if len(states) == 1 {
+				continue
 			}
 
-			urns[urn] = state
+			deletes := 0
+			// The only time we should have duplicate URNs is when all or all but one of them are marked for
+			// deletion.
+			for _, state := range states {
+				if state.Delete {
+					deletes++
+				}
+			}
+
+			if deletes != len(states)-1 && deletes != len(states) {
+				return SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
+			}
 		}
 	}
 

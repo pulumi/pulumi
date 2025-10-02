@@ -24,6 +24,9 @@ build_package:: ensure
 	uv run -m build --outdir ./build --installer uv
 
 build_plugin: ../../bin/pulumi-language-python
+	cp ./cmd/pulumi-language-python-exec ../../bin/
+	cp ./dist/pulumi-resource-pulumi-python ../../bin/
+	cp ./dist/pulumi-analyzer-policy-python ../../bin/
 
 .PHONY: ../../bin/pulumi-language-python
 ../../bin/pulumi-language-python:
@@ -36,7 +39,7 @@ build:: build_package build_plugin
 
 lint:: ensure
 	uv run -m ruff format --check
-	MYPYPATH=./stubs uv run -m mypy ./lib/pulumi
+	uv run -m mypy ./lib/pulumi
 	uv run -m ruff check
 	uv run -m pyright
 

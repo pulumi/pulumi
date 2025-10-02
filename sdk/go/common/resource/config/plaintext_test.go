@@ -46,7 +46,7 @@ func TestPlaintextSecure(t *testing.T) {
 	plain := NewPlaintext("hello")
 	assert.False(t, plain.Secure())
 
-	plain = NewSecurePlaintext("hello")
+	plain = NewPlaintext(PlaintextSecret("hello"))
 	assert.True(t, plain.Secure())
 
 	plain = NewPlaintext(map[string]Plaintext{
@@ -56,7 +56,7 @@ func TestPlaintextSecure(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	assert.True(t, plain.Secure())
@@ -83,7 +83,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	actual, err := plain.encrypt(context.Background(), nil, NopEncrypter)
@@ -96,7 +96,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newSecureObject("moon"),
+			newObject(CiphertextSecret{"moon"}),
 		}),
 	})
 	assert.Equal(t, expected, actual)
@@ -112,7 +112,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	value, err := plain.Encrypt(context.Background(), NopEncrypter)
@@ -129,7 +129,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 			NewPlaintext(float64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 

@@ -1,6 +1,12 @@
 import pulumi
 import pulumi_provider as provider
 
+class ParentComponent(pulumi.ComponentResource):
+    def __init__(self, name, opts=None):
+        super().__init__('ParentComponent', name, {}, opts)
+
+parent = ParentComponent("parent")
+
 comp = provider.MyComponent(
     "comp",
     str_input="hello",
@@ -18,6 +24,7 @@ comp = provider.MyComponent(
         {"asset1": pulumi.StringAsset("im inside an archive")}
     ),
     enum_input=provider.Emu.A,
+    opts=pulumi.ResourceOptions(parent=parent)
 )
 
 pulumi.export("urn", comp.urn)

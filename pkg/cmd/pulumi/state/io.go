@@ -16,7 +16,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -35,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -164,21 +162,13 @@ func TotalStateEdit(
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := json.Marshal(sdep)
-	if err != nil {
-		return err
-	}
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	}
-	return backend.ImportStackDeployment(ctx, s, &dep)
+	return backend.ImportStackDeployment(ctx, s, dep)
 }
 
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the

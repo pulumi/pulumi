@@ -27,8 +27,10 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/mitchellh/copystructure"
@@ -42,9 +44,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -78,54 +83,48 @@ type TB interface {
 	Failed() bool
 }
 
-func snapshotEqual(journal, manager *deploy.Snapshot) error {
-	// Just want to check the same operations and resources are counted, but order might be slightly different.
-	if journal == nil && manager == nil {
-		return nil
-	}
-	if journal == nil {
-		return errors.New("journal snapshot is nil")
-	}
-	if manager == nil {
-		return errors.New("manager snapshot is nil")
-	}
+// The NopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
+type NopPluginManager struct{}
 
-	// Manifests and SecretsManagers are known to differ because we don't thread them through for the Journal code.
+func (NopPluginManager) GetPluginPath(
+	ctx context.Context,
+	d diag.Sink,
+	spec workspace.PluginSpec,
+	projectPlugins []workspace.ProjectPlugin,
+) (string, error) {
+	return "installed", nil
+}
 
-	if len(journal.PendingOperations) != len(manager.PendingOperations) {
-		return errors.New("journal and manager pending operations differ")
-	}
+func (NopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+	return true
+}
 
-	for _, jop := range journal.PendingOperations {
-		found := false
-		for _, mop := range manager.PendingOperations {
-			if reflect.DeepEqual(jop, mop) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("journal and manager pending operations differ, %v not found in manager", jop)
-		}
-	}
+func (NopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+	return true, nil
+}
 
-	if len(journal.Resources) != len(manager.Resources) {
-		return errors.New("journal and manager resources differ")
-	}
+func (NopPluginManager) GetLatestPluginVersion(
+	ctx context.Context,
+	spec workspace.PluginSpec,
+) (*semver.Version, error) {
+	return semver.New("1.0.0")
+}
 
-	for _, jr := range journal.Resources {
-		found := false
-		for _, mr := range manager.Resources {
-			if reflect.DeepEqual(jr, mr) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
-		}
-	}
+func (NopPluginManager) DownloadPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (io.ReadCloser, int64, error) {
+	return io.NopCloser(bytes.NewReader(nil)), 0, nil
+}
 
+func (NopPluginManager) InstallPlugin(
+	ctx context.Context,
+	plugin workspace.PluginSpec,
+	content pkgWorkspace.PluginContent,
+	reinstall bool,
+) error {
 	return nil
 }
 
@@ -160,6 +159,13 @@ func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts Test
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Plan, error) {
 	plan, _, err := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate, "")
+	return plan, err
+}
+
+func (op TestOp) PlanStep(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
+	backendClient deploy.BackendClient, validate ValidateFunc, name string,
+) (*deploy.Plan, error) {
+	plan, _, err := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate, name)
 	return plan, err
 }
 
@@ -211,14 +217,55 @@ func (op TestOp) runWithContext(
 		}
 	}()
 
-	events := make(chan engine.Event)
-	journal := engine.NewJournal()
-	persister := &backend.InMemoryPersister{}
-	secretsManager := b64.NewBase64SecretsManager()
-	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+	var originalBase *deploy.Snapshot
+	if target.Snapshot != nil {
+		originalBase = &deploy.Snapshot{
+			Manifest:          target.Snapshot.Manifest,
+			SecretsManager:    target.Snapshot.SecretsManager,
+			Resources:         slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
+			PendingOperations: target.Snapshot.PendingOperations,
+			Metadata:          target.Snapshot.Metadata,
+		}
+	}
 
-	combined := &engine.CombinedManager{
-		Managers: []engine.SnapshotManager{journal, snapshotManager},
+	errs := []error{}
+	events := make(chan engine.Event)
+	var combined *engine.CombinedManager
+	var journal *engine.TestJournal
+	var persister *backend.ValidatingPersister
+	var journalPersister *backend.ValidatingPersister
+	var journaler *backend.SnapshotJournaler
+	if !dryRun {
+		journal = engine.NewTestJournal()
+		persister = &backend.ValidatingPersister{
+			ErrorFunc: func(err error) {
+				if err != nil {
+					errs = append(errs, fmt.Errorf("manager validation error: %w", err))
+				}
+			},
+		}
+		journalPersister = &backend.ValidatingPersister{
+			ErrorFunc: func(err error) {
+				if err != nil {
+					errs = append(errs, fmt.Errorf("journal validation error: %w", err))
+				}
+			},
+		}
+		secretsManager := b64.NewBase64SecretsManager()
+		secretsProvider := stack.Base64SecretsProvider{}
+
+		var err error
+		journaler, err = backend.NewSnapshotJournaler(
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+		require.NoErrorf(opts.T, err, "got error setting up journaler")
+
+		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		require.NoError(opts.T, err)
+
+		combined = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},
+		}
 	}
 
 	ctx := &engine.Context{
@@ -226,6 +273,7 @@ func (op TestOp) runWithContext(
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
+		PluginManager:   NopPluginManager{},
 	}
 
 	updateOpts := opts.Options()
@@ -250,7 +298,9 @@ func (op TestOp) runWithContext(
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	closeErr := combined.Close()
+	if combined != nil {
+		errs = append(errs, combined.Close())
+	}
 
 	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
 	// the deployment context, not expecting it to have any effect on the test code here. See
@@ -261,12 +311,11 @@ func (op TestOp) runWithContext(
 	}
 
 	if validate != nil {
-		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
-	}
-
-	errs := []error{opErr, closeErr}
-	if dryRun {
-		return plan, nil, errors.Join(errs...)
+		var entries engine.JournalEntries
+		if !dryRun {
+			entries = journal.Entries()
+		}
+		opErr = validate(project, target, entries, firedEvents, opErr)
 	}
 
 	if !opts.SkipDisplayTests {
@@ -291,6 +340,11 @@ func (op TestOp) runWithContext(
 		AssertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
 	}
 
+	errs = append(errs, opErr)
+	if dryRun {
+		return plan, nil, errors.Join(errs...)
+	}
+
 	entries := journal.Entries()
 	// Check that each possible snapshot we could have created is valid
 	var snap *deploy.Snapshot
@@ -312,8 +366,55 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	errs = append(errs, journaler.Errors()...)
+
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
-	errs = append(errs, snapshotEqual(snap, persister.Snap))
+	errs = append(errs, snap.AssertEqual(persister.Snap))
+
+	journalErr := journalPersister.Snap.AssertEqual(snap)
+	errs = append(errs, journalErr)
+
+	if journalErr != nil {
+		opts.T.Log("original base snapshot:")
+		if originalBase != nil {
+			for i, r := range originalBase.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		opts.T.Log()
+		opts.T.Log("base snapshot:")
+		if target.Snapshot != nil {
+			for i, r := range target.Snapshot.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+		opts.T.Log()
+		opts.T.Log("test journal snapshot:")
+		if snap != nil {
+			for i, r := range snap.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+		opts.T.Log()
+		opts.T.Log("journal snapshot:")
+		if journalPersister.Snap != nil {
+			for i, r := range journalPersister.Snap.Resources {
+				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
+			}
+		}
+
+		opts.T.Log()
+		opts.T.Log("test journal:")
+		for i, e := range entries {
+			opts.T.Logf("%v: %v %v %v\n", i, e.Kind, e.Step.Op(), e.Step.URN())
+		}
+		opts.T.Log()
+		opts.T.Log("journal:")
+		for _, entry := range journaler.Entries() {
+			opts.T.Logf("%v\n", entry)
+		}
+	}
 
 	return nil, snap, errors.Join(errs...)
 }
@@ -325,10 +426,7 @@ func (op TestOp) runWithContext(
 // checking the events properly.
 func compareEvents(t TB, expected, actual []engine.Event) {
 	encountered := make(map[int]struct{})
-	if len(expected) != len(actual) {
-		t.Logf("expected %d events, got %d", len(expected), len(actual))
-		t.Fail()
-	}
+	require.Len(t, actual, len(expected), "expected and actual event counts differ")
 	for _, e := range expected {
 		found := false
 		for i, a := range actual {
@@ -341,16 +439,13 @@ func compareEvents(t TB, expected, actual []engine.Event) {
 				break
 			}
 		}
-		if !found {
-			t.Logf("expected event %v not found", e)
-			t.Fail()
-		}
+		assert.True(t, found, "expected event %v not found in actual events", e)
 	}
 	for i, e := range actual {
 		if _, ok := encountered[i]; ok {
 			continue
 		}
-		t.Logf("did not expect event %v", e)
+		assert.Fail(t, "unexpected event %v found in actual events", e)
 	}
 }
 
@@ -388,6 +483,81 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	return events, nil
 }
 
+func replaceProviderID(provider string, operationIDMap map[string]int64, id *int) string {
+	if provider == "" {
+		return ""
+	}
+	// build the regex for the provider ID
+	re := regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	// find the ID in the provider string
+	found := re.FindString(provider)
+	if found != "" {
+		// see if we've already mapped this ID
+		mapped, ok := operationIDMap[found]
+		if !ok {
+			// if not, map it to the next ID
+			*id++
+			mapped = int64(*id)
+			operationIDMap[found] = mapped
+		}
+		// replace the ID in the provider string with the mapped value
+		return strings.ReplaceAll(provider, found, strconv.FormatInt(mapped, 10))
+	}
+	return provider
+}
+
+func stripIDFromStateMetadata(meta *engine.StepEventStateMetadata, operationIDMap map[string]int64, id *int) {
+	if meta == nil {
+		return
+	}
+	mapped, ok := operationIDMap[string(meta.ID)]
+	if !ok {
+		*id++
+		mapped = int64(*id)
+		operationIDMap[string(meta.ID)] = mapped
+	}
+	meta.ID = resource.ID(strconv.FormatInt(mapped, 10))
+	meta.Provider = replaceProviderID(meta.Provider, operationIDMap, id)
+}
+
+func stripIDFromMetadata(meta *engine.StepEventMetadata, operationIDMap map[string]int64, id *int) {
+	stripIDFromStateMetadata(meta.Old, operationIDMap, id)
+	stripIDFromStateMetadata(meta.New, operationIDMap, id)
+	stripIDFromStateMetadata(meta.Res, operationIDMap, id)
+
+	// Provider IDs are in the format `3c0abdd1-199f-40a2-b818-73e457967b21`.  Check if the string
+	// contains an ID, and if so, replace it with a normalized value.
+	meta.Provider = replaceProviderID(meta.Provider, operationIDMap, id)
+}
+
+func fixupEventIDs(events []engine.Event) []engine.Event {
+	// Normalize IDs in events, so multiple runs of the tests with PULUMI_ACCEPT=true
+	// returns the same results.
+	operationIDMap := make(map[string]int64)
+	id := 0
+	newEvents := make([]engine.Event, len(events))
+	for i, e := range events {
+		//nolint:exhaustive // We only care about a few event types here.
+		switch e.Type {
+		case engine.ResourceOperationFailed:
+			roe := e.Payload().(engine.ResourceOperationFailedPayload)
+			stripIDFromMetadata(&roe.Metadata, operationIDMap, &id)
+			newEvents[i] = engine.NewEvent(roe)
+		case engine.ResourceOutputsEvent:
+			roe := e.Payload().(engine.ResourceOutputsEventPayload)
+			stripIDFromMetadata(&roe.Metadata, operationIDMap, &id)
+			newEvents[i] = engine.NewEvent(roe)
+		case engine.ResourcePreEvent:
+			rpe := e.Payload().(engine.ResourcePreEventPayload)
+			stripIDFromMetadata(&rpe.Metadata, operationIDMap, &id)
+			newEvents[i] = engine.NewEvent(rpe)
+		default:
+			newEvents[i] = e
+		}
+	}
+	return newEvents
+}
+
 func AssertDisplay(t TB, events []engine.Event, path string) {
 	var expectedStdout []byte
 	var expectedStderr []byte
@@ -404,6 +574,8 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+
+	events = fixupEventIDs(events)
 
 	var expectedEvents []engine.Event
 	if accept {
@@ -649,7 +821,9 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 		if !step.SkipPreview {
 			previewTarget := p.GetTarget(t, snap)
 			// Don't run validate on the preview step
-			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
+			_, err := step.Op.RunStep(
+				project, previewTarget, p.Options, true, p.BackendClient, nil,
+				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run))
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -701,7 +875,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -720,7 +894,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -739,7 +913,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -758,7 +932,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, resCount)
+				require.Len(t, snap.Resources, resCount)
 				return err
 			},
 		},
@@ -781,7 +955,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				}
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 0)
+				require.Len(t, snap.Resources, 0)
 				return err
 			},
 		},
@@ -793,10 +967,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			) error {
 				require.NoError(t, err)
 
-				assert.Len(t, entries, 0)
+				require.Len(t, entries, 0)
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
-				assert.Len(t, snap.Resources, 0)
+				require.Len(t, snap.Resources, 0)
 				return err
 			},
 		},

@@ -127,6 +127,57 @@ func IsLocalPluginPath(ctx context.Context, source string) bool {
 	return pluginSpec.PluginDownloadURL == "" && !workspace.PluginNameRegexp.MatchString(pluginSpec.Name)
 }
 
+// collectPluginsFromPackages recursively processes packages to get a complete list of plugins
+func collectPluginsFromPackages(
+	ctx *Context, packages map[string]workspace.PackageSpec, visited map[string]bool,
+) ([]workspace.ProjectPlugin, error) {
+	result := []workspace.ProjectPlugin{}
+
+	for name, pkg := range packages {
+		// Skip downloadable plugins, so that only local folder paths remain.
+		if !IsLocalPluginPath(ctx.baseContext, pkg.Source) {
+			continue
+		}
+
+		if visited[name] {
+			continue
+		}
+		visited[name] = true
+
+		path, err := resolvePluginPath(ctx.Root, pkg.Source)
+		if err != nil {
+			return nil, err
+		}
+		pluginProjectFile, err := workspace.DetectPluginPathFrom(path)
+		if err != nil {
+			return nil, err
+		}
+		if pluginProjectFile != "" {
+			pp, err := workspace.LoadPluginProject(pluginProjectFile)
+			if err != nil {
+				return nil, err
+			}
+
+			subPackages := pp.GetPackageSpecs()
+			if len(subPackages) > 0 {
+				subPlugins, err := collectPluginsFromPackages(ctx, subPackages, visited)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, subPlugins...)
+			}
+		}
+
+		result = append(result, workspace.ProjectPlugin{
+			Kind: apitype.ResourcePlugin,
+			Name: name,
+			Path: path,
+		})
+	}
+
+	return result, nil
+}
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
@@ -158,25 +209,11 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		}
 	}
 
-	for name, pkg := range packages {
-		// Skip downloadable plugins, so that only local folder paths remain.
-		if !IsLocalPluginPath(ctx.baseContext, pkg.Source) {
-			continue
-		}
-
-		// Resolve the absolute path to the plugin folder.
-		path, err := resolvePluginPath(ctx.Root, pkg.Source)
-		if err != nil {
-			return nil, err
-		}
-
-		// Add the plugin to the project plugins list.
-		projectPlugins = append(projectPlugins, workspace.ProjectPlugin{
-			Kind: apitype.ResourcePlugin,
-			Name: name,
-			Path: path,
-		})
+	pluginsFromPackages, err := collectPluginsFromPackages(ctx, packages, make(map[string]bool))
+	if err != nil {
+		return nil, err
 	}
+	projectPlugins = append(projectPlugins, pluginsFromPackages...)
 
 	host := &defaultHost{
 		ctx:                     ctx,
@@ -284,6 +321,7 @@ type PolicyAnalyzerOptions struct {
 	Config           map[config.Key]string
 	ConfigSecretKeys []config.Key
 	DryRun           bool
+	Tags             map[string]string // Tags for the current stack.
 }
 
 type pluginLoadRequest struct {
@@ -608,10 +646,18 @@ func (host *defaultHost) SignalCancellation() error {
 					"Error signaling cancellation to resource provider '%s': %w", plug.Info.Name, err))
 			}
 		}
+
 		for _, plug := range host.analyzerPlugins {
 			if err := plug.Plugin.Cancel(host.ctx.Request()); err != nil {
 				result = multierror.Append(result, fmt.Errorf(
 					"Error signaling cancellation to analyzer '%s': %w", plug.Info.Name, err))
+			}
+		}
+
+		for _, plug := range host.languagePlugins {
+			if err := plug.Plugin.Cancel(); err != nil {
+				result = multierror.Append(result, fmt.Errorf(
+					"Error signaling cancellation to language runtime '%s': %w", plug.Info.Name, err))
 			}
 		}
 		return nil, result

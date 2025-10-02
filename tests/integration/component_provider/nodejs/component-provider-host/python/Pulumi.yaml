@@ -5,5 +5,3 @@ runtime:
   options:
     toolchain: pip
     virtualenv: venv
-packages:
-  provider: ../provider

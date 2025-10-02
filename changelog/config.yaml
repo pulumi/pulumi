@@ -18,6 +18,7 @@ scopes:
     - new
     - plugin
     - package
+    - policy
     - state
   components: [dotnet, go, java, nodejs, python, yaml]
   docs: []

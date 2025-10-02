@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ import (
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -151,7 +151,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 	}
 
 	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-	return
+	return program, diagnostics, err
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
@@ -201,7 +201,7 @@ func runConvert(
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packagecmd.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -555,7 +555,7 @@ func generateAndLinkSdksForPackages(
 			packageSource += "@" + pkg.Version.String()
 		}
 
-		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
+		pkgSchema, err := packages.SchemaFromSchemaSourceValueArgs(
 			pctx,
 			packageSource,
 			&schema.ParameterizationDescriptor{
@@ -569,19 +569,20 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packagecmd.GenSDK(
+		diags, err := packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
 			/*overlays*/ "",
 			/*local*/ true,
 		)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
 
 		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
-		err = packagecmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
@@ -598,7 +599,7 @@ func generateAndLinkSdksForPackages(
 
 	// prepare linking
 	for _, pkgSchema := range generatedPackages {
-		err := packagecmd.PrepareLocalPackageForLinking(convertOutputDirectory, language, pkgSchema)
+		err := packages.PrepareLocalPackageForLinking(convertOutputDirectory, language, pkgSchema)
 		if err != nil {
 			return fmt.Errorf("failed to prepare package for linking: %w", err)
 		}
@@ -614,18 +615,19 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not change to output directory: %w", err)
 		}
 
-		_, _, err = ws.ReadProject()
+		proj, _, err := ws.ReadProject()
 		if err != nil {
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkgName)
-		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
-			Workspace: ws,
-			Language:  language,
-			Root:      "./",
-			Pkg:       pkgSchema,
-			Out:       sdkRelPath,
+		err = packages.LinkPackage(&packages.LinkPackageContext{
+			Writer:   os.Stdout,
+			Project:  proj,
+			Language: language,
+			Root:     "./",
+			Pkg:      pkgSchema,
+			Out:      sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
 			Install: !generateOnly,

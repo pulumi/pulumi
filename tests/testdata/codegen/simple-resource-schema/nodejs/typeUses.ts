@@ -35,9 +35,9 @@ export class TypeUses extends pulumi.CustomResource {
         return obj['__pulumiType'] === TypeUses.__pulumiType;
     }
 
-    public readonly bar!: pulumi.Output<outputs.SomeOtherObject | undefined>;
-    public readonly baz!: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
-    public readonly foo!: pulumi.Output<outputs.Object | undefined>;
+    declare public readonly bar: pulumi.Output<outputs.SomeOtherObject | undefined>;
+    declare public readonly baz: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
+    declare public readonly foo: pulumi.Output<outputs.Object | undefined>;
 
     /**
      * Create a TypeUses resource with the given unique name, arguments, and options.
@@ -50,9 +50,9 @@ export class TypeUses extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["bar"] = args ? args.bar : undefined;
-            resourceInputs["baz"] = args ? args.baz : undefined;
-            resourceInputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["baz"] = args?.baz;
+            resourceInputs["foo"] = args?.foo;
         } else {
             resourceInputs["bar"] = undefined /*out*/;
             resourceInputs["baz"] = undefined /*out*/;

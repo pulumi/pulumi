@@ -102,15 +102,14 @@ func TestStackOutputsPython(t *testing.T) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				require.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				assert.Equal(t, 0, len(stackRes.Inputs))
-				assert.Equal(t, 2, len(stackRes.Outputs))
-				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
-				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
-			}
+			require.Len(t, stackInfo.Deployment.Resources, 1)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+			assert.Empty(t, stackRes.Inputs)
+			require.Len(t, stackRes.Outputs, 2)
+			assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+			assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 		},
 	})
 }
@@ -807,12 +806,11 @@ func TestConstructSlowPython(t *testing.T) {
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				require.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -1332,9 +1330,10 @@ func TestAboutPython(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
+	e.RunCommand("pulumi", "install")
 	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "pulumi-kubernetes")
+	assert.Contains(t, stdout, "pulumi_kubernetes")
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
@@ -2032,6 +2031,33 @@ func TestRegress18176(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStuckEventLoop(t *testing.T) {
+	done := make(chan struct{})
+	stderr := &bytes.Buffer{}
+	go func() {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python", "stuck-eventloop"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python"),
+			},
+			LocalProviders: []integration.LocalDependency{
+				{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			},
+			Stderr:        stderr,
+			Quick:         true,
+			ExpectFailure: true, // We expect a failure, but the program shouldn't hang indefinitely.
+		})
+		done <- struct{}{}
+	}()
+	select {
+	case <-time.After(10 * time.Minute):
+		t.Fatal("Test timed out")
+	case <-done:
+		require.Contains(t, stderr.String(), "delay failed", "stderr = %s", stderr.String())
+	}
+}
+
 // Tests that we can run a Python component provider using component_provider_host
 func TestPythonComponentProviderRun(t *testing.T) {
 	t.Parallel()
@@ -2054,7 +2080,14 @@ func TestPythonComponentProviderRun(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 					require.NoError(t, err)
-					require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+					expectedType := tokens.Type("component:index:MyComponent")
+					expectedQualifiedType := "ParentComponent$" + expectedType
+					if runtime == "yaml" {
+						// yaml doesn't have components
+						expectedQualifiedType = expectedType
+					}
+					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
+					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
 					t.Logf("Outputs: %v", stack.Outputs)
 					require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
@@ -2131,6 +2164,29 @@ func TestPythonComponentProviderPackageRun(t *testing.T) {
 			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 			require.NoError(t, err)
 			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+		},
+	})
+}
+
+// Tests that features are set in the pulumi runtime used to construct the component.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderFeatures(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "features"),
+		RelativeWorkDir: "yaml",
+		Quick:           true,
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+			require.True(t, stack.Outputs["parameterization"].(bool))
+			require.True(t, stack.Outputs["transforms"].(bool))
+			require.True(t, stack.Outputs["resourceHooks"].(bool))
 		},
 	})
 }
@@ -2417,6 +2473,46 @@ func TestPythonComponentProviderResourceReference(t *testing.T) {
 			})
 		})
 	}
+}
+
+// Test that a component provider can use a package reference to another component provider
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderInComponentProvider(t *testing.T) {
+	pulumiHome := t.TempDir()
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PulumiHomeDir:   pulumiHome,
+		Dir:             filepath.Join("component_provider", "python", "component-in-component"),
+		RelativeWorkDir: "program",
+		PrepareProject: func(info *engine.Projinfo) error {
+			// Install the dependencies for the two providers: `provider-nested`
+			// which is used within `provider`, which in turn is used by the
+			// program.
+			providerNestedPath := filepath.Join(info.Root, "..", "provider-nested")
+			cmd := exec.Command("pulumi", "install")
+			cmd.Dir = providerNestedPath
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerNestedPath, out, err)
+
+			providerPath := filepath.Join(info.Root, "..", "provider")
+			cmd = exec.Command("pulumi", "install")
+			cmd.Dir = providerPath
+			out, err = cmd.CombinedOutput()
+			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerPath, out, err)
+
+			// Install the dependencies for the program
+			cmd = exec.Command("pulumi", "install")
+			cmd.Dir = info.Root
+			out, err = cmd.CombinedOutput()
+			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerPath, out, err)
+
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Logf("outputs = %+v\n", stack.Outputs)
+			require.Equal(t, "HELLO, PULUMI!", stack.Outputs["str_output"].(string))
+		},
+	})
 }
 
 func installPythonProviderDependencies(t *testing.T, dir string) {

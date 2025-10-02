@@ -31,7 +31,7 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly text!: pulumi.Output<string>;
+    declare public readonly text: pulumi.Output<string>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.
@@ -44,10 +44,10 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.text === undefined) && !opts.urn) {
+            if (args?.text === undefined && !opts.urn) {
                 throw new Error("Missing required property 'text'");
             }
-            resourceInputs["text"] = args ? args.text : undefined;
+            resourceInputs["text"] = args?.text;
         } else {
             resourceInputs["text"] = undefined /*out*/;
         }

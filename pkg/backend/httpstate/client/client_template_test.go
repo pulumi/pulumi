@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -61,7 +62,7 @@ func TestStartTemplatePublish(t *testing.T) {
 			name: "SuccessfulStartPublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/templates/private/test-publisher/test-template/versions" {
+					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions" {
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -152,7 +153,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			name: "SuccessfulCompletePublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete" {
+					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete" {
 						w.WriteHeader(http.StatusCreated)
 						response := PublishTemplateVersionCompleteResponse{}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
@@ -235,7 +236,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -245,7 +246,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
 
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
+					case "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusCreated)
 					}
 				}))
@@ -265,7 +266,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			},
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/preview/registry/templates/private/test-publisher/test-template/versions" {
+					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions" {
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err := w.Write([]byte("Internal Server Error"))
 						require.NoError(t, err)
@@ -293,7 +294,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -322,7 +323,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -331,7 +332,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 							},
 						}
 						require.NoError(t, json.NewEncoder(w).Encode(response))
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
+					case "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete":
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err := w.Write([]byte("Failed to complete"))
 						require.NoError(t, err)
@@ -362,7 +363,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/api/preview/registry/templates/private/test-publisher/test-template/versions":
+					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
 							OperationID: "test-operation-id",
@@ -485,6 +486,165 @@ func (r *testCloudRegistry) PublishTemplate(ctx context.Context, op templatePubl
 	return nil
 }
 
+func TestDownloadTemplate(t *testing.T) {
+	t.Parallel()
+
+	testTarData := []byte("fake-tar-data")
+
+	t.Run("SuccessfulDownloadFromClientURL", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/api/template/download", r.URL.Path)
+			assert.Equal(t, "application/x-tar", r.Header.Get("Accept"))
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(testTarData)
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		downloadURL := server.URL + "/api/template/download"
+
+		result, err := client.DownloadTemplate(context.Background(), downloadURL)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		defer result.Close()
+
+		data, err := io.ReadAll(result)
+		require.NoError(t, err)
+		assert.Equal(t, testTarData, data)
+	})
+
+	t.Run("SuccessfulDownloadFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		presignedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			// For presigned URLs, we should NOT have any custom headers
+			assert.Empty(t, r.Header.Get("Accept"))
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(testTarData)
+			require.NoError(t, err)
+		}))
+		defer presignedServer.Close()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		result, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		defer result.Close()
+
+		data, err := io.ReadAll(result)
+		require.NoError(t, err)
+		assert.Equal(t, testTarData, data)
+	})
+
+	t.Run("SuccessfulDownloadFromForeignURL", func(t *testing.T) {
+		t.Parallel()
+
+		foreignServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			// For non-presigned foreign URLs, we should still set Accept header
+			assert.Equal(t, "application/x-tar", r.Header.Get("Accept"))
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(testTarData)
+			require.NoError(t, err)
+		}))
+		defer foreignServer.Close()
+
+		clientServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for foreign URLs")
+		}))
+		defer clientServer.Close()
+
+		client := newMockClient(clientServer)
+
+		result, err := client.DownloadTemplate(context.Background(), foreignServer.URL)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		defer result.Close()
+
+		data, err := io.ReadAll(result)
+		require.NoError(t, err)
+		assert.Equal(t, testTarData, data)
+	})
+
+	t.Run("ErrorResponse", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Template not found"))
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		downloadURL := server.URL + "/api/template/download"
+
+		_, err := client.DownloadTemplate(context.Background(), downloadURL)
+		require.Error(t, err)
+	})
+
+	t.Run("ErrorResponseFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		presignedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, err := w.Write([]byte("Access denied"))
+			require.NoError(t, err)
+		}))
+		defer presignedServer.Close()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "HTTP 403")
+		assert.Contains(t, err.Error(), "Access denied")
+	})
+
+	t.Run("NetworkErrorFromPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := "http://127.0.0.1:1/invalid?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+	})
+
+	t.Run("InvalidPresignedURL", func(t *testing.T) {
+		t.Parallel()
+
+		client := newMockClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("Should not call client server for presigned URLs")
+		})))
+
+		presignedURL := "://invalid-url?X-Amz-Expires=3600&X-Amz-Signature=abc123"
+
+		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		require.Error(t, err)
+	})
+}
+
 func TestListTemplates(t *testing.T) {
 	t.Parallel()
 
@@ -519,7 +679,7 @@ func TestListTemplates(t *testing.T) {
 
 		// Set up mock server
 		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
-			assert.Contains(t, req.URL.String(), "/api/preview/registry/templates?limit=499")
+			assert.Contains(t, req.URL.String(), "/api/registry/templates?limit=499")
 			assert.Equal(t, "GET", req.Method)
 
 			data, err := json.Marshal(mockResponse)
@@ -592,7 +752,7 @@ func TestListTemplates(t *testing.T) {
 
 			switch requestCount {
 			case 0:
-				assert.Equal(t, "/api/preview/registry/templates?limit=499&name=my-template", req.URL.String())
+				assert.Equal(t, "/api/registry/templates?limit=499&name=my-template", req.URL.String())
 				assert.NotContains(t, "continuationToken", req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -602,7 +762,7 @@ func TestListTemplates(t *testing.T) {
 				require.NoError(t, err)
 			case 1:
 				assert.Equal(t,
-					"/api/preview/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
+					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -612,7 +772,7 @@ func TestListTemplates(t *testing.T) {
 				require.NoError(t, err)
 			case 2:
 				assert.Equal(t,
-					"/api/preview/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
+					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{

@@ -316,7 +316,7 @@ func marshalInputOptionsImpl(v interface{},
 					}
 				}
 
-				return resource.NewOutputProperty(resource.Output{
+				return resource.NewProperty(resource.Output{
 					Element:      element,
 					Known:        known,
 					Secret:       secret,
@@ -348,7 +348,7 @@ func marshalInputOptionsImpl(v interface{},
 			if v.invalid {
 				return resource.PropertyValue{}, nil, errors.New("invalid asset")
 			}
-			return resource.NewAssetProperty(&rasset.Asset{
+			return resource.NewProperty(&rasset.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
@@ -369,7 +369,7 @@ func marshalInputOptionsImpl(v interface{},
 					assets[k] = aa.V
 				}
 			}
-			return resource.NewArchiveProperty(&rarchive.Archive{
+			return resource.NewProperty(&rarchive.Archive{
 				Assets: assets,
 				Path:   v.Path(),
 				URI:    v.URI(),
@@ -421,13 +421,13 @@ func marshalInputOptionsImpl(v interface{},
 		//nolint:exhaustive // We only need to handle the types we care about.
 		switch rv.Type().Kind() {
 		case reflect.Bool:
-			return resource.NewBoolProperty(rv.Bool()), deps, nil
+			return resource.NewProperty(rv.Bool()), deps, nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return resource.NewNumberProperty(float64(rv.Int())), deps, nil
+			return resource.NewProperty(float64(rv.Int())), deps, nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return resource.NewNumberProperty(float64(rv.Uint())), deps, nil
+			return resource.NewProperty(float64(rv.Uint())), deps, nil
 		case reflect.Float32, reflect.Float64:
-			return resource.NewNumberProperty(rv.Float()), deps, nil
+			return resource.NewProperty(rv.Float()), deps, nil
 		case reflect.Ptr, reflect.Interface:
 			// Dereference non-nil pointers and interfaces.
 			if rv.IsNil() {
@@ -439,7 +439,7 @@ func marshalInputOptionsImpl(v interface{},
 			v = rv.Elem().Interface()
 			continue
 		case reflect.String:
-			return resource.NewStringProperty(rv.String()), deps, nil
+			return resource.NewProperty(rv.String()), deps, nil
 		case reflect.Array, reflect.Slice:
 			if rv.IsNil() {
 				return resource.PropertyValue{}, deps, nil
@@ -458,7 +458,7 @@ func marshalInputOptionsImpl(v interface{},
 				arr = append(arr, e)
 				deps = append(deps, d...)
 			}
-			return resource.NewArrayProperty(arr), deps, nil
+			return resource.NewProperty(arr), deps, nil
 		case reflect.Map:
 			if rv.Type().Key().Kind() != reflect.String {
 				return resource.PropertyValue{}, nil,
@@ -484,7 +484,7 @@ func marshalInputOptionsImpl(v interface{},
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, nil
+			return resource.NewProperty(obj), deps, nil
 		case reflect.Struct:
 			obj := resource.PropertyMap{}
 			typ := rv.Type()
@@ -507,7 +507,7 @@ func marshalInputOptionsImpl(v interface{},
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, nil
+			return resource.NewProperty(obj), deps, nil
 		}
 		return resource.PropertyValue{}, nil, fmt.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}

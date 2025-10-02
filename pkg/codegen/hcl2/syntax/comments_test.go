@@ -43,7 +43,7 @@ func commentString(trivia []Trivia) string {
 func validateTokenLeadingTrivia(t *testing.T, token Token) {
 	// There is nowhere to attach leading trivia to template control sequences.
 	if token.Raw.Type == hclsyntax.TokenTemplateControl {
-		assert.Len(t, token.LeadingTrivia, 0)
+		require.Len(t, token.LeadingTrivia, 0)
 		return
 	}
 
@@ -109,24 +109,23 @@ func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr
 
 	v, err := convert.Convert(n.Val, cty.String)
 	require.NoError(t, err)
-	if v.AsString() == "" || !assert.Len(t, tokens.Value, 1) {
+	if v.AsString() == "" {
 		return
 	}
+	require.Len(t, tokens.Value, 1)
 
 	value := tokens.Value[0]
 	if index == 0 {
-		assert.Len(t, value.LeadingTrivia, 0)
+		require.Len(t, value.LeadingTrivia, 0)
 	} else {
 		delim, ok := value.LeadingTrivia[0].(TemplateDelimiter)
 		assert.True(t, ok)
 		assert.Equal(t, hclsyntax.TokenTemplateSeqEnd, delim.Type)
 	}
 	if index == len(template.Parts)-1 {
-		assert.Len(t, value.TrailingTrivia, 0)
+		require.Len(t, value.TrailingTrivia, 0)
 	} else if len(value.TrailingTrivia) != 0 {
-		if !assert.Len(t, value.TrailingTrivia, 1) {
-			return
-		}
+		require.Len(t, value.TrailingTrivia, 1)
 		delim, ok := value.TrailingTrivia[0].(TemplateDelimiter)
 		assert.True(t, ok)
 		assert.Equal(t, hclsyntax.TokenTemplateInterp, delim.Type)
@@ -238,7 +237,7 @@ func TestComments(t *testing.T) {
 	err = parser.ParseFile(bytes.NewReader(contents), "comments_all.hcl")
 	require.NoError(t, err)
 
-	assert.Len(t, parser.Diagnostics, 0)
+	require.Len(t, parser.Diagnostics, 0)
 
 	f := parser.Files[0]
 	diags := hclsyntax.Walk(f.Body, &validator{t: t, tokens: f.Tokens})

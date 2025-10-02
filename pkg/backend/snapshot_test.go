@@ -150,7 +150,7 @@ func TestSamesWithEmptyDependencies(t *testing.T) {
 	require.NoError(t, err)
 	err = mutation.End(same, true)
 	require.NoError(t, err)
-	assert.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
+	require.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
 }
 
 func TestSamesWithEmptyArraysInInputs(t *testing.T) {
@@ -179,7 +179,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	require.NoError(t, err)
 	err = mutation.End(same, true)
 	require.NoError(t, err)
-	assert.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
+	require.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
 }
 
 // This test challenges the naive approach of mutating resources
@@ -224,11 +224,11 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	//     a
 	// where b does not depend on anything and neither does a.
 	firstSnap := sp.SavedSnapshots[0]
-	assert.Len(t, firstSnap.Resources, 2)
+	require.Len(t, firstSnap.Resources, 2)
 	assert.Equal(t, resourceB.URN, firstSnap.Resources[0].URN)
-	assert.Len(t, firstSnap.Resources[0].Dependencies, 0)
+	require.Len(t, firstSnap.Resources[0].Dependencies, 0)
 	assert.Equal(t, resourceA.URN, firstSnap.Resources[1].URN)
-	assert.Len(t, firstSnap.Resources[1].Dependencies, 0)
+	require.Len(t, firstSnap.Resources[1].Dependencies, 0)
 
 	// The engine then generates a Same for a:
 	aSame := deploy.NewSameStep(nil, nil, resourceA, resourceAUpdated)
@@ -244,11 +244,11 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	//     a
 	// where b does not depend on anything and a depends on b.
 	secondSnap := sp.SavedSnapshots[1]
-	assert.Len(t, secondSnap.Resources, 2)
+	require.Len(t, secondSnap.Resources, 2)
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[0].URN)
-	assert.Len(t, secondSnap.Resources[0].Dependencies, 0)
+	require.Len(t, secondSnap.Resources[0].Dependencies, 0)
 	assert.Equal(t, resourceA.URN, secondSnap.Resources[1].URN)
-	assert.Len(t, secondSnap.Resources[1].Dependencies, 1)
+	require.Len(t, secondSnap.Resources[1].Dependencies, 1)
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
 }
 
@@ -308,7 +308,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 
 	// DEFAULT behavior would cause more than 1 snapshot to be written,
 	// but the provided flag should only create 1 Snapshot
-	assert.Len(t, sp.SavedSnapshots, 1)
+	require.Len(t, sp.SavedSnapshots, 1)
 }
 
 // This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
@@ -342,7 +342,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 	// Change the resource outputs.
 	changes = append(changes, NewResource(resourceA.URN))
-	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	snap := NewSnapshot([]*resource.State{
 		provider,
@@ -393,10 +393,11 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Source position is not a meaningful change, and we batch them up for performance reasons
+	// Source positions + stack traces are not meaningful changes, and we batch them up for performance reasons
 	manager, sp := MockSetup(t, snap)
 	sourceUpdated := NewResource(resourceA.URN)
 	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
+	sourceUpdated.StackTrace = []resource.StackFrame{{SourcePosition: provider.SourcePosition}}
 	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
 	mutation, err := manager.BeginMutation(sourceUpdatedSame)
 	require.NoError(t, err)
@@ -581,40 +582,40 @@ func TestVexingDeployment(t *testing.T) {
 	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil, nil, nil))
 
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
-	assert.Len(t, lastSnap.Resources, 6)
+	require.Len(t, lastSnap.Resources, 6)
 	res := lastSnap.Resources
 
 	// Here's what the merged snapshot should look like:
 	// B should be first, and it should depend on nothing
 	assert.Equal(t, b.URN, res[0].URN)
-	assert.Len(t, res[0].Dependencies, 0)
+	require.Len(t, res[0].Dependencies, 0)
 
 	// cPrime should be next, and it should depend on B
 	assert.Equal(t, c.URN, res[1].URN)
-	assert.Len(t, res[1].Dependencies, 1)
+	require.Len(t, res[1].Dependencies, 1)
 	assert.Equal(t, b.URN, res[1].Dependencies[0])
 
 	// d should be next, and it should depend on cPrime
 	assert.Equal(t, d.URN, res[2].URN)
-	assert.Len(t, res[2].Dependencies, 1)
+	require.Len(t, res[2].Dependencies, 1)
 	assert.Equal(t, c.URN, res[2].Dependencies[0])
 
 	// a should be next, and it should depend on nothing
 	assert.Equal(t, a.URN, res[3].URN)
-	assert.Len(t, res[3].Dependencies, 0)
+	require.Len(t, res[3].Dependencies, 0)
 
 	// c should be next, it should depend on A and B and should be pending deletion
 	// this is a critical operation of snap and the crux of this test:
 	// merge MUST put c after a in the snapshot, despite never having seen a in the current plan
 	assert.Equal(t, c.URN, res[4].URN)
 	assert.True(t, res[4].Delete)
-	assert.Len(t, res[4].Dependencies, 2)
+	require.Len(t, res[4].Dependencies, 2)
 	assert.Contains(t, res[4].Dependencies, a.URN)
 	assert.Contains(t, res[4].Dependencies, b.URN)
 
 	// e should be last, it should depend on C and still be live
 	assert.Equal(t, e.URN, res[5].URN)
-	assert.Len(t, res[5].Dependencies, 1)
+	require.Len(t, res[5].Dependencies, 1)
 	assert.Equal(t, c.URN, res[5].Dependencies[0])
 }
 
@@ -637,7 +638,7 @@ func TestDeletion(t *testing.T) {
 	// the end mutation should mark the resource as "done".
 	// snap should then not put resourceA in the merged snapshot, since it has been deleted.
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
-	assert.Len(t, lastSnap.Resources, 0)
+	require.Len(t, lastSnap.Resources, 0)
 }
 
 func TestFailedDelete(t *testing.T) {
@@ -659,7 +660,7 @@ func TestFailedDelete(t *testing.T) {
 	// since we marked the mutation as not successful, the snapshot should still contain
 	// the resource we failed to delete.
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
-	assert.Len(t, lastSnap.Resources, 1)
+	require.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
 }
 
@@ -676,8 +677,8 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	// Beginning the create step mutation should have placed a pending "creating" operation
 	// into the operations list
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
 
@@ -687,8 +688,8 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	// A successful creation should remove the "creating" operation from the operations list
 	// and persist the created resource in the snapshot.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
@@ -705,8 +706,8 @@ func TestRecordingCreateFailure(t *testing.T) {
 	// Beginning the create step mutation should have placed a pending "creating" operation
 	// into the operations list
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
 
@@ -716,17 +717,17 @@ func TestRecordingCreateFailure(t *testing.T) {
 	// A failed creation should remove the "creating" operation from the operations list
 	// and not persist the created resource in the snapshot.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 0)
 }
 
 func TestRecordingUpdateSuccess(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
@@ -739,11 +740,11 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	// Beginning the update mutation should have placed a pending "updating" operation into
 	// the operations list, with the resource's new inputs.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
@@ -751,19 +752,19 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	// Completing the update should place the resource with the new inputs into the snapshot and clear the in
 	// flight operation.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRecordingUpdateFailure(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
@@ -776,11 +777,11 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	// Beginning the update mutation should have placed a pending "updating" operation into
 	// the operations list, with the resource's new inputs.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
@@ -788,10 +789,10 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	// Failing the update should keep the old resource with old inputs in the snapshot while clearing the
 	// in flight operation.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRecordingDeleteSuccess(t *testing.T) {
@@ -808,8 +809,8 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 
 	// Beginning the delete mutation should have placed a pending "deleting" operation into the operations list.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
@@ -818,8 +819,8 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 
 	// A successful delete should remove the in flight operation and deleted resource from the snapshot.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 0)
 }
 
 func TestRecordingDeleteFailure(t *testing.T) {
@@ -836,8 +837,8 @@ func TestRecordingDeleteFailure(t *testing.T) {
 
 	// Beginning the delete mutation should have placed a pending "deleting" operation into the operations list.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
@@ -846,8 +847,8 @@ func TestRecordingDeleteFailure(t *testing.T) {
 
 	// A failed delete should remove the in flight operation but leave the resource in the snapshot.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
@@ -866,8 +867,8 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	err = mutation.End(step, true /* successful */)
@@ -875,8 +876,8 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 
 	// A successful read should clear the in flight operation and put the new resource into the snapshot
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 
@@ -887,12 +888,12 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("c")
 	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -905,22 +906,22 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list
 	// with the inputs of the new read
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
 
 	// A successful read should clear the in flight operation and replace the existing resource in the snapshot.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
@@ -938,8 +939,8 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	err = mutation.End(step, false /* successful */)
@@ -947,8 +948,8 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 
 	// A failed read should clear the in flight operation and leave the snapshot empty.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 0)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 0)
+	require.Len(t, snap.PendingOperations, 0)
 }
 
 func TestRecordingReadFailurePreviousResource(t *testing.T) {
@@ -958,12 +959,12 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("e")
 	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -976,23 +977,23 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	// Beginning the read mutation should have placed a pending "reading" operation into the operations list
 	// with the inputs of the new read
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 1)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
 	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resource.NewProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
 
 	// A failed read should clear the in flight operation and leave the existing read in the snapshot with the
 	// old inputs.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	assert.Equal(t, resource.NewProperty("old"), snap.Resources[0].Inputs["key"])
 }
 
 func TestRegisterOutputs(t *testing.T) {
@@ -1017,7 +1018,7 @@ func TestRegisterOutputs(t *testing.T) {
 
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
-	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewStringProperty("world")}
+	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
 	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
@@ -1027,7 +1028,7 @@ func TestRegisterOutputs(t *testing.T) {
 
 	// It should be identical to what has already been written.
 	lastSnap := sp.LastSnap()
-	assert.Len(t, lastSnap.Resources, 1)
+	require.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
 }
 
@@ -1044,15 +1045,15 @@ func TestRecordingSameFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	// There should be zero snaps performed at the start.
-	assert.Len(t, sp.SavedSnapshots, 0)
+	require.Len(t, sp.SavedSnapshots, 0)
 
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
 
 	// A failed same should leave the resource in the snapshot.
 	snap = sp.LastSnap()
-	assert.Len(t, snap.Resources, 1)
-	assert.Len(t, snap.PendingOperations, 0)
+	require.Len(t, snap.Resources, 1)
+	require.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
 

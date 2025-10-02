@@ -16,7 +16,6 @@ package stack
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -27,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -226,21 +224,11 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
 	snap.SecretsManager = newSecretsManager
-	reserializedDeployment, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err
-	}
-
-	bytes, err := json.Marshal(reserializedDeployment)
-	if err != nil {
-		return err
-	}
-
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
 	}
 
 	// Import the newly changes Deployment
-	return backend.ImportStackDeployment(ctx, currentStack, &dep)
+	return backend.ImportStackDeployment(ctx, currentStack, dep)
 }

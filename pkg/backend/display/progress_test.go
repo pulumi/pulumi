@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -109,13 +108,8 @@ func testProgressEvents(
 	}
 }
 
-//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		// TODO[pulumi/pulumi#19675]: Fix this test on Windows and MacOS
-		t.Skip("Skipping tests on Windows and MacOS.")
-	}
-	t.Setenv("TERM", "vt102")
+	t.Parallel()
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -144,20 +138,23 @@ func TestProgressEvents(t *testing.T) {
 					t.Parallel()
 
 					t.Run("raw", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
+						testProgressEvents(t, path, accept, suffix, opts, width, height, true /* raw */)
 					})
 
 					t.Run("cooked", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, false)
+						testProgressEvents(t, path, accept, suffix, opts, width, height, false /* raw */)
 					})
 
 					t.Run("plain", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 						opts := defaultOpts()
 						opts.ShowResourceChanges = true
@@ -167,6 +164,7 @@ func TestProgressEvents(t *testing.T) {
 			}
 
 			t.Run("no-show-sames", func(t *testing.T) {
+				t.Parallel()
 				opts := defaultOpts()
 				opts.IsInteractive = true
 				opts.ShowSameResources = false

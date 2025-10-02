@@ -155,3 +155,14 @@ async () => {
 	throw new Error(`expected prefix to be test, got ${result.prefix}`);
     }
  };
+
+ const res9 = new Random("res9", { length: 7 }, {
+    transforms: [
+        async ({ props, opts }) => {
+            return {
+                props: props,
+                opts: pulumi.mergeOptions(opts, { import: "stackDefault:test-id" }),
+            };
+        },
+    ],
+});

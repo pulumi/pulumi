@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -94,7 +94,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -106,7 +106,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -122,7 +122,7 @@ func TestAPIVersionResponses(t *testing.T) {
 	defer versionServer.Close()
 
 	versionClient := newMockClient(versionServer)
-	latestVersion, oldestWithoutWarning, latestDevVersion, _, err := versionClient.GetCLIVersionInfo(
+	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(
 		context.Background(), nil,
 	)
 
@@ -146,7 +146,7 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 	client := newMockClient(server)
 
 	// Act.
-	_, _, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
 		"First":  "foo",
 		"Second": "bar",
 	})
@@ -179,7 +179,10 @@ func TestGzip(t *testing.T) {
 	// PATCH /checkpoint
 	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
-	}, nil, tok)
+	}, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, tok)
 	require.NoError(t, err)
 
 	// POST /events/batch
@@ -240,7 +243,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 			StackIdentifier: StackIdentifier{
 				Stack: tokens.MustParseStackName("stack"),
 			},
-		}, sequenceNumber, indented, updateTokenStaticSource("token"))
+		}, sequenceNumber, indented, 3, updateTokenStaticSource("token"))
 	require.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {
@@ -251,7 +254,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	}
 
 	// It should have more than one line as json.Marshal would produce.
-	assert.Equal(t, newlines+1, len(strings.Split(string(request.UntypedDeployment), "\n")))
+	require.Len(t, strings.Split(string(request.UntypedDeployment), "\n"), newlines+1)
 
 	// Compacting should recover the same form as json.Marshal would produce.
 	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))
@@ -295,7 +298,7 @@ func TestGetCapabilities(t *testing.T) {
 		resp, err := c.GetCapabilities(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
-		assert.Len(t, resp.Capabilities, 2)
+		require.Len(t, resp.Capabilities, 2)
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))

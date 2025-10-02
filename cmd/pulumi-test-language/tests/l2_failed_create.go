@@ -26,7 +26,10 @@ import (
 
 func init() {
 	LanguageTests["l2-failed-create"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+			func() plugin.Provider { return &providers.FailOnCreateProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				AssertPreview: func(l *L,

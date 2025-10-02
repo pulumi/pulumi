@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/install,package
-  description: Allow using `pulumi package add` with registry identifiers

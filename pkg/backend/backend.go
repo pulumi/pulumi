@@ -167,8 +167,9 @@ type Backend interface {
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
-	// first boolean return value will be set to true.
-	RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error)
+	// first boolean return value will be set to true. If removeBackups is true, any backups associated with the
+	// the stack will also be removed if the backend supports it.
+	RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
@@ -263,7 +264,7 @@ type Backend interface {
 	// packages and templates.
 	GetCloudRegistry() (CloudRegistry, error)
 
-	// GetReadOnlyCloudRegistry retusn a [registry.Registry] object tied to this
+	// GetReadOnlyCloudRegistry returns a [registry.Registry] object tied to this
 	// backend. All backends should support GetReadOnlyCloudRegistry.
 	GetReadOnlyCloudRegistry() registry.Registry
 }
@@ -353,7 +354,7 @@ type CancellationScope interface {
 // CancellationScopeSource provides a source for cancellation scopes.
 type CancellationScopeSource interface {
 	// NewScope creates a new cancellation scope.
-	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
+	NewScope(ctx context.Context, events chan<- engine.Event, isPreview bool) CancellationScope
 }
 
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
@@ -426,10 +427,10 @@ func (c *backendClient) GetStackResourceOutputs(
 		}
 
 		resc := resource.PropertyMap{
-			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs),
+			resource.PropertyKey("type"):    resource.NewProperty(string(r.Type)),
+			resource.PropertyKey("outputs"): resource.NewProperty(r.Outputs),
 		}
-		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
+		pm[resource.PropertyKey(r.URN)] = resource.NewProperty(resc)
 	}
 	return pm, nil
 }

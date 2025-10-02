@@ -93,13 +93,13 @@ func TestDestroyContinueOnError(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 7) // We expect 5 resources + 2 providers
+	require.Len(t, snap.Resources, 7) // We expect 5 resources + 2 providers
 
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed delete")
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
+	require.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::dependency"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[2].URN)
@@ -345,7 +345,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Equal(t, 3, len(snap.Resources)) // 2 resources + 1 provider
+	require.Len(t, snap.Resources, 3) // 2 resources + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -375,7 +375,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 		switch urn {
 		case "urn:pulumi:test::test::pkgB:m:typB::failing", "urn:pulumi:test::test::pkgB:m:typB::failing2":
-			assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[idx].Inputs["foo"])
+			assert.Equal(t, resource.NewProperty("bar"), snap.Resources[idx].Inputs["foo"])
 		}
 	}
 }
@@ -391,6 +391,16 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 			return &deploytest.Provider{
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -462,7 +472,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -472,7 +482,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
-	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
+	require.Len(t, snap.Resources, 6) // 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -546,7 +556,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
-	require.Equal(t, 5, len(snap.Resources)) // 3 resources + 2 providers
+	require.Len(t, snap.Resources, 5) // 3 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -631,7 +641,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -641,14 +651,14 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
-	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
+	require.Len(t, snap.Resources, 6) // 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
-	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[5].Inputs["foo"])
+	assert.Equal(t, resource.NewProperty("bar"), snap.Resources[5].Inputs["foo"])
 }
 
 func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
@@ -702,7 +712,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2) // We expect 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2) // We expect 1 resource + 1 provider
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::willBeDeleted"), snap.Resources[1].URN)
 
@@ -710,7 +720,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 1) // We expect 1 provider
+	require.Len(t, snap.Resources, 1) // We expect 1 provider
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 }
 
@@ -760,7 +770,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed read")
 	require.NotNil(t, snap)
-	assert.Equal(t, 1, len(snap.Resources)) // 1 provider
+	require.Len(t, snap.Resources, 1) // 1 provider
 }
 
 func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
@@ -901,7 +911,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 
 	assert.Equal(t, "provA", snap.Resources[0].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[1].URN.Name())
@@ -949,7 +959,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		RunStep(project, p.GetTarget(t, snap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "provB")
 	assert.Equal(t, snap.Resources[1].URN.Name(), "provA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resA")

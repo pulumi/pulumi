@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -991,6 +992,8 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 
+	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
+
 	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
@@ -1096,11 +1099,13 @@ func (b *cloudBackend) ListStackNames(
 	return stackRefs, outContToken, nil
 }
 
-func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force, removeBackups bool) (bool, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return false, err
 	}
+
+	// Note: removeBackups is currently unused in the cloud backend.
 
 	return b.client.DeleteStack(ctx, stackID, force)
 }
@@ -1645,20 +1650,65 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// We only need a snapshot manager if we're doing an update.
+	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
+	var journal *backend.SnapshotJournaler
+	var validationErrs []error
+	journalPersister := &backend.ValidatingPersister{
+		ErrorFunc: func(err error) {
+			if err != nil {
+				validationErrs = append(validationErrs,
+					fmt.Errorf("journal snapshot validation error: %w", err))
+			}
+		},
+	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
+		journal, err = backend.NewSnapshotJournaler(
+			ctx, journalPersister, op.SecretsManager, stack.DefaultSecretsProvider, u.Target.Snapshot)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
+		journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+		combinedManager = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+		}
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
+	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
+	snapshotManagerClosed := false
 	engineCtx := &engine.Context{
-		Cancel:          cancellationScope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: snapshotManager,
-		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Cancel:        cancellationScope.Context(),
+		Events:        engineEvents,
+		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		FinalizeUpdateFunc: func() {
+			if snapshotManager == nil || journalPersister == nil {
+				return
+			}
+			err := errors.Join(validationErrs...)
+			err = errors.Join(err, combinedManager.Close())
+			snapshotManagerClosed = true
+			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
+			if journal != nil {
+				for _, e := range journal.Errors() {
+					err = errors.Join(err, e)
+				}
+			}
+			if err != nil {
+				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
+					Error: fmt.Sprintf("snapshot mismatch: %s", err),
+				})
+			}
+		},
+	}
+	if combinedManager != nil {
+		engineCtx.SnapshotManager = combinedManager
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -1696,8 +1746,8 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	if snapshotManager != nil {
-		err = snapshotManager.Close()
+	if combinedManager != nil && !snapshotManagerClosed {
+		err = combinedManager.Close()
 		// If the snapshot manager failed to close, we should return that error.
 		// Even though all the parts of the operation have potentially succeeded, a
 		// snapshotting failure is likely to rear its head on the next
@@ -1908,6 +1958,8 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack
 	if err != nil {
 		return err
 	}
+
+	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, deployment)
 
 	update, err := b.client.ImportStackDeployment(ctx, stackID, deployment)
 	if err != nil {
@@ -2400,4 +2452,31 @@ func (b *cloudBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 
 func (b *cloudBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	return newCloudRegistry(b.client)
+}
+
+// downgradeDeploymentVersionIfNeeded downgrades the deployment schema version to 3 if the service does not
+// support a higher version. This is necessary to ensure compatibility with versions of the service, such as
+// the self-hosted service, that do not support the latest deployment schema version.
+func (b *cloudBackend) downgradeDeploymentVersionIfNeeded(
+	ctx context.Context, version int, features []string,
+) (int, []string) {
+	// Downgrade to v3 if the version is greater than 3 and the service does not support it.
+	// Version 3 is supported by the service even if the version from capabilities isn't set.
+	if version > 3 && b.Capabilities(ctx).DeploymentSchemaVersion <= 3 {
+		logging.V(7).Infof("Downgrading deployment schema version %d to 3 for compatibility with backend", version)
+		return 3, nil
+	}
+	return version, features
+}
+
+// downgradeUntypedDeploymentVersionIfNeeded downgrades the deployment schema version to 3 if the service does not
+// support a higher version. This is necessary to ensure compatibility with versions of the service, such as
+// the self-hosted service, that do not support the latest deployment schema version.
+func (b *cloudBackend) downgradeUntypedDeploymentVersionIfNeeded(
+	ctx context.Context, deployment *apitype.UntypedDeployment,
+) {
+	if deployment != nil {
+		deployment.Version, deployment.Features = b.downgradeDeploymentVersionIfNeeded(
+			ctx, deployment.Version, deployment.Features)
+	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,10 +77,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 
 			out := stdout
 			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
-				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-					out = stderr
-				}
+				out = stderr
 			}
 
 			msg := RenderDiffEvent(event, seen, opts)
@@ -104,6 +101,14 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.StartDebuggingEvent:
 		return ""
 	case engine.ProgressEvent:
+		return ""
+	case engine.ErrorEvent:
+		return ""
+	case engine.PolicyAnalyzeSummaryEvent:
+		return ""
+	case engine.PolicyRemediateSummaryEvent:
+		return ""
+	case engine.PolicyAnalyzeStackSummaryEvent:
 		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
@@ -138,7 +143,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
-	if payload.Severity == diag.Debug && !opts.Debug {
+	if opts.SuppressDiagEventsInDiff ||
+		payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
@@ -471,9 +477,15 @@ func renderDiffResourceOutputsEvent(
 		indent := getIndent(payload.Metadata, seen)
 
 		text := getResourceOutputsPropertiesString(
-			payload.Metadata, indent+1, payload.Planning,
-			payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
-
+			payload.Metadata,
+			indent+1,
+			payload.Planning,
+			payload.Debug,
+			refresh,
+			opts.ShowSameResources,
+			opts.ShowSecrets,
+			opts.TruncateOutput,
+		)
 		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
 			// We would not have rendered the summary yet in this case, so do it now.
 			summary := getResourcePropertiesSummary(payload.Metadata, indent)
