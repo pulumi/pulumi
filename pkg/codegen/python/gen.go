@@ -1876,31 +1876,24 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		mod.collectImports(fun.Inputs.Properties, imports, true)
 	}
 
-	var returnType *schema.ObjectType
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok {
-			returnType = objectType
-		} else {
-			// TODO: remove when we add support for generalized return type for python
-			return "", fmt.Errorf("python sdk-gen doesn't support non-Object return types for function %s", fun.Token)
-		}
-	}
+	returnType := fun.ReturnType
+	returnTypeObj, _ := returnType.(*schema.ObjectType)
 
-	if returnType != nil {
-		mod.collectImports(returnType.Properties, imports, false)
+	if returnTypeObj != nil {
+		mod.collectImports(returnTypeObj.Properties, imports, false)
 	}
 
 	mod.genFunctionHeader(w, fun, imports)
 
 	var baseName, awaitableName string
-	if returnType != nil {
-		baseName, awaitableName = awaitableTypeNames(returnType.Token)
+	if returnTypeObj != nil {
+		baseName, awaitableName = awaitableTypeNames(returnTypeObj.Token)
 	}
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
-	if returnType != nil {
+	if returnTypeObj != nil {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1919,11 +1912,16 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	var retTypeName string
 	var retTypeNameOutput string
 	var rets []*schema.Property
-	if returnType != nil {
-		retTypeName, rets = mod.genAwaitableType(w, returnType), returnType.Properties
-		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+	var originalOutputTypeName string
+	if returnTypeObj != nil {
+		retTypeName, rets = mod.genAwaitableType(w, returnTypeObj), returnTypeObj.Properties
+		originalOutputTypeName, _ = awaitableTypeNames(returnTypeObj.Token)
 		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 		fmt.Fprintf(w, "\n\n")
+	} else if returnType != nil {
+		retTypeName = mod.pyType(returnType)
+		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", retTypeName)
+		originalOutputTypeName = retTypeName
 	} else {
 		retTypeName = "Awaitable[None]"
 		retTypeNameOutput = "pulumi.Output[None]"
@@ -1938,9 +1936,9 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fnName := name
 		resultType := returnTypeName
 		optionsClass := "InvokeOptions"
-		if !plain {
+		if !plain && returnType != nil {
 			fnName += "_output"
-			resultType, _ = awaitableTypeNames(returnType.Token)
+			resultType = originalOutputTypeName
 			optionsClass = "InvokeOutputOptions"
 		}
 
@@ -1958,7 +1956,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 		// Now simply invoke the runtime function with the arguments.
 		trailingArgs := ""
-		if returnType != nil {
+		if returnTypeObj != nil {
 			// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 			// the call to invoke.
 			trailingArgs += ", typ=" + baseName
@@ -2003,14 +2001,18 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 				getter = "__response__"
 			}
 
-			for i, ret := range rets {
-				if i > 0 {
-					fmt.Fprintf(w, ",")
+			if rets == nil {
+				fmt.Fprintf(w, "\n        list(%[1]s.values())[0]", getter)
+			} else {
+				for i, ret := range rets {
+					if i > 0 {
+						fmt.Fprintf(w, ",")
+					}
+					// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
+					// This avoids calling getter functions which will print deprecation messages on unused
+					// fields and should be hidden from the user during Result instantiation.
+					fmt.Fprintf(w, "\n        %[1]s=pulumi.get(%[2]s, '%[1]s')", PyName(ret.Name), getter)
 				}
-				// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
-				// This avoids calling getter functions which will print deprecation messages on unused
-				// fields and should be hidden from the user during Result instantiation.
-				fmt.Fprintf(w, "\n        %[1]s=pulumi.get(%[2]s, '%[1]s')", PyName(ret.Name), getter)
 			}
 
 			if plain {
