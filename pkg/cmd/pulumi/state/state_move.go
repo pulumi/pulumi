@@ -42,6 +42,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const providerPrefix = "pulumi:providers:"
+
 type stateMoveCmd struct {
 	Stdin          io.Reader
 	Stdout         io.Writer
@@ -216,7 +218,7 @@ func (cmd *stateMoveCmd) Run(
 	for _, res := range sourceSnapshot.Resources {
 		matchedArg := resourceMatches(res, args)
 		if matchedArg != "" {
-			if strings.HasPrefix(string(res.Type), "pulumi:providers:") {
+			if strings.HasPrefix(string(res.Type), providerPrefix) {
 				//nolint:lll
 				return errors.New("cannot move providers. Only resources can be moved, and providers will be included automatically")
 			}
@@ -243,8 +245,10 @@ func (cmd *stateMoveCmd) Run(
 	if cmd.IncludeParents {
 		for _, res := range resourcesToMove {
 			for _, parent := range sourceDepGraph.ParentsOf(res) {
-				if res.Type == resource.RootStackType && res.Parent == "" {
-					// We don't move the root stack explicitly, the code below will take care of dealing with that correctly.
+				if res.Type == resource.RootStackType && res.Parent == "" ||
+					strings.HasPrefix(string(parent.Type), providerPrefix) {
+					// We don't move the root stack or providers explicitly, the code below
+					// will take care of dealing with that correctly.
 					continue
 				}
 				resourcesToMove[string(parent.URN)] = parent
@@ -256,6 +260,9 @@ func (cmd *stateMoveCmd) Run(
 	// include all children in the list of resources to move
 	for _, res := range resourcesToMove {
 		for _, dep := range sourceDepGraph.ChildrenOf(res) {
+			if strings.HasPrefix(string(dep.Type), providerPrefix) {
+				continue
+			}
 			resourcesToMove[string(dep.URN)] = dep
 			providersToCopy[dep.Provider] = true
 		}

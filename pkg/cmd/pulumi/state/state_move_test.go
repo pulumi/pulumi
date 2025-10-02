@@ -920,8 +920,8 @@ func TestMoveRootStack(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[0].URN)})
 
-	// Expect only the root stack to remain
-	require.Len(t, sourceSnapshot.Resources, 1)
+	// Expect the root stack and the provider to remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 2)
 	// All other resources are moved to the destination
 	require.Len(t, destSnapshot.Resources, 3)
 
@@ -1356,4 +1356,54 @@ func chdir(t *testing.T, dir string) {
 		require.NoError(t, err)
 		assert.Equal(t, cwd, restoredDir)
 	})
+}
+
+// Test that when a resource is moved and it has a provider as parent, the provider is still
+// treated as a normal provider, and not as parent. This means its children are not moved by default.
+func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.URN(string(providerURN)),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.URN(string(providerURN)),
+		},
+	}
+
+	sourceSnapshot, destSnapshot, stdout := runMoveWithOptions(
+		t, sourceResources, []string{string(sourceResources[1].URN)},
+		&MoveOptions{IncludeParents: true})
+
+	assert.Contains(t, stdout.String(),
+		"Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:\n\n"+
+			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name")
+
+	require.Len(t, sourceSnapshot.Resources, 2) // The provider and "name2" should remain in the source stack
+
+	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resources
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
 }
