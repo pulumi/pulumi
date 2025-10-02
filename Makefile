@@ -132,32 +132,26 @@ lint_pulumi_json_fix::
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
-lint_golang:: lint_deps
-	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
-	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
-		echo "[golangci-lint] Linting $(pkg)..." && \
-		golangci-lint run $(GOLANGCI_LINT_ARGS) \
+define lint_golang_pkg
+	@echo "[golangci-lint] Linting $(1)..."
+	@(cd $(1) && golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--max-same-issues 0 \
 			--max-issues-per-linter 0 \
-			--timeout 5m && \
-		echo "[requiredfield] Linting $(pkg)..." && \
-		go vet -tags all -vettool=$$(which requiredfield) ./...) \
-		&&) true
+			--timeout 5m)
+	@echo "[requiredfield] Linting $(1)..."
+	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
-lint_golang_fix::
-	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
-	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
-		echo "[golangci-lint] Linting $(pkg)..." && \
-		golangci-lint run $(GOLANGCI_LINT_ARGS) \
-			--config $(GOLANGCI_LINT_CONFIG) \
-			--timeout 5m \
-			--fix) \
-		&&) true
+endef
 
-lint_deps:
-	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
-	@echo "Check for requiredfield"; [ -e "$(shell which requiredfield)" ]
+.PHONY: lint_golang lint_golang_fix
+lint_golang: GOLANGCI_LINT_CONFIG=$(shell pwd)/.golangci.yml
+lint_golang: .make/ensure/golangci-lint .make/ensure/requiredfield
+	$(foreach pkg,$(LINT_GOLANG_PKGS),$(call lint_golang_pkg,${pkg}))
+
+lint_golang_fix: GOLANGCI_LINT_ARGS=--fix
+lint_golang_fix: lint_golang
+
 lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
