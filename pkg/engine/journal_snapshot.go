@@ -73,8 +73,8 @@ type JournalSnapshotManager struct {
 	// A counter to generate unique IDs for each journal entry.
 	sequenceIDCounter atomic.Int64
 
-	// changedNewResources is true if any journal operation has changed a new resource.
-	changedNewResources bool
+	// hasNewResources is true if any journal operation has changed a new resource.
+	hasNewResources bool
 
 	// Tracks whether or not a terminal RebuildBaseState event has been sent.
 	hasTerminalRebuiltBaseState bool
@@ -159,11 +159,8 @@ type JournalEntry struct {
 	NewSnapshot *deploy.Snapshot
 }
 
-func changedNewResource(entry JournalEntry) bool {
-	return entry.RemoveNew != nil ||
-		entry.PendingReplacementNew != nil ||
-		entry.DeleteNew != nil ||
-		entry.State == nil && entry.Kind == JournalEntrySuccess
+func hasNewResource(entry JournalEntry) bool {
+	return entry.State == nil && entry.Kind == JournalEntrySuccess
 }
 
 func (sm *JournalSnapshotManager) newJournalEntry(kind JournalEntryKind, operationID int64) JournalEntry {
@@ -180,7 +177,7 @@ func (sm *JournalSnapshotManager) addJournalEntry(entry JournalEntry) error {
 		!sm.hasTerminalRebuiltBaseState,
 		"cannot add additional entries; already sent RebuiltBaseState with new resources",
 	)
-	sm.changedNewResources = changedNewResource(entry)
+	sm.hasNewResources = sm.hasNewResources || hasNewResource(entry)
 	return sm.journal.AddJournalEntry(entry)
 }
 
@@ -304,7 +301,7 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 
 func (sm *JournalSnapshotManager) RebuiltBaseState() error {
 	// If any new resources have been changed
-	if sm.changedNewResources {
+	if sm.hasNewResources {
 		sm.hasTerminalRebuiltBaseState = true
 	}
 	return sm.addJournalEntry(sm.newJournalEntry(JournalEntryRebuiltBaseState, 0))
