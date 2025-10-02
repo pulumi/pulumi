@@ -46,111 +46,55 @@ func (r *containerRef) setPlaintext(pt Plaintext) {
 	}
 }
 
-func collectCiphertextSecretsFromKeyMap(
-	objMap map[Key]object, refs *[]containerRef, ctChunks *[][]string,
-) {
+func collectCiphertextSecrets(objMap map[Key]object, refs *[]containerRef, ctChunks *[][]string) {
+	var process func(obj object, ref containerRef)
+	process = func(obj object, ref containerRef) {
+		switch v := obj.value.(type) {
+		case map[Key]object:
+			for k, vv := range v {
+				process(vv, containerRef{container: v, key: k})
+			}
+		case map[string]object:
+			for k, vv := range v {
+				process(vv, containerRef{container: v, key: k})
+			}
+		case []object:
+			for i, vv := range v {
+				process(vv, containerRef{container: v, key: i})
+			}
+		case CiphertextSecret:
+			*refs = append(*refs, ref)
+			addStringToChunks(ctChunks, v.value, defaultMaxChunkSize)
+		}
+	}
 	for k, obj := range objMap {
-		switch value := obj.value.(type) {
-		case map[Key]object:
-			collectCiphertextSecretsFromKeyMap(value, refs, ctChunks)
-		case map[string]object:
-			collectCiphertextSecretsFromStringMap(value, refs, ctChunks)
-		case []object:
-			collectCiphertextSecretsFromArray(value, refs, ctChunks)
-		case CiphertextSecret:
-			*refs = append(*refs, containerRef{container: objMap, key: k})
-			addStringToChunks(ctChunks, value.value, defaultMaxChunkSize)
-		}
+		process(obj, containerRef{container: objMap, key: k})
 	}
 }
 
-func collectCiphertextSecretsFromStringMap(
-	objMap map[string]object, refs *[]containerRef, ctChunks *[][]string,
-) {
-	for k, obj := range objMap {
-		switch value := obj.value.(type) {
-		case map[Key]object:
-			collectCiphertextSecretsFromKeyMap(value, refs, ctChunks)
-		case map[string]object:
-			collectCiphertextSecretsFromStringMap(value, refs, ctChunks)
-		case []object:
-			collectCiphertextSecretsFromArray(value, refs, ctChunks)
-		case CiphertextSecret:
-			*refs = append(*refs, containerRef{container: objMap, key: k})
-			addStringToChunks(ctChunks, value.value, defaultMaxChunkSize)
+func collectPlaintextSecrets(ptMap map[Key]Plaintext, refs *[]containerRef, ptChunks *[][]string) {
+	var process func(pt Plaintext, ref containerRef)
+	process = func(pt Plaintext, ref containerRef) {
+		switch v := pt.value.(type) {
+		case map[Key]Plaintext:
+			for k, vv := range v {
+				process(vv, containerRef{container: v, key: k})
+			}
+		case map[string]Plaintext:
+			for k, vv := range v {
+				process(vv, containerRef{container: v, key: k})
+			}
+		case []Plaintext:
+			for i, vv := range v {
+				process(vv, containerRef{container: v, key: i})
+			}
+		case PlaintextSecret:
+			*refs = append(*refs, ref)
+			addStringToChunks(ptChunks, string(v), defaultMaxChunkSize)
 		}
 	}
-}
-
-func collectCiphertextSecretsFromArray(
-	objArray []object, refs *[]containerRef, ctChunks *[][]string,
-) {
-	for i, obj := range objArray {
-		switch value := obj.value.(type) {
-		case map[Key]object:
-			collectCiphertextSecretsFromKeyMap(value, refs, ctChunks)
-		case map[string]object:
-			collectCiphertextSecretsFromStringMap(value, refs, ctChunks)
-		case []object:
-			collectCiphertextSecretsFromArray(value, refs, ctChunks)
-		case CiphertextSecret:
-			*refs = append(*refs, containerRef{container: objArray, key: i})
-			addStringToChunks(ctChunks, value.value, defaultMaxChunkSize)
-		}
-	}
-}
-
-func collectPlaintextSecretsFromKeyMap(
-	ptMap map[Key]Plaintext, refs *[]containerRef, ptChunks *[][]string,
-) {
 	for k, pt := range ptMap {
-		switch value := pt.value.(type) {
-		case map[Key]Plaintext:
-			collectPlaintextSecretsFromKeyMap(value, refs, ptChunks)
-		case map[string]Plaintext:
-			collectPlaintextSecretsFromStringMap(value, refs, ptChunks)
-		case []Plaintext:
-			collectPlaintextSecretsFromArray(value, refs, ptChunks)
-		case PlaintextSecret:
-			*refs = append(*refs, containerRef{container: ptMap, key: k})
-			addStringToChunks(ptChunks, string(value), defaultMaxChunkSize)
-		}
-	}
-}
-
-func collectPlaintextSecretsFromStringMap(
-	ptMap map[string]Plaintext, refs *[]containerRef, ptChunks *[][]string,
-) {
-	for k, pt := range ptMap {
-		switch value := pt.value.(type) {
-		case map[Key]Plaintext:
-			collectPlaintextSecretsFromKeyMap(value, refs, ptChunks)
-		case map[string]Plaintext:
-			collectPlaintextSecretsFromStringMap(value, refs, ptChunks)
-		case []Plaintext:
-			collectPlaintextSecretsFromArray(value, refs, ptChunks)
-		case PlaintextSecret:
-			*refs = append(*refs, containerRef{container: ptMap, key: k})
-			addStringToChunks(ptChunks, string(value), defaultMaxChunkSize)
-		}
-	}
-}
-
-func collectPlaintextSecretsFromArray(
-	ptArray []Plaintext, refs *[]containerRef, ptChunks *[][]string,
-) {
-	for i, pt := range ptArray {
-		switch value := pt.value.(type) {
-		case map[Key]Plaintext:
-			collectPlaintextSecretsFromKeyMap(value, refs, ptChunks)
-		case map[string]Plaintext:
-			collectPlaintextSecretsFromStringMap(value, refs, ptChunks)
-		case []Plaintext:
-			collectPlaintextSecretsFromArray(value, refs, ptChunks)
-		case PlaintextSecret:
-			*refs = append(*refs, containerRef{container: ptArray, key: i})
-			addStringToChunks(ptChunks, string(value), defaultMaxChunkSize)
-		}
+		process(pt, containerRef{container: ptMap, key: k})
 	}
 }
 

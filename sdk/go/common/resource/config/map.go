@@ -44,7 +44,7 @@ func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
 
 	objectMap := map[Key]object{}
 	for k, v := range m {
-		obj, err := v.coerceObject()
+		obj, err := v.unmarshalObject()
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
 
 	objectMap := map[Key]object{}
 	for k, v := range m {
-		obj, err := v.coerceObject()
+		obj, err := v.unmarshalObject()
 		if err != nil {
 			return nil, err
 		}

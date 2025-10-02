@@ -73,7 +73,7 @@ func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypt
 	// Collect all secure values
 	var refs []containerRef
 	var ctChunks [][]string
-	collectCiphertextSecretsFromKeyMap(objectMap, &refs, &ctChunks)
+	collectCiphertextSecrets(objectMap, &refs, &ctChunks)
 
 	// Decrypt objects in batches
 	offset := 0

@@ -142,7 +142,7 @@ func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter E
 	// Collect all secure values
 	var refs []containerRef
 	var ptChunks [][]string
-	collectPlaintextSecretsFromKeyMap(plaintextMap, &refs, &ptChunks)
+	collectPlaintextSecrets(plaintextMap, &refs, &ptChunks)
 
 	// Encrypt objects in batches
 	offset := 0
