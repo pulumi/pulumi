@@ -1,5 +1,5 @@
 <{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=52aa9f74-6bdf-40f0-96cb-5558dcff7604]
+<{%fg 1%}>    [id=b0bc2a03-994c-4dc9-8cf1-a946f506eba0]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typB: (delete)
 <{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resA]

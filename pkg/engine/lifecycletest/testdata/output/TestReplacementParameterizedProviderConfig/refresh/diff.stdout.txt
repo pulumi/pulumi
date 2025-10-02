@@ -1,19 +1,19 @@
-<{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=361bd706-d777-4bd7-a7ee-78631706626d]
+<{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::8b894544-c7e5-4ee2-a0e8-fe11b2496ebb]
+<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::b4a4cbc1-f61d-410f-9431-904a9e45c2ca]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=b4a4cbc1-f61d-410f-9431-904a9e45c2ca]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    name   : <{%reset%}><{%reset%}>"testingBase"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
-<{%reset%}>    [id=id]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::8002622e-e980-427f-a0c1-5c50f35048d9]
-<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=id]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::361bd706-d777-4bd7-a7ee-78631706626d]
 <{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
-<{%reset%}>    [id=8002622e-e980-427f-a0c1-5c50f35048d9]
+<{%reset%}>    [id=8b894544-c7e5-4ee2-a0e8-fe11b2496ebb]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    name   : <{%reset%}><{%reset%}>"testingExt"<{%reset%}><{%reset%}>

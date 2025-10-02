@@ -1,11 +1,11 @@
-<{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=cfae3e94-188b-4e96-a3d0-06b24da87951]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=resA-some-id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ o1: <{%reset%}><{%fg 1%}>2<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>4<{%reset%}><{%fg 3%}>
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=d21cb572-0557-4b0c-9992-e7a94a306af3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

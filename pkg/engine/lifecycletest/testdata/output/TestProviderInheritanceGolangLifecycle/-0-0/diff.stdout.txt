@@ -1,34 +1,34 @@
 <{%fg 2%}>+ pulumi:pulumi:Stack: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgA::prov1]
+<{%reset%}><{%fg 2%}>        foo: <{%reset%}><{%fg 2%}>"1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:providers:pkgB: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgB::prov2]
 <{%reset%}><{%fg 2%}>        bang: <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        bar : <{%reset%}><{%fg 2%}>"2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgA::prov1]
-<{%reset%}><{%fg 2%}>        foo: <{%reset%}><{%fg 2%}>"1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:providers:pkgB: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgB::prov3]
 <{%reset%}><{%fg 2%}>        bang: <{%reset%}><{%fg 2%}>"3"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        bar : <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>    <{%fg 14%}>> pkgA:m:typA: (read)
 <{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::readResA]
-<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov1::6a5d2ad6-0bbc-4e7b-ab67-7e2c779d5e6a]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov1::7f49b7eb-ce51-414f-be3f-327706add431]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov1::6a5d2ad6-0bbc-4e7b-ab67-7e2c779d5e6a]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov1::7f49b7eb-ce51-414f-be3f-327706add431]
 <{%reset%}><{%reset%}>        <{%fg 14%}>> pkgB:m:typB: (read)
 <{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::readResBChildOverride]
-<{%reset%}><{%reset%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov3::7dcc36cf-7d51-442c-85b4-e9af62c3eb53]
-<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgB:m:typB: (create)
-<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::resBChildOverride]
-<{%reset%}><{%fg 2%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov3::7dcc36cf-7d51-442c-85b4-e9af62c3eb53]
-<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgB:m:typB: (create)
-<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::resBChild]
-<{%reset%}><{%fg 2%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov2::8f665cee-6e44-421c-86ff-c9f55678049e]
+<{%reset%}><{%reset%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov3::3881f64b-bd94-4ce5-937b-af27606f999d]
 <{%reset%}><{%reset%}>        <{%fg 14%}>> pkgB:m:typB: (read)
 <{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::readResBChild]
-<{%reset%}><{%reset%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov2::8f665cee-6e44-421c-86ff-c9f55678049e]
+<{%reset%}><{%reset%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov2::5c64c845-aada-48fa-94ee-7cea0fc83b31]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::resBChild]
+<{%reset%}><{%fg 2%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov2::5c64c845-aada-48fa-94ee-7cea0fc83b31]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::resBChildOverride]
+<{%reset%}><{%fg 2%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov3::3881f64b-bd94-4ce5-937b-af27606f999d]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 7 created<{%reset%}>
 

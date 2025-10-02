@@ -2,7 +2,7 @@
 <{%fg 1%}>    [id=0]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=e11d85d2-e753-416a-ab22-92969e7e1b1d]
+<{%fg 1%}>    [id=8e87f307-9f3d-401d-a2a1-8b15e4ce3a64]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>

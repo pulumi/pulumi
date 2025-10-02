@@ -1,10 +1,9 @@
 <{%fg 1%}>- pkgA:modA:typA: (delete) 🔒
-<{%fg 1%}>    [id=c24f0f18-bcce-4523-b143-056ec1c4255c]
+<{%fg 1%}>    [id=b58dc605-8f5c-4bc1-91a8-4bc8a4e4f2a5]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:modA:typA::resB]
 <{%reset%}><{%reset%}><{%fg 9%}>--pkgA:modA:typA: (delete-replaced)
-<{%fg 9%}>    [id=14aa2489-4bc7-4793-9dc8-f3cb7057b302]
+<{%fg 9%}>    [id=1ff1b888-69a4-4b13-9bc3-84f3e0c4b91c]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:modA:typA::resA]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>1 errored<{%reset%}>
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

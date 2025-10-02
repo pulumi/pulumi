@@ -1,22 +1,22 @@
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
 <{%reset%}><{%reset%}>    <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>        [id=85625b84-9e1c-48fa-a6b2-9e72f76fb613]
+<{%reset%}>        [id=b9f464bb-4d89-4d71-8f42-e0b5d7de3676]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}>    <{%fg 9%}>--pkgA:m:typA: (delete-replaced)
-<{%fg 9%}>        [id=e9cf15f8-fa17-4954-bf3b-1b4d909840c3]
+<{%fg 9%}>        [id=b26df3e8-5f25-4bf2-8f74-67eb0a214427]
 <{%reset%}><{%fg 9%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 9%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::85625b84-9e1c-48fa-a6b2-9e72f76fb613]
+<{%reset%}><{%fg 9%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::b9f464bb-4d89-4d71-8f42-e0b5d7de3676]
 <{%reset%}><{%fg 9%}>        foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}>    <{%fg 13%}>+-pkgA:m:typA: (replace)
-<{%reset%}>        [id=e9cf15f8-fa17-4954-bf3b-1b4d909840c3]
+<{%reset%}>        [id=b26df3e8-5f25-4bf2-8f74-67eb0a214427]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::85625b84-9e1c-48fa-a6b2-9e72f76fb613]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::b9f464bb-4d89-4d71-8f42-e0b5d7de3676]
 <{%reset%}><{%fg 3%}>      ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>    <{%fg 10%}>++pkgA:m:typA: (create-replacement)
-<{%reset%}>        [id=e9cf15f8-fa17-4954-bf3b-1b4d909840c3]
+<{%reset%}>        [id=b26df3e8-5f25-4bf2-8f74-67eb0a214427]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::85625b84-9e1c-48fa-a6b2-9e72f76fb613]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::b9f464bb-4d89-4d71-8f42-e0b5d7de3676]
 <{%reset%}><{%fg 3%}>      ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 to replace<{%reset%}>

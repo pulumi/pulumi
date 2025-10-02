@@ -1,9 +1,9 @@
 <{%fg 3%}>~ pulumi:providers:pkgA: (update)
-<{%reset%}>    [id=75a1b8ff-65bd-44bc-9c27-7e0640699412]
+<{%reset%}>    [id=3b076c6c-af52-4f5e-a989-390eef44b04c]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%fg 3%}>  ~ auth: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>up<{%reset%}><{%reset%}>auth<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>refresh<{%reset%}><{%reset%}>auth<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=2901494c-9ca7-4d7f-8e7d-aacb2391cc79]
+<{%reset%}>    [id=e73fee96-4d53-4c93-826e-1a9373a5e806]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"

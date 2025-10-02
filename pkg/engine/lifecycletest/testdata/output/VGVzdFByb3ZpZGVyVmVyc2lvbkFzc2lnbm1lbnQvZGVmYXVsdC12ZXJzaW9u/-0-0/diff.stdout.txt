@@ -3,7 +3,7 @@
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:r:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:r:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/default::4b0b4e57-d05b-4aa3-8229-b9c2f3b55538]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0_example.com/default::68c6b7a5-5887-4a06-8e8e-3f1a2c21482f]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.1.0"<{%reset%}><{%fg 2%}>

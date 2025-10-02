@@ -1,8 +1,8 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=3f15bb22-900f-41ba-972a-96f01c735f40]
+<{%reset%}>    [id=2818d03c-319f-42d5-a06a-83d216d1123f]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (refresh)
-<{%reset%}>    [id=c5ab26db-03fd-4c04-9eca-d8b555d69fd8]
+<{%reset%}>    [id=e2d1a419-5098-4104-96d0-8b367a025195]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>

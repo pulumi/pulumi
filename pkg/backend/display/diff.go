@@ -297,7 +297,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int, 
 
 	// add error summary to output
 	if resourcesErrored > 0 {
-		errSummaryStr := fmt.Sprintf("    %s%d errored%s\n", colors.Red, resourcesErrored, colors.Reset)
+		errSummaryStr := fmt.Sprintf("    %s%d errored%s", colors.Red, resourcesErrored, colors.Reset)
 		out.WriteString(errSummaryStr)
 	}
 
@@ -318,6 +318,8 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int, 
 
 		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration:%s %s\n",
 			colors.SpecHeadline, colors.Reset, roundedDuration)))
+	} else if resourcesErrored > 0 {
+		out.WriteString("\n")
 	}
 
 	return out.String()

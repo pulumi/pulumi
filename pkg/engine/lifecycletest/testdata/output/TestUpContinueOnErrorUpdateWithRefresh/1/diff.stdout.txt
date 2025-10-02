@@ -1,8 +1,8 @@
 <{%reset%}>  pulumi:providers:pkgB: (same)
-<{%reset%}>    [id=506ec90a-e2a5-44f1-a924-676cd0fd1b2b]
+<{%reset%}>    [id=40e94133-6b81-4e6c-aa67-f541c3a92ca1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgB:m:typB: (update)
-<{%reset%}>    [id=6535a92e-6038-44f7-86fd-569396a42f6c]
+<{%reset%}>    [id=e27b0fc3-500b-4433-acaf-8df4c01f1354]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::failing]
 <{%reset%}><{%fg 2%}>  + foo: <{%reset%}><{%fg 2%}>"baz"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
@@ -16,5 +16,4 @@
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 3 created<{%reset%}>
     <{%fg 1%}>1 errored<{%reset%}>
-
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

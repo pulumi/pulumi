@@ -1,12 +1,12 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=ae4b547c-cbd5-4548-b3af-41c11b61d670]
+<{%reset%}>    [id=0149b3e5-a612-4490-9f73-2adebda86c7a]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
 <{%reset%}><{%reset%}>    <{%fg 2%}>= pkgA:m:typA: (import)
 <{%reset%}>        [id=imported-id]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::ae4b547c-cbd5-4548-b3af-41c11b61d670]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::0149b3e5-a612-4490-9f73-2adebda86c7a]
 <{%reset%}><{%reset%}>        foo : <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        frob: <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

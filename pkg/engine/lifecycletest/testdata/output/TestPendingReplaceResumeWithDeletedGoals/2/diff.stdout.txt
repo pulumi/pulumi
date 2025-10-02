@@ -1,8 +1,8 @@
 <{%reset%}>~ pkgA:m:typA: (remove-pending-replace)
-<{%reset%}>    [id=b05265c8-0e0a-4251-a722-a587d76047f5]
+<{%reset%}>    [id=8c215352-3dcd-4892-b709-8f426a91ab7e]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=baaf7de0-089a-41a5-a926-793354c979f7]
+<{%fg 1%}>    [id=eaf6cfa3-097d-46f6-903a-7c1147abad3e]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
 

@@ -1,9 +1,9 @@
 <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=505813a9-9dcc-458d-923a-0541b1d0ae08]
+<{%fg 1%}>    [id=b00b41bf-7ad6-4b09-98ea-245c834fa3e4]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provB::c25cc0d6-0e20-4eb4-ba2f-046a1dff7dcc]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provB::eff3dd8d-c91b-45e4-bf17-9a0edb7d418e]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=c25cc0d6-0e20-4eb4-ba2f-046a1dff7dcc]
+<{%fg 1%}>    [id=eff3dd8d-c91b-45e4-bf17-9a0edb7d418e]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
 <{%reset%}><{%fg 1%}>    id: <{%reset%}><{%fg 1%}>"second"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>

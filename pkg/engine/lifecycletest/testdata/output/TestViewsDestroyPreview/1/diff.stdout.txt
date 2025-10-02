@@ -6,7 +6,7 @@
 <{%fg 1%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
 <{%reset%}><{%fg 1%}>        input: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=d9d0f5c3-a79c-4985-ac62-b737580b0d19]
+<{%fg 1%}>    [id=5e5309ac-8226-430e-9232-ea9bfd4a8b28]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 2 to delete<{%reset%}>

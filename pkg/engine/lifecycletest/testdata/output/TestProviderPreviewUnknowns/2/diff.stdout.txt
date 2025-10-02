@@ -1,11 +1,11 @@
 <{%fg 3%}>~ pulumi:providers:pkgA: (update)
-<{%reset%}>    [id=9604087b-b596-4035-ac3c-bde856890c21]
+<{%reset%}>    [id=c2c9c04b-e167-42ab-9b89-c58ee1dc40fa]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 1%}>"alpha"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 3%}>
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=created-id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::9604087b-b596-4035-ac3c-bde856890c21]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::c2c9c04b-e167-42ab-9b89-c58ee1dc40fa]
 <{%reset%}><{%reset%}>    baz: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        a: <{%reset%}><{%reset%}>42<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
@@ -19,7 +19,7 @@
 <{%fg 1%}>        [id=created-id]
 <{%reset%}><{%fg 1%}>        [urn=urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typB::resB-resB]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=3dcf41f9-6383-4faa-9214-ca6c5510b139]
+<{%fg 1%}>    [id=3f3785d6-bd10-4e78-a7f6-2b7ca667eaa3]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 2 to update<{%reset%}>

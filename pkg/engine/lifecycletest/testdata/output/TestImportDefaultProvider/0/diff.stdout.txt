@@ -6,7 +6,7 @@
 <{%reset%}><{%reset%}>    <{%fg 2%}>= pkgA:m:typA: (import)
 <{%reset%}>        [id=actual-id]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::422eafb4-c761-4415-8366-23f44bec597b]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::2b2e47ad-bc0e-4408-8417-2a3df8c0cdef]
 <{%reset%}><{%reset%}>        foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>

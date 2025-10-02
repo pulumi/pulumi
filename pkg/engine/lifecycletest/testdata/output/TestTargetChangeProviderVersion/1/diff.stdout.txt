@@ -1,10 +1,10 @@
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=3216d9ad-9d84-4a49-b7b2-787d407dd28f]
+<{%reset%}>    [id=d42c8eab-81b3-4759-8868-c984c4a4ca35]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:index:typA: (update)
-<{%reset%}>    [id=023b873a-fe3f-4301-ad12-48e2b1ec7c7d]
+<{%reset%}>    [id=a9daf0af-1e0d-4d23-97d5-beb48c2c2265]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:typA::target]
 <{%reset%}><{%fg 2%}>  + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgB: (create)

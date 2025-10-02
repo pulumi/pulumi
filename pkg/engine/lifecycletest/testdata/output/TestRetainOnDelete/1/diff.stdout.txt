@@ -1,5 +1,5 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=bb003094-600e-4d20-88f2-d67924b7ffa2]
+<{%reset%}>    [id=c9236c1b-1f9b-4866-b3cc-1d0834287307]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
 <{%reset%}>    [id=created-id-0]

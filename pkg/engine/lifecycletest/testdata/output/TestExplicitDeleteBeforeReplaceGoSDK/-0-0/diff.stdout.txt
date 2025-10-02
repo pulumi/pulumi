@@ -4,7 +4,7 @@
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::85625b84-9e1c-48fa-a6b2-9e72f76fb613]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::b9f464bb-4d89-4d71-8f42-e0b5d7de3676]
 <{%reset%}><{%fg 2%}>        foo: <{%reset%}><{%fg 2%}>"foo"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 3 created<{%reset%}>

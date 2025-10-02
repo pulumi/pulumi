@@ -1,31 +1,31 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=fed82ffa-d48f-44f2-863d-5da78178b623]
+<{%reset%}>    [id=0cc720e5-37d1-4cc2-a1cb-2f78531f42db]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
-<{%reset%}>    [id=id]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::35694033-0aa9-4d8a-ab13-39358fa6e6b1]
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::fed82ffa-d48f-44f2-863d-5da78178b623]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::0cc720e5-37d1-4cc2-a1cb-2f78531f42db]
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::b26fa8e4-4595-49eb-bd68-6ac0ea5bb30a]
 <{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resC]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::35694033-0aa9-4d8a-ab13-39358fa6e6b1]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::b26fa8e4-4595-49eb-bd68-6ac0ea5bb30a]
 <{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resD]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::provider::34d4c482-3069-4760-a873-d81bea964d42]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::provider::91e07aed-f8b3-4b15-9063-58ddcbe34055]
 <{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
-<{%reset%}>    [id=35694033-0aa9-4d8a-ab13-39358fa6e6b1]
+<{%reset%}>    [id=b26fa8e4-4595-49eb-bd68-6ac0ea5bb30a]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
-<{%reset%}>    [id=34d4c482-3069-4760-a873-d81bea964d42]
+<{%reset%}>    [id=91e07aed-f8b3-4b15-9063-58ddcbe34055]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::provider]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>

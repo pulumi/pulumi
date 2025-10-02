@@ -1,36 +1,36 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=d5e68d25-7362-4afb-b62e-8af905215c00]
+<{%reset%}>    [id=65782fe1-6898-434a-88b6-cec7a7f464fa]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (refresh)
-<{%reset%}>    [id=85fbc413-97b2-4bb0-b5d9-dd790877cff5]
+<{%reset%}>    [id=f2e24642-a80f-4e92-a3f0-520445ba86d3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%fg 3%}>    foo: <{%reset%}><{%fg 3%}>"bar"<{%reset%}><{%fg 3%}>
 <{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
-<{%fg 9%}>    [id=85fbc413-97b2-4bb0-b5d9-dd790877cff5]
+<{%fg 9%}>    [id=f2e24642-a80f-4e92-a3f0-520445ba86d3]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}><{%fg 9%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
-<{%reset%}>    [id=85fbc413-97b2-4bb0-b5d9-dd790877cff5]
+<{%reset%}>    [id=f2e24642-a80f-4e92-a3f0-520445ba86d3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>bar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>qux<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
-<{%reset%}>    [id=85fbc413-97b2-4bb0-b5d9-dd790877cff5]
+<{%reset%}>    [id=f2e24642-a80f-4e92-a3f0-520445ba86d3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>bar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>qux<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 10%}>    --outputs:--<{%reset%}>
 <{%fg 10%}>    foo: <{%reset%}><{%fg 10%}>"bar"<{%reset%}><{%fg 10%}>
 <{%reset%}><{%fg 3%}>~ pkgA:m:typA: (refresh)
-<{%reset%}>    [id=58dfe287-e3c6-4cc7-999c-134895a17244]
+<{%reset%}>    [id=3d4f4d16-f0d1-48b5-9053-e4149e788928]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%fg 3%}>    foo: <{%reset%}><{%fg 3%}>"bar"<{%reset%}><{%fg 3%}>
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=58dfe287-e3c6-4cc7-999c-134895a17244]
+<{%reset%}>    [id=3d4f4d16-f0d1-48b5-9053-e4149e788928]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>
