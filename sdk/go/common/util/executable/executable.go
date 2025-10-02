@@ -103,7 +103,7 @@ func findExecutableWithSuffix(program, suffix string) (string, error) {
 		return fullPath, nil
 	}
 
-	return "", fmt.Errorf(unableToFindProgramTemplate, program)
+	return "", &NotFoundError{Path: program}
 }
 
 func splitGoPath(goPath string, os string) []string {

@@ -15,7 +15,12 @@
 package executable
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplitGoPathShouldReturnExpected(t *testing.T) {
@@ -49,4 +54,39 @@ func TestSplitGoPathShouldReturnExpected(t *testing.T) {
 			t.Errorf("expected path length to be %d, got %d", test.expected, len(paths))
 		}
 	}
+}
+
+func TestFindExecutableShouldLookForExeAndCmdOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("skipping Windows-specific test")
+	}
+
+	// Create a temporary directory to hold the mock executables.
+	tempDir := t.TempDir()
+
+	// Create mock executables.
+	exePath := filepath.Join(tempDir, "mockprogram.exe")
+	cmdPath := filepath.Join(tempDir, "mockprogram.cmd")
+
+	err := os.WriteFile(exePath, []byte("echo This is a mock .exe file"), 0o755)
+	require.NoError(t, err)
+
+	err = os.WriteFile(cmdPath, []byte("echo This is a mock .cmd file"), 0o755)
+	require.NoError(t, err)
+
+	// Add the temporary directory to the PATH environment variable.
+	t.Setenv("PATH", tempDir+";"+os.Getenv("PATH"))
+
+	// Test finding the executable without an extension.
+	foundPath, err := FindExecutable("mockprogram")
+	require.NoError(t, err)
+	require.Equal(t, exePath, foundPath)
+
+	// Remove the .exe file and test again to ensure it finds the .cmd file.
+	err = os.Remove(exePath)
+	require.NoError(t, err, "failed to remove mock .exe file")
+
+	foundPath, err = FindExecutable("mockprogram")
+	require.NoError(t, err)
+	require.Equal(t, cmdPath, foundPath)
 }
