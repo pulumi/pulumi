@@ -59,7 +59,7 @@ func collectCiphertextSecretsFromKeyMap(
 			collectCiphertextSecretsFromArray(value, refs, ctChunks)
 		case CiphertextSecret:
 			*refs = append(*refs, containerRef{container: objMap, key: k})
-			addStringToChunks(ctChunks, string(value), defaultMaxChunkSize)
+			addStringToChunks(ctChunks, value.value, defaultMaxChunkSize)
 		}
 	}
 }
@@ -77,7 +77,7 @@ func collectCiphertextSecretsFromStringMap(
 			collectCiphertextSecretsFromArray(value, refs, ctChunks)
 		case CiphertextSecret:
 			*refs = append(*refs, containerRef{container: objMap, key: k})
-			addStringToChunks(ctChunks, string(value), defaultMaxChunkSize)
+			addStringToChunks(ctChunks, value.value, defaultMaxChunkSize)
 		}
 	}
 }
@@ -95,7 +95,7 @@ func collectCiphertextSecretsFromArray(
 			collectCiphertextSecretsFromArray(value, refs, ctChunks)
 		case CiphertextSecret:
 			*refs = append(*refs, containerRef{container: objArray, key: i})
-			addStringToChunks(ctChunks, string(value), defaultMaxChunkSize)
+			addStringToChunks(ctChunks, value.value, defaultMaxChunkSize)
 		}
 	}
 }

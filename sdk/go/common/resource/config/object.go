@@ -88,7 +88,7 @@ func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypt
 		// Assign decrypted values back into original structure
 		// We are accepting that a Ciphertext Secret now has a Plaintext value
 		for i, decrypted := range decryptedChunk {
-			refs[offset+i].setObject(newObject(CiphertextSecret(decrypted)))
+			refs[offset+i].setObject(newObject(CiphertextSecret{decrypted}))
 		}
 		offset += len(ctChunk)
 	}
@@ -359,7 +359,7 @@ func (c object) EncryptedValues(valuesChunks *[][]string) {
 			v.EncryptedValues(valuesChunks)
 		}
 	case CiphertextSecret:
-		addStringToChunks(valuesChunks, string(v), defaultMaxChunkSize)
+		addStringToChunks(valuesChunks, v.value, defaultMaxChunkSize)
 	default:
 		return
 	}
@@ -388,9 +388,9 @@ func (c object) marshalObjectValue(root bool) any {
 		return vs
 	case CiphertextSecret:
 		if !root {
-			return map[string]any{"secure": string(v)}
+			return map[string]any{"secure": v.value}
 		}
-		return string(v)
+		return v.value
 	default:
 		return c.value
 	}
@@ -406,7 +406,7 @@ func (c object) MarshalString() (text string, secure, object bool, err error) {
 	case string:
 		return v, false, false, nil
 	case CiphertextSecret:
-		return string(v), true, false, nil
+		return v.value, true, false, nil
 	default:
 		bytes, err := c.MarshalJSON()
 		if err != nil {
@@ -420,7 +420,7 @@ func (c object) MarshalString() (text string, secure, object bool, err error) {
 func (c *object) UnmarshalString(text string, secure, object bool) error {
 	if !object {
 		if secure {
-			c.value = CiphertextSecret(text)
+			c.value = CiphertextSecret{text}
 		} else {
 			c.value = text
 		}
@@ -530,7 +530,7 @@ func (c object) marshalObject() any {
 		type secureValue struct {
 			Secure string `json:"secure" yaml:"secure"`
 		}
-		return secureValue{Secure: string(ciphertext)}
+		return secureValue{Secure: ciphertext.value}
 	}
 	return c.value
 }
@@ -540,11 +540,11 @@ func isSecureValue(v any) (bool, CiphertextSecret) {
 	if m, isMap := v.(map[string]any); isMap && len(m) == 1 {
 		if val, hasSecureKey := m["secure"]; hasSecureKey {
 			if valString, isString := val.(string); isString {
-				return true, CiphertextSecret(valString)
+				return true, CiphertextSecret{valString}
 			}
 		}
 	}
-	return false, ""
+	return false, CiphertextSecret{}
 }
 
 func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (resource.PropertyValue, error) {

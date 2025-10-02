@@ -17,11 +17,13 @@ package config
 import "context"
 
 // A CiphertextSecret is a secret config value represented as ciphertext.
-type CiphertextSecret string
+type CiphertextSecret struct {
+	value string
+}
 
 // Decrypt decrypts a ciphertext secret into its plaintext.
 func (c CiphertextSecret) Decrypt(ctx context.Context, dec Decrypter) (PlaintextSecret, error) {
-	plaintext, err := dec.DecryptValue(ctx, string(c))
+	plaintext, err := dec.DecryptValue(ctx, c.value)
 	if err != nil {
 		return "", err
 	}
@@ -35,7 +37,7 @@ type PlaintextSecret string
 func (p PlaintextSecret) Encrypt(ctx context.Context, enc Encrypter) (CiphertextSecret, error) {
 	ciphertext, err := enc.EncryptValue(ctx, string(p))
 	if err != nil {
-		return "", err
+		return CiphertextSecret{}, err
 	}
-	return CiphertextSecret(ciphertext), nil
+	return CiphertextSecret{ciphertext}, nil
 }

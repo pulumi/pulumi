@@ -96,7 +96,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newObject(CiphertextSecret("moon")),
+			newObject(CiphertextSecret{"moon"}),
 		}),
 	})
 	assert.Equal(t, expected, actual)
@@ -177,7 +177,7 @@ func TestEncryptMap(t *testing.T) {
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, CiphertextSecret("Plaintext"), result[MustParseKey("ns:secret")].value)
+		assert.Equal(t, CiphertextSecret{"Plaintext"}, result[MustParseKey("ns:secret")].value)
 		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
@@ -189,7 +189,7 @@ func TestEncryptMap(t *testing.T) {
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
-		assert.Equal(t, CiphertextSecret("Plaintext"), result[MustParseKey("ns:secret")].value)
+		assert.Equal(t, CiphertextSecret{"Plaintext"}, result[MustParseKey("ns:secret")].value)
 		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
@@ -206,9 +206,9 @@ func TestEncryptMap(t *testing.T) {
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, CiphertextSecret("s1"), result[MustParseKey("ns:a")].value)
-		assert.Equal(t, CiphertextSecret("s2"), result[MustParseKey("ns:b")].value)
-		assert.Equal(t, CiphertextSecret("s3"), result[MustParseKey("ns:c")].value)
+		assert.Equal(t, CiphertextSecret{"s1"}, result[MustParseKey("ns:a")].value)
+		assert.Equal(t, CiphertextSecret{"s2"}, result[MustParseKey("ns:b")].value)
+		assert.Equal(t, CiphertextSecret{"s3"}, result[MustParseKey("ns:c")].value)
 		assert.Equal(t, "plain", result[MustParseKey("ns:d")].value)
 		assert.True(t, result[MustParseKey("ns:a")].Secure())
 		assert.True(t, result[MustParseKey("ns:b")].Secure())
