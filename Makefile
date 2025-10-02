@@ -144,16 +144,13 @@ define lint_golang_pkg
 
 endef
 
+.PHONY: lint_golang lint_golang_fix
 lint_golang: GOLANGCI_LINT_CONFIG=$(shell pwd)/.golangci.yml
-lint_golang: lint_deps
+lint_golang: .make/ensure/golangci-lint .make/ensure/requiredfield
 	$(foreach pkg,$(LINT_GOLANG_PKGS),$(call lint_golang_pkg,${pkg}))
 
 lint_golang_fix: GOLANGCI_LINT_ARGS=--fix
 lint_golang_fix: lint_golang
-
-lint_deps:
-	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
-	@echo "Check for requiredfield"; [ -e "$(shell which requiredfield)" ]
 
 lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
