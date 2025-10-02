@@ -144,6 +144,7 @@ type DiffOption interface {
 type diffOptions struct {
 	ignoreKeyFuncs []func(key PropertyKey) bool
 	ignorePathFunc []func(key PropertyPath) bool
+	initialPath    PropertyPath
 }
 
 // IgnoreKeyFunc is the callback type for Diff's ignore option.
@@ -155,8 +156,14 @@ type IgnoreKeyFunc func(key PropertyKey) bool
 // copy.
 type IgnorePathFunc func(path PropertyPath) bool
 
-func (opt IgnoreKeyFunc) apply(o *diffOptions)  { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
-func (opt IgnorePathFunc) apply(o *diffOptions) { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
+// Set the initial property path for DiffWithOptions.
+//
+// The passed in property path will be mutated via append.
+type InitialPropertyPath PropertyPath
+
+func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
+func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = PropertyPath(opt) }
 
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) DiffWithOptions(other PropertyMap, options ...DiffOption) *ObjectDiff {
@@ -164,16 +171,16 @@ func (props PropertyMap) DiffWithOptions(other PropertyMap, options ...DiffOptio
 	for _, v := range options {
 		v.apply(&opts)
 	}
-	return props.diff(other, opts, nil)
+	return props.diff(other, opts, opts.initialPath)
 }
 
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
-	var opts diffOptions
-	for _, v := range ignoreKeys {
-		opts.ignoreKeyFuncs = append(opts.ignoreKeyFuncs, v)
+	opts := make([]DiffOption, len(ignoreKeys))
+	for i, v := range ignoreKeys {
+		opts[i] = v
 	}
-	return props.diff(other, opts, nil)
+	return props.DiffWithOptions(other, opts...)
 }
 
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
@@ -247,13 +254,21 @@ func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path Property
 	}
 }
 
+func (props PropertyValue) DiffWithOptions(other PropertyValue, options ...DiffOption) *ValueDiff {
+	var opts diffOptions
+	for _, v := range options {
+		v.apply(&opts)
+	}
+	return props.diff(other, opts, opts.initialPath)
+}
+
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *ValueDiff {
-	var opts diffOptions
-	for _, v := range ignoreKeys {
-		opts.ignoreKeyFuncs = append(opts.ignoreKeyFuncs, v)
+	opts := make([]DiffOption, len(ignoreKeys))
+	for i, v := range ignoreKeys {
+		opts[i] = v
 	}
-	return v.diff(other, opts, nil)
+	return v.DiffWithOptions(other, opts...)
 }
 
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.

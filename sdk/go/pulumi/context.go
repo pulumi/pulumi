@@ -397,6 +397,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return ctx.newDependencyResource(URN(d))
 			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+			opts.HideDiffs = rpcReq.Options.HideDiff
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
 			if rpcReq.Options.Import != "" {
@@ -523,6 +524,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return nil, fmt.Errorf("marshaling dependsOn: %w", err)
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
+			rpcReq.Options.HideDiff = opts.HideDiffs
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
 			rpcRes.Options.Protect = &opts.Protect
 
@@ -1766,6 +1768,7 @@ func (ctx *Context) registerResource(
 				ReplaceOnChanges:           inputs.replaceOnChanges,
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
+				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
@@ -2231,6 +2234,7 @@ type resourceInputs struct {
 	replaceOnChanges        []string
 	retainOnDelete          *bool
 	deletedWith             string
+	hideDiffs               []string
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2497,6 +2501,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:           resOpts.ignoreChanges,
+		hideDiffs:               resOpts.hideDiffs,
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
@@ -2526,6 +2531,7 @@ type resourceOpts struct {
 	deleteBeforeReplace     *bool
 	importID                ID
 	ignoreChanges           []string
+	hideDiffs               []string
 	additionalSecretOutputs []string
 	replaceOnChanges        []string
 }
@@ -2597,6 +2603,7 @@ func (ctx *Context) getOpts(
 		deleteBeforeReplace:     opts.DeleteBeforeReplace,
 		importID:                importID,
 		ignoreChanges:           opts.IgnoreChanges,
+		hideDiffs:               opts.HideDiffs,
 		additionalSecretOutputs: opts.AdditionalSecretOutputs,
 		replaceOnChanges:        opts.ReplaceOnChanges,
 	}, nil
