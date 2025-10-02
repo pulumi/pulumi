@@ -957,7 +957,8 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -1032,7 +1033,7 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -1207,7 +1208,7 @@ resources:
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},

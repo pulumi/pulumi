@@ -90,7 +90,7 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -120,7 +120,7 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -148,7 +148,7 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -171,7 +171,7 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	be := &backend.MockBackend{}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -194,7 +194,7 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 	ws := &pkgWorkspace.MockContext{}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return nil, giveErr
 		},
