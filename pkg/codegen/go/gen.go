@@ -758,23 +758,23 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 			extPkg = typ.PackageReference
 			token = typ.Token
 		}
-		return
+		return isExternal, extPkg, token
 	case *schema.ResourceType:
 		isExternal = typ.Resource != nil && pkg.pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.Resource.PackageReference
 			token = typ.Token
 		}
-		return
+		return isExternal, extPkg, token
 	case *schema.EnumType:
 		isExternal = pkg.pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.PackageReference
 			token = typ.Token
 		}
-		return
+		return isExternal, extPkg, token
 	}
-	return
+	return isExternal, extPkg, token
 }
 
 // resolveResourceType resolves resource references in properties while

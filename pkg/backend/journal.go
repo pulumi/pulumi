@@ -406,9 +406,6 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to generate snapshot: %w", err)
 	}
-	if snap == nil {
-		return nil
-	}
 	snap, err = snap.NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
@@ -461,6 +458,9 @@ serviceLoop:
 		select {
 		case request := <-journalEvents:
 			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
+			if request.journalEntry.SequenceID == 0 {
+				sj.errors = append(sj.errors, fmt.Errorf("journal entry has no sequence ID %v", request.journalEntry))
+			}
 			if request.elideWrite {
 				hasElidedWrites = true
 				if request.result != nil {
@@ -513,6 +513,7 @@ type SnapshotJournaler struct {
 	done            chan error
 	secretsManager  secrets.Manager
 	secretsProvider secrets.Provider
+	errors          []error
 }
 
 // NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
@@ -599,13 +600,7 @@ func NewSnapshotJournaler(
 
 	go serviceLoop(ctx, journalEvents, done)
 
-	err := journaler.AddJournalEntry(engine.JournalEntry{
-		Kind:           engine.JournalEntrySecretsManager,
-		SecretsManager: secretsManager,
-		ElideWrite:     true,
-	})
-
-	return &journaler, err
+	return &journaler, nil
 }
 
 func (sj *SnapshotJournaler) Entries() []apitype.JournalEntry {
@@ -655,7 +650,115 @@ func (sj *SnapshotJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	return sj.journalMutation(entry)
 }
 
+func (sj SnapshotJournaler) Errors() []error {
+	return sj.errors
+}
+
 func (sj SnapshotJournaler) Close() error {
 	sj.cancel <- true
 	return <-sj.done
+}
+
+type journaler struct {
+	ctx            context.Context
+	persister      JournalPersister
+	snapshot       *apitype.DeploymentV3
+	secretsManager secrets.Manager
+}
+
+// A JournalPersister implements persistence of journal entries in some store.
+type JournalPersister interface {
+	// Append appends a new entry to the journal.
+	Append(ctx context.Context, entry apitype.JournalEntry) error
+}
+
+// NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
+// snapshot created from the journal entries.
+//
+// The snapshot code works on journal entries. Each resource step produces new journal entries
+// for beginning and finishing an operation. These journal entries can then be replayed
+// in conjunction with the immutable base snapshot, to rebuild the new snapshot.
+//
+// Currently the backend only supports saving full snapshots, in which case only one journal
+// entry is allowed to be processed at a time. In the future journal entries will be processed
+// asynchronously in the cloud backend, allowing for better throughput for independent operations.
+//
+// Serialization is performed by pushing the journal entries onto a channel, where another
+// goroutine is polling the channel and creating new snapshots using the entries as they come.
+// This function optionally verifies the integrity of the snapshot before and after mutation.
+//
+// Each journal entry may indicate that its corresponding checkpoint write may be safely elided by
+// setting the `ElideWrite` field. As of this writing, we only elide writes after same steps with no
+// meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
+// are flushed by the next non-elided write or the next call to Close.
+func NewJournaler(
+	ctx context.Context,
+	persister JournalPersister,
+	secretsManager secrets.Manager,
+	baseSnap *deploy.Snapshot,
+) (engine.Journal, error) {
+	snapCopy := &deploy.Snapshot{}
+	if baseSnap != nil {
+		snapCopy = &deploy.Snapshot{
+			Manifest:          baseSnap.Manifest,
+			SecretsManager:    baseSnap.SecretsManager,
+			Resources:         make([]*resource.State, 0),
+			PendingOperations: make([]resource.Operation, 0),
+			Metadata:          baseSnap.Metadata,
+		}
+		// Copy the resources from the base snapshot to the new snapshot.
+		for _, res := range baseSnap.Resources {
+			snapCopy.Resources = append(snapCopy.Resources, res.Copy())
+		}
+		// Copy the pending operations from the base snapshot to the new snapshot.
+		for _, op := range baseSnap.PendingOperations {
+			snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
+		}
+
+		if snapCopy.SecretsManager == nil {
+			snapCopy.SecretsManager = secretsManager
+		}
+	}
+
+	var deployment *apitype.DeploymentV3
+	if baseSnap != nil {
+		var err error
+		deployment, _, _, err = stack.SerializeDeploymentWithMetadata(ctx, snapCopy, false)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		deployment = &apitype.DeploymentV3{}
+	}
+
+	return &journaler{
+		ctx:            ctx,
+		persister:      persister,
+		snapshot:       deployment,
+		secretsManager: secretsManager,
+	}, nil
+}
+
+func (sj *journaler) AddJournalEntry(entry engine.JournalEntry) error {
+	var completeBatch stack.CompleteCrypterBatch
+	enc := sj.secretsManager.Encrypter()
+
+	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
+		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+	}
+	serializedEntry, err := SerializeJournalEntry(
+		sj.ctx, entry, enc)
+	if err != nil {
+		return fmt.Errorf("failed to serialize journal entry: %w", err)
+	}
+	if completeBatch != nil {
+		if err := completeBatch(sj.ctx); err != nil {
+			return fmt.Errorf("failed to complete batch encryption: %w", err)
+		}
+	}
+	return sj.persister.Append(sj.ctx, serializedEntry)
+}
+
+func (sj journaler) Close() error {
+	return nil
 }

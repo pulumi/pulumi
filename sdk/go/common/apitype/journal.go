@@ -130,3 +130,7 @@ func (e JournalEntry) String() string {
 type JournalEntries struct {
 	Entries []JournalEntry `json:"entries,omitempty"`
 }
+
+type AppendUpdateJournalEntryRequest struct {
+	Entry JournalEntry `json:"entry,omitempty"`
+}

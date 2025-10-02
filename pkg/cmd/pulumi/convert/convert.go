@@ -151,7 +151,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 	}
 
 	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-	return
+	return program, diagnostics, err
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
@@ -592,19 +592,19 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not change to output directory: %w", err)
 		}
 
-		_, _, err = ws.ReadProject()
+		proj, _, err := ws.ReadProject()
 		if err != nil {
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Writer:    os.Stdout,
-			Workspace: ws,
-			Language:  language,
-			Root:      "./",
-			Pkg:       pkgSchema,
-			Out:       sdkRelPath,
+			Writer:   os.Stdout,
+			Project:  proj,
+			Language: language,
+			Root:     "./",
+			Pkg:      pkgSchema,
+			Out:      sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
 			Install: !generateOnly,

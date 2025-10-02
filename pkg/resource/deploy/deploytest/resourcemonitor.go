@@ -150,6 +150,10 @@ func (rm *ResourceMonitor) Close() error {
 	return rm.conn.Close()
 }
 
+func (rm *ResourceMonitor) Client() pulumirpc.ResourceMonitorClient {
+	return rm.resmon
+}
+
 func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor {
 	return &ResourceMonitor{resmon: resmon}
 }

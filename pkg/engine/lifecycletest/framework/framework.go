@@ -82,10 +82,10 @@ type TB interface {
 	Failed() bool
 }
 
-// The nopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
-type nopPluginManager struct{}
+// The NopPluginManager is used by the test framework to avoid any interactions with ambient plugins.
+type NopPluginManager struct{}
 
-func (nopPluginManager) GetPluginPath(
+func (NopPluginManager) GetPluginPath(
 	ctx context.Context,
 	d diag.Sink,
 	spec workspace.PluginSpec,
@@ -94,22 +94,22 @@ func (nopPluginManager) GetPluginPath(
 	return "installed", nil
 }
 
-func (nopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+func (NopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
 	return true
 }
 
-func (nopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (NopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
 	return true, nil
 }
 
-func (nopPluginManager) GetLatestPluginVersion(
+func (NopPluginManager) GetLatestPluginVersion(
 	ctx context.Context,
 	spec workspace.PluginSpec,
 ) (*semver.Version, error) {
 	return semver.New("1.0.0")
 }
 
-func (nopPluginManager) DownloadPlugin(
+func (NopPluginManager) DownloadPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
@@ -118,7 +118,7 @@ func (nopPluginManager) DownloadPlugin(
 	return io.NopCloser(bytes.NewReader(nil)), 0, nil
 }
 
-func (nopPluginManager) InstallPlugin(
+func (NopPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
 	content pkgWorkspace.PluginContent,
@@ -233,7 +233,7 @@ func (op TestOp) runWithContext(
 	var journal *engine.TestJournal
 	var persister *backend.ValidatingPersister
 	var journalPersister *backend.ValidatingPersister
-	var snapshotJournaler *backend.SnapshotJournaler
+	var journaler *backend.SnapshotJournaler
 	if !dryRun {
 		journal = engine.NewTestJournal()
 		persister = &backend.ValidatingPersister{
@@ -253,13 +253,14 @@ func (op TestOp) runWithContext(
 		secretsManager := b64.NewBase64SecretsManager()
 		secretsProvider := stack.Base64SecretsProvider{}
 
-		journaler, err := backend.NewSnapshotJournaler(
+		var err error
+		journaler, err = backend.NewSnapshotJournaler(
 			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
-		snapshotJournaler = journaler
 
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
-		journalSnapshotManager := engine.NewJournalSnapshotManager(journaler, target.Snapshot)
+		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		require.NoError(opts.T, err)
 
 		combined = &engine.CombinedManager{
 			Managers: []engine.SnapshotManager{journal, journalSnapshotManager, snapshotManager},
@@ -271,7 +272,7 @@ func (op TestOp) runWithContext(
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
-		PluginManager:   nopPluginManager{},
+		PluginManager:   NopPluginManager{},
 	}
 
 	updateOpts := opts.Options()
@@ -364,6 +365,8 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	errs = append(errs, journaler.Errors()...)
+
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
 	errs = append(errs, snap.AssertEqual(persister.Snap))
 
@@ -407,7 +410,7 @@ func (op TestOp) runWithContext(
 		}
 		opts.T.Log()
 		opts.T.Log("journal:")
-		for _, entry := range snapshotJournaler.Entries() {
+		for _, entry := range journaler.Entries() {
 			opts.T.Logf("%v\n", entry)
 		}
 	}

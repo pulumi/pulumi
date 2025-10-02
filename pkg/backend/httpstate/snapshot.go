@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -106,6 +107,10 @@ func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
 		deployment, deploymentVersion, token)
+}
+
+func (persister *cloudSnapshotPersister) Append(ctx context.Context, entry apitype.JournalEntry) error {
+	return persister.backend.client.AppendUpdateJournalEntry(ctx, persister.update, entry, persister.tokenSource)
 }
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)

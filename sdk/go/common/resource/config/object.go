@@ -368,7 +368,7 @@ func (c object) EncryptedValues(valuesChunks *[][]string) {
 // marshalValue converts the receiver into a Value.
 func (c object) marshalValue() (v Value, err error) {
 	v.value, v.secure, v.object, err = c.MarshalString()
-	return
+	return v, err
 }
 
 // marshalObjectValue converts the receiver into a shape that is compatible with Value.ToObject().

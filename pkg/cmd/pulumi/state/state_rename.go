@@ -195,11 +195,11 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 						if err != nil {
 							err = fmt.Errorf("failed to select resource: %w", err)
 						}
-						return
+						return err
 					},
 					func() (err error) {
 						newResourceName, err = getNewResourceName()
-						return
+						return err
 					},
 				)
 				if err != nil {

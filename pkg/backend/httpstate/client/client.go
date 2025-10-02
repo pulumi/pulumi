@@ -882,6 +882,7 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
+	metadata map[string]string,
 ) (string, error) {
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -924,6 +925,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Provider:    analyzerInfo.Provider,
 		Tags:        analyzerInfo.Tags,
 		Repository:  analyzerInfo.Repository,
+		Metadata:    metadata,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -1226,6 +1228,20 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
+// AppendUpdateJournalEntry appends a new entry to the journal for the given update.
+func (pc *Client) AppendUpdateJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry,
+	token UpdateTokenSource,
+) error {
+	req := apitype.AppendUpdateJournalEntryRequest{
+		Entry: entry,
+	}
+
+	// It is safe to retry because SequenceNumber serves as an idempotency key.
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
