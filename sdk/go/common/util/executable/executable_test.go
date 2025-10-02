@@ -67,12 +67,15 @@ func TestFindExecutableShouldLookForExeAndCmdOnWindows(t *testing.T) {
 	cmdPath := filepath.Join(tempDir, "mockprogram.cmd")
 	ps1Path := filepath.Join(tempDir, "mockprogram.ps1")
 
+	//nolint:gosec // We want to write an executable file for testing purposes, it's not used anywhere.
 	err := os.WriteFile(exePath, []byte("echo This is a mock .exe file"), 0o755)
 	require.NoError(t, err)
 
+	//nolint:gosec // We want to write an executable file for testing purposes, it's not used anywhere.
 	err = os.WriteFile(cmdPath, []byte("echo This is a mock .cmd file"), 0o755)
 	require.NoError(t, err)
 
+	//nolint:gosec // We want to write an executable file for testing purposes, it's not used anywhere.
 	err = os.WriteFile(ps1Path, []byte("echo This is a mock .ps1 file"), 0o755)
 	require.NoError(t, err)
 
@@ -90,6 +93,7 @@ func TestFindExecutableShouldLookForExeAndCmdOnWindows(t *testing.T) {
 	require.Equal(t, cmdPath, foundPath)
 
 	err = os.Remove(cmdPath)
+	require.NoError(t, err, "failed to remove mock .cmd file")
 
 	foundPath, err = FindExecutable("mockprogram")
 	require.NoError(t, err)
