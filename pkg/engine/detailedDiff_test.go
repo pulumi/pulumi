@@ -33,11 +33,13 @@ func TestTranslateDetailedDiff(t *testing.T) {
 	)
 
 	cases := []struct {
-		state        map[string]any
-		oldInputs    map[string]any
-		inputs       map[string]any
-		detailedDiff map[string]plugin.PropertyDiff
-		expected     *resource.ObjectDiff
+		state          map[string]any
+		oldInputs      map[string]any
+		inputs         map[string]any
+		detailedDiff   map[string]plugin.PropertyDiff
+		expected       *resource.ObjectDiff
+		hideDiff       []resource.PropertyPath
+		expectedHidden []resource.PropertyPath
 	}{
 		{
 			state: map[string]any{
@@ -738,17 +740,66 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				},
 			},
 		},
+		{
+			state:  map[string]any{},
+			inputs: map[string]any{},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo":            U, // Should be hidden by "foo"
+				"foo.bar":        U, // Should be hidden by "foo"
+				"fizz.bar":       U,
+				"fizzbuzz.bar":   U, // Should be hidden by "fizzbuzz.bar"
+				"fizzbuzz.other": U,
+			},
+			hideDiff: []resource.PropertyPath{
+				{"foo"},
+				{"fizzbuzz", "bar"},
+				{"not", "updated"},
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"fizz": {Object: &resource.ObjectDiff{
+						Adds:    resource.PropertyMap{},
+						Deletes: resource.PropertyMap{},
+						Sames:   resource.PropertyMap{},
+						Updates: map[resource.PropertyKey]resource.ValueDiff{
+							"bar": {},
+						},
+					}},
+					"fizzbuzz": {Object: &resource.ObjectDiff{
+						Adds:    resource.PropertyMap{},
+						Deletes: resource.PropertyMap{},
+						Sames:   resource.PropertyMap{},
+						Updates: map[resource.PropertyKey]resource.ValueDiff{
+							"other": {},
+						},
+					}},
+				},
+			},
+			expectedHidden: []resource.PropertyPath{
+				{"foo"},
+				{"fizzbuzz", "bar"},
+			},
+		},
 	}
 
 	for _, c := range cases {
-		oldInputs := resource.NewPropertyMapFromMap(c.oldInputs)
-		state := resource.NewPropertyMapFromMap(c.state)
-		inputs := resource.NewPropertyMapFromMap(c.inputs)
-		diff := TranslateDetailedDiff(&StepEventMetadata{
-			Old:          &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
-			New:          &StepEventStateMetadata{Inputs: inputs},
-			DetailedDiff: c.detailedDiff,
-		}, false)
-		assert.Equal(t, c.expected, diff)
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			oldInputs := resource.NewPropertyMapFromMap(c.oldInputs)
+			state := resource.NewPropertyMapFromMap(c.state)
+			inputs := resource.NewPropertyMapFromMap(c.inputs)
+			diff, hiddenProperties := TranslateDetailedDiff(&StepEventMetadata{
+				Old: &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
+				New: &StepEventStateMetadata{Inputs: inputs, State: &resource.State{
+					HideDiff: c.hideDiff,
+				}},
+				DetailedDiff: c.detailedDiff,
+			}, false)
+			assert.Equal(t, c.expected, diff)
+			assert.ElementsMatch(t, c.expectedHidden, hiddenProperties)
+		})
 	}
 }

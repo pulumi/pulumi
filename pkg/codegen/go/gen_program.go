@@ -1158,6 +1158,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges, model.NewListType(model.StringType))
 	}
+	if opts.HideDiffs != nil {
+		appendOption("HideDiffs", opts.HideDiffs, model.NewListType(model.StringType))
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}

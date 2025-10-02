@@ -15,12 +15,36 @@
 package resource
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPropertyPathMarshal(t *testing.T) {
+	t.Parallel()
+
+	test := func(t *testing.T, path PropertyPath, repr string) {
+		t.Run(repr, func(t *testing.T) {
+			type ex struct {
+				P PropertyPath `json:"p"`
+			}
+			bytes, err := json.Marshal(ex{path})
+			require.NoError(t, err)
+			assert.Equal(t, `{"p":"`+repr+`"}`, string(bytes))
+			var dst ex
+			err = json.Unmarshal(bytes, &dst)
+			require.NoError(t, err)
+			assert.Equal(t, path, dst.P)
+		})
+	}
+
+	test(t, nil, "")
+	test(t, PropertyPath{"a", 1, "b"}, "a[1].b")
+	test(t, PropertyPath{1, "*", 2}, `[1][\"*\"][2]`)
+}
 
 func TestPropertyPath(t *testing.T) {
 	t.Parallel()

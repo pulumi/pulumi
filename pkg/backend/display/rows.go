@@ -437,7 +437,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 		if step.Op != deploy.OpSame {
 			if step.DetailedDiff != nil {
-				diff = engine.TranslateDetailedDiff(&step, false)
+				diff, _ = engine.TranslateDetailedDiff(&step, false)
 			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
 				diff = step.Old.Inputs.Diff(step.New.Inputs)
 			}

@@ -107,6 +107,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
+		HideDiff:                nil,
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,

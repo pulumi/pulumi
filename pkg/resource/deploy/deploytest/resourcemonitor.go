@@ -25,6 +25,7 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -283,6 +284,7 @@ type ResourceOptions struct {
 	PropertyDeps            map[resource.PropertyKey][]resource.URN
 	DeleteBeforeReplace     *bool
 	Version                 string
+	HideDiffs               []resource.PropertyPath
 	PluginDownloadURL       string
 	PluginChecksums         map[string][]byte
 	IgnoreChanges           []string
@@ -408,6 +410,11 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	resourceHooks := opts.ResourceHookBindings.marshal()
 
+	hideDiffs := slice.Prealloc[string](len(opts.HideDiffs))
+	for _, v := range opts.HideDiffs {
+		hideDiffs = append(hideDiffs, v.String())
+	}
+
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -440,6 +447,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
 		StackTrace:                 stackTrace,
+		HideDiffs:                  hideDiffs,
 		ParentStackTraceHandle:     opts.ParentStackTraceHandle,
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,

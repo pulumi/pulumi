@@ -445,7 +445,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" {
+	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" {
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -495,6 +495,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "ignoreChanges":
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
+			case "hideDiffs":
+				t = model.NewListType(ResourcePropertyType) // Property paths
+				resourceOptions.HideDiffs = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value

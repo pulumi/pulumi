@@ -44,6 +44,8 @@ type ResourceOptions struct {
 	RetainOnDelete model.Expression
 	// A list of properties that are not considered when diffing the resource.
 	IgnoreChanges model.Expression
+	// A list of properties where the diff is not displayed.
+	HideDiffs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
 	// The plugin download URL for this resource.

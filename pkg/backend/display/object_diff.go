@@ -16,12 +16,14 @@ package display
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -186,6 +188,13 @@ func getResourcePropertiesDetails(
 	// indent everything an additional level, like other properties.
 	indent++
 
+	var hideDiff []resource.PropertyPath
+	if step.New != nil && step.New.State != nil {
+		hideDiff = step.New.State.HideDiff
+	} else if step.Old != nil && step.Old.State != nil {
+		hideDiff = step.Old.State.HideDiff
+	}
+
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
@@ -202,10 +211,10 @@ func getResourcePropertiesDetails(
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets)
+			summary, truncateOutput, debug, showSecrets, hideDiff)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets)
+			summary, truncateOutput, debug, showSecrets, hideDiff)
 	}
 
 	return b.String()
@@ -692,10 +701,39 @@ func shortHash(hash string) string {
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hidePaths []resource.PropertyPath,
 ) {
+	var hiddenDiffs []resource.PropertyPath
+
 	// Get the full diff structure between the two, and print it (recursively).
-	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets)
+	diff := olds.DiffWithOptions(news,
+		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+			for _, v := range hidePaths {
+				if v.Contains(path) {
+					hiddenDiffs = append(hiddenDiffs, v)
+					return true
+				}
+			}
+			return false
+		}),
+	)
+
+	// Ensure that our paths are unique and sorted
+	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+		return cmp.Compare(a.String(), b.String())
+	})
+	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+		return a.String() == b.String()
+	})
+
+	// We have hidden all the diffs, but there was a diff.
+	if len(hiddenDiffs) > 0 {
+		diff = &resource.ObjectDiff{}
+	}
+
+	if diff != nil {
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -705,6 +743,7 @@ func printOldNewDiffs(
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hidden []resource.PropertyPath,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -716,6 +755,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		truncateOutput: truncateOutput,
 		showSecrets:    showSecrets,
 	}
+	p.printHiddenPaths(hidden)
 	p.printObjectDiff(diff, include)
 }
 
@@ -743,6 +783,13 @@ func (p *propertyPrinter) printObjectDiff(diff resource.ObjectDiff, include []re
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
 		p.printObjectPropertyDiff(k, maxkey, diff)
+	}
+}
+
+func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
+	p = p.withOp(deploy.OpUpdate).withPrefix(true)
+	for _, k := range paths {
+		p.writeIndentedf("%s (hidden)\n", k)
 	}
 }
 
