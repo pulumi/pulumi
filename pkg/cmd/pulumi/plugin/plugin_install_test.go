@@ -341,14 +341,7 @@ packages:
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	origDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(origDir)
-		require.NoError(t, err)
-	}()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	installCalled := false
 	defer func() {
