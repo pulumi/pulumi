@@ -728,7 +728,7 @@ func printOldNewDiffs(
 	})
 
 	// We have hidden all the diffs, but there was a diff.
-	if len(hiddenDiffs) > 0 {
+	if diff == nil && len(hiddenDiffs) > 0 {
 		diff = &resource.ObjectDiff{}
 	}
 

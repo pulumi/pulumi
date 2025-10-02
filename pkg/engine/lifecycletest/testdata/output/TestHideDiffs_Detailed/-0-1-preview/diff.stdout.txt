@@ -1,11 +1,21 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=1e46371c-771d-4c4e-b3e1-d3c8e73b0bfc]
+<{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>    [id=created-id]
+<{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ array (hidden)
 <{%reset%}><{%fg 3%}>  ~ map (hidden)
 <{%reset%}><{%fg 3%}>  ~ scalar (hidden)
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%fg 3%}>  ~ array (hidden)
+<{%reset%}><{%fg 3%}>  ~ map (hidden)
+<{%reset%}><{%fg 3%}>  ~ scalar: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resC]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 3%}>~ 1 to update<{%reset%}>
+    <{%fg 3%}>~ 2 to update<{%reset%}>
+    1 unchanged

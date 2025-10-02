@@ -16,7 +16,6 @@ package lifecycletest
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -28,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestHideDiffs_Plain(t *testing.T) {
@@ -89,6 +87,7 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// This resource checks that we behave correctly when all updating fields are hidden.
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"scalar": propValue,
@@ -106,6 +105,37 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 			},
 		})
 		require.NoError(t, err)
+
+		// This resource checks that diff behaves correctly when both hidden and
+		// non-hidden fields are diffed.
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"scalar": propValue,
+				"array": resource.NewProperty([]resource.PropertyValue{
+					propValue,
+				}),
+				"map": resource.NewProperty(resource.PropertyMap{
+					"k": propValue,
+				}),
+			},
+			HideDiffs: []resource.PropertyPath{
+				{"array"},
+				{"map"},
+			},
+		})
+		require.NoError(t, err)
+
+		// This resource checks that hidden but non-changed fields don't show as a hidden diff.
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"scalar": resource.NewProperty("fixed"),
+			},
+			HideDiffs: []resource.PropertyPath{
+				{"scalar"},
+			},
+		})
+		require.NoError(t, err)
+
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -116,18 +146,12 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 			HostF:            hostF,
 			SkipDisplayTests: false,
 		},
-		Steps: []lt.TestStep{
-			{
-				Op: engine.Update,
-				Validate: func(
-					project workspace.Project, target deploy.Target, entries engine.JournalEntries,
-					events []engine.Event, err error,
-				) error {
-					lt.AssertDisplay(t, events, filepath.Join("testdata", "output", t.Name()))
-					return nil
-				},
-			},
-		},
+		Steps: []lt.TestStep{{
+			Op: engine.Update,
+			// This test validates our display logic, so we don't need to
+			// validate events or state.
+			Validate: nil,
+		}},
 	}
 
 	created := p.Run(t, &deploy.Snapshot{})
