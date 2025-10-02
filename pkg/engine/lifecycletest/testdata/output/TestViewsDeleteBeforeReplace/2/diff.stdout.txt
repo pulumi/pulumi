@@ -1,15 +1,17 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=dae189bd-b906-4170-bec6-7c26a33df7e6]
+<{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>    [id=new-id]
+<{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>    <{%fg 9%}>--pkgA:m:typAView: (delete-replaced)
-<{%fg 9%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
+<{%fg 9%}>        [id=2]
+<{%reset%}><{%fg 9%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
 <{%reset%}><{%fg 9%}>        input: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}>    <{%fg 13%}>+-pkgA:m:typAView: (replace)
-<{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
+<{%reset%}>        [id=2]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
 <{%reset%}><{%fg 3%}>      ~ result: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>    <{%fg 10%}>++pkgA:m:typAView: (create-replacement)
 <{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]

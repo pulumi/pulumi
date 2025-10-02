@@ -1,7 +1,8 @@
 <{%fg 2%}>+ pulumi:pulumi:Stack: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
 <{%reset%}><{%reset%}><{%reset%}>  component: (same)
-<{%reset%}>    [urn=urn:pulumi:test::test::component::parent]
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::component::parent]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

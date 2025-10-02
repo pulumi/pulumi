@@ -6,10 +6,11 @@
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typAView resA-child <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~input<{%reset%}><{%reset%}>]
  <{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%reset%}><{%reset%}> 
- <{%reset%}>  <{%reset%}> pkgA:m:typAView resA-child <{%reset%}><{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typAView resA-child <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~input<{%reset%}><{%reset%}>]
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    2 unchanged
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    1 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
