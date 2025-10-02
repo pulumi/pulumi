@@ -272,7 +272,6 @@ import sys
 import typing
 from typing import (
     Any,
-    Callable,
     Optional,
     TypeVar,
     Union,
@@ -280,6 +279,7 @@ from typing import (
     get_type_hints,
     overload,
 )
+from collections.abc import Callable
 from collections.abc import Iterator, Mapping
 
 from . import _utils

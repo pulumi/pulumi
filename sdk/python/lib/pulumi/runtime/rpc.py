@@ -27,13 +27,13 @@ import typing
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Optional,
     Union,
     cast,
     get_args,
     get_origin,
 )
+from collections.abc import Callable
 from collections.abc import Iterable, Mapping
 
 from google.protobuf import struct_pb2
