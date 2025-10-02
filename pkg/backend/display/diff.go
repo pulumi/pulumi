@@ -143,7 +143,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
-	if payload.Severity == diag.Debug && !opts.Debug {
+	if opts.SuppressDiagEventsInDiff ||
+		payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
