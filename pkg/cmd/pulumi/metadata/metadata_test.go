@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,9 +57,8 @@ func TestReadingGitRepo(t *testing.T) {
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit alpha")
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+		assert.Equal(t, test.Message, "message for commit alpha")
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/master")
 		assertEnvValue(t, test, backend.GitDirty, "false")
@@ -82,10 +81,9 @@ func TestReadingGitRepo(t *testing.T) {
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit beta")
+		assert.Equal(t, "message for commit beta", test.Message)
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 		featureBranch1SHA = test.Environment[backend.GitHead]
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch1")
 		assertEnvValue(t, test, backend.GitDirty, "true") // Because beta-unsubmitted.txt, after commit
 
@@ -102,9 +100,9 @@ func TestReadingGitRepo(t *testing.T) {
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit beta")
+		assert.Equal(t, "message for commit beta", test.Message)
 		featureBranch2SHA := test.Environment[backend.GitHead]
-		assert.EqualValues(t, featureBranch1SHA, featureBranch2SHA)
+		assert.Equal(t, featureBranch1SHA, featureBranch2SHA)
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
 
@@ -117,11 +115,10 @@ func TestReadingGitRepo(t *testing.T) {
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit alpha") // The prior commit
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
-		_, ok = test.Environment[backend.GitHeadName]
-		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+		assert.Equal(t, "message for commit alpha", test.Message) // The prior commit
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
+		assert.NotContains(t, test.Environment, backend.GitHeadName,
+			"Expected no 'git.headName' key, since in detached head state.")
 	}
 
 	// Tag the commit
@@ -146,8 +143,8 @@ func TestReadingGitRepo(t *testing.T) {
 			Environment: make(map[string]string),
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
-		_, ok := test.Environment[backend.GitHeadName]
-		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+		assert.NotContains(t, test.Environment, backend.GitHeadName,
+			"Expected no 'git.headName' key, since in detached head state.")
 	}
 
 	// Confirm that data can be inferred from the CI system if unavailable.
@@ -162,10 +159,9 @@ func TestReadingGitRepo(t *testing.T) {
 			Environment: make(map[string]string),
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
-		name, ok := test.Environment[backend.GitHeadName]
-		t.Log(name)
-		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
-		// assert.Equal(t, "branch-from-ci", name) # see https://github.com/pulumi/pulumi/issues/5303
+		assert.Contains(t, test.Environment, backend.GitHeadName, "Expected 'git.headName' key, from CI util.")
+		// TODO: https://github.com/pulumi/pulumi/issues/5303
+		// assert.Equal(t, "branch-from-ci", test.Environment[backend.GitHeadName])
 	}
 }
 
@@ -197,8 +193,7 @@ func TestReadingGitLabMetadata(t *testing.T) {
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
 		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
@@ -377,14 +372,16 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.RunCommand("mkdir", "subdirectory")
 	e.RunCommand("git", "init", "-b", "master")
 	e.RunCommand("git", "config", "user.email", "repo-user@example.com")
 	e.RunCommand("git", "config", "user.name", "repo-user")
 	e.RunCommand("git", "remote", "add", "origin", "git@github.com:repo-owner-name/repo-repo-name")
 	e.RunCommand("git", "checkout", "-b", "master")
 
+	subDir := filepath.Join(e.RootPath, "subdirectory")
+	e.CWD = subDir
 	e.WriteTestFile("alpha.txt", "")
+	e.CWD = e.RootPath
 	e.RunCommand("git", "add", ".")
 	e.RunCommand("git", "commit", "-m", "repo-message")
 
@@ -395,7 +392,7 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	}
 
 	// Act.
-	err := addGitMetadata(filepath.Join(e.RootPath, "subdirectory"), test)
+	err := addGitMetadata(subDir, test)
 
 	// Assert.
 	require.NoError(t, err)
@@ -416,9 +413,6 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 	t.Helper()
 	got, ok := md.Environment[key]
-	if !ok {
-		t.Errorf("Didn't find expected update metadata key %q (full env %+v)", key, md.Environment)
-	} else {
-		assert.EqualValues(t, val, got, "got different value for update metadata %v than expected", key)
-	}
+	require.True(t, ok, "Didn't find expected update metadata key %q (full env %+v)", key, md.Environment)
+	assert.Equal(t, val, got, "got different value for update metadata %v than expected", key)
 }
