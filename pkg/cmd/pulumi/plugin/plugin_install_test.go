@@ -329,9 +329,8 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
 }
 
+//nolint:paralleltest // uses t.Chdir
 func TestRegistryFallbackWithLocalPackages(t *testing.T) {
-	t.Parallel()
-
 	tmpDir := t.TempDir()
 	pulumiYaml := `name: test-project
 runtime: nodejs
