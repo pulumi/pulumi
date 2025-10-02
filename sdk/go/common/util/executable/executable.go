@@ -40,9 +40,9 @@ func (e *NotFoundError) Error() string {
 // filesystem, eventually resorting to searching in $PATH.
 func FindExecutable(program string) (string, error) {
 	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") &&
-		!strings.HasSuffix(program, ".cmd") {
-		notFoundPaths := make([]string, 0, 2)
-		for _, suffix := range []string{".exe", ".cmd"} {
+		!strings.HasSuffix(program, ".cmd") && !strings.HasSuffix(program, ".ps1") {
+		notFoundPaths := make([]string, 0, 3)
+		for _, suffix := range []string{".exe", ".cmd", ".ps1"} {
 			found, err := findExecutableWithSuffix(program, suffix)
 			var notFoundErr *NotFoundError
 			if errors.As(err, &notFoundErr) {

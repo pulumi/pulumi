@@ -61,12 +61,11 @@ func TestFindExecutableShouldLookForExeAndCmdOnWindows(t *testing.T) {
 		t.Skip("skipping Windows-specific test")
 	}
 
-	// Create a temporary directory to hold the mock executables.
 	tempDir := t.TempDir()
 
-	// Create mock executables.
 	exePath := filepath.Join(tempDir, "mockprogram.exe")
 	cmdPath := filepath.Join(tempDir, "mockprogram.cmd")
+	ps1Path := filepath.Join(tempDir, "mockprogram.ps1")
 
 	err := os.WriteFile(exePath, []byte("echo This is a mock .exe file"), 0o755)
 	require.NoError(t, err)
@@ -74,19 +73,25 @@ func TestFindExecutableShouldLookForExeAndCmdOnWindows(t *testing.T) {
 	err = os.WriteFile(cmdPath, []byte("echo This is a mock .cmd file"), 0o755)
 	require.NoError(t, err)
 
-	// Add the temporary directory to the PATH environment variable.
+	err = os.WriteFile(ps1Path, []byte("echo This is a mock .ps1 file"), 0o755)
+	require.NoError(t, err)
+
 	t.Setenv("PATH", tempDir+";"+os.Getenv("PATH"))
 
-	// Test finding the executable without an extension.
 	foundPath, err := FindExecutable("mockprogram")
 	require.NoError(t, err)
 	require.Equal(t, exePath, foundPath)
 
-	// Remove the .exe file and test again to ensure it finds the .cmd file.
 	err = os.Remove(exePath)
 	require.NoError(t, err, "failed to remove mock .exe file")
 
 	foundPath, err = FindExecutable("mockprogram")
 	require.NoError(t, err)
 	require.Equal(t, cmdPath, foundPath)
+
+	err = os.Remove(cmdPath)
+
+	foundPath, err = FindExecutable("mockprogram")
+	require.NoError(t, err)
+	require.Equal(t, ps1Path, foundPath)
 }
