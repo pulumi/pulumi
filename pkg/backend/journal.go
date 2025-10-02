@@ -407,7 +407,7 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 		// that, and add a validation error if this is not the case. For a detailed
 		// example see https://github.com/pulumi/pulumi/pull/20596#discussion_r2392049682
 		if entry.Kind == apitype.JournalEntryKindRebuiltBaseState &&
-			!(len(replayer.newResources) == 0) && !(i == len(sj.journalEntries)-1) {
+			len(replayer.newResources) > 0 && i < len(sj.journalEntries)-1 {
 			sj.errors = append(sj.errors,
 				fmt.Errorf("invalid RebuiltBaseState journal entry. Have %d new resources, but entry is not last in journal",
 					len(replayer.newResources)))
