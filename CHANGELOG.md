@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.199.0 (2025-10-01)
+
+
+### Features
+
+- [cli/about] Add `pulumi about env` to help
+  [#20633](https://github.com/pulumi/pulumi/pull/20633)
+
+- [cli/{about,new}] Add environment variables to override template repository settings. The new PULUMI_TEMPLATE_GIT_REPOSITORY, PULUMI_TEMPLATE_BRANCH, PULUMI_POLICY_TEMPLATE_GIT_REPOSITORY, and PULUMI_POLICY_TEMPLATE_BRANCH environment variables allow runtime customization of template sources
+  [#20615](https://github.com/pulumi/pulumi/pull/20615)
+
+- [cli/{install,package}] Add support for package references in plugins
+  [#20524](https://github.com/pulumi/pulumi/pull/20524)
+
+- [sdk/nodejs] Pass options, name, and type to ComponentResources initialize methods
+  [#20618](https://github.com/pulumi/pulumi/pull/20618)
+
+- [cli/policy] Send vcs metadata when publishing policy packs
+  [#20528](https://github.com/pulumi/pulumi/pull/20528)
+
+
+### Bug Fixes
+
+- [cli/display] Always send diag events to stderr in the diff display
+  [#20632](https://github.com/pulumi/pulumi/pull/20632)
+
+- [components] Stop including auth info in plugin name
+  [#20620](https://github.com/pulumi/pulumi/pull/20620)
+
+- [engine] Support the import option in resource transforms
+  [#20586](https://github.com/pulumi/pulumi/pull/20586)
+
+- [programgen] Fix panic in parseProxyApply when encoutering warning diagnostics
+  [#20583](https://github.com/pulumi/pulumi/pull/20583)
+
+- [sdk/nodejs] Don't attempt to serialise function values for resource inputs/outputs
+  [#20621](https://github.com/pulumi/pulumi/pull/20621)
+
 ## 3.198.0 (2025-09-26)
 
 

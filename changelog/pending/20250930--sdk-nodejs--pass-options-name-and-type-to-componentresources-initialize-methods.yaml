@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Pass options, name, and type to ComponentResources initialize methods

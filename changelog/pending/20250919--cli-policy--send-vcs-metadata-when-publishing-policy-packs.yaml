@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/policy
-  description: Send vcs metadata when publishing policy packs

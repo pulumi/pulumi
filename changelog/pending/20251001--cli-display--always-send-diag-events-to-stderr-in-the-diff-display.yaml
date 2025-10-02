@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Always send diag events to stderr in the diff display
