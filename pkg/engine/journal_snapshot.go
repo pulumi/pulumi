@@ -16,6 +16,7 @@ package engine
 
 import (
 	"reflect"
+	"sync"
 	"sync/atomic"
 
 	"golang.org/x/exp/slices"
@@ -73,10 +74,14 @@ type JournalSnapshotManager struct {
 	// A counter to generate unique IDs for each journal entry.
 	sequenceIDCounter atomic.Int64
 
+	// validationM synchronizes access to the snapshot manager's validation state. Do not use directly; use the
+	// [JournalSnapshotManager.validate] method.
+	validationM sync.Mutex
+
 	// hasNewResources is true if any journal operation has changed a new resource.
 	hasNewResources bool
 
-	// Tracks whether or not a terminal RebuildBaseState event has been sent.
+	// Tracks whether or not a terminal RebuiltBaseState event has been sent.
 	hasTerminalRebuiltBaseState bool
 }
 
@@ -172,12 +177,23 @@ func (sm *JournalSnapshotManager) newJournalEntry(kind JournalEntryKind, operati
 	}
 }
 
+func (sm *JournalSnapshotManager) validate(fn func()) {
+	sm.validationM.Lock()
+	defer sm.validationM.Unlock()
+	fn()
+}
+
 func (sm *JournalSnapshotManager) addJournalEntry(entry JournalEntry) error {
-	contract.Assertf(
-		!sm.hasTerminalRebuiltBaseState,
-		"cannot add additional entries; already sent RebuiltBaseState with new resources",
-	)
-	sm.hasNewResources = sm.hasNewResources || hasNewResource(entry)
+	sm.validate(func() {
+		contract.Assertf(
+			!sm.hasTerminalRebuiltBaseState,
+			"cannot add additional entries; already sent RebuiltBaseState with new resources",
+		)
+		if hasNewResource(entry) {
+			sm.hasNewResources = true
+		}
+	})
+
 	return sm.journal.AddJournalEntry(entry)
 }
 
@@ -300,10 +316,12 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 }
 
 func (sm *JournalSnapshotManager) RebuiltBaseState() error {
-	// If any new resources have been changed
-	if sm.hasNewResources {
-		sm.hasTerminalRebuiltBaseState = true
-	}
+	// If any new resources have been added, this RebuiltBaseState entry must be the last in the journal.
+	sm.validate(func() {
+		if sm.hasNewResources {
+			sm.hasTerminalRebuiltBaseState = true
+		}
+	})
 	return sm.addJournalEntry(sm.newJournalEntry(JournalEntryRebuiltBaseState, 0))
 }
 
