@@ -15,6 +15,7 @@
 package executable
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,12 +28,38 @@ import (
 
 const unableToFindProgramTemplate = "unable to find program: %s"
 
+type NotFoundError struct {
+	Path string
+}
+
+func (e *NotFoundError) Error() string {
+	return fmt.Sprintf(unableToFindProgramTemplate, e.Path)
+}
+
 // FindExecutable attempts to find the needed executable in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func FindExecutable(program string) (string, error) {
-	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") {
-		program = program + ".exe"
+	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") &&
+		!strings.HasSuffix(program, ".cmd") && !strings.HasSuffix(program, ".ps1") {
+		notFoundPaths := make([]string, 0, 3)
+		for _, suffix := range []string{".exe", ".cmd", ".ps1"} {
+			found, err := findExecutableWithSuffix(program, suffix)
+			var notFoundErr *NotFoundError
+			if errors.As(err, &notFoundErr) {
+				notFoundPaths = append(notFoundPaths, notFoundErr.Path)
+				continue
+			} else if err != nil {
+				return "", err
+			}
+			return found, nil
+		}
+		return "", fmt.Errorf("%s. Tried: %s", unableToFindProgramTemplate, strings.Join(notFoundPaths, ", "))
 	}
+	return findExecutableWithSuffix(program, "")
+}
+
+func findExecutableWithSuffix(program, suffix string) (string, error) {
+	program = program + suffix
 	// look in the same directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -76,7 +103,7 @@ func FindExecutable(program string) (string, error) {
 		return fullPath, nil
 	}
 
-	return "", fmt.Errorf(unableToFindProgramTemplate, program)
+	return "", &NotFoundError{Path: program}
 }
 
 func splitGoPath(goPath string, os string) []string {
