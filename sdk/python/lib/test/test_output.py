@@ -16,6 +16,7 @@ import asyncio
 import json
 import os
 import unittest
+from unittest.mock import patch
 from typing import Mapping, Optional, Sequence, cast
 
 from pulumi.output import Output, _OutputToStringError, _safe_str
@@ -324,7 +325,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
             + "\nThis function may throw in a future version of Pulumi.",
         )
 
-    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
     def test_str_error(self):
         """Test that the str function raises an error when
         PULUMI_ERROR_OUTPUT_STRING is set."""
@@ -335,7 +336,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
 
     # This is not strictly necessary but allows us to test the "explicitly
     # disabled" case.
-    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "false"})
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "false"})
     def test_safe_str_spot_output_by_default(self):
         """Test that the _safe_str function spots outputs and returns a fallback
         string, even if PULUMI_ERROR_OUTPUT_STRING is not set."""
@@ -343,7 +344,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
         o = Output.from_input(1)
         self.assertEqual(_safe_str(o), "Output[T]")
 
-    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "1"})
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "1"})
     def test_safe_str_spot_output_before_errors(self):
         """Test that the _safe_str function spots outputs and returns a fallback
         string when PULUMI_ERROR_OUTPUT_STRING is set."""
@@ -351,7 +352,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
         o = Output.from_input(1)
         self.assertEqual(_safe_str(o), "Output[T]")
 
-    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
     def test_safe_str_catch_error(self):
         """Test that the _safe_str function catches _OutputToStringErrors and
         returns a fallback string."""
@@ -367,7 +368,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
         x = Broken(o)
         self.assertEqual(_safe_str(x), "Output[T]")
 
-    @unittest.mock.patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
     def test_safe_str_reraise_error(self):
         """Test that the _safe_str function re-raises any error which is not an
         _OutputToStringError."""

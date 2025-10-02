@@ -32,11 +32,11 @@ dependencies = [
 dev = [
     'mypy==1.17.1',
     'pyright==1.1.404',
-    'pytest~=7.4.4',
+    'pytest~=8.4.0',
     'pytest-timeout',
     'types-pyyaml',
     'types-protobuf',
-    'pytest-asyncio',
+    'pytest-asyncio~=1.2.0',
     'coverage>=6.0.2',
     'wheel',
     'ruff==0.13.2',

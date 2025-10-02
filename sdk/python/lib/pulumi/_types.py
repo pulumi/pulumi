@@ -268,19 +268,22 @@
 import builtins
 import collections.abc
 import functools
+import inspect
 import sys
+import types
 import typing
+from collections import abc
+from collections.abc import Callable, Iterator
 from typing import (
     Any,
     Optional,
     TypeVar,
     Union,
     cast,
+    get_origin,
     get_type_hints,
     overload,
 )
-from collections.abc import Callable
-from collections.abc import Iterator, Mapping
 
 from . import _utils
 
@@ -346,9 +349,7 @@ def _properties_from_annotations(cls: type) -> dict[str, _Property]:
     Returns a dictionary of properties from annotations defined on the class.
     """
 
-    # Get annotations that are defined on this class (not base classes).
-    # These are returned in the order declared on Python 3.6+.
-    cls_annotations = cls.__dict__.get("__annotations__", {})
+    cls_annotations = inspect.get_annotations(cls)
 
     def get_property(cls: type, a_name: str, a_type: Any) -> _Property:
         default = getattr(cls, a_name, MISSING)
@@ -700,9 +701,11 @@ def set(self, name: str, value: Any) -> None:
 
 
 def _is_union_type(tp):
-    return (
-        tp is Union or isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union
-    )
+    # Check for `Union[a, b]`
+    if get_origin(tp) == Union:
+        return True
+    # Check for `a | b`
+    return get_origin(tp) == types.UnionType
 
 
 def _is_optional_type(tp):
@@ -946,7 +949,12 @@ def unwrap_type(val: type) -> type:
                 is_input_type(args[0])
                 and args[1] is dict
                 or typing.get_origin(args[1])
-                in [dict, dict, Mapping, collections.abc.Mapping]
+                in [
+                    dict,
+                    typing.Dict,  # noqa - we want to check for the deprecated `typing.Dict` type here
+                    abc.Mapping,
+                    typing.Mapping,  # noqa - we want to check for the deprecated `typing.Mapping` type here
+                ]
             )
 
         def isInput(args, i=1):
