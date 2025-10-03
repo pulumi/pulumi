@@ -1473,7 +1473,7 @@ func TestParameterizedPython(t *testing.T) {
 				venvPython = filepath.Join(venv, "Scripts", "python.exe")
 			}
 
-			e.RunCommand(venvPython, "-m", "unittest", "test.py")
+			e.RunCommand(venvPython, "-m", "pytest", "test.py")
 			return nil
 		},
 	})

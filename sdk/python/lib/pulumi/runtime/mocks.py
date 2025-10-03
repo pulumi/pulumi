@@ -27,12 +27,12 @@ from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
 from . import rpc, rpc_manager
 from .settings import (
+    SETTINGS,
     Settings,
     configure,
     get_project,
     get_root_resource,
     get_stack,
-    SETTINGS,
 )
 from .sync_await import _ensure_event_loop, _sync_await
 
@@ -326,6 +326,10 @@ def set_mocks(
         stack=stack if stack is not None else "stack",
         dry_run=preview,
         organization=organization,
+        feature_support={
+            # TODO: more features here?
+            "parameterization": True,
+        },
     )
     configure(settings)
 
