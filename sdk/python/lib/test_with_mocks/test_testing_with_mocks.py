@@ -12,27 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 import grpc
 import pulumi
 import pytest
-import resources
-import unittest
+
+from . import resources
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    loop.set_default_executor(ImmediateExecutor())
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        loop.close()
 
 
 @pytest.fixture
-def my_resources():
-    loop = asyncio.get_event_loop()
-    loop.set_default_executor(ImmediateExecutor())
-
+def my_resources(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         pulumi.runtime.mocks.set_mocks(MyMocks())
         yield resources.define_resources()
     finally:
         pulumi.runtime.settings.configure(old_settings)
-        loop.set_default_executor(ThreadPoolExecutor())
 
 
 @pulumi.runtime.test
@@ -189,7 +197,7 @@ class ImmediateExecutor(ThreadPoolExecutor):
         raise Exception('map not implemented')
 
     def shutdown(self, wait=True, cancel_futures=False):
-        raise Exception('shutdown not implemented')
+        self._default_executor.shutdown(wait=wait, cancel_futures=cancel_futures)
 
     @staticmethod
     def _identity(x):
