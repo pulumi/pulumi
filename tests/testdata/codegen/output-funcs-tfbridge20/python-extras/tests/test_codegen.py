@@ -21,8 +21,9 @@ import pulumi
 from pulumi_mypkg import *
 
 
+@pytest.mark.asyncio
 @pytest.fixture
-def my_mocks():
+async def my_mocks():
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()
