@@ -853,19 +853,18 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.Lo
 			// loaded it.
 			var c config.Encrypter
 			encrypt := func(plaintext string) (string, error) {
+				var err error
 				if c == nil {
-					var cerr error
-
 					// We're always going to save, so can ignore the bool for if GetStackEncrypter changed the config data.
-					c, _, cerr = ssml.GetEncrypter(ctx, stack, ps)
-					if cerr != nil {
-						return "", cerr
+					c, _, err = ssml.GetEncrypter(ctx, stack, ps)
+					if err != nil {
+						return "", err
 					}
 				}
 
-				enc, eerr := c.EncryptValue(ctx, plaintext)
-				if eerr != nil {
-					return "", eerr
+				enc, err := c.EncryptValue(ctx, plaintext)
+				if err != nil {
+					return "", err
 				}
 
 				return enc, nil
@@ -877,9 +876,9 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.Lo
 					return err
 				}
 
-				enc, eerr := encrypt(value)
-				if eerr != nil {
-					return eerr
+				enc, err := encrypt(value)
+				if err != nil {
+					return err
 				}
 				v := config.NewSecureValue(enc)
 
