@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdkgen/nodejs
-  description: Generate a .gitignore file inside local SDKS
+  description: Generate a .gitignore file inside local SDKs
