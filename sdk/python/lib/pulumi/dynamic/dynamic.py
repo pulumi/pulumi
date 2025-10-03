@@ -286,7 +286,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
     if sys.version_info < (3, 14):
         pickle.Pickler._batch_setitems = batch_set_items_sorted_before_py14
     else:
-        # This internal takes `obj` as 2nd paramters since 3.14
+        # This internal method takes `obj` as a 2nd parameter since 3.14
         # https://github.com/python/cpython/commit/c0c2aa7644ebd4953682784dbb9904fe955ff647#diff-0e6904a03cced1cde99717e889a6a20715fd002d7186a64e77477c2d99c32a47
         pickle.Pickler._batch_setitems = batch_set_items_sorted
 
