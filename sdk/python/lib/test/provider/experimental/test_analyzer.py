@@ -993,10 +993,16 @@ def test_analyze_union_type():
         )
         assert False, "expected an exception"
     except Exception as e:
-        assert (
-            str(e)
-            == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
-        )
+        if sys.version_info >= (3, 14):
+            assert (
+                str(e)
+                == "Union types are not supported: found type 'str | int' for 'Args.uni'"
+            )
+        else:
+            assert (
+                str(e)
+                == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
+            )
 
 
 def test_analyze_union_type_3_10_syntax():
