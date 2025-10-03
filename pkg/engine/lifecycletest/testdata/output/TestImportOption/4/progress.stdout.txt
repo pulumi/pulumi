@@ -10,6 +10,7 @@
     <{%fg 1%}>error: <{%reset%}><{%reset%}>previously-imported resources that still specify an ID may not be replaced; please remove the `import` declaration from your program<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    [31m1 errored[m
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

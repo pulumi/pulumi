@@ -16,6 +16,7 @@
     <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    [31m2 errored[m
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

@@ -21,4 +21,5 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 to replace<{%reset%}>
+    [31m2 errored[m
 
