@@ -20,9 +20,18 @@ from unittest.mock import patch
 import pulumi_plant
 
 
-@pytest.mark.asyncio
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        loop.close()
+
+
 @pytest.fixture
-async def my_mocks():
+def my_mocks(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()
