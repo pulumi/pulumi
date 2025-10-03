@@ -2069,6 +2069,16 @@ func TestPythonComponentProviderRun(t *testing.T) {
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installPythonProviderDependencies(t, providerPath)
+					if runtime == "python" {
+						// Link the current version of the SDK into the project
+						coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+						require.NoError(t, err)
+						f, err := os.OpenFile(filepath.Join(info.Root, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+						require.NoError(t, err)
+						_, err = fmt.Fprintln(f, coreSDK)
+						require.NoError(t, err)
+						f.Close()
+					}
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					out, err := cmd.CombinedOutput()
