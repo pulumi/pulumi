@@ -245,7 +245,7 @@ func (m *Map) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (m Map) MarshalYAML() (interface{}, error) {
+func (m Map) MarshalYAML() (any, error) {
 	rawMap := make(map[string]Value, len(m))
 	for k, v := range m {
 		rawMap[k.String()] = v
@@ -254,7 +254,7 @@ func (m Map) MarshalYAML() (interface{}, error) {
 	return rawMap, nil
 }
 
-func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (m *Map) UnmarshalYAML(unmarshal func(any) error) error {
 	rawMap := make(map[string]Value)
 	if err := unmarshal(&rawMap); err != nil {
 		return fmt.Errorf("could not unmarshal map: %w", err)

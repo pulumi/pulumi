@@ -207,7 +207,7 @@ func (c *Value) UnmarshalJSON(b []byte) (err error) {
 	return err
 }
 
-func (c Value) MarshalYAML() (interface{}, error) {
+func (c Value) MarshalYAML() (any, error) {
 	obj, err := c.unmarshalObject()
 	if err != nil {
 		return "", err
@@ -215,7 +215,7 @@ func (c Value) MarshalYAML() (interface{}, error) {
 	return obj.MarshalYAML()
 }
 
-func (c *Value) UnmarshalYAML(unmarshal func(interface{}) error) (err error) {
+func (c *Value) UnmarshalYAML(unmarshal func(any) error) (err error) {
 	var obj object
 	if err = obj.UnmarshalYAML(unmarshal); err != nil {
 		return err

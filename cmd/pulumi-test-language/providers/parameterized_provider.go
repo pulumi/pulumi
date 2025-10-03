@@ -228,7 +228,7 @@ func (p *ParameterizedProvider) Create(
 	}
 
 	// parameterized resource outputs will include the parameter value that the provider was parameterized with
-	outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	outputs := resource.NewPropertyMapFromMap(map[string]any{
 		"parameterValue": string(p.parameterValue) + configText,
 	})
 

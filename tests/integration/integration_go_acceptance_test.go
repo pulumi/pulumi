@@ -147,7 +147,7 @@ func optsForConstructGo(
 						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						secretPropValue, ok := res.Outputs["secret"].(map[string]any)
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
 						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}

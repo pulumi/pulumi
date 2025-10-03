@@ -758,7 +758,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 
 	// Check stack history is still good even with mixed gzip / json files
 	rawHistory, _ := e.RunCommand("pulumi", "stack", "history", "--json")
-	var history []interface{}
+	var history []any
 	if err := json.Unmarshal([]byte(rawHistory), &history); err != nil {
 		t.Fatalf("Can't unmarshall history json")
 	}

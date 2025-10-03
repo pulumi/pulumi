@@ -129,7 +129,7 @@ func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*r
 		return nil, err
 	}
 
-	outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	outputs := resource.NewPropertyMapFromMap(map[string]any{
 		"length": n,
 		"result": prefix + result,
 	})
@@ -164,7 +164,7 @@ func (p *randomProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.R
 			result = split[0]
 		}
 
-		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		outputs := resource.NewPropertyMapFromMap(map[string]any{
 			"prefix": prefix,
 			"length": len(result),
 			"result": result,
@@ -179,7 +179,7 @@ func (p *randomProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.R
 			return nil, err
 		}
 
-		inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		inputs := resource.NewPropertyMapFromMap(map[string]any{
 			"length": len(result),
 			"prefix": prefix,
 		})

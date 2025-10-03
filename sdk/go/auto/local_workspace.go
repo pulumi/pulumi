@@ -776,8 +776,8 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), outStdout, outStderr, code)
 	}
 
-	var outputs map[string]interface{}
-	var secrets map[string]interface{}
+	var outputs map[string]any
+	var secrets map[string]any
 
 	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
 		return nil, fmt.Errorf("error unmarshalling outputs: %s: %w", secretStderr, err)

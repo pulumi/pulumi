@@ -170,8 +170,8 @@ func (srv *analyzerServer) Configure(ctx context.Context, req *pulumirpc.Configu
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal properties for policy %q: %w", k, err)
 		}
-		// Unmarshal the properties into an map[string]interface{}
-		var props map[string]interface{}
+		// Unmarshal the properties into an map[string]any
+		var props map[string]any
 		if err := json.Unmarshal(data, &props); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", k, err)
 		}

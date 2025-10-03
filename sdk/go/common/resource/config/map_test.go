@@ -111,11 +111,11 @@ func TestMarshalling(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    map[string]interface{}
+		Value    map[string]any
 		Expected Map
 	}{
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"my:anotherTestKey": "anotherTestValue",
 				"my:testKey":        "testValue",
 			},
@@ -125,8 +125,8 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:secureTestKey": map[string]interface{}{
+			Value: map[string]any{
+				"my:secureTestKey": map[string]any{
 					"secure": "securevalue",
 				},
 			},
@@ -135,7 +135,7 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"my:arrayKey": []string{"a", "b", "c"},
 			},
 			Expected: Map{
@@ -143,8 +143,8 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:mapKey": map[string]interface{}{
+			Value: map[string]any{
+				"my:mapKey": map[string]any{
 					"a": "b",
 					"c": "d",
 				},
@@ -154,9 +154,9 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:servers": []interface{}{
-					map[string]interface{}{"port": 80, "host": "example"},
+			Value: map[string]any{
+				"my:servers": []any{
+					map[string]any{"port": 80, "host": "example"},
 				},
 			},
 			Expected: Map{
@@ -164,7 +164,7 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"my:mapKey": map[string][]int{
 					"nums": {1, 2, 3},
 				},
@@ -174,9 +174,9 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:mapKey": map[string]interface{}{
-					"a": map[string]interface{}{"secure": "securevalue"},
+			Value: map[string]any{
+				"my:mapKey": map[string]any{
+					"a": map[string]any{"secure": "securevalue"},
 					"c": "d",
 				},
 			},
@@ -185,12 +185,12 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:servers": []interface{}{
-					map[string]interface{}{
+			Value: map[string]any{
+				"my:servers": []any{
+					map[string]any{
 						"port": 80,
 						"host": "example",
-						"token": map[string]interface{}{
+						"token": map[string]any{
 							"secure": "securevalue",
 						},
 					},
@@ -204,9 +204,9 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:mapKey": map[string]interface{}{
-					"a": map[string]interface{}{"secure": "foo", "bar": "blah"},
+			Value: map[string]any{
+				"my:mapKey": map[string]any{
+					"a": map[string]any{"secure": "foo", "bar": "blah"},
 					"c": "d",
 				},
 			},
@@ -1558,8 +1558,8 @@ func roundtripMapJSON(m Map) (Map, error) {
 	return roundtripMap(m, json.Marshal, json.Unmarshal)
 }
 
-func roundtripMap(m Map, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error,
+func roundtripMap(m Map, marshal func(v any) ([]byte, error),
+	unmarshal func([]byte, any) error,
 ) (Map, error) {
 	b, err := marshal(m)
 	if err != nil {

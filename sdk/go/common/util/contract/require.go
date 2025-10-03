@@ -30,7 +30,7 @@ func Require(cond bool, param string) {
 }
 
 // Requiref checks a precondition condition pertaining to a function parameter, and Failfs if it is false.
-func Requiref(cond bool, param string, msg string, args ...interface{}) {
+func Requiref(cond bool, param string, msg string, args ...any) {
 	if !cond {
 		failfast(fmt.Sprintf("%v: %v", fmt.Sprintf(requireMsg, param), fmt.Sprintf(msg, args...)))
 	}

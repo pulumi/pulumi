@@ -227,7 +227,7 @@ func AssetPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 // LiteralArchiveGenerator generates *archive.Archive values with literal archive contents.
 func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
 	return rapid.Custom(func(t *rapid.T) *archive.Archive {
-		var contentsGenerator *rapid.Generator[map[string]interface{}]
+		var contentsGenerator *rapid.Generator[map[string]any]
 		if maxDepth > 0 {
 			contentsGenerator = rapid.MapOfN(
 				rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`),
@@ -236,7 +236,7 @@ func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
 				16, // max length
 			)
 		} else {
-			contentsGenerator = rapid.Just(map[string]interface{}{})
+			contentsGenerator = rapid.Just(map[string]any{})
 		}
 		archive, err := archive.FromAssets(contentsGenerator.Draw(t, "literal archive contents"))
 		require.NoError(t, err)

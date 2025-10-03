@@ -782,7 +782,7 @@ const (
 // integrity errors are raised by Snapshot.VerifyIntegrity when a problem is
 // detected with a snapshot (e.g. missing or out-of-order dependencies, or
 // unparseable data).
-func SnapshotIntegrityErrorf(format string, args ...interface{}) error {
+func SnapshotIntegrityErrorf(format string, args ...any) error {
 	return &SnapshotIntegrityError{
 		Err:   fmt.Errorf(format, args...),
 		Op:    SnapshotIntegrityWrite,

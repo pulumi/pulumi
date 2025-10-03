@@ -99,7 +99,7 @@ func (t *testSecretsManager) BatchDecrypt(
 	return decrypted, nil
 }
 
-func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
+func deserializeProperty(v any, dec config.Decrypter) (resource.PropertyValue, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return resource.PropertyValue{}, err

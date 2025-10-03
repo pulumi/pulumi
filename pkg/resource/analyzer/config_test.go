@@ -55,7 +55,7 @@ var success = []JSONTestCaseSuccess{
 		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"foo": {
 				EnforcementLevel: apitype.Advisory,
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"bar": "blah",
 				},
 			},
@@ -69,7 +69,7 @@ var success = []JSONTestCaseSuccess{
 		JSON: `{"foo":{"bar":"blah"}}`,
 		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"foo": {
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"bar": "blah",
 				},
 			},
@@ -79,12 +79,12 @@ var success = []JSONTestCaseSuccess{
 		JSON: `{"policy1":{"foo":"one"},"policy2":{"foo":"two"}}`,
 		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"policy1": {
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"foo": "one",
 				},
 			},
 			"policy2": {
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"foo": "two",
 				},
 			},
@@ -154,12 +154,12 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 					EnforcementLevel: apitype.Mandatory,
 				},
 				"policy1": {
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "one",
 					},
 				},
 				"policy2": {
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "two",
 					},
 				},
@@ -220,44 +220,44 @@ func TestExtractEnforcementLevelSuccess(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Properties               map[string]interface{}
+		Properties               map[string]any
 		ExpectedEnforcementLevel apitype.EnforcementLevel
-		ExpectedProperties       map[string]interface{}
+		ExpectedProperties       map[string]any
 	}{
 		{
-			Properties:               map[string]interface{}{},
+			Properties:               map[string]any{},
 			ExpectedEnforcementLevel: "",
-			ExpectedProperties:       map[string]interface{}{},
+			ExpectedProperties:       map[string]any{},
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": "advisory",
 			},
 			ExpectedEnforcementLevel: "advisory",
-			ExpectedProperties:       map[string]interface{}{},
+			ExpectedProperties:       map[string]any{},
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": "mandatory",
 			},
 			ExpectedEnforcementLevel: "mandatory",
-			ExpectedProperties:       map[string]interface{}{},
+			ExpectedProperties:       map[string]any{},
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": "disabled",
 			},
 			ExpectedEnforcementLevel: "disabled",
-			ExpectedProperties:       map[string]interface{}{},
+			ExpectedProperties:       map[string]any{},
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": "advisory",
 				"foo":              "bar",
 				"blah":             1,
 			},
 			ExpectedEnforcementLevel: "advisory",
-			ExpectedProperties: map[string]interface{}{
+			ExpectedProperties: map[string]any{
 				"foo":  "bar",
 				"blah": 1,
 			},
@@ -282,35 +282,35 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Properties    map[string]interface{}
+		Properties    map[string]any
 		ExpectedError string
 	}{
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": "",
 			},
 			ExpectedError: `"" is not a valid enforcement level`,
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": "foo",
 			},
 			ExpectedError: `"foo" is not a valid enforcement level`,
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": nil,
 			},
 			ExpectedError: `<nil> is not a valid enforcement level; must be a string`,
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": 1,
 			},
 			ExpectedError: `1 is not a valid enforcement level; must be a string`,
 		},
 		{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"enforcementLevel": []string{},
 			},
 			ExpectedError: `[] is not a valid enforcement level; must be a string`,
@@ -467,7 +467,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "bar",
 					},
 				},
@@ -492,7 +492,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(42),
 					},
 				},
@@ -517,7 +517,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "overridden",
 					},
 				},
@@ -525,7 +525,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "overridden",
 					},
 				},
@@ -551,7 +551,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "bar",
 					},
 				},
@@ -575,7 +575,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "bar",
 					},
 				},
@@ -583,7 +583,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "bar",
 					},
 				},
@@ -607,7 +607,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(42),
 					},
 				},
@@ -615,7 +615,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(42),
 					},
 				},
@@ -639,7 +639,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(3.14),
 					},
 				},
@@ -647,7 +647,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(3.14),
 					},
 				},
@@ -671,7 +671,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(42),
 					},
 				},
@@ -679,7 +679,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": float64(42),
 					},
 				},
@@ -703,7 +703,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": true,
 					},
 				},
@@ -711,7 +711,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": true,
 					},
 				},
@@ -735,7 +735,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": false,
 					},
 				},
@@ -743,7 +743,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": false,
 					},
 				},
@@ -767,16 +767,16 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
-						"foo": map[string]interface{}{"bar": "baz"},
+					Properties: map[string]any{
+						"foo": map[string]any{"bar": "baz"},
 					},
 				},
 			},
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
-						"foo": map[string]interface{}{"bar": "baz"},
+					Properties: map[string]any{
+						"foo": map[string]any{"bar": "baz"},
 					},
 				},
 			},
@@ -799,7 +799,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": []string{"a", "b", "c"},
 					},
 				},
@@ -807,7 +807,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": []string{"a", "b", "c"},
 					},
 				},
@@ -831,7 +831,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": nil,
 					},
 				},
@@ -839,7 +839,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": nil,
 					},
 				},
@@ -1127,7 +1127,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": 1,
 					},
 				},
@@ -1153,7 +1153,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "blah",
 					},
 				},
@@ -1178,7 +1178,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "blah",
 					},
 				},
@@ -1207,7 +1207,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"foo": "this is too long",
 						"bar": float64(3.14),
 					},

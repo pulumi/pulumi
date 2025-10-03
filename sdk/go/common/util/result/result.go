@@ -44,7 +44,7 @@ func (b *bailError) Error() string {
 }
 
 // BailErrorf is a helper for BailError(fmt.Errorf(...)).
-func BailErrorf(format string, args ...interface{}) error {
+func BailErrorf(format string, args ...any) error {
 	return BailError(fmt.Errorf(format, args...))
 }
 

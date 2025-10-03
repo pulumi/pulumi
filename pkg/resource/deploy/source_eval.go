@@ -590,7 +590,7 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 
 	denyCreation := false
 	if value, ok := pConfig["disable-default-providers"]; ok {
-		array := []interface{}{}
+		array := []any{}
 		if !value.IsString() {
 			return true, errors.New("Unexpected encoding of pulumi:disable-default-providers")
 		}
@@ -836,7 +836,7 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 
 	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if rm.grpcDialOptions != nil {
-		opts := rm.grpcDialOptions(map[string]interface{}{
+		opts := rm.grpcDialOptions(map[string]any{
 			"mode": "client",
 			"kind": "callbacks",
 		})
@@ -892,7 +892,7 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, l
 			// ignoring
 			return nil
 		}
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "server",
 		}
 		serveOpts = append(serveOpts, di.ServerOptions(interceptors.LogOptions{
@@ -2971,7 +2971,7 @@ func generateTimeoutInSeconds(timeout string) (float64, error) {
 	return duration.Seconds(), nil
 }
 
-func decorateResourceSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+func decorateResourceSpans(span opentracing.Span, method string, req, resp any, grpcError error) {
 	if req == nil {
 		return
 	}

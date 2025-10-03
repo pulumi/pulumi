@@ -71,7 +71,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		Backoff:  opts.Backoff,
 		MaxDelay: opts.MaxDelay,
 
-		Accept: func(try int, _ time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, _ time.Duration) (bool, any, error) {
 			if try > 0 && req.GetBody != nil {
 				// Reset request body, if present, for retries.
 				rc, bodyErr := req.GetBody()

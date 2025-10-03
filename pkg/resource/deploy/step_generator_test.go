@@ -33,27 +33,27 @@ func TestIgnoreChanges(t *testing.T) {
 
 	cases := []struct {
 		name          string
-		oldInputs     map[string]interface{}
-		newInputs     map[string]interface{}
-		expected      map[string]interface{}
+		oldInputs     map[string]any
+		newInputs     map[string]any
+		expected      map[string]any
 		ignoreChanges []string
 		expectMessage bool
 	}{
 		{
 			name: "Present in old and new sets",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			newInputs: map[string]any{
+				"a": map[string]any{
 					"b": "bar",
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 				"c": 42,
@@ -62,17 +62,17 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Missing in new sets",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{},
+			newInputs: map[string]any{
+				"a": map[string]any{},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 				"c": 42,
@@ -81,24 +81,24 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Present in old and new sets, using [\"\"]",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			newInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "bar",
 					},
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
@@ -108,22 +108,22 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Missing in new sets, using [\"\"]",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{},
+			newInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{},
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
@@ -133,23 +133,23 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name:      "Missing in old deletes",
-			oldInputs: map[string]interface{}{},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{},
+			newInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{},
+			expected: map[string]any{
+				"a": map[string]any{},
 				"c": 42,
 			},
 			ignoreChanges: []string{"a.b"},
 		},
 		{
 			name:      "Missing keys in old and new are OK",
-			oldInputs: map[string]interface{}{},
-			newInputs: map[string]interface{}{},
+			oldInputs: map[string]any{},
+			newInputs: map[string]any{},
 			ignoreChanges: []string{
 				"a",
 				"a.b",
@@ -158,32 +158,32 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Missing parent keys in only new",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs:     map[string]interface{}{},
-			expected:      map[string]interface{}{},
+			newInputs:     map[string]any{},
+			expected:      map[string]any{},
 			ignoreChanges: []string{"a.b"},
 		},
 		{
 			name: "Arrays with different lengths",
-			oldInputs: map[string]interface{}{
-				"a": []interface{}{
+			oldInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 					map[string]string{"b": "bar", "c": "baz"},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": []interface{}{
+			newInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "bar", "c": "bar"},
 					map[string]string{"b": "qux", "c": "baz"},
 					map[string]string{"b": "baz", "c": "qux"},
 				},
 			},
-			expected: map[string]interface{}{
-				"a": []interface{}{
+			expected: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 					map[string]string{"b": "bar", "c": "baz"},
 					map[string]string{"b": "baz", "c": "qux"},
@@ -193,19 +193,19 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Shorter new array",
-			oldInputs: map[string]interface{}{
-				"a": []interface{}{
+			oldInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 					map[string]string{"b": "bar", "c": "baz"},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": []interface{}{
+			newInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "bar", "c": "bar"},
 				},
 			},
-			expected: map[string]interface{}{
-				"a": []interface{}{
+			expected: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 				},
 			},
@@ -354,11 +354,11 @@ func TestEngineDiff(t *testing.T) {
 	}{
 		{
 			name: "Empty diff",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(8),
 				"val2": resource.NewPropertyValue("hello"),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(8),
 				"val2": resource.NewPropertyValue("hello"),
 			}),
@@ -367,10 +367,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "All changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val0": resource.NewPropertyValue(3.14),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
@@ -379,10 +379,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "Some changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(42),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
@@ -391,10 +391,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "Ignore some changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val2": resource.NewPropertyValue(8),
 			}),
 
@@ -404,10 +404,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "Ignore all changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val2": resource.NewPropertyValue(8),
 			}),
 

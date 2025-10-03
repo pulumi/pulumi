@@ -27,7 +27,7 @@ import (
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
 // in ObjectProperty values) and integers (which access elements of ArrayProperty values).
-type PropertyPath []interface{}
+type PropertyPath []any
 
 // ParsePropertyPath parses a property path into a PropertyPath value.
 //
@@ -67,7 +67,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 	// pathElement := { '.' } [a-zA-Z_$][a-zA-Z0-9_$]
 	// pathIndex := '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']'
 	// path := { pathElement | pathIndex }
-	var elements []interface{}
+	var elements []any
 	if len(path) > 0 && path[0] == '.' {
 		return nil, errors.New("expected property path to start with a name or index")
 	}
@@ -86,7 +86,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 			}
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
-			var pathElement interface{}
+			var pathElement any
 			if len(path) > 1 && path[1] == '"' {
 				var propertyKey []byte
 				var i int

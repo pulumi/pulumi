@@ -52,8 +52,8 @@ func init() {
 								"float":     2.17,
 								"integer":   -12,
 								"string":    "Goodbye",
-								"boolArray": []interface{}{false, true},
-								"stringMap": map[string]interface{}{
+								"boolArray": []any{false, true},
+								"stringMap": map[string]any{
 									"two":   "turtle doves",
 									"three": "french hens",
 								},
@@ -62,8 +62,8 @@ func init() {
 							"float":     4.5,
 							"integer":   1024,
 							"string":    "Hello",
-							"boolArray": []interface{}{},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{},
+							"stringMap": map[string]any{
 								"x": "100",
 								"y": "200",
 							},

@@ -32,7 +32,7 @@ type exprTestCase struct {
 	goCode   string
 }
 
-type environment map[string]interface{}
+type environment map[string]any
 
 func (e environment) scope() *model.Scope {
 	s := model.NewRootScope(syntax.None)
@@ -88,7 +88,7 @@ func TestLiteralExpression(t *testing.T) {
 func TestBinaryOpExpression(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.BoolType,
 		"b": model.BoolType,
 		"c": model.NumberType,
@@ -125,7 +125,7 @@ func TestBinaryOpExpression(t *testing.T) {
 func TestUnaryOpExrepssion(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.NumberType,
 		"b": model.BoolType,
 	})
@@ -329,7 +329,7 @@ func TestConditionalExpression(t *testing.T) {
 func TestObjectConsExpression(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.StringType,
 	})
 	scope := env.scope()
@@ -364,7 +364,7 @@ func TestObjectConsExpression(t *testing.T) {
 func TestTupleConsExpression(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.StringType,
 	})
 	scope := env.scope()

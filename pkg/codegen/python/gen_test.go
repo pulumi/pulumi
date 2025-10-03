@@ -378,7 +378,7 @@ func TestPythonRequiresSuccessful(t *testing.T) {
 	t.Parallel()
 	expected := "3.1"
 	pkg := schema.Package{
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"python": PackageInfo{
 				PythonRequires: expected,
 			},
@@ -398,7 +398,7 @@ func TestPythonRequiresNotProvided(t *testing.T) {
 	t.Parallel()
 	expected := defaultMinPythonVersion
 	pkg := schema.Package{
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"python": PackageInfo{
 				// Don't set PythonRequires
 			},

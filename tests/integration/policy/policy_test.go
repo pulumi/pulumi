@@ -156,7 +156,7 @@ type policyGroupsJSON struct {
 }
 
 //nolint:unused // Used by skipped test
-func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
+func assertJSON(e *ptesting.Environment, out string, respObj any) {
 	err := json.Unmarshal([]byte(out), &respObj)
 	if err != nil {
 		e.Errorf("unable to unmarshal %v", out)

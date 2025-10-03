@@ -242,7 +242,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		args := map[string]interface{}{
+		args := map[string]any{
 			"length": 10,
 			"prefix": "test",
 		}

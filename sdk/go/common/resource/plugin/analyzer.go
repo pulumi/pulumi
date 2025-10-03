@@ -224,7 +224,7 @@ type AnalyzerPolicyInfo struct {
 }
 
 // JSONSchema represents a JSON schema.
-type JSONSchema map[string]interface{}
+type JSONSchema map[string]any
 
 // AnalyzerPolicyConfigSchema provides metadata about a policy's configuration.
 type AnalyzerPolicyConfigSchema struct {
@@ -240,7 +240,7 @@ type AnalyzerPolicyConfig struct {
 	// Configured enforcement level for the policy.
 	EnforcementLevel apitype.EnforcementLevel
 	// Configured properties of the policy.
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 // AnalyzerPolicyComplianceFramework represents a compliance framework that a policy belongs to.

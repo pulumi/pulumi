@@ -33,17 +33,17 @@ func TestTranslateDetailedDiff(t *testing.T) {
 	)
 
 	cases := []struct {
-		state        map[string]interface{}
-		oldInputs    map[string]interface{}
-		inputs       map[string]interface{}
+		state        map[string]any
+		oldInputs    map[string]any
+		inputs       map[string]any
 		detailedDiff map[string]plugin.PropertyDiff
 		expected     *resource.ObjectDiff
 	}{
 		{
-			state: map[string]interface{}{
+			state: map[string]any{
 				"foo": 42,
 			},
-			inputs: map[string]interface{}{
+			inputs: map[string]any{
 				"foo": 24,
 			},
 			detailedDiff: map[string]plugin.PropertyDiff{
@@ -62,10 +62,10 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
+			state: map[string]any{
 				"foo": 42,
 			},
-			inputs: map[string]interface{}{
+			inputs: map[string]any{
 				"foo": 42,
 			},
 			detailedDiff: map[string]plugin.PropertyDiff{
@@ -84,11 +84,11 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
+			state: map[string]any{
 				"foo": 42,
 				"bar": "hello",
 			},
-			inputs: map[string]interface{}{
+			inputs: map[string]any{
 				"foo": 24,
 				"bar": "hello",
 			},
@@ -108,11 +108,11 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
+			state: map[string]any{
 				"foo": 42,
 				"bar": "hello",
 			},
-			inputs: map[string]interface{}{
+			inputs: map[string]any{
 				"foo": 24,
 				"bar": "world",
 			},
@@ -132,8 +132,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{},
-			inputs: map[string]interface{}{
+			state: map[string]any{},
+			inputs: map[string]any{
 				"foo": 24,
 			},
 			detailedDiff: map[string]plugin.PropertyDiff{
@@ -149,10 +149,10 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
+			state: map[string]any{
 				"foo": 24,
 			},
-			inputs: map[string]interface{}{},
+			inputs: map[string]any{},
 			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": D,
 			},
@@ -166,13 +166,13 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
+			state: map[string]any{
 				"foo": 24,
 			},
-			oldInputs: map[string]interface{}{
+			oldInputs: map[string]any{
 				"foo": 42,
 			},
-			inputs: map[string]interface{}{},
+			inputs: map[string]any{},
 			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": {
 					Kind:      plugin.DiffDelete,
@@ -189,14 +189,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
+			state: map[string]any{
+				"foo": []any{
 					"bar",
 					"baz",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{
+			inputs: map[string]any{
+				"foo": []any{
 					"bar",
 					"qux",
 				},
@@ -226,14 +226,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
+			state: map[string]any{
+				"foo": []any{
 					"bar",
 					"baz",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{
+			inputs: map[string]any{
+				"foo": []any{
 					"bar",
 					"qux",
 				},
@@ -247,11 +247,11 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"foo": {
-						Old: resource.NewPropertyValue([]interface{}{
+						Old: resource.NewPropertyValue([]any{
 							"bar",
 							"baz",
 						}),
-						New: resource.NewPropertyValue([]interface{}{
+						New: resource.NewPropertyValue([]any{
 							"bar",
 							"qux",
 						}),
@@ -274,13 +274,13 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		},
 
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
+			state: map[string]any{
+				"foo": []any{
 					"bar",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{
+			inputs: map[string]any{
+				"foo": []any{
 					"bar",
 					"baz",
 				},
@@ -307,14 +307,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
+			state: map[string]any{
+				"foo": []any{
 					"bar",
 					"baz",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{
+			inputs: map[string]any{
+				"foo": []any{
 					"bar",
 				},
 			},
@@ -340,14 +340,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
+			state: map[string]any{
+				"foo": []any{
 					"bar",
 					"baz",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{
+			inputs: map[string]any{
+				"foo": []any{
 					"bar",
 					"qux",
 				},
@@ -377,14 +377,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
+			state: map[string]any{
+				"foo": []any{
 					"bar",
 					"baz",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{
+			inputs: map[string]any{
+				"foo": []any{
 					"bar",
 					"qux",
 				},
@@ -423,15 +423,15 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
-					map[string]interface{}{
+			state: map[string]any{
+				"foo": []any{
+					map[string]any{
 						"baz": 42,
 					},
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{},
+			inputs: map[string]any{
+				"foo": []any{},
 			},
 			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[0].baz": D,
@@ -457,14 +457,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": map[string]interface{}{
+			state: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "zed",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": map[string]interface{}{
+			inputs: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "alpha",
 				},
@@ -494,14 +494,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": map[string]interface{}{
+			state: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "zed",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": map[string]interface{}{
+			inputs: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "alpha",
 				},
@@ -515,11 +515,11 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"foo": {
-						Old: resource.NewPropertyValue(map[string]interface{}{
+						Old: resource.NewPropertyValue(map[string]any{
 							"bar": "baz",
 							"qux": "zed",
 						}),
-						New: resource.NewPropertyValue(map[string]interface{}{
+						New: resource.NewPropertyValue(map[string]any{
 							"bar": "baz",
 							"qux": "alpha",
 						}),
@@ -541,13 +541,13 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": map[string]interface{}{
+			state: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": map[string]interface{}{
+			inputs: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "alpha",
 				},
@@ -574,14 +574,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": map[string]interface{}{
+			state: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "zed",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": map[string]interface{}{
+			inputs: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
@@ -607,14 +607,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": map[string]interface{}{
+			state: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "zed",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": map[string]interface{}{
+			inputs: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "alpha",
 				},
@@ -644,14 +644,14 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": map[string]interface{}{
+			state: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "zed",
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": map[string]interface{}{
+			inputs: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 					"qux": "alpha",
 				},
@@ -690,15 +690,15 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state: map[string]interface{}{
-				"foo": []interface{}{
-					map[string]interface{}{
+			state: map[string]any{
+				"foo": []any{
+					map[string]any{
 						"baz": 42,
 					},
 				},
 			},
-			inputs: map[string]interface{}{
-				"foo": []interface{}{},
+			inputs: map[string]any{
+				"foo": []any{},
 			},
 			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[0].baz": D,
@@ -724,8 +724,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			state:  map[string]interface{}{},
-			inputs: map[string]interface{}{},
+			state:  map[string]any{},
+			inputs: map[string]any{},
 			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[something.wonky]probably/miscalculated.by.provider": U,
 			},

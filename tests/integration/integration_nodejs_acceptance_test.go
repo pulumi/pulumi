@@ -126,7 +126,7 @@ func optsForConstructNode(
 						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						secretPropValue, ok := res.Outputs["secret"].(map[string]any)
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
 						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
@@ -204,7 +204,7 @@ func TestNewNodejsUsesNpmByDefault(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "new", "typescript", "--force", "--non-interactive", "--yes", "--generate-only")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"packagemanager": "npm",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
@@ -224,7 +224,7 @@ func TestNewNodejsRuntimeOptions(t *testing.T) {
 			"--runtime-options", "packagemanager="+pm,
 		)
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"packagemanager": pm,
 		}
 		integration.CheckRuntimeOptions(t, e.RootPath, expected)

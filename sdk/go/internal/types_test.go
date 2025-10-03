@@ -99,7 +99,7 @@ func TestNewApplier_errors(t *testing.T) {
 	stringType := reflect.TypeOf("")
 	tests := []struct {
 		desc string
-		give interface{}
+		give any
 
 		// Part of the error message expected in return.
 		wantErr string

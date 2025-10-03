@@ -103,7 +103,7 @@ func TestSamesWithEmptyArraysInInputsJournaling(t *testing.T) {
 	t.Parallel()
 
 	// Model reading from state file
-	state := map[string]interface{}{"defaults": []interface{}{}}
+	state := map[string]any{"defaults": []any{}}
 	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter)
 	require.NoError(t, err)
 

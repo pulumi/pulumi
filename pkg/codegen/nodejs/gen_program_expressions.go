@@ -825,7 +825,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			indexPrefix = "."
 		}
 
-		genIndex := func(inner string, value interface{}) {
+		genIndex := func(inner string, value any) {
 			g.Fgenf(w, "%s["+inner+"]", indexPrefix, value)
 		}
 

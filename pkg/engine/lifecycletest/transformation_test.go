@@ -1088,7 +1088,7 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 
 		assetValue, err := asset.FromText("hello world")
 		require.NoError(t, err)
-		archiveValue, err := archive.FromAssets(map[string]interface{}{
+		archiveValue, err := archive.FromAssets(map[string]any{
 			"file.txt": assetValue,
 		})
 		require.NoError(t, err)

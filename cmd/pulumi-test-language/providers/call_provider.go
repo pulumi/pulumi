@@ -399,7 +399,7 @@ func (p *CallProvider) callCustomProviderValue(
 	result := provValue.GetStringValue() + resValue.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
@@ -429,7 +429,7 @@ func (p *CallProvider) callProviderIdentity(
 	result := value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
@@ -472,7 +472,7 @@ func (p *CallProvider) callProviderPrefixed(
 	result := prefix.StringValue() + value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil

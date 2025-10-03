@@ -211,7 +211,7 @@ func TestPluginHostProvider(t *testing.T) {
 				host := &pluginHost{
 					closed: true,
 					sink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -225,7 +225,7 @@ func TestPluginHostProvider(t *testing.T) {
 				host := &pluginHost{
 					closed: true,
 					statusSink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -241,7 +241,7 @@ func TestPluginHostProvider(t *testing.T) {
 				var called bool
 				host := &pluginHost{
 					sink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -254,7 +254,7 @@ func TestPluginHostProvider(t *testing.T) {
 				var called bool
 				host := &pluginHost{
 					statusSink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},

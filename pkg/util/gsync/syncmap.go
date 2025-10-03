@@ -38,7 +38,7 @@ func (m *Map[K, V]) Delete(k K) {
 // Load returns the value stored in the map for a key, or zero if no value is present. The ok result indicates whether
 // value was found in the map
 func (m *Map[K, V]) Load(k K) (value V, ok bool) {
-	var s interface{}
+	var s any
 	s, ok = m.m.Load(k)
 	if ok {
 		value = s.(V)
@@ -75,7 +75,7 @@ func (m *Map[K, V]) LoadAndDelete(k K) (value V, ok bool) {
 //
 // Range may be O(N) with the number of elements in the map even if f returns false after a constant number of calls.
 func (m *Map[K, V]) Range(callback func(key K, value V) bool) {
-	m.m.Range(func(k, v interface{}) bool {
+	m.m.Range(func(k, v any) bool {
 		return callback(k.(K), v.(V))
 	})
 }

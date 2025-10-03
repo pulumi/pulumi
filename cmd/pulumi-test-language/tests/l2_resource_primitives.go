@@ -50,8 +50,8 @@ func init() {
 						"float":       3.14,
 						"integer":     42,
 						"string":      "hello",
-						"numberArray": []interface{}{-1.0, 0.0, 1.0},
-						"booleanMap":  map[string]interface{}{"t": true, "f": false},
+						"numberArray": []any{-1.0, 0.0, 1.0},
+						"booleanMap":  map[string]any{"t": true, "f": false},
 					})
 					assert.Equal(l, want, prim.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, prim.Inputs, prim.Outputs, "expected inputs and outputs to match")

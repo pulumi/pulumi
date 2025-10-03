@@ -22,7 +22,7 @@ import (
 
 // getProperty fetches the child property with the indicated key from the given property value. If the key does not
 // exist, it returns an empty `PropertyValue`.
-func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyValue {
+func getProperty(key any, v resource.PropertyValue) resource.PropertyValue {
 	switch {
 	case v.IsArray():
 		index, ok := key.(int)
@@ -156,7 +156,7 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) *resource.Obje
 	for path, pdiff := range step.DetailedDiff {
 		elements, err := resource.ParsePropertyPath(path)
 		if err != nil {
-			elements = []interface{}{path}
+			elements = []any{path}
 		}
 
 		olds := resource.NewProperty(step.Old.Outputs)

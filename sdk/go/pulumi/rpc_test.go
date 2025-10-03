@@ -114,31 +114,31 @@ func (rm *testResourceModule) Version() semver.Version {
 }
 
 type test struct {
-	S                              string                 `pulumi:"s"`
-	A                              bool                   `pulumi:"a"`
-	B                              int                    `pulumi:"b"`
-	StringAsset                    Asset                  `pulumi:"cStringAsset"`
-	FileAsset                      Asset                  `pulumi:"cFileAsset"`
-	RemoteAsset                    Asset                  `pulumi:"cRemoteAsset"`
-	AssetArchive                   Archive                `pulumi:"dAssetArchive"`
-	FileArchive                    Archive                `pulumi:"dFileArchive"`
-	RemoteArchive                  Archive                `pulumi:"dRemoteArchive"`
-	E                              interface{}            `pulumi:"e"`
-	Array                          []interface{}          `pulumi:"fArray"`
-	Map                            map[string]interface{} `pulumi:"fMap"`
-	G                              string                 `pulumi:"g"`
-	H                              string                 `pulumi:"h"`
-	I                              string                 `pulumi:"i"`
-	CustomResource                 CustomResource         `pulumi:"jCustomResource"`
-	ComponentResource              ComponentResource      `pulumi:"jComponentResource"`
-	ProviderResource               ProviderResource       `pulumi:"jProviderResource"`
-	PreviewCustomResource          CustomResource         `pulumi:"jPreviewCustomResource"`
-	PreviewProviderResource        ProviderResource       `pulumi:"jPreviewProviderResource"`
-	MissingCustomResource          CustomResource         `pulumi:"kCustomResource"`
-	MissingComponentResource       ComponentResource      `pulumi:"kComponentResource"`
-	MissingProviderResource        ProviderResource       `pulumi:"kProviderResource"`
-	MissingPreviewCustomResource   CustomResource         `pulumi:"kPreviewCustomResource"`
-	MissingPreviewProviderResource ProviderResource       `pulumi:"kPreviewProviderResource"`
+	S                              string            `pulumi:"s"`
+	A                              bool              `pulumi:"a"`
+	B                              int               `pulumi:"b"`
+	StringAsset                    Asset             `pulumi:"cStringAsset"`
+	FileAsset                      Asset             `pulumi:"cFileAsset"`
+	RemoteAsset                    Asset             `pulumi:"cRemoteAsset"`
+	AssetArchive                   Archive           `pulumi:"dAssetArchive"`
+	FileArchive                    Archive           `pulumi:"dFileArchive"`
+	RemoteArchive                  Archive           `pulumi:"dRemoteArchive"`
+	E                              any               `pulumi:"e"`
+	Array                          []any             `pulumi:"fArray"`
+	Map                            map[string]any    `pulumi:"fMap"`
+	G                              string            `pulumi:"g"`
+	H                              string            `pulumi:"h"`
+	I                              string            `pulumi:"i"`
+	CustomResource                 CustomResource    `pulumi:"jCustomResource"`
+	ComponentResource              ComponentResource `pulumi:"jComponentResource"`
+	ProviderResource               ProviderResource  `pulumi:"jProviderResource"`
+	PreviewCustomResource          CustomResource    `pulumi:"jPreviewCustomResource"`
+	PreviewProviderResource        ProviderResource  `pulumi:"jPreviewProviderResource"`
+	MissingCustomResource          CustomResource    `pulumi:"kCustomResource"`
+	MissingComponentResource       ComponentResource `pulumi:"kComponentResource"`
+	MissingProviderResource        ProviderResource  `pulumi:"kProviderResource"`
+	MissingPreviewCustomResource   CustomResource    `pulumi:"kPreviewCustomResource"`
+	MissingPreviewProviderResource ProviderResource  `pulumi:"kPreviewProviderResource"`
 }
 
 type testInputs struct {
@@ -207,7 +207,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 		StringAsset: NewStringAsset("put a lime in the coconut"),
 		FileAsset:   NewFileAsset("foo.txt"),
 		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
-		AssetArchive: NewAssetArchive(map[string]interface{}{
+		AssetArchive: NewAssetArchive(map[string]any{
 			"subAsset":   NewFileAsset("bar.txt"),
 			"subArchive": NewFileArchive("bar.zip"),
 		}),
@@ -250,7 +250,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resV)
 
-	res := resV.(map[string]interface{})
+	res := resV.(map[string]any)
 	assert.Equal(t, "a string", res["s"])
 	assert.Equal(t, true, res["a"])
 	assert.Equal(t, 42.0, res["b"])
@@ -264,14 +264,14 @@ func TestMarshalRoundtrip(t *testing.T) {
 	assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
 	assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
 	assert.Equal(t, "outputty", res["e"])
-	aa := res["fArray"].([]interface{})
+	aa := res["fArray"].([]any)
 	require.Len(t, aa, 4)
 	assert.Equal(t, 0.0, aa[0])
 	assert.Less(t, 1.3-aa[1].(float64), 0.00001)
 	assert.Equal(t, 1.3-aa[1].(float64), 0.0)
 	assert.Equal(t, "x", aa[2])
 	assert.Equal(t, false, aa[3])
-	am := res["fMap"].(map[string]interface{})
+	am := res["fMap"].(map[string]any)
 	require.Len(t, am, 3)
 	assert.Equal(t, "y", am["x"])
 	assert.Equal(t, 999.9, am["y"])
@@ -365,15 +365,15 @@ type testResourceArgs struct {
 	URN URN `pulumi:"urn"`
 	ID  ID  `pulumi:"id"`
 
-	Any     interface{}            `pulumi:"any"`
-	Archive Archive                `pulumi:"archive"`
-	Array   []interface{}          `pulumi:"array"`
-	Asset   Asset                  `pulumi:"asset"`
-	Bool    bool                   `pulumi:"bool"`
-	Float64 float64                `pulumi:"float64"`
-	Int     int                    `pulumi:"int"`
-	Map     map[string]interface{} `pulumi:"map"`
-	String  string                 `pulumi:"string"`
+	Any     any            `pulumi:"any"`
+	Archive Archive        `pulumi:"archive"`
+	Array   []any          `pulumi:"array"`
+	Asset   Asset          `pulumi:"asset"`
+	Bool    bool           `pulumi:"bool"`
+	Float64 float64        `pulumi:"float64"`
+	Int     int            `pulumi:"int"`
+	Map     map[string]any `pulumi:"map"`
+	String  string         `pulumi:"string"`
 
 	Nested nestedType `pulumi:"nested"`
 }
@@ -481,19 +481,19 @@ func TestResourceState(t *testing.T) {
 	res, secret, err := unmarshalPropertyValue(ctx, resource.NewProperty(resolved))
 	require.NoError(t, err)
 	assert.False(t, secret)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"urn":     "foo",
 		"id":      "bar",
 		"any":     "foo",
 		"archive": NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		"array":   []interface{}{"foo"},
+		"array":   []any{"foo"},
 		"asset":   NewStringAsset("put a lime in the coconut"),
 		"bool":    true,
 		"float64": 3.14,
 		"int":     -1.0,
-		"map":     map[string]interface{}{"foo": "bar"},
+		"map":     map[string]any{"foo": "bar"},
 		"string":  "qux",
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"foo": "bar",
 			"bar": 42.0,
 		},
@@ -525,7 +525,7 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	require.NoError(t, err)
 
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	m["foo"] = "bar"
 	m["__default"] = "buzz"
 	pmap := resource.NewProperty(resource.NewPropertyMapFromMap(m))
@@ -560,7 +560,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		StringAsset: NewStringAsset("put a lime in the coconut"),
 		FileAsset:   NewFileAsset("foo.txt"),
 		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
-		AssetArchive: NewAssetArchive(map[string]interface{}{
+		AssetArchive: NewAssetArchive(map[string]any{
 			"subAsset":   NewFileAsset("bar.txt"),
 			"subArchive": NewFileArchive("bar.zip"),
 		}),
@@ -596,7 +596,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resV)
 
-	res := resV.(map[string]interface{})
+	res := resV.(map[string]any)
 	assert.Equal(t, "a string", res["s"])
 	assert.Equal(t, true, res["a"])
 	assert.Equal(t, 42.0, res["b"])
@@ -610,14 +610,14 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
 	assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
 	assert.Equal(t, "outputty", res["e"])
-	aa := res["fArray"].([]interface{})
+	aa := res["fArray"].([]any)
 	require.Len(t, aa, 4)
 	assert.Equal(t, 0.0, aa[0])
 	assert.Less(t, 1.3-aa[1].(float64), 0.00001)
 	assert.Equal(t, 1.3-aa[1].(float64), 0.0)
 	assert.Equal(t, "x", aa[2])
 	assert.Equal(t, false, aa[3])
-	am := res["fMap"].(map[string]interface{})
+	am := res["fMap"].(map[string]any)
 	require.Len(t, am, 3)
 	assert.Equal(t, "y", am["x"])
 	assert.Equal(t, 999.9, am["y"])
@@ -627,10 +627,10 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	assert.Equal(t, nil, res["i"])
 }
 
-type UntypedArgs map[string]interface{}
+type UntypedArgs map[string]any
 
 func (UntypedArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
+	return reflect.TypeOf((*map[string]any)(nil)).Elem()
 }
 
 func TestMapInputMarshalling(t *testing.T) {
@@ -648,9 +648,9 @@ func TestMapInputMarshalling(t *testing.T) {
 		}),
 	})
 
-	inputs2 := UntypedArgs(map[string]interface{}{
+	inputs2 := UntypedArgs(map[string]any{
 		"prop": "outputty",
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"foo": "foo",
 			"bar": 42,
 		},
@@ -945,7 +945,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 	require.NoError(t, err)
 
 	values := []struct {
-		value    interface{}
+		value    any
 		expected resource.PropertyValue
 	}{
 		{value: nil, expected: resource.NewNullProperty()},
@@ -1219,7 +1219,7 @@ func (MyResourceArgs) ElementType() reflect.Type {
 }
 
 type myNestedOutputArgs struct {
-	Nested interface{} `pulumi:"nested"`
+	Nested any `pulumi:"nested"`
 }
 
 type MyNestedOutputArgs struct {
@@ -1731,7 +1731,7 @@ func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) T
 }
 
 func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) TreeSize {
+	return All(o, k).ApplyT(func(vs []any) TreeSize {
 		return vs[0].(map[string]TreeSize)[vs[1].(string)]
 	}).(TreeSizeOutput)
 }

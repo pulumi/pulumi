@@ -59,7 +59,7 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
 
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
-	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
+	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
 
 type promptForAIProjectURLFunc func(ctx context.Context,
 	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
@@ -701,7 +701,7 @@ func validateProjectNameInternal(ctx context.Context, b backend.Backend,
 
 func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
 	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
 	if err != nil {
@@ -709,7 +709,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	}
 	defer lang.Close()
 
-	options := make(map[string]interface{}, len(info.Options()))
+	options := make(map[string]any, len(info.Options()))
 	for k, v := range info.Options() {
 		options[k] = v
 	}
@@ -745,7 +745,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 				// Pick one among the choices
 				choices := make([]string, 0, len(optionPrompt.Choices))
 				// Map choice display string to the actual value
-				choiceMap := make(map[string]interface{}, len(optionPrompt.Choices))
+				choiceMap := make(map[string]any, len(optionPrompt.Choices))
 				for _, choice := range optionPrompt.Choices {
 					displayName := choice.DisplayName
 					if displayName == "" {

@@ -23,13 +23,13 @@ func Test_MakeJSONString(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		input     interface{}
+		input     any
 		multiline bool
 		expected  string
 	}{
 		{
 			name:      "simple-string/multiline",
-			input:     map[string]interface{}{"my_password": "password"},
+			input:     map[string]any{"my_password": "password"},
 			multiline: true,
 			expected: `{
   "my_password": "password"
@@ -38,12 +38,12 @@ func Test_MakeJSONString(t *testing.T) {
 		},
 		{
 			name:     "simple-string",
-			input:    map[string]interface{}{"my_password": "password"},
+			input:    map[string]any{"my_password": "password"},
 			expected: `{"my_password":"password"}`,
 		},
 		{
 			name:      "special-char-string/multiline",
-			input:     map[string]interface{}{"special_password": "pass&word"},
+			input:     map[string]any{"special_password": "pass&word"},
 			multiline: true,
 			expected: `{
   "special_password": "pass&word"
@@ -52,7 +52,7 @@ func Test_MakeJSONString(t *testing.T) {
 		},
 		{
 			name:     "special-char-string",
-			input:    map[string]interface{}{"special_password": "pass&word"},
+			input:    map[string]any{"special_password": "pass&word"},
 			expected: `{"special_password":"pass&word"}`,
 		},
 	}

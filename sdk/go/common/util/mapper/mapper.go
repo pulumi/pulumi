@@ -24,13 +24,13 @@ import (
 // Mapper can map from weakly typed JSON-like property bags to strongly typed structs, and vice versa.
 type Mapper interface {
 	// Decode decodes a JSON-like object into the target pointer to a structure.
-	Decode(obj map[string]interface{}, target interface{}) MappingError
+	Decode(obj map[string]any, target any) MappingError
 	// DecodeValue decodes a single JSON-like value (with a given type and name) into a target pointer to a structure.
-	DecodeValue(obj map[string]interface{}, ty reflect.Type, key string, target interface{}, optional bool) FieldError
+	DecodeValue(obj map[string]any, ty reflect.Type, key string, target any, optional bool) FieldError
 	// Encode encodes an object into a JSON-like in-memory object.
-	Encode(source interface{}) (map[string]interface{}, MappingError)
+	Encode(source any) (map[string]any, MappingError)
 	// EncodeValue encodes a value into its JSON-like in-memory value format.
-	EncodeValue(v interface{}) (interface{}, MappingError)
+	EncodeValue(v any) (any, MappingError)
 }
 
 // New allocates a new mapper object with the given options.
@@ -60,13 +60,13 @@ type mapper struct {
 }
 
 // Map decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.
-func Map(obj map[string]interface{}, target interface{}) MappingError {
+func Map(obj map[string]any, target any) MappingError {
 	return New(nil).Decode(obj, target)
 }
 
 // MapI decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant
 // ignores any missing required fields in the payload in addition to any unrecognized fields.
-func MapI(obj map[string]interface{}, target interface{}) MappingError {
+func MapI(obj map[string]any, target any) MappingError {
 	return New(&Opts{
 		IgnoreMissing:      true,
 		IgnoreUnrecognized: true,
@@ -75,18 +75,18 @@ func MapI(obj map[string]interface{}, target interface{}) MappingError {
 
 // MapIM decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant
 // ignores any missing required fields in the payload.
-func MapIM(obj map[string]interface{}, target interface{}) MappingError {
+func MapIM(obj map[string]any, target any) MappingError {
 	return New(&Opts{IgnoreMissing: true}).Decode(obj, target)
 }
 
 // MapIU decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant
 // ignores any unrecognized fields in the payload.
-func MapIU(obj map[string]interface{}, target interface{}) MappingError {
+func MapIU(obj map[string]any, target any) MappingError {
 	return New(&Opts{IgnoreUnrecognized: true}).Decode(obj, target)
 }
 
 // Unmap translates an already mapped target object into a raw, unmapped form.
-func Unmap(obj interface{}) (map[string]interface{}, error) {
+func Unmap(obj any) (map[string]any, error) {
 	return New(nil).Encode(obj)
 }
 

@@ -67,7 +67,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			length := res.Inputs["length"]
 			require.NotNil(t, length)
 			// length should be secret
-			secret, ok := length.(map[string]interface{})
+			secret, ok := length.(map[string]any)
 			assert.True(t, ok, "length should be a secret")
 			assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
 			assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("result"))

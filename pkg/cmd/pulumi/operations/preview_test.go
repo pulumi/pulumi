@@ -89,7 +89,7 @@ func addDefaultProvider(t *testing.T, typ tokens.Type, events chan<- engine.Even
 	pkg := typ.Package()
 	if pkg != "" {
 		state := makeStateMetadata(t, "default_1_2_3", providers.MakeProviderType(pkg), true, stateOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"version": "1.2.3",
 			}),
 		})
@@ -307,7 +307,7 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 
 	// And then same a provider resource
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
 			"version": "3.2.1",
 		}),
 	})

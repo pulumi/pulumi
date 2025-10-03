@@ -1649,7 +1649,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 	}).Until(context.Background(), retry.Acceptor{
 		Delay:   &delay,
 		Backoff: &backoff,
-		Accept: func(attempt int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(attempt int, nextRetryTime time.Duration) (bool, any, error) {
 			if attempt >= maxAttempts {
 				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
 			}

@@ -27,7 +27,7 @@ import (
 // copied multiple times.
 //
 // NOTE: Unexported members of structs will *not* be copied.
-func Copy(i interface{}) interface{} {
+func Copy(i any) any {
 	if i == nil {
 		return nil
 	}

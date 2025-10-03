@@ -259,6 +259,6 @@ func printRequiredPlugins() {
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(map[string]interface{}{"plugins": plugins})
+	err := enc.Encode(map[string]any{"plugins": plugins})
 	contract.IgnoreError(err)
 }

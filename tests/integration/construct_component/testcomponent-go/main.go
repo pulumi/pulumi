@@ -26,7 +26,7 @@ type Resource struct {
 }
 
 type resourceArgs struct {
-	Echo interface{} `pulumi:"echo"`
+	Echo any `pulumi:"echo"`
 }
 
 type ResourceArgs struct {

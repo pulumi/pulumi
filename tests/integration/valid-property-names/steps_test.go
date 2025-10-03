@@ -70,7 +70,7 @@ func TestPropertyNameDiffs(t *testing.T) {
 					require.NotNil(t, stackInfo.Deployment)
 					res, err := getResource(stackInfo, "a")
 					require.NoError(t, err)
-					state := res.Outputs["state"].(map[string]interface{})
+					state := res.Outputs["state"].(map[string]any)
 					assert.Equal(t, "foo", state[propName])
 				},
 				EditDirs: []integration.EditDir{

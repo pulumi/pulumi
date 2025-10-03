@@ -26,31 +26,31 @@ func TestPropertyPath(t *testing.T) {
 	t.Parallel()
 
 	makeValue := func() PropertyValue {
-		return NewProperty(NewPropertyMapFromMap(map[string]interface{}{
-			"root": map[string]interface{}{
-				"nested": map[string]interface{}{
-					"array": []interface{}{
-						map[string]interface{}{
-							"double": []interface{}{
+		return NewProperty(NewPropertyMapFromMap(map[string]any{
+			"root": map[string]any{
+				"nested": map[string]any{
+					"array": []any{
+						map[string]any{
+							"double": []any{
 								nil,
 								true,
 							},
 						},
 					},
 				},
-				"double": map[string]interface{}{
+				"double": map[string]any{
 					"nest": true,
 				},
-				"array": []interface{}{
-					map[string]interface{}{
+				"array": []any{
+					map[string]any{
 						"nested": true,
 					},
 					true,
 				},
-				"array2": []interface{}{
-					[]interface{}{
+				"array2": []any{
+					[]any{
 						nil,
-						map[string]interface{}{
+						map[string]any{
 							"nested": true,
 						},
 					},
@@ -58,10 +58,10 @@ func TestPropertyPath(t *testing.T) {
 				`key with "escaped" quotes`: true,
 				"key with a .":              true,
 			},
-			`root key with "escaped" quotes`: map[string]interface{}{
+			`root key with "escaped" quotes`: map[string]any{
 				"nested": true,
 			},
-			"root key with a .": []interface{}{
+			"root key with a .": []any{
 				nil,
 				true,
 			},

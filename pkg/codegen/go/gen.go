@@ -1984,7 +1984,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	}
 }
 
-func goPrimitiveValue(value interface{}) (string, error) {
+func goPrimitiveValue(value any) (string, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
@@ -2014,7 +2014,7 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (pkg *pkgContext) getConstValue(cv interface{}) (string, error) {
+func (pkg *pkgContext) getConstValue(cv any) (string, error) {
 	var val string
 	if cv != nil {
 		v, err := goPrimitiveValue(cv)
@@ -3826,7 +3826,7 @@ func extractImportBasePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/go/%s", modpath, name)
 }
 
-func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
+func (pkg *pkgContext) getImports(member any, importsAndAliases map[string]string) {
 	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:

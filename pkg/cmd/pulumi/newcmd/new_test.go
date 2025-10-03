@@ -835,7 +835,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
-			) (map[string]interface{}, error) {
+			) (map[string]any, error) {
 				return nil, nil
 			}
 
@@ -859,7 +859,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			require.NoError(t, err)
 			tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
 			assert.True(t, has)
-			tagsObject, ok := tagsValue.Value.(map[string]interface{})
+			tagsObject, ok := tagsValue.Value.(map[string]any)
 			assert.True(t, ok)
 			assert.Equal(t, tt.expected, tagsObject[apitype.ProjectTemplateTag])
 		})
@@ -873,8 +873,8 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 
 	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
-	) (map[string]interface{}, error) {
-		return map[string]interface{}{"someOption": "someValue"}, nil
+	) (map[string]any, error) {
+		return map[string]any{"someOption": "someValue"}, nil
 	}
 
 	args := newArgs{

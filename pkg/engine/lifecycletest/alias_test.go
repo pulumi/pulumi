@@ -1458,7 +1458,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createA := func(monitor *deploytest.ResourceMonitor) {

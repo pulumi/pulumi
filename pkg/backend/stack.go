@@ -193,7 +193,7 @@ func GetEnvironmentTagsForCurrentStack(root string,
 		if err != nil {
 			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
-		configTagObject, ok := configTagInterface.(map[string]interface{})
+		configTagObject, ok := configTagInterface.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}

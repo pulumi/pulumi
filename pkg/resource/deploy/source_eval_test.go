@@ -2932,7 +2932,7 @@ func TestCall(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t,
-			map[string]interface{}{
+			map[string]any{
 				"result": float64(100),
 			}, res.Return.AsMap())
 		assert.Equal(t,
