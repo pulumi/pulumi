@@ -8,5 +8,6 @@
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resAX]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
+    [31m1 errored[m
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

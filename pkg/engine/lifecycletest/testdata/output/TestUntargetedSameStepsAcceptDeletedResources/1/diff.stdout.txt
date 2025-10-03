@@ -19,5 +19,6 @@
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>
     2 unchanged
+    [31m1 errored[m
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

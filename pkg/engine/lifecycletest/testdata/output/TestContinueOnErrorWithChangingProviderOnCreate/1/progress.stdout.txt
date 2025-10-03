@@ -17,6 +17,7 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
+    [31m2 errored[m
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
