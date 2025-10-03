@@ -466,6 +466,12 @@ class ResourceOptions:
     if specified resource is being deleted as well.
     """
 
+    hide_diffs: Optional[list[str]]
+    """
+    If set, diffs from the included property paths will not be show.
+    This only effects the diff display, and does not effect update behavior.
+    """
+
     def __init__(
         self,
         parent: Optional["Resource"] = None,
@@ -493,6 +499,7 @@ class ResourceOptions:
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
+        hide_diffs: Optional[list[str]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -562,6 +569,7 @@ class ResourceOptions:
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
+        self.hide_diffs = hide_diffs
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -723,6 +731,7 @@ class ResourceOptions:
         dest.deleted_with = (
             dest.deleted_with if source.deleted_with is None else source.deleted_with
         )
+        dest.hide_diffs = _merge_lists(dest.hide_diffs, source.hide_diffs)
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.

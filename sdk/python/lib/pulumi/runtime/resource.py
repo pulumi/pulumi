@@ -1065,6 +1065,7 @@ def register_resource(
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
                 hooks=hooks,
+                hideDiffs=opts.hide_diffs,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
