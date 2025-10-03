@@ -792,10 +792,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			state := resource.NewPropertyMapFromMap(c.state)
 			inputs := resource.NewPropertyMapFromMap(c.inputs)
 			diff, hiddenProperties := TranslateDetailedDiff(&StepEventMetadata{
-				Old: &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
-				New: &StepEventStateMetadata{Inputs: inputs, State: &resource.State{
-					HideDiff: c.hideDiff,
-				}},
+				Old:          &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
+				New:          &StepEventStateMetadata{Inputs: inputs, HideDiffs: c.hideDiff},
 				DetailedDiff: c.detailedDiff,
 			}, false)
 			assert.Equal(t, c.expected, diff)

@@ -189,10 +189,10 @@ func getResourcePropertiesDetails(
 	indent++
 
 	var hideDiff []resource.PropertyPath
-	if step.New != nil && step.New.State != nil {
-		hideDiff = step.New.State.HideDiff
-	} else if step.Old != nil && step.Old.State != nil {
-		hideDiff = step.Old.State.HideDiff
+	if step.New != nil {
+		hideDiff = step.New.HideDiffs
+	} else if step.Old != nil {
+		hideDiff = step.Old.HideDiffs
 	}
 
 	old, new := step.Old, step.New
@@ -420,10 +420,10 @@ func getResourceOutputsPropertiesString(
 	op := step.Op
 
 	var hiddenProperties []resource.PropertyPath
-	if step.New != nil && step.New.State != nil {
-		hiddenProperties = step.New.State.HideDiff
-	} else if step.Old != nil && step.Old.State != nil {
-		hiddenProperties = step.Old.State.HideDiff
+	if step.New != nil {
+		hiddenProperties = step.New.HideDiffs
+	} else if step.Old != nil {
+		hiddenProperties = step.Old.HideDiffs
 	}
 	var hiddenDiffs []resource.PropertyPath
 
