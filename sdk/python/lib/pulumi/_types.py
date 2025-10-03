@@ -801,11 +801,7 @@ def _types_from_annotations(cls: type) -> dict[str, type]:
 
     from . import Output
 
-    # We want resolved types for just the cls's type annotations (not base classes),
-    # but get_type_hints() looks at the annotations of the class and its base classes.
-    # So create a type dynamically that has the annotations from cls but doesn't have
-    # any base classes, and pass the dynamically created type to get_type_hints().
-    dynamic_cls_attrs = {"__annotations__": cls.__dict__.get("__annotations__", {})}
+    dynamic_cls_attrs = {"__annotations__": inspect.get_annotations(cls)}
     dynamic_cls = type(cls.__name__, (object,), dynamic_cls_attrs)
 
     # Pass along globals for the cls, to help resolve forward references.
@@ -837,9 +833,7 @@ def _types_from_annotations(cls: type) -> dict[str, type]:
 
 
 def _names_from_annotations(cls: type) -> Iterator[tuple[str, str]]:
-    # Get annotations that are defined on this class (not base classes).
-    # These are returned in the order declared on Python 3.6+.
-    cls_annotations = cls.__dict__.get("__annotations__", {})
+    cls_annotations = inspect.get_annotations(cls)
 
     def get_pulumi_name(a_name: str) -> str:
         default = getattr(cls, a_name, MISSING)
