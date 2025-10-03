@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import asyncio
 import pulumi
 import pytest
 from unittest.mock import patch
@@ -20,8 +21,18 @@ from unittest.mock import patch
 import pulumi_plant
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        loop.close()
+
+
 @pytest.fixture
-def my_mocks():
+def my_mocks(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()

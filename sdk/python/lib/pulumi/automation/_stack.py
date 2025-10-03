@@ -23,9 +23,9 @@ from datetime import datetime
 from typing import (
     Any,
     Optional,
-    Callable,
     TypedDict,
 )
+from collections.abc import Callable
 from collections.abc import Mapping
 import grpc
 from semver import VersionInfo

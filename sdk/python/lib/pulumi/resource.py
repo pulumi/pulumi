@@ -21,10 +21,10 @@ from typing import (
     Optional,
     Any,
     Union,
-    Callable,
     TYPE_CHECKING,
     cast,
 )
+from collections.abc import Callable
 from collections.abc import Awaitable, Mapping, Sequence
 from . import _types
 from .resource_hooks import ResourceHookBinding

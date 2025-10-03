@@ -20,7 +20,6 @@ from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     Optional,
     TypeVar,
@@ -28,6 +27,7 @@ from typing import (
     cast,
     overload,
 )
+from collections.abc import Callable
 from collections.abc import Awaitable, Mapping
 
 from . import log

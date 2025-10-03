@@ -19,11 +19,11 @@ import traceback
 import uuid
 from typing import (
     TYPE_CHECKING,
-    Callable,
     Optional,
     Union,
     cast,
 )
+from collections.abc import Callable
 from collections.abc import Awaitable, Mapping
 
 import grpc

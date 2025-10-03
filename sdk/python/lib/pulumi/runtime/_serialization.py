@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from contextvars import ContextVar, copy_context
-from typing import Callable, TypeVar
+from typing import TypeVar
+from collections.abc import Callable
 
 
 __all__ = [

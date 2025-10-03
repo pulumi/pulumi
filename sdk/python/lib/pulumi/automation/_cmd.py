@@ -18,7 +18,8 @@ import subprocess
 import tempfile
 import threading
 import urllib.request
-from typing import Any, Callable, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 from collections.abc import Mapping
 
 from semver import VersionInfo
