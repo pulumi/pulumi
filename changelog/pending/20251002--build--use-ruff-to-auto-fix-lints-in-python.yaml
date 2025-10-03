@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: build
+  description: Use ruff to auto fix lints in python
