@@ -104,7 +104,7 @@ func TestFilterOnName(t *testing.T) {
 				return mockBackend, nil
 			},
 			LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-				url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+				url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 			) (backend.Backend, error) {
 				return mockBackend, nil
 			},
@@ -150,7 +150,7 @@ func TestFilterOnName(t *testing.T) {
 				return mockBackend, nil
 			},
 			LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-				url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+				url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 			) (backend.Backend, error) {
 				return mockBackend, nil
 			},
@@ -205,7 +205,7 @@ func TestMultipleTemplateSources_OrgTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -271,7 +271,7 @@ func TestSurfaceListTemplateErrors_OrgTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -313,7 +313,7 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -355,7 +355,7 @@ func TestSurfaceOnEmptyError_OrgTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -397,7 +397,7 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -468,7 +468,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},

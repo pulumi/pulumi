@@ -25,7 +25,6 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -42,14 +41,13 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 	}
 
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
+		CurrentF: func(
 			ctx context.Context,
 			ws pkgWorkspace.Context,
 			sink diag.Sink,
 			url string,
 			project *workspace.Project,
 			setCurrent bool,
-			color colors.Colorization,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
@@ -87,14 +85,13 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 	}
 
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
+		CurrentF: func(
 			ctx context.Context,
 			ws pkgWorkspace.Context,
 			sink diag.Sink,
 			url string,
 			project *workspace.Project,
 			setCurrent bool,
-			color colors.Colorization,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
@@ -152,14 +149,13 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	}
 
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
+		CurrentF: func(
 			ctx context.Context,
 			ws pkgWorkspace.Context,
 			sink diag.Sink,
 			url string,
 			project *workspace.Project,
 			setCurrent bool,
-			color colors.Colorization,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {

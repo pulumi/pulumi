@@ -332,6 +332,7 @@ func newStateRepairCmdFixture(
 			string,
 			*workspace.Project,
 			bool,
+			bool,
 			colors.Colorization,
 		) (backend.Backend, error) {
 			return b, nil
