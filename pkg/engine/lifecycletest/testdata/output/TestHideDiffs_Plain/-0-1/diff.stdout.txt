@@ -7,16 +7,25 @@
 <{%reset%}><{%fg 3%}>  ~ array (hidden)
 <{%reset%}><{%fg 3%}>  ~ map (hidden)
 <{%reset%}><{%fg 3%}>  ~ scalar (hidden)
-<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ array (hidden)
+<{%reset%}><{%fg 3%}>  ~ map (hidden)
+<{%reset%}><{%fg 3%}>  ~ scalar (hidden)
+<{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
 <{%reset%}><{%fg 3%}>  ~ array (hidden)
 <{%reset%}><{%fg 3%}>  ~ map (hidden)
 <{%reset%}><{%fg 3%}>  ~ scalar: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>b<{%reset%}><{%fg 3%}>"
-<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ array (hidden)
+<{%reset%}><{%fg 3%}>  ~ map (hidden)
+<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resC]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ scalar (hidden)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 2 updated<{%reset%}>
     1 unchanged
 

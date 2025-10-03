@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -155,6 +156,11 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 	}
 
 	created := p.Run(t, &deploy.Snapshot{})
+	assert.Equal(t, created.Resources[1].HideDiff, []resource.PropertyPath{
+		{"array"},
+		{"map"},
+		{"scalar"},
+	})
 	propValue = resource.NewProperty("b")
 	p.Run(t, created) // Update
 }
