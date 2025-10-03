@@ -161,6 +161,8 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.Obj
 	var hiddenDiffs []resource.PropertyPath
 	if step.New != nil && step.New.State != nil {
 		hiddenPaths = step.New.State.HideDiff
+	} else if step.Old != nil && step.Old.State != nil {
+		hiddenPaths = step.Old.State.HideDiff
 	}
 
 	var diff resource.ValueDiff
