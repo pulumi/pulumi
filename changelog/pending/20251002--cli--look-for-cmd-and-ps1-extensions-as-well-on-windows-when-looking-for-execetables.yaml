@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Look for .cmd and .ps1 extensions as well on Windows when looking for executables
