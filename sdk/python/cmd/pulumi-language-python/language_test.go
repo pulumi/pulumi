@@ -156,8 +156,6 @@ func TestLanguage(t *testing.T) {
 	}
 
 	for _, config := range configs {
-		config := config
-
 		t.Run(config.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -220,8 +218,6 @@ func TestLanguage(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, tt := range tests.Tests {
-				tt := tt
-
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 

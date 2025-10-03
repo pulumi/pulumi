@@ -96,7 +96,6 @@ func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
 	t.Parallel()
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range success {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -170,7 +169,6 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -205,7 +203,6 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 
@@ -266,7 +263,6 @@ func TestExtractEnforcementLevelSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -319,7 +315,6 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -848,7 +843,6 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.Test, func(t *testing.T) {
 			t.Parallel()
 
@@ -979,7 +973,6 @@ func TestReconcilePolicyPackConfigWithInitialConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.Test, func(t *testing.T) {
 			t.Parallel()
 
@@ -1221,7 +1214,6 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.Test, func(t *testing.T) {
 			t.Parallel()
 

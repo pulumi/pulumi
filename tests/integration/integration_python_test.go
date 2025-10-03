@@ -581,7 +581,6 @@ func TestDynamicProviderConfig(t *testing.T) {
 		"python-config-separate-module",
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join("dynamic", test),
@@ -851,7 +850,6 @@ func TestConstructPlainPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -909,7 +907,6 @@ func TestConstructMethodsPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1016,7 +1013,6 @@ func TestConstructProviderPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1967,7 +1963,6 @@ func TestDynamicProviderPython(t *testing.T) {
 	}
 
 	for _, toolchain := range []string{"pip", "uv", "poetry"} {
-		toolchain := toolchain
 		t.Run(toolchain, func(t *testing.T) {
 			t.Parallel()
 			e := ptesting.NewEnvironment(t)

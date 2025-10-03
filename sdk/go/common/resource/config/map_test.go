@@ -86,7 +86,6 @@ func TestMarshalMap(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.ExpectedYAML, func(t *testing.T) {
 			t.Parallel()
 
@@ -218,7 +217,6 @@ func TestMarshalling(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		yamlBytes, err := yaml.Marshal(test.Value)
 		require.NoError(t, err)
 		t.Run(fmt.Sprintf("YAML: %s", yamlBytes), func(t *testing.T) {
@@ -309,7 +307,6 @@ func TestDecrypt(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -511,7 +508,6 @@ func TestGetSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -546,7 +542,6 @@ func TestGetFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(test.Key, func(t *testing.T) {
 			t.Parallel()
 
@@ -691,7 +686,6 @@ func TestRemoveSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -728,7 +722,6 @@ func TestRemoveFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -1230,7 +1223,6 @@ func TestSetSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -1343,7 +1335,6 @@ func TestSetFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -1429,7 +1420,6 @@ func TestCopyMap(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -1537,7 +1527,6 @@ func TestPropertyMap(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 

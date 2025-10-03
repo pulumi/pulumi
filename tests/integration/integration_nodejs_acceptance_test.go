@@ -73,7 +73,6 @@ func TestConstructNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},

@@ -214,7 +214,6 @@ func TestIgnoreChanges(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -331,7 +330,6 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -422,7 +420,6 @@ func TestEngineDiff(t *testing.T) {
 	allowUnknowns := false
 	provider := deploytest.Provider{}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -529,7 +526,6 @@ func TestGenerateAliases(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

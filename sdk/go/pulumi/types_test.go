@@ -1066,7 +1066,6 @@ func TestTypeCoersion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("%v->%v", tt.input, tt.expected), func(t *testing.T) {
 			t.Parallel()
 			dstT := reflect.TypeOf(tt.expected)

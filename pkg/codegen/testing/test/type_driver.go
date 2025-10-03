@@ -88,7 +88,6 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 	if !cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 		runTests := func(where string, props []*schema.Property, inputShape bool) {
 			for _, p := range props {
-				p := p
 				if testCase, ok := p.Language["test"].(*typeTestCase); ok {
 					if expected, ok := testCase.Expected[language]; ok {
 						typ := p.Type

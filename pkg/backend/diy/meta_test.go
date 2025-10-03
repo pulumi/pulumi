@@ -105,7 +105,6 @@ func TestEnsurePulumiMeta(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -148,7 +147,6 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -176,7 +174,6 @@ func TestMeta_roundTrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

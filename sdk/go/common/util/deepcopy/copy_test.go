@@ -77,7 +77,6 @@ func TestDeepCopy(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, c := range cases {
-		i, c := i, c
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			t.Parallel()
 			assert.EqualValues(t, c, Copy(c))

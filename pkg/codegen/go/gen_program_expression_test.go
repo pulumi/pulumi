@@ -80,7 +80,6 @@ func TestLiteralExpression(t *testing.T) {
 }` + "`, Sid, newpolicy, Effect, Allow)"},
 	}
 	for _, c := range cases {
-		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil, nil)
 	}
 }
@@ -391,7 +390,6 @@ func TestTupleConsExpression(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
 }

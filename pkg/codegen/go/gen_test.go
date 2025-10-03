@@ -253,7 +253,6 @@ func TestLanguageResources(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range test.PulumiPulumiSDKTests {
-		test := test
 		t.Run(test.Directory, func(t *testing.T) {
 			t.Parallel()
 			var pkg *schema.Package
@@ -297,7 +296,6 @@ func TestPackageNaming(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
-		tt := tt
 		t.Run(tt.expectedRoot, func(t *testing.T) {
 			t.Parallel()
 
@@ -389,7 +387,6 @@ func TestTokenToType(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -453,7 +450,6 @@ func TestTokenToResource(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 

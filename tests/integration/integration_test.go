@@ -673,7 +673,6 @@ func TestProviderDownloadURL(t *testing.T) {
 
 	//nolint:paralleltest // uses parallel programtest
 	for _, lang := range languages {
-		lang := lang
 		t.Run(lang.name, func(t *testing.T) {
 			dir := filepath.Join("gather_plugin", lang.name)
 			integration.ProgramTest(t, &integration.ProgramTestOptions{

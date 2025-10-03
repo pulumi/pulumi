@@ -144,7 +144,6 @@ func TestParseAndRenderDocs(t *testing.T) {
 	}
 
 	for _, f := range files {
-		f := f
 		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
 			continue
 		}
@@ -171,7 +170,6 @@ func TestParseAndRenderDocs(t *testing.T) {
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
-				doc := doc
 				original := []byte(doc.content)
 				expected := ParseDocs(original)
 				rendered := []byte(RenderDocsToString(original, expected))
@@ -214,7 +212,6 @@ func TestReferenceRenderer(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
-		f := f
 		if filepath.Ext(f.Name()) != ".json" || f.Name() == "types.json" {
 			continue
 		}
@@ -238,8 +235,6 @@ func TestReferenceRenderer(t *testing.T) {
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
-				doc := doc
-
 				text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
 				expected := strings.ReplaceAll(doc.entity, "/", "_") + "\n"
 

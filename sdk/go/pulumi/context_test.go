@@ -359,14 +359,12 @@ func TestMergeProviders(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
-		i, tt := i, tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 
 			err := RunErr(func(ctx *Context) error {
 				providers := map[string]ProviderResource{}
 				for _, p := range tt.providers {
-					p := p // Move out of loop, for gosec
 					providers[p.t] = p.i(ctx, t)
 				}
 
@@ -481,7 +479,6 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

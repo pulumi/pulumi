@@ -751,7 +751,6 @@ func TestVersionedMap(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -787,7 +786,6 @@ func TestRegisterResourcePackage(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -823,7 +821,6 @@ func TestRegisterResourceModule(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1509,7 +1506,6 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1762,7 +1758,6 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1862,7 +1857,6 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2079,7 +2073,6 @@ func TestResourceReferenceDependencies(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("exclude=%v", tt.exclude), func(t *testing.T) {
 			t.Parallel()
 			_, pdeps, deps, err := marshalInputsOptions(props, &marshalOptions{

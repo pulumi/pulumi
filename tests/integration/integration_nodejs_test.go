@@ -1007,7 +1007,6 @@ func TestConstructPlainNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -1062,7 +1061,6 @@ func TestConstructMethodsNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1122,7 +1120,6 @@ func TestConstructProviderNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1786,7 +1783,6 @@ func TestTranspileOnly(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []string{"tsconfig-no-check", "swc"} {
-		test := test
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 			dir := filepath.Join("nodejs", test)
@@ -2579,7 +2575,6 @@ func TestAutonaming(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		orderedConfig := []integration.ConfigValue{}
 		for k, v := range tc.config {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})

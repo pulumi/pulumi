@@ -132,7 +132,6 @@ func TestConstructPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -448,7 +447,6 @@ func TestUv(t *testing.T) {
 			},
 		},
 	} {
-		test := test
 		// On windows, when running in parallel, we can run into issues when Uv tries
 		// to write the same cache file concurrently. This is the same issue we see
 		// for Poetry https://github.com/pulumi/pulumi/pull/17337

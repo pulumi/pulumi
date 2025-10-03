@@ -113,7 +113,6 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -253,7 +252,6 @@ func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {
-		toolchainName := toolchainName
 		t.Run(toolchainName+"/empty", func(t *testing.T) {
 			t.Parallel()
 			cwd := t.TempDir()

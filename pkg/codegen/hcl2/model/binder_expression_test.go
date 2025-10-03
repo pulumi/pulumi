@@ -137,7 +137,6 @@ func TestBindBinaryOp(t *testing.T) {
 		{x: "b && true", t: NewPromiseType(BoolType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
@@ -173,7 +172,6 @@ func TestBindConditional(t *testing.T) {
 		{x: "b ? b : b", t: NewPromiseType(BoolType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
@@ -238,7 +236,6 @@ func TestBindFor(t *testing.T) {
 		{x: `[for v in []: v if i]`, t: NewPromiseType(NewListType(NoneType))},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
@@ -298,7 +295,6 @@ func TestBindFunctionCall(t *testing.T) {
 		{x: `f1("foo", c, d)`, t: NewOutputType(BoolType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
@@ -369,7 +365,6 @@ func TestBindIndex(t *testing.T) {
 		{x: "o[b]", t: NewPromiseType(BoolType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -415,7 +410,6 @@ func TestBindObjectCons(t *testing.T) {
 		{x: `{(a): a, (b): b, (i): c}`, t: NewPromiseType(mt)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -473,7 +467,6 @@ func TestBindRelativeTraversal(t *testing.T) {
 		{x: `[for v in f: v].foo`, t: NewPromiseType(StringType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -548,7 +541,6 @@ func TestBindScopeTraversal(t *testing.T) {
 		{x: `o.bar.baz`, t: NewPromiseType(StringType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -620,7 +612,6 @@ func TestBindSplat(t *testing.T) {
 		//		{x: `r[*].bar.baz`, t: NewPromiseType(NewTupleType(StringType))},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -686,7 +677,6 @@ func TestBindTemplate(t *testing.T) {
 		{x: `"%{for v in l} v: ${v} %{endfor}"`, t: NewPromiseType(StringType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -726,7 +716,6 @@ func TestBindTupleCons(t *testing.T) {
 		{x: `[{"foo": "bar"}]`, t: NewTupleType(NewObjectType(map[string]Type{"foo": StringType}))},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 
@@ -765,7 +754,6 @@ func TestBindUnaryOp(t *testing.T) {
 		{x: `!f`, t: NewPromiseType(BoolType)},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.x, func(t *testing.T) {
 			t.Parallel()
 

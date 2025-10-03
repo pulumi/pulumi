@@ -24,6 +24,7 @@ linters:
     - usetesting
     - wastedassign
     - whitespace
+    - copyloopvar
   settings:
     depguard:
       rules:

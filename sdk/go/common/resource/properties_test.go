@@ -255,7 +255,6 @@ func TestTypeString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -300,7 +299,6 @@ func TestString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -337,7 +335,6 @@ func TestContainsUnknowns(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -388,7 +385,6 @@ func TestContainsSecrets(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -430,7 +426,6 @@ func TestHasValue(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

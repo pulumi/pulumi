@@ -190,7 +190,6 @@ func TestApplyRewriter(t *testing.T) {
 	}))
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.input, func(t *testing.T) {
 			t.Parallel()
 

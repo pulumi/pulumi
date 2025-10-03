@@ -111,7 +111,6 @@ func TestGenerateType(t *testing.T) {
 	mod := &modContext{mod: "main"}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range cases {
-		c := c
 		t.Run(c.typ.String(), func(t *testing.T) {
 			t.Parallel()
 

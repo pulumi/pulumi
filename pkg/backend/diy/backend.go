@@ -466,7 +466,6 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 
 	var upgraded atomic.Int64 // number of stacks successfully upgraded
 	for idx, old := range olds {
-		idx, old := idx, old
 		pool.Enqueue(func() error {
 			project := projects[idx]
 			if project == "" {
@@ -840,7 +839,6 @@ func (b *diyBackend) ListStacks(
 
 	// Enqueue work for each stack
 	for i, stackRef := range filteredStacks {
-		i, stackRef := i, stackRef // https://golang.org/doc/faq#closures_and_goroutines
 		pool.Enqueue(func() error {
 			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
 			// instead of having to call stackExists separately.

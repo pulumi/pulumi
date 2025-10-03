@@ -86,7 +86,6 @@ func TestActivateVirtualEnv(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%#v", test.input), func(t *testing.T) {
 			t.Parallel()
 
