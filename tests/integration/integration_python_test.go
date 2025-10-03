@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/blang/semver"
 	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -2554,6 +2555,18 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOrganization(t *testing.T) {
+	cmd := exec.Command("python", "-c",
+		"import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
+	output, err := cmd.Output()
+	require.NoError(t, err)
+	versionString := strings.TrimSpace(string(output))
+	version := semver.MustParse(versionString)
+	if version.GTE(semver.MustParse("3.14.0")) {
+		// The test requires an old SDK, but that version does
+		// not work on 3.14 because of an older grpcio version
+		t.Skip("Skipping test for Python version >= 3.14")
+	}
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("python", "organization"),
 		Dependencies: []string{
