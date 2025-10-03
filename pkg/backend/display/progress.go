@@ -1032,8 +1032,17 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
+	// track resources errored
+	resourcesErrored := 0
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, false, display.opts)
+	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+
+	for _, r := range rr {
+		if r.DiagInfo().ErrorCount > 0 {
+			resourcesErrored++
+		}
+	}
+	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
 	display.println(msg)
 }
 

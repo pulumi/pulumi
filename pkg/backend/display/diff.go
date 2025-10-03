@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize/english"
+	"github.com/go-git/go-git/v5/plumbing/color"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -41,6 +42,9 @@ import (
 // ShowDiffEvents displays the engine events with the diff view.
 func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
+
+	// track resources errored
+	resourcesErrored := 0
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -79,8 +83,13 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 			if event.Type == engine.DiagEvent {
 				out = stderr
 			}
-
+			if event.Type == engine.ResourceOperationFailed {
+				resourcesErrored++
+			}
 			msg := RenderDiffEvent(event, seen, opts)
+			if event.Type == engine.SummaryEvent {
+				msg = renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
+			}
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -116,7 +125,7 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), 0, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -225,7 +234,7 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int, diffStyleSummary bool, opts Options) string {
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
@@ -290,6 +299,13 @@ func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool,
 		}
 
 		fprintIgnoreError(out, "\n")
+	}
+
+	// add error summary
+	if resourcesErrored > 0 {
+		errSummary := fmt.Sprintf("    %s%d errored%s", color.Red, resourcesErrored, color.Reset)
+		out.WriteString(errSummary)
+		out.WriteString("\n")
 	}
 
 	if diffStyleSummary {

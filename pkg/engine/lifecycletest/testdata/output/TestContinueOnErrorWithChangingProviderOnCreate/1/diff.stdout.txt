@@ -7,5 +7,6 @@
 <{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::provA::4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::2<{%reset%}><{%fg 3%}>]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
+    [31m1 errored[m
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

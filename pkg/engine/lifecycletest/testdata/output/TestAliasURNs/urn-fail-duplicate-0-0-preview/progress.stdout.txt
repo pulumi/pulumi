@@ -13,4 +13,5 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 to update<{%reset%}>
+    [31m1 errored[m
 

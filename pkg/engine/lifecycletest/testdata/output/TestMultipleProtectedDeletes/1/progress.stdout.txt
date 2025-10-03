@@ -26,4 +26,5 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
+    [31m3 errored[m
 
