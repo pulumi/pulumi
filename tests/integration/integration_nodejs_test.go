@@ -2418,13 +2418,18 @@ func TestPackageAddNode(t *testing.T) {
 			require.NoError(t, err)
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
-			assert.True(t, ok)
+			require.True(t, ok)
 			cf, ok := dependencies["@pulumi/random"]
-			assert.True(t, ok)
+			require.True(t, ok)
 			cf, ok = cf.(string)
-			assert.True(t, ok)
+			require.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
+			require.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
+
+			require.FileExists(t, filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			b, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			require.NoError(t, err)
+			require.Equal(t, "node_modules/\nbin/\n", string(b))
 		})
 	}
 }

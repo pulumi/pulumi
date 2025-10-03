@@ -2377,6 +2377,7 @@ func genPackageMetadata(
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
 	if localSDK {
 		fs.Add("scripts/postinstall.js", genPostInstallScript())
+		fs.Add(".gitignore", genGitignoreFile())
 	}
 	return nil
 }
@@ -2590,6 +2591,12 @@ try {
 }
 // TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
 fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
+`)
+}
+
+func genGitignoreFile() []byte {
+	return []byte(`node_modules/
+bin/
 `)
 }
 
