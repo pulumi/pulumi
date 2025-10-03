@@ -372,6 +372,8 @@ type ResourceV3 struct {
 	StackTrace []StackFrameV1 `json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	// HideDiff is a list of properties to hide the diff for.
+	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.

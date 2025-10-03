@@ -606,3 +606,45 @@ func (p PropertyPath) String() string {
 	}
 	return buf.String()
 }
+
+func (p PropertyPath) MarshalText() ([]byte, error) {
+	return []byte(p.String()), nil
+}
+
+func (p *PropertyPath) UnmarshalText(b []byte) error {
+	path, err := ParsePropertyPath(string(b))
+	if err != nil {
+		*p = nil
+		return err
+	}
+	*p = path
+	return nil
+}
+
+func (p PropertyPath) GoString() string {
+	var buffer strings.Builder
+	buffer.WriteString("resource.PropertyPath{")
+	if len(p) == 0 {
+		buffer.WriteString("}")
+		return buffer.String()
+	}
+
+	format := func(a any) {
+		switch a := a.(type) {
+		case int:
+			buffer.WriteString(strconv.Itoa(a))
+		case string:
+			buffer.WriteString(strconv.Quote(a))
+		default:
+			buffer.WriteString(fmt.Sprintf("INVALID %[1]T (%[1]q)", a))
+		}
+	}
+
+	for _, e := range p[:len(p)-1] {
+		format(e)
+		buffer.WriteRune(',')
+	}
+	format(p[len(p)-1])
+	buffer.WriteRune('}')
+	return buffer.String()
+}

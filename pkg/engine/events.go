@@ -398,6 +398,8 @@ type StepEventStateMetadata struct {
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
 	InitErrors []string
+	// HideDiffs is the set of property paths where diffs are not displayed.
+	HideDiffs []resource.PropertyPath
 }
 
 func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
@@ -540,6 +542,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets b
 		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
 		Provider:       state.Provider,
 		InitErrors:     state.InitErrors,
+		HideDiffs:      state.HideDiff,
 	}
 }
 

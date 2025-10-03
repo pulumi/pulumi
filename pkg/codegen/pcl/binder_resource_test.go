@@ -98,6 +98,11 @@ func TestBindResourceOptions(t *testing.T) {
 			want: cty.TupleVal([]cty.Value{cty.DynamicVal}),
 		},
 		{
+			name: "HideDiffs",
+			src:  `hideDiffs = [property]`,
+			want: cty.TupleVal([]cty.Value{cty.DynamicVal}),
+		},
+		{
 			name: "DeletedWith",
 			src:  `deletedWith = "abc123"`,
 			want: cty.StringVal("abc123"),

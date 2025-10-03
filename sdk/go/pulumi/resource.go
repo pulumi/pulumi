@@ -437,6 +437,9 @@ type ResourceOptions struct {
 	// IgnoreChanges lists properties changes to which should be ignored.
 	IgnoreChanges []string
 
+	// HideDiffs lists property paths which shouldn't be displayed during diffs.
+	HideDiffs []string
+
 	// Import specifies that the provider for this resource
 	// should import its state from a cloud resource with the given ID.
 	Import IDInput
@@ -518,6 +521,7 @@ type resourceOptions struct {
 	DeleteBeforeReplace     *bool
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
+	HideDiffs               []string
 	Import                  IDInput
 	Parent                  Resource
 	Protect                 *bool
@@ -583,6 +587,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
+		HideDiffs:               ro.HideDiffs,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
 		Protect:                 flatten(ro.Protect),
@@ -869,6 +874,13 @@ func (ra *resourceArrayInputDependencySet) addDeps(ctx context.Context, deps map
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
+	})
+}
+
+// Hide the diffs for a set of property paths.
+func HideDiffs(paths []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.HideDiffs = append(ro.HideDiffs, paths...)
 	})
 }
 

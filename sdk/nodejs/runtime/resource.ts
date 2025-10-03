@@ -615,6 +615,9 @@ export function registerResource(
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
                 }
+                if (opts.hideDiffs !== undefined) {
+                    req.setHidediffsList(opts.hideDiffs);
+                }
                 req.setDeletedwith(resop.deletedWithURN || "");
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
