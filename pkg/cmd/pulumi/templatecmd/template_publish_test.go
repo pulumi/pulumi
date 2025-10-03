@@ -376,14 +376,7 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(templateSubDir, "Pulumi.yaml"), []byte("name: test"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(templateSubDir, "index.ts"), []byte("export {};"), 0o600))
 
-	originalWd, err := os.Getwd()
-	require.NoError(t, err)
-	defer func(dir string) {
-		err := os.Chdir(dir)
-		require.NoError(t, err)
-	}(originalWd)
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	mockCloudRegistry := &backend.MockCloudRegistry{
 		PublishTemplateF: func(ctx context.Context, op apitype.TemplatePublishOp) error {
@@ -420,7 +413,7 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) { return "org", nil },
 	}
 
-	err = cmd.Run(context.Background(), &cobra.Command{}, publishTemplateArgs{
+	err := cmd.Run(context.Background(), &cobra.Command{}, publishTemplateArgs{
 		publisher: "test", name: "test", version: "1.0.0",
 	}, "./template-subdir")
 

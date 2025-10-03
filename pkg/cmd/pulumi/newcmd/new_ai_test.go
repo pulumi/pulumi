@@ -32,7 +32,7 @@ import (
 //nolint:paralleltest // changes directory
 func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
@@ -65,7 +65,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 //nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 		assert.Nil(t, name)

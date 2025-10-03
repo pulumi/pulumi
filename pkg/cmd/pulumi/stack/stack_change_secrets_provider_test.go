@@ -134,7 +134,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 	})
 
 	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	// Setup a dummy project in this directory
 	err := os.WriteFile("Pulumi.yaml", []byte(`
@@ -236,7 +236,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 	})
 
 	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	// Setup a dummy project in this directory
 	err := os.WriteFile("Pulumi.yaml", []byte(`
@@ -282,16 +282,4 @@ runtime: mock
 	val, err := cfgValue.Value(passphraseDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", val)
-}
-
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
 }

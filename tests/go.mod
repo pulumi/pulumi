@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests
 
-go 1.23.11
+go 1.24.7
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0

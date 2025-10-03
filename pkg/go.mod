@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/pkg/v3
 
-go 1.23.11
+go 1.24.7
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 

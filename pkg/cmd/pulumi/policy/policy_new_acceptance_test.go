@@ -29,7 +29,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newPolicyArgs{
 		templateNameOrURL: "aws-typescript",

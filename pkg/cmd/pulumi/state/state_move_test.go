@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package state
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -43,7 +42,7 @@ func createStackWithResources(
 	sm := b64.NewBase64SecretsManager()
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	require.NoError(t, err)
@@ -85,7 +84,7 @@ func runMoveWithDestResources(
 func runMoveWithOptionsAndDestResources(
 	t *testing.T, sourceResources, destResources []*resource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -375,7 +374,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -437,7 +436,7 @@ func TestMoveWithExistingResource(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -515,7 +514,7 @@ func TestParentsAreBeingMoved(t *testing.T) {
 func TestEmptySourceStack(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -549,7 +548,7 @@ func TestEmptySourceStack(t *testing.T) {
 
 //nolint:paralleltest // changest directory for process
 func TestEmptyDestStack(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -587,7 +586,7 @@ func TestEmptyDestStack(t *testing.T) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	})
 
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
 	// Set up dummy project in this directory
@@ -657,7 +656,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -753,7 +752,7 @@ func TestMoveUnknownResource(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -860,7 +859,7 @@ func TestMoveProvider(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
@@ -963,7 +962,7 @@ func TestMoveSecret(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -987,7 +986,7 @@ func TestMoveSecret(t *testing.T) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	})
 
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
 	// Set up dummy project in this directory
@@ -1062,7 +1061,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -1135,7 +1134,7 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -1159,7 +1158,7 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	})
 
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
 	// Set up dummy project in this directory
@@ -1289,7 +1288,7 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -1344,18 +1343,6 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 		sourceSnapshot.Resources[2].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2"),
 		sourceSnapshot.Resources[3].URN)
-}
-
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
 }
 
 // Test that when a resource is moved and it has a provider as parent, the provider is still

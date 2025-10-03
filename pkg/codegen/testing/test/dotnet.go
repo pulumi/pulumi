@@ -88,8 +88,7 @@ func GenerateDotnetBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 }
 
 func GenerateDotnetYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram) {
-	err := os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "dotnet"))
-	require.NoError(t, err)
+	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "dotnet"))
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{

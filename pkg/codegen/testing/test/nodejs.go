@@ -84,8 +84,7 @@ func GenerateNodeJSBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 }
 
 func GenerateNodeJSYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram) {
-	err := os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
-	require.NoError(t, err)
+	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{

@@ -17,7 +17,6 @@ package test
 import (
 	"context"
 	filesystem "io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -83,8 +82,7 @@ func GeneratePythonBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 }
 
 func GeneratePythonYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram) {
-	err := os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "python"))
-	require.NoError(t, err)
+	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "python"))
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{

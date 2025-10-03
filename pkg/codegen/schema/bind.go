@@ -769,7 +769,7 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = append(diags, errorf(path, name+" is a reserved name, cannot name type"))
+			diags = append(diags, errorf(path, "%s", name+" is a reserved name, cannot name type"))
 			return nil, diags, errors.New("type name " + name + " is reserved")
 		}
 	}
@@ -1174,7 +1174,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	var diags hcl.Diagnostics
 	for name := range properties {
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path+"/"+name, name+" is a reserved property name"))
+			diags = diags.Append(errorf(path+"/"+name, "%s", name+" is a reserved property name"))
 		}
 	}
 	if diags.HasErrors() {
@@ -1558,7 +1558,7 @@ func (t *types) bindResourceDef(
 		if len(parts) == 3 {
 			name := parts[2]
 			if isReservedKeyword(name) {
-				diags = diags.Append(errorf(path, name+" is a reserved name, cannot name resource"))
+				diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name resource"))
 			}
 		}
 
@@ -1599,12 +1599,12 @@ func (t *types) bindResourceDetails(
 	for _, property := range properties {
 		if isReservedComponentResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
-			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name"))
+			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name"))
 		}
 
 		if !spec.IsComponent && isReservedCustomResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
-			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name for resources"))
+			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name for resources"))
 		}
 	}
 
@@ -1677,7 +1677,7 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	for _, property := range decl.InputProperties {
 		if isReservedProviderPropertyName(property.Name) {
 			path := "#/provider/properties/" + property.Name
-			diags = diags.Append(errorf(path, property.Name+" is a reserved provider input property name"))
+			diags = diags.Append(errorf(path, "%s", property.Name+" is a reserved provider input property name"))
 		}
 		if diags.HasErrors() {
 			return diags, errors.New("invalid property names")
@@ -1754,7 +1754,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path, name+" is a reserved name, cannot name function"))
+			diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name function"))
 			return nil, diags, errors.New(name + " is a reserved name, cannot name function")
 		}
 	}
@@ -1876,7 +1876,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 			}
 
 			if isReservedKeyword(input.Name) {
-				diags = diags.Append(errorf(path+"/inputs/"+input.Name, input.Name+" is a reserved input name"))
+				diags = diags.Append(errorf(path+"/inputs/"+input.Name, "%s", input.Name+" is a reserved input name"))
 				return nil, diags, errors.New("input name " + input.Name + " is reserved")
 			}
 		}

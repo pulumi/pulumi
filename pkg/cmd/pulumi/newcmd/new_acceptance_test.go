@@ -35,18 +35,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
-}
-
 // TestRegress13774 checks that you can run `pulumi new` on an existing project as described in the
 // Pulumi Cloud new project instructions.
 
@@ -58,7 +46,7 @@ func TestRegress13774(t *testing.T) {
 	projectName := genUniqueName(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		interactive:       false,
@@ -87,7 +75,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
@@ -115,7 +103,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	// This test requires a numeric project name.
 	// Project names have to be unique or this test will fail.
@@ -153,7 +141,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
@@ -178,7 +166,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
@@ -216,7 +204,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	t.Setenv(env.BackendURL.Var().Name(), backendURL)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
@@ -244,7 +232,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesNoTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		yes:               true,
@@ -264,7 +252,7 @@ func TestRunNewYesNoTemplate(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		yes:               true,
@@ -287,7 +275,7 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithAILanguage(t *testing.T) {
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		yes:                   true,
