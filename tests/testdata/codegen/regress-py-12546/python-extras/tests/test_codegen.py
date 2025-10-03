@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import asyncio
 import pulumi
 import pytest
 from unittest.mock import patch
