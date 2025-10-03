@@ -237,7 +237,7 @@ type nodeOptions struct {
 	packagemanager npm.PackageManagerType
 }
 
-func parseOptions(options map[string]interface{}) (nodeOptions, error) {
+func parseOptions(options map[string]any) (nodeOptions, error) {
 	// typescript defaults to true
 	nodeOptions := nodeOptions{
 		typescript: true,
@@ -1738,12 +1738,12 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}, nil
 }
 
-func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {
+func readPackageJSON(packageJSONPath string) (map[string]any, error) {
 	packageJSONData, err := os.ReadFile(packageJSONPath)
 	if err != nil {
 		return nil, fmt.Errorf("read package.json: %w", err)
 	}
-	var packageJSON map[string]interface{}
+	var packageJSON map[string]any
 	err = json.Unmarshal(packageJSONData, &packageJSON)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal package.json: %w", err)

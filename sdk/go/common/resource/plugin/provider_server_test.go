@@ -30,10 +30,10 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 
 	provider := stubProvider{
 		ConfigureFunc: func(pm resource.PropertyMap) error {
-			assert.Equal(t, map[string]interface{}{
+			assert.Equal(t, map[string]any{
 				"foo": "bar",
 				"baz": 42.0,
-				"qux": map[string]interface{}{
+				"qux": map[string]any{
 					"a": "str",
 					"b": true,
 				},
@@ -97,7 +97,7 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 		) (ReadResult, resource.Status, error) {
 			return ReadResult{
 				ID: resource.ID("none"),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"result": resource.NewProperty(&resource.Secret{
 						Element: resource.NewProperty(string(id)),
 					}),

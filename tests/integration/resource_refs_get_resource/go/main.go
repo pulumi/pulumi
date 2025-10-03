@@ -199,7 +199,7 @@ func main() {
 		roundTrippedContainerChild := roundTrippedContainerChildResult.Value.(*Child)
 
 		pulumi.All(child.URN(), roundTrippedContainerChild.URN(), roundTrippedContainerChild.Message).ApplyT(
-			func(args []interface{}) (*string, error) {
+			func(args []any) (*string, error) {
 				const expectedMessage = "hello world!"
 				expectedURN := args[0].(pulumi.URN)
 				actualURN := args[1].(pulumi.URN)

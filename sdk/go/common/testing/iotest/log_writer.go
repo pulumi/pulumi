@@ -30,7 +30,7 @@ type logWriter struct {
 	// We're not storing testing.TB directly to ensure that
 	// we don't accidentally use other log methods.
 	t interface {
-		Logf(string, ...interface{})
+		Logf(string, ...any)
 		Helper()
 	}
 

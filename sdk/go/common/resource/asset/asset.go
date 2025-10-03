@@ -161,8 +161,8 @@ func (a *Asset) Equals(other *Asset) bool {
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
-func (a *Asset) Serialize() map[string]interface{} {
-	result := map[string]interface{}{
+func (a *Asset) Serialize() map[string]any {
+	result := map[string]any{
 		sig.Key: AssetSig,
 	}
 	if a.Hash != "" {
@@ -181,7 +181,7 @@ func (a *Asset) Serialize() map[string]interface{} {
 }
 
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
-func Deserialize(obj map[string]interface{}) (*Asset, bool, error) {
+func Deserialize(obj map[string]any) (*Asset, bool, error) {
 	// If not an asset, return false immediately.
 	if obj[sig.Key] != AssetSig {
 		return &Asset{}, false, nil

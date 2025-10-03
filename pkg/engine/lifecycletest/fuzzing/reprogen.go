@@ -121,7 +121,7 @@ func (g *generator) writeLine(s string) {
 
 // writeLinef writes a formatted newline-prefixed line of Go code to the generator's strings.Builder, prefixed by the
 // current indentation level.
-func (g *generator) writeLinef(format string, args ...interface{}) {
+func (g *generator) writeLinef(format string, args ...any) {
 	g.writeLine(fmt.Sprintf(format, args...))
 }
 

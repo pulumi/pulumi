@@ -85,44 +85,44 @@ func TestHasSecureValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    interface{}
+		Value    any
 		Expected bool
 	}{
 		{
-			Value:    []interface{}{"a", "b", "c"},
+			Value:    []any{"a", "b", "c"},
 			Expected: false,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo": "bar",
-				"hi":  map[string]interface{}{"secure": "securevalue", "but": "not"},
+				"hi":  map[string]any{"secure": "securevalue", "but": "not"},
 			},
 			Expected: false,
 		},
 		{
-			Value:    []interface{}{"a", "b", map[string]interface{}{"secure": "securevalue"}},
+			Value:    []any{"a", "b", map[string]any{"secure": "securevalue"}},
 			Expected: true,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo": "bar",
-				"hi":  map[string]interface{}{"secure": "securevalue"},
+				"hi":  map[string]any{"secure": "securevalue"},
 			},
 			Expected: true,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo":   "bar",
-				"array": []interface{}{"a", "b", map[string]interface{}{"secure": "securevalue"}},
+				"array": []any{"a", "b", map[string]any{"secure": "securevalue"}},
 			},
 			Expected: true,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo": "bar",
-				"map": map[string]interface{}{
+				"map": map[string]any{
 					"nest": "blah",
-					"hi":   map[string]interface{}{"secure": "securevalue"},
+					"hi":   map[string]any{"secure": "securevalue"},
 				},
 			},
 			Expected: true,
@@ -321,8 +321,8 @@ func roundtripValueJSON(v Value) (Value, error) {
 	return roundtripValue(v, json.Marshal, json.Unmarshal)
 }
 
-func roundtripValue(v Value, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error,
+func roundtripValue(v Value, marshal func(v any) ([]byte, error),
+	unmarshal func([]byte, any) error,
 ) (Value, error) {
 	b, err := marshal(v)
 	if err != nil {

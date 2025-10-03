@@ -87,19 +87,19 @@ func (e *Formatter) Indented(f func()) {
 }
 
 // Fprint prints one or more values to the generator's output stream.
-func (e *Formatter) Fprint(w io.Writer, a ...interface{}) {
+func (e *Formatter) Fprint(w io.Writer, a ...any) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)
 }
 
 // Fprintln prints one or more values to the generator's output stream, followed by a newline.
-func (e *Formatter) Fprintln(w io.Writer, a ...interface{}) {
+func (e *Formatter) Fprintln(w io.Writer, a ...any) {
 	e.Fprint(w, a...)
 	e.Fprint(w, "\n")
 }
 
 // Fprintf prints a formatted message to the generator's output stream.
-func (e *Formatter) Fprintf(w io.Writer, format string, a ...interface{}) {
+func (e *Formatter) Fprintf(w io.Writer, format string, a ...any) {
 	_, err := fmt.Fprintf(w, format, a...)
 	contract.IgnoreError(err)
 }
@@ -157,7 +157,7 @@ func (e *Formatter) gen(w io.Writer, parentPrecedence int, rhs bool, x model.Exp
 
 // Fgen generates code for a list of strings and expression trees. The former are written directly to the destination;
 // the latter are recursively generated using the appropriate gen* functions.
-func (e *Formatter) Fgen(w io.Writer, vs ...interface{}) {
+func (e *Formatter) Fgen(w io.Writer, vs ...any) {
 	for _, v := range vs {
 		if x, ok := v.(model.Expression); ok {
 			e.gen(w, math.MaxInt32, false, x)
@@ -172,7 +172,7 @@ func (e *Formatter) Fgen(w io.Writer, vs ...interface{}) {
 // a Func that calls the appropriate recursive generation function. This allows for the composition of standard
 // format strings with expression/property code gen (e.e. `e.genf(w, ".apply(__arg0 => %v)", then)`, where `then` is
 // an expression tree).
-func (e *Formatter) Fgenf(w io.Writer, format string, args ...interface{}) {
+func (e *Formatter) Fgenf(w io.Writer, format string, args ...any) {
 	for i := range args {
 		if node, ok := args[i].(model.Expression); ok {
 			args[i] = Func(func(f fmt.State, c rune) {

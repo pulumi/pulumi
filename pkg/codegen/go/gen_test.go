@@ -308,7 +308,7 @@ func TestPackageNaming(t *testing.T) {
 				// default to the schema.
 				schema.Name = tt.name
 			}
-			schema.Language = map[string]interface{}{
+			schema.Language = map[string]any{
 				"go": GoPackageInfo{
 					ImportBasePath:  tt.importBasePath,
 					RootPackageName: tt.rootPackageName,

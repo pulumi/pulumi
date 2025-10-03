@@ -988,7 +988,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				},
 
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+					outputs := resource.NewPropertyMapFromMap(map[string]any{
 						"output_prop": 42,
 					})
 
@@ -1003,7 +1003,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"input_prop": "new inputs",
 			}),
 		})
@@ -1056,10 +1056,10 @@ func TestUpdatePartialFailure(t *testing.T) {
 				URN:    resURN,
 				Custom: true,
 				ID:     "1",
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"input_prop": "old inputs",
 				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"output_prop": 1,
 				}),
 			},
@@ -1078,7 +1078,7 @@ func TestStackReference(t *testing.T) {
 	// Test that the normal lifecycle works correctly.
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, state, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 			}), "", "", "", nil, "", "")
 		require.NoError(t, err)
@@ -1092,7 +1092,7 @@ func TestStackReference(t *testing.T) {
 			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]interface{}{
+					return resource.NewPropertyMapFromMap(map[string]any{
 						"foo": "bar",
 					}), nil
 				default:
@@ -1115,10 +1115,10 @@ func TestStackReference(t *testing.T) {
 				Custom:   true,
 				ID:       "1",
 				External: true,
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name": "other2",
 				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name":    "other2",
 					"outputs": resource.PropertyMap{},
 				}),
@@ -1152,7 +1152,7 @@ func TestStackReference(t *testing.T) {
 	// Test that unknown stacks are handled appropriately.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "rehto",
 			}), "", "", "", nil, "", "")
 		assert.Error(t, err)
@@ -1169,7 +1169,7 @@ func TestStackReference(t *testing.T) {
 	// Test that unknown properties cause errors.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 				"foo":  "bar",
 			}), "", "", "", nil, "", "")
@@ -1190,7 +1190,7 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that the normal lifecycle works correctly.
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		resp, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 			}),
 		})
@@ -1248,7 +1248,7 @@ func TestStackReferenceRegister(t *testing.T) {
 			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]interface{}{
+					return resource.NewPropertyMapFromMap(map[string]any{
 						"foo": "bar",
 					}), nil
 				default:
@@ -1270,10 +1270,10 @@ func TestStackReferenceRegister(t *testing.T) {
 				URN:    resURN,
 				Custom: true,
 				ID:     "1",
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name": "other2",
 				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name":    "other2",
 					"outputs": resource.PropertyMap{},
 				}),
@@ -1307,7 +1307,7 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that unknown stacks are handled appropriately.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"name": "rehto",
 			}),
 		})
@@ -1325,7 +1325,7 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that unknown properties cause errors.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 				"foo":  "bar",
 			}),
@@ -1488,90 +1488,90 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		return p.RunWithName(t, snap, name)
 	}
 
-	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 1,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "foo",
 		},
-		"d": []interface{}{1},
-		"e": []interface{}{1},
-		"f": map[string]interface{}{
-			"g": map[string]interface{}{
+		"d": []any{1},
+		"e": []any{1},
+		"f": map[string]any{
+			"g": map[string]any{
 				"h": "bar",
 			},
 		},
 	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpCreate}, "initial")
 
 	// Ensure that a change to an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 2,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "bar",
 		},
-		"d": []interface{}{2},
-		"e": []interface{}{2},
-		"f": map[string]interface{}{
-			"g": map[string]interface{}{
+		"d": []any{2},
+		"e": []any{2},
+		"f": map[string]any{
+			"g": map[string]any{
 				"h": "baz",
 			},
 		},
 	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpSame}, "ignored-property")
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "qux",
 		},
-		"d": []interface{}{3},
-		"e": []interface{}{3},
-		"f": map[string]interface{}{
-			"g": map[string]interface{}{
+		"d": []any{3},
+		"e": []any{3},
+		"f": map[string]any{
+			"g": map[string]any{
 				"h": "qux",
 			},
 		},
 	}), nil, []display.StepOp{deploy.OpUpdate}, "unignored-property")
 
 	// Ensure that a removing an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"e": []interface{}{},
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
+		"e": []any{},
 	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpSame}, "ignored-property-removed")
 
 	// Ensure that a removing an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"e": []interface{}{},
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
+		"e": []any{},
 	}), nil, []display.StepOp{deploy.OpUpdate}, "unignored-property-removed")
 
 	// Ensure that adding an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 4,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "zed",
 		},
-		"d": []interface{}{4},
-		"e": []interface{}{},
+		"d": []any{4},
+		"e": []any{},
 	}), []string{"a", "b", "d", "e[0]", "f"}, []display.StepOp{deploy.OpSame}, "ignored-property-added")
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"e": []interface{}{},
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
+		"e": []any{},
 		"i": 4,
 	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpUpdate}, "unignored-property-added")
 
 	// Ensure that sub-elements of arrays can be ignored, first reset to a simple state
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
 		"b": []string{"foo", "bar"},
 	}), nil, []display.StepOp{deploy.OpUpdate}, "sub-elements-ignored")
 
 	// Check that ignoring a specific sub-element of an array works
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
 		"b": []string{"foo", "baz"},
 	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame}, "ignore-specific-subelement")
 
 	// Check that ignoring all sub-elements of an array works
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
 		"b": []string{"foo", "baz"},
 	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame}, "ignore-all-subelements")
@@ -1757,41 +1757,41 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 			return p.RunWithName(t, snap, strings.ReplaceAll(fmt.Sprintf("%v", props), " ", "_"))
 		}
 
-		snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 1,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "foo",
 			},
 		}), []string{"a", "b.c"}, []display.StepOp{deploy.OpCreate})
 
 		// Ensure that a change to a replaceOnChange property results in an OpReplace
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 2,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "foo",
 			},
 		}), []string{"a"}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 		// Ensure that a change to a nested replaceOnChange property results in an OpReplace
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 2,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "bar",
 			},
 		}), []string{"b.c"}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 		// Ensure that a change to any property of a "*" replaceOnChange results in an OpReplace
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 3,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "baz",
 			},
 		}), []string{"*"}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 		// Ensure that a change to an non-replaceOnChange property results in an OpUpdate
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 4,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "qux",
 			},
 		}), nil, []display.StepOp{deploy.OpUpdate})
@@ -1802,9 +1802,9 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 		if diffFunc != nil {
 			allowed = []display.StepOp{deploy.OpSame}
 		}
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 42, // 42 is a special value in the "provider" diff function.
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "qux",
 			},
 		}), []string{"a"}, allowed)
@@ -2188,18 +2188,18 @@ func TestProviderPreview(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
+		computed := any(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
 
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		ins := resource.NewPropertyMapFromMap(map[string]any{
 			"foo": "bar",
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"a": 42,
 				"b": computed,
 			},
-			"qux": []interface{}{
+			"qux": []any{
 				computed,
 				24,
 			},
@@ -2278,18 +2278,18 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
+		computed := any(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
 
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		ins := resource.NewPropertyMapFromMap(map[string]any{
 			"foo": "bar",
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"a": 42,
 				"b": computed,
 			},
-			"qux": []interface{}{
+			"qux": []any{
 				computed,
 				24,
 			},
@@ -2349,7 +2349,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return plugin.InvokeResponse{
-						Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
+						Properties: resource.NewPropertyMapFromMap(map[string]any{
 							"message": ret,
 						}),
 					}, nil
@@ -2392,7 +2392,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return plugin.CallResponse{
-						Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+						Return: resource.NewPropertyMapFromMap(map[string]any{
 							"message": ret,
 						}),
 					}, nil
@@ -2434,26 +2434,26 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
+		computed := any(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
 
 		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true,
 			deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": computed}),
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{"foo": computed}),
 			})
 		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		require.NoError(t, err)
 
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		ins := resource.NewPropertyMapFromMap(map[string]any{
 			"foo": "bar",
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"a": 42,
 			},
-			"qux": []interface{}{
+			"qux": []any{
 				24,
 			},
 		})
@@ -2593,7 +2593,7 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Runtime: "client",
-		RuntimeOptions: map[string]interface{}{
+		RuntimeOptions: map[string]any{
 			"address": fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		},
 	}
@@ -2785,7 +2785,7 @@ func TestProtect(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -2848,7 +2848,7 @@ func TestProtect(t *testing.T) {
 	expectedMessage = "<{%reset%}>unable to replace resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
 		"as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from " +
 		"the resource in your Pulumi program and run `pulumi up`<{%reset%}>\n"
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
@@ -2903,7 +2903,7 @@ func TestProtect(t *testing.T) {
 
 	// Edit the snapshot to remove the protect flag and try and replace
 	snap.Resources[1].Protect = false
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "daz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "6")
@@ -2954,7 +2954,7 @@ func TestDeletedWith(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -3002,7 +3002,7 @@ func TestDeletedWith(t *testing.T) {
 
 	// Run a new update which will cause a replace, we should only see a provider delete for aURN but should
 	// get a new id for everything
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -3385,7 +3385,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -3395,7 +3395,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"parent": resp.ID,
 			}),
 			Dependencies: []resource.URN{resp.URN},
@@ -3424,7 +3424,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 	// Trigger a replacement of A but fail to create B
 	failCreationOfTypB = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -3545,7 +3545,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	inB := "active"
@@ -3556,7 +3556,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"parent": respA.ID,
 				"frob":   inB,
 			}),
@@ -3598,7 +3598,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	assert.True(t, snap.Resources[3].Delete)
 
 	// Now trigger a replacment of A, which will also trigger B to replace
-	insA = resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	failDeletionOfTypB = false
@@ -3632,7 +3632,7 @@ func TestTimestampTracking(t *testing.T) {
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 				},
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+					outputs := resource.NewPropertyMapFromMap(map[string]any{
 						"foo": "bar",
 					})
 					return plugin.UpdateResponse{
@@ -3742,15 +3742,15 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					// Check that the old inputs are passed to CheckF
 					if firstUpdate {
 						assert.Nil(t, req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "bar",
 						}), req.News)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "bar",
 							"default": "default",
 						}), req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "baz",
 						}), req.News)
 					}
@@ -3769,20 +3769,20 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					if firstUpdate {
 						assert.Nil(t, req.OldInputs)
 						assert.Nil(t, req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "bar",
 						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "bar",
 							"default": "default",
 						}), req.OldInputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":      "bar",
 							"default":  "default",
 							"computed": "computed",
 						}), req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "baz",
 							"default": "default",
 						}), req.NewInputs)
@@ -3812,16 +3812,16 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "bar",
 						"default": "default",
 					}), req.OldInputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "bar",
 						"default":  "default",
 						"computed": "computed",
 					}), req.OldOutputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
 					}), req.NewInputs)
@@ -3844,11 +3844,11 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
 					}), req.Inputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "baz",
 						"default":  "default",
 						"computed": "computed",
@@ -3860,7 +3860,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -3885,18 +3885,18 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "bar",
 		"default": "default",
 	}), resA.Inputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "bar",
 		"default":  "default",
 		"computed": "computed",
 	}), resA.Outputs)
 
 	// Now run another update with new inputs
-	insA = resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	firstUpdate = false
@@ -3906,11 +3906,11 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	resA = snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "baz",
 		"default": "default",
 	}), resA.Inputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "baz",
 		"default":  "default",
 		"computed": "computed",
@@ -4321,7 +4321,7 @@ func TestProviderChecksums(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 

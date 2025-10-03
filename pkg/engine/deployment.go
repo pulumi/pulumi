@@ -69,7 +69,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		if err != nil {
 			return "", "", nil, err
 		}
-		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
+		ctx.DialOptions = func(metadata any) []grpc.DialOption {
 			return di.DialOptions(interceptors.LogOptions{
 				Metadata: metadata,
 			})

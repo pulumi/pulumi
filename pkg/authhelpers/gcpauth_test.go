@@ -43,7 +43,7 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, credentials)
 
-	var creds map[string]interface{}
+	var creds map[string]any
 	err = json.Unmarshal([]byte(os.Getenv("GOOGLE_CREDENTIALS")), &creds)
 	require.NoError(t, err)
 	assert.Equal(t, creds["type"], "service_account")

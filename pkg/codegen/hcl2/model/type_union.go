@@ -33,7 +33,7 @@ type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
 	ElementTypes []Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	s atomic.Value // Value<string>
 
@@ -46,7 +46,7 @@ type UnionType struct {
 // 2. Any duplicate types are removed.
 // 3. Unions have have more then 1 type. If only a single type is left after (1) and (2),
 // it is returned as is.
-func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
+func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 	var elementTypes []Type
 	for _, t := range types {
 		if union, isUnion := t.(*UnionType); isUnion {
@@ -87,7 +87,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are
 // replaced with their element types.
 func NewUnionType(types ...Type) Type {
-	var annotations []interface{}
+	var annotations []any
 	for _, t := range types {
 		if union, isUnion := t.(*UnionType); isUnion {
 			annotations = append(annotations, union.Annotations...)

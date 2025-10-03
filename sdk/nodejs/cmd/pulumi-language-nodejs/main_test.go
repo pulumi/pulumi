@@ -679,12 +679,12 @@ func TestParseOptions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, npm.AutoPackageManager, opts.packagemanager)
 
-	_, err = parseOptions(map[string]interface{}{
+	_, err = parseOptions(map[string]any{
 		"typescript": 123,
 	})
 	require.ErrorContains(t, err, "typescript option must be a boolean")
 
-	_, err = parseOptions(map[string]interface{}{
+	_, err = parseOptions(map[string]any{
 		"packagemanager": "poetry",
 	})
 	require.ErrorContains(t, err, "packagemanager option must be one of")
@@ -699,7 +699,7 @@ func TestParseOptions(t *testing.T) {
 		{"pnpm", npm.PnpmPackageManager},
 		{"bun", npm.BunPackageManager},
 	} {
-		opts, err = parseOptions(map[string]interface{}{
+		opts, err = parseOptions(map[string]any{
 			"packagemanager": tt.input,
 		})
 		require.NoError(t, err)

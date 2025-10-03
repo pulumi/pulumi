@@ -381,7 +381,7 @@ func decodeError(respBody []byte, statusCode int, opts httpCallOptions) error {
 // restClient is an abstraction for calling the Pulumi REST API.
 type restClient interface {
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-		respObj interface{}, tok accessToken, opts httpCallOptions) error
+		respObj any, tok accessToken, opts httpCallOptions) error
 }
 
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
@@ -394,7 +394,7 @@ type defaultRESTClient struct {
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-	respObj interface{}, tok accessToken, opts httpCallOptions,
+	respObj any, tok accessToken, opts httpCallOptions,
 ) error {
 	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
 		opentracing.Tag{Key: "method", Value: method},

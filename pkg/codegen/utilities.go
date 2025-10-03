@@ -98,17 +98,17 @@ func (ss StringSet) Union(other StringSet) StringSet {
 	return result
 }
 
-type Set map[interface{}]struct{}
+type Set map[any]struct{}
 
-func (s Set) Add(v interface{}) {
+func (s Set) Add(v any) {
 	s[v] = struct{}{}
 }
 
-func (s Set) Delete(v interface{}) {
+func (s Set) Delete(v any) {
 	delete(s, v)
 }
 
-func (s Set) Has(v interface{}) bool {
+func (s Set) Has(v any) bool {
 	_, ok := s[v]
 	return ok
 }

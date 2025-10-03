@@ -268,7 +268,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -348,7 +348,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	require.Len(t, snap.Resources, 3) // 2 resources + 1 provider
 
 	update = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	// Run an update to create the resource
@@ -406,7 +406,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -475,7 +475,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	// Run an update to create the resource
@@ -580,7 +580,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -644,7 +644,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	// Run an update to create the resource

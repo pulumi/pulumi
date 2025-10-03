@@ -79,7 +79,7 @@ func SerializeResourcePlan(
 	enc config.Encrypter,
 	showSecrets bool,
 ) (apitype.ResourcePlanV1, error) {
-	var outputs map[string]interface{}
+	var outputs map[string]any
 	if plan.Outputs != nil {
 		ctx := context.TODO()
 		outs, err := SerializeProperties(ctx, plan.Outputs, enc, showSecrets)

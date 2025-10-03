@@ -93,7 +93,7 @@ func validateStackConfigValue(
 		return err
 	}
 	// Content will be a JSON string if object is true, so marshal that back into an actual structure
-	var content interface{} = value
+	var content any = value
 	if stackValue.Object() {
 		err = json.Unmarshal([]byte(value), &content)
 		if err != nil {
@@ -126,7 +126,7 @@ func parseConfigKey(projectName, key string) (config.Key, error) {
 	return config.MustMakeKey(projectName, key), nil
 }
 
-func createConfigValue(rawValue interface{}) (config.Value, error) {
+func createConfigValue(rawValue any) (config.Value, error) {
 	if isPrimitiveValue(rawValue) {
 		configValueContent := fmt.Sprintf("%v", rawValue)
 		return config.NewValue(configValueContent), nil
@@ -265,7 +265,7 @@ func mergeConfig(
 
 		if !foundOnStack && (hasValue || hasDefault) {
 			// either value or default value is provided
-			var value interface{}
+			var value any
 			if hasValue {
 				value = projectConfigType.Value
 			}

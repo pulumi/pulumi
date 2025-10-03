@@ -129,7 +129,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		return pmap, pdeps, nil, nil
 	}
 
-	marshalProperty := func(pname string, pv interface{}, pt reflect.Type) error {
+	marshalProperty := func(pname string, pv any, pt reflect.Type) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInputOptions(pv, pt, opts)
 		if err != nil {
@@ -225,19 +225,19 @@ const rpcTokenUnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply to access the Output's value"
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInput(v interface{}, destType reflect.Type) (resource.PropertyValue, []Resource, error) {
+func marshalInput(v any, destType reflect.Type) (resource.PropertyValue, []Resource, error) {
 	return marshalInputOptions(v, destType, nil)
 }
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
 func marshalInputOptions(
-	v interface{}, destType reflect.Type, opts *marshalOptions,
+	v any, destType reflect.Type, opts *marshalOptions,
 ) (resource.PropertyValue, []Resource, error) {
 	return marshalInputOptionsImpl(v, destType, opts, false /*skipInputCheck*/)
 }
 
 // marshalInputImpl marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInputOptionsImpl(v interface{},
+func marshalInputOptionsImpl(v any,
 	destType reflect.Type,
 	opts *marshalOptions,
 	skipInputCheck bool,
@@ -262,7 +262,7 @@ func marshalInputOptionsImpl(v interface{},
 			}
 
 			// If the element type of the input is not identical to the type of the destination and the destination is
-			// not the any type (i.e. interface{}), attempt to convert the input to an appropriately-typed output.
+			// not the any type, attempt to convert the input to an appropriately-typed output.
 			if valueType != destType && destType != anyType {
 				if newOutput, ok := internal.CallToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
 					// We were able to convert the input. Use the result as the new input value.
@@ -358,9 +358,9 @@ func marshalInputOptionsImpl(v interface{},
 				return resource.PropertyValue{}, nil, errors.New("invalid archive")
 			}
 
-			var assets map[string]interface{}
+			var assets map[string]any
 			if as := v.Assets(); as != nil {
-				assets = make(map[string]interface{})
+				assets = make(map[string]any)
 				for k, a := range as {
 					aa, _, err := marshalInputOptions(a, anyType, opts)
 					if err != nil {
@@ -548,7 +548,7 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 	return ctx.newDependencyResource(URN(ref.URN)), nil
 }
 
-func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {
+func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (any, bool, error) {
 	switch {
 	case v.IsComputed():
 		return nil, false, nil
@@ -569,7 +569,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		return sv, true, nil
 	case v.IsArray():
 		arr := v.ArrayValue()
-		rv := make([]interface{}, len(arr))
+		rv := make([]any, len(arr))
 		secret := false
 		for i, e := range arr {
 			ev, esecret, err := unmarshalPropertyValue(ctx, e)
@@ -581,7 +581,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		}
 		return rv, secret, nil
 	case v.IsObject():
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		secret := false
 		for k, e := range v.ObjectValue() {
 			ev, esecret, err := unmarshalPropertyValue(ctx, e)
@@ -608,7 +608,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		secret := false
 		switch {
 		case archive.IsAssets():
-			as := make(map[string]interface{})
+			as := make(map[string]any)
 			for k, v := range archive.Assets {
 				a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
 				secret = secret || asecret
@@ -685,7 +685,7 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 			secret := false
 			switch {
 			case archive.IsAssets():
-				as := make(map[string]interface{})
+				as := make(map[string]any)
 				for k, v := range archive.Assets {
 					a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
 					secret = secret || asecret
@@ -732,7 +732,7 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 
 			// If the output is known, we can unmarshal it directly else it's nil
 			typ := anyOutputType
-			var element interface{}
+			var element any
 			if v.OutputValue().Known {
 				var err error
 				element, err = unmarshal(v.OutputValue().Element)

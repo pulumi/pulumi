@@ -1080,13 +1080,13 @@ var resourceType = model.NewOpaqueType("pulumi.Resource")
 
 var providerResourceType = model.NewOpaqueType("pulumi.ProviderResource")
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []interface{}) {
+func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []any) {
 	if opts == nil {
 		return nil, nil
 	}
 
 	var block *model.Block
-	var temps []interface{}
+	var temps []any
 	appendOption := func(name string, value model.Expression, destType model.Type) {
 		if block == nil {
 			block = &model.Block{
@@ -1670,12 +1670,12 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
 
-func (g *generator) genTemps(w io.Writer, temps []interface{}) {
+func (g *generator) genTemps(w io.Writer, temps []any) {
 	singleReturn := ""
 	g.genTempsMultiReturn(w, temps, singleReturn)
 }
 
-func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroValueType string) {
+func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType string) {
 	genZeroValueDecl := false
 
 	if zeroValueType != "" {

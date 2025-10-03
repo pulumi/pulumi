@@ -54,7 +54,7 @@ func genResourceMappings(root *modContext, w io.Writer) error {
 	return nil
 }
 
-func jsonPythonLiteral(thing interface{}) (string, error) {
+func jsonPythonLiteral(thing any) (string, error) {
 	bytes, err := json.MarshalIndent(thing, "", " ")
 	if err != nil {
 		return "", err

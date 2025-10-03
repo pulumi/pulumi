@@ -395,12 +395,12 @@ type testLoader struct {
 	retVal    any
 }
 
-func (testLoader) ImportDefaultSpec(bytes json.RawMessage) (any, error)            { return nil, nil }
-func (testLoader) ImportPropertySpec(bytes json.RawMessage) (interface{}, error)   { return nil, nil }
-func (testLoader) ImportObjectTypeSpec(bytes json.RawMessage) (interface{}, error) { return nil, nil }
-func (testLoader) ImportResourceSpec(bytes json.RawMessage) (interface{}, error)   { return nil, nil }
-func (testLoader) ImportFunctionSpec(bytes json.RawMessage) (interface{}, error)   { return nil, nil }
-func (tl *testLoader) ImportPackageSpec(bytes json.RawMessage) (interface{}, error) {
+func (testLoader) ImportDefaultSpec(bytes json.RawMessage) (any, error)    { return nil, nil }
+func (testLoader) ImportPropertySpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (testLoader) ImportObjectTypeSpec(bytes json.RawMessage) (any, error) { return nil, nil }
+func (testLoader) ImportResourceSpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (testLoader) ImportFunctionSpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (tl *testLoader) ImportPackageSpec(bytes json.RawMessage) (any, error) {
 	tl.wasCalled = true
 	assert.Equal(tl.t, tl.expected, bytes)
 	return tl.retVal, nil

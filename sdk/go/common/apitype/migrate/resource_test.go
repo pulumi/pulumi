@@ -32,13 +32,13 @@ func TestV1ToV2(t *testing.T) {
 		Delete: true,
 		ID:     resource.ID("bar"),
 		Type:   tokens.Type("special"),
-		Inputs: map[string]interface{}{
+		Inputs: map[string]any{
 			"foo_in": "baz",
 		},
-		Defaults: map[string]interface{}{
+		Defaults: map[string]any{
 			"foo_default": "stuff",
 		},
-		Outputs: map[string]interface{}{
+		Outputs: map[string]any{
 			"foo_out": "out",
 		},
 		Parent:  resource.URN("parent"),
@@ -55,10 +55,10 @@ func TestV1ToV2(t *testing.T) {
 	assert.True(t, v2.Delete)
 	assert.Equal(t, resource.ID("bar"), v2.ID)
 	assert.Equal(t, tokens.Type("special"), v2.Type)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"foo_in": "baz",
 	}, v2.Inputs)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"foo_out": "out",
 	}, v2.Outputs)
 	assert.Equal(t, resource.URN("parent"), v2.Parent)
@@ -80,10 +80,10 @@ func TestV2ToV3(t *testing.T) {
 		Delete: true,
 		ID:     resource.ID("bar"),
 		Type:   tokens.Type("special"),
-		Inputs: map[string]interface{}{
+		Inputs: map[string]any{
 			"foo_in": "baz",
 		},
-		Outputs: map[string]interface{}{
+		Outputs: map[string]any{
 			"foo_out": "out",
 		},
 		Parent:   resource.URN("parent"),
@@ -104,10 +104,10 @@ func TestV2ToV3(t *testing.T) {
 	assert.True(t, v3.Delete)
 	assert.Equal(t, resource.ID("bar"), v3.ID)
 	assert.Equal(t, tokens.Type("special"), v3.Type)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"foo_in": "baz",
 	}, v3.Inputs)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"foo_out": "out",
 	}, v3.Outputs)
 	assert.Equal(t, resource.URN("parent"), v3.Parent)

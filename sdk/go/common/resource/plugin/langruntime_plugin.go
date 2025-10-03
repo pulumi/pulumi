@@ -193,7 +193,7 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "language",
 		}
@@ -206,7 +206,7 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	return dialOpts
 }
 
-func buildArgsForNewPlugin(host Host, root string, options map[string]interface{}) ([]string, error) {
+func buildArgsForNewPlugin(host Host, root string, options map[string]any) ([]string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err

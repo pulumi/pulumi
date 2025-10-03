@@ -250,7 +250,7 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	return true
 }
 
-func fprintIgnoreError(w io.Writer, a ...interface{}) {
+func fprintIgnoreError(w io.Writer, a ...any) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)
 }

@@ -859,7 +859,7 @@ func (i *partialPackageFunctionsIter) Next() bool {
 
 // parseJSONPropertyValue parses a JSON value from the given RawMessage. If the RawMessage is empty, parsing is skipped
 // and the function returns nil.
-func parseJSONPropertyValue(raw json.RawMessage, dest interface{}) error {
+func parseJSONPropertyValue(raw json.RawMessage, dest any) error {
 	if len(raw) == 0 {
 		return nil
 	}

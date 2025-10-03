@@ -64,7 +64,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 						"requiredTags": {
 							"type":        "array",
 							"description": "List of required tag keys",
-							"items": map[string]interface{}{
+							"items": map[string]any{
 								"type": "string",
 							},
 						},
@@ -333,15 +333,15 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 						},
 						"arrayProp": {
 							"type": "array",
-							"items": map[string]interface{}{
+							"items": map[string]any{
 								"type": "string",
 							},
 							"minItems": 1,
 						},
 						"objectProp": {
 							"type": "object",
-							"properties": map[string]interface{}{
-								"nestedProp": map[string]interface{}{
+							"properties": map[string]any{
+								"nestedProp": map[string]any{
 									"type": "string",
 								},
 							},
@@ -411,7 +411,7 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 	require.Contains(t, policy.ConfigSchema.Properties, "objectProp")
 
 	// Verify we can unmarshal the properties back to check they were preserved
-	var stringProp map[string]interface{}
+	var stringProp map[string]any
 	err = json.Unmarshal(*policy.ConfigSchema.Properties["stringProp"], &stringProp)
 	require.NoError(t, err)
 	assert.Equal(t, "string", stringProp["type"])

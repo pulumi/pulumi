@@ -24,14 +24,14 @@ func gfmHeaderAnchor(header string) string {
 	return "#" + strings.ReplaceAll(header, " ", "-")
 }
 
-func fprintf(w io.Writer, f string, args ...interface{}) {
+func fprintf(w io.Writer, f string, args ...any) {
 	_, err := fmt.Fprintf(w, f, args...)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func toJSON(v interface{}) string {
+func toJSON(v any) string {
 	bytes, err := json.Marshal(v)
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +58,7 @@ type converter struct {
 	defs map[string]*jsonschema.Schema
 }
 
-func (c *converter) printf(f string, args ...interface{}) {
+func (c *converter) printf(f string, args ...any) {
 	fprintf(c.w, f, args...)
 }
 

@@ -448,19 +448,19 @@ func TestPreviewImportFile(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "preview", "--import-file", "import.json")
 
-	expectedResources := []interface{}{
-		map[string]interface{}{
+	expectedResources := []any{
+		map[string]any{
 			"id":      "<PLACEHOLDER>",
 			"name":    "username",
 			"type":    "random:index/randomPet:RandomPet",
 			"version": "4.12.0",
 		},
-		map[string]interface{}{
+		map[string]any{
 			"name":      "component",
 			"type":      "pkg:index:MyComponent",
 			"component": true,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"id":          "<PLACEHOLDER>",
 			"logicalName": "username",
 			// This isn't ideal, we don't really need to change the "name" here because it isn't used as a
@@ -475,7 +475,7 @@ func TestPreviewImportFile(t *testing.T) {
 
 	importBytes, err := os.ReadFile(filepath.Join(e.CWD, "import.json"))
 	require.NoError(t, err)
-	var actual map[string]interface{}
+	var actual map[string]any
 	err = json.Unmarshal(importBytes, &actual)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, expectedResources, actual["resources"])
@@ -990,16 +990,16 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 
 	// Check this used the right provider, i.e. one with parameterization
 	stack, _ := e.RunCommand("pulumi", "stack", "export")
-	var state map[string]interface{}
+	var state map[string]any
 	err = json.Unmarshal([]byte(stack), &state)
 	require.NoError(t, err)
 
-	resources := state["deployment"].(map[string]interface{})["resources"].([]interface{})
+	resources := state["deployment"].(map[string]any)["resources"].([]any)
 
-	var resource map[string]interface{}
-	var provider map[string]interface{}
+	var resource map[string]any
+	var provider map[string]any
 	for _, res := range resources {
-		res := res.(map[string]interface{})
+		res := res.(map[string]any)
 		if res["type"] == "random:index/id:Id" {
 			assert.Nil(t, resource) // only expect one
 			resource = res
@@ -1012,7 +1012,7 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	require.NotNil(t, resource)
 	require.NotNil(t, provider)
 
-	inputs := provider["inputs"].(map[string]interface{})
+	inputs := provider["inputs"].(map[string]any)
 	assert.Equal(t, "3.6.3", inputs["version"])
 	ref := provider["urn"].(string) + "::" + provider["id"].(string)
 

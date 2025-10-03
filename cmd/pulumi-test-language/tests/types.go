@@ -95,13 +95,13 @@ func (l *L) Failed() bool {
 }
 
 // Errorf records the given error message and marks this test as failed.
-func (l *L) Errorf(format string, args ...interface{}) {
+func (l *L) Errorf(format string, args ...any) {
 	l.log(1, fmt.Sprintf(format, args...))
 	l.Fail()
 }
 
 // Logf records the given message in the L's logs.
-func (l *L) Logf(format string, args ...interface{}) {
+func (l *L) Logf(format string, args ...any) {
 	l.log(1, fmt.Sprintf(format, args...))
 }
 
@@ -209,8 +209,8 @@ type TestingT interface {
 	FailNow()
 	Fail()
 	Failed() bool
-	Errorf(string, ...interface{})
-	Logf(string, ...interface{})
+	Errorf(string, ...any)
+	Logf(string, ...any)
 }
 
 var (

@@ -269,7 +269,7 @@ type goOptions struct {
 	buildTarget string
 }
 
-func parseOptions(root string, options map[string]interface{}) (goOptions, error) {
+func parseOptions(root string, options map[string]any) (goOptions, error) {
 	var goOptions goOptions
 	if binary, ok := options["binary"]; ok {
 		if binary, ok := binary.(string); ok {
@@ -890,7 +890,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, db
 		return err
 	}
 
-	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+	debugConfig, err := structpb.NewStruct(map[string]any{
 		"name":    name,
 		"type":    "go",
 		"request": "attach",

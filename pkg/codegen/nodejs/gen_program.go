@@ -1371,7 +1371,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

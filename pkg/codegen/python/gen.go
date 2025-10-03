@@ -1470,7 +1470,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	ins := codegen.NewStringSet()
 	for _, prop := range res.InputProperties {
 		pname := InitParamName(prop.Name)
-		var arg interface{}
+		var arg any
 		var err error
 
 		// Fill in computed defaults for arguments.
@@ -2824,7 +2824,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		var arg interface{}
+		var arg any
 		var err error
 
 		// Check that the property isn't deprecated.
@@ -2927,7 +2927,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	return nil
 }
 
-func getPrimitiveValue(value interface{}) (string, error) {
+func getPrimitiveValue(value any) (string, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
@@ -2953,7 +2953,7 @@ func getPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func getConstValue(cv interface{}) (string, error) {
+func getConstValue(cv any) (string, error) {
 	if cv == nil {
 		return "", nil
 	}
@@ -3380,9 +3380,9 @@ func genPyprojectTOML(tool string,
 		BuildBackend: "setuptools.build_meta",
 	}
 
-	schema.Tool = map[string]interface{}{
-		"setuptools": map[string]interface{}{
-			"package-data": map[string]interface{}{
+	schema.Tool = map[string]any{
+		"setuptools": map[string]any{
+			"package-data": map[string]any{
 				*schema.Project.Name: []string{
 					"py.typed",
 					"pulumi-plugin.json",

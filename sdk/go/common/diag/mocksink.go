@@ -26,10 +26,10 @@ type MockSink struct {
 
 type MockMessage struct {
 	Diag *Diag
-	Args []interface{}
+	Args []any
 }
 
-func (d *MockSink) Logf(sev Severity, dia *Diag, args ...interface{}) {
+func (d *MockSink) Logf(sev Severity, dia *Diag, args ...any) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -43,22 +43,22 @@ func (d *MockSink) Logf(sev Severity, dia *Diag, args ...interface{}) {
 	})
 }
 
-func (d *MockSink) Debugf(dia *Diag, args ...interface{}) {
+func (d *MockSink) Debugf(dia *Diag, args ...any) {
 	d.Logf(Debug, dia, args...)
 }
 
-func (d *MockSink) Infof(dia *Diag, args ...interface{}) {
+func (d *MockSink) Infof(dia *Diag, args ...any) {
 	d.Logf(Info, dia, args...)
 }
 
-func (d *MockSink) Infoerrf(dia *Diag, args ...interface{}) {
+func (d *MockSink) Infoerrf(dia *Diag, args ...any) {
 	d.Logf(Infoerr, dia, args...)
 }
 
-func (d *MockSink) Errorf(dia *Diag, args ...interface{}) {
+func (d *MockSink) Errorf(dia *Diag, args ...any) {
 	d.Logf(Error, dia, args...)
 }
 
-func (d *MockSink) Warningf(dia *Diag, args ...interface{}) {
+func (d *MockSink) Warningf(dia *Diag, args ...any) {
 	d.Logf(Warning, dia, args...)
 }

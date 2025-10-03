@@ -37,7 +37,7 @@ func TestAboutCommands(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
 		stdout, _ := e.RunCommand("pulumi", "about", "--json")
-		var res interface{}
+		var res any
 		require.NoError(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
 		assert.Regexp(t, `"goVersion": "go1\..*"`, stdout)
 		assert.Contains(t, stdout, runtime.Compiler)

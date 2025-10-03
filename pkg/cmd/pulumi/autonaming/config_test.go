@@ -382,7 +382,7 @@ pulumi:autonaming:
 			t.Parallel()
 
 			cfg := config.Map{}
-			err := cfg.UnmarshalYAML(func(v interface{}) error {
+			err := cfg.UnmarshalYAML(func(v any) error {
 				var raw map[string]config.Value
 				if err := yaml.Unmarshal([]byte(tt.configYAML), &raw); err != nil {
 					return err

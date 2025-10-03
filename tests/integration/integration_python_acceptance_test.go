@@ -71,11 +71,11 @@ func TestDynamicPython(t *testing.T) {
 
 				// Regression testing the workaround for https://github.com/pulumi/pulumi/issues/8265
 				// Ensure the __provider input and output was marked secret
-				assertIsSecret := func(v interface{}) {
+				assertIsSecret := func(v any) {
 					switch v := v.(type) {
 					case string:
 						assert.Fail(t, "__provider was not a secret")
-					case map[string]interface{}:
+					case map[string]any:
 						assert.Equal(t, resource.SecretSig, v[resource.SigKey])
 					}
 				}
@@ -186,7 +186,7 @@ func optsForConstructPython(
 						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						secretPropValue, ok := res.Outputs["secret"].(map[string]any)
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
 						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
@@ -615,7 +615,7 @@ func TestNewPythonUsesPip(t *testing.T) {
 
 	require.Contains(t, stdout, "pulumi install")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
@@ -634,7 +634,7 @@ func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 
 	require.Contains(t, stdout, "pulumi install")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
@@ -662,7 +662,7 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 		"--stack", "test",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain": "poetry",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
@@ -686,7 +686,7 @@ func TestNewPythonChooseUv(t *testing.T) {
 		"--description", "A python test using uv as toolchain",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain": "uv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
@@ -719,7 +719,7 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 		"--runtime-options", "toolchain=pip,virtualenv=mytestenv",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "mytestenv",
 	}

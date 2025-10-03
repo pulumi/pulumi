@@ -161,7 +161,7 @@ func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, er
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
+func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
 		httpCallOptions{})
 }
@@ -178,7 +178,7 @@ func (pc *Client) restCallWithOptions(
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
-func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
+func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any,
 	token updateToken, httpOptions httpCallOptions,
 ) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
@@ -1471,7 +1471,7 @@ func is404(err error) bool {
 }
 
 // SubmitAIPrompt sends the user's prompt to the Pulumi Service and streams back the response.
-func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (*http.Response, error) {
+func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Response, error) {
 	url, err := url.Parse(pc.apiURL + getAIPromptPath())
 	if err != nil {
 		return nil, err
@@ -1511,7 +1511,7 @@ func (pc *Client) ExplainPreviewWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
-func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (string, error) {
+func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)

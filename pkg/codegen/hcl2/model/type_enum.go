@@ -52,14 +52,14 @@ type EnumType struct {
 	// See https://github.com/pulumi/pulumi/pull/9290#discussion_r851356288
 
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	s atomic.Value // Value<string>
 
 	cache *gsync.Map[Type, cacheEntry]
 }
 
-func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
+func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...any) *EnumType {
 	contract.Assertf(len(elements) > 0, "Enums must be represent-able")
 
 	t := elements[0].Type()

@@ -76,7 +76,7 @@ func TestBindLiteral(t *testing.T) {
 	assert.Equal(t, "\"foo\"", fmt.Sprintf("%v", expr))
 }
 
-type environment map[string]interface{}
+type environment map[string]any
 
 func (e environment) scope() *Scope {
 	s := NewRootScope(syntax.None)
@@ -100,7 +100,7 @@ type exprTestCase struct {
 func TestBindBinaryOp(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": NewOutputType(BoolType),
 		"b": NewPromiseType(BoolType),
 		"c": NewOutputType(NumberType),
@@ -152,7 +152,7 @@ func TestBindBinaryOp(t *testing.T) {
 func TestBindConditional(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": NewOutputType(BoolType),
 		"b": NewPromiseType(BoolType),
 	})
@@ -189,7 +189,7 @@ func TestBindFor(t *testing.T) {
 
 	// TODO: union collection types
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a":  NewMapType(StringType),
 		"aa": NewMapType(NewOutputType(StringType)),
 		"b":  NewOutputType(NewMapType(StringType)),
@@ -251,7 +251,7 @@ func TestBindFor(t *testing.T) {
 func TestBindFunctionCall(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"f0": NewFunction(StaticFunctionSignature{
 			Parameters: []Parameter{
 				{Name: "foo", Type: StringType},
@@ -310,7 +310,7 @@ func TestBindFunctionCall(t *testing.T) {
 func TestBindIndex(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": StringType,
 		"b": IntType,
 		"c": NewOutputType(StringType),
@@ -381,7 +381,7 @@ func TestBindIndex(t *testing.T) {
 func TestBindObjectCons(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": StringType,
 		"b": NumberType,
 		"c": BoolType,
@@ -426,7 +426,7 @@ func TestBindObjectCons(t *testing.T) {
 func TestBindRelativeTraversal(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a":  NewMapType(StringType),
 		"aa": NewMapType(NewOutputType(StringType)),
 		"b":  NewOutputType(NewMapType(StringType)),
@@ -489,7 +489,7 @@ func TestBindScopeTraversal(t *testing.T) {
 			"baz": StringType,
 		}),
 	})
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": StringType,
 		"b": IntType,
 		"c": NewListType(BoolType),
@@ -563,7 +563,7 @@ func TestBindSplat(t *testing.T) {
 			"baz": StringType,
 		}),
 	})
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": NewListType(NewListType(StringType)),
 		"b": NewListType(ot),
 		"c": NewSetType(NewListType(StringType)),
@@ -628,7 +628,7 @@ func TestBindSplat(t *testing.T) {
 func TestBindTemplate(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": StringType,
 		"b": NumberType,
 		"c": BoolType,
@@ -702,7 +702,7 @@ func TestBindTemplate(t *testing.T) {
 func TestBindTupleCons(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": NewOutputType(StringType),
 		"b": NewPromiseType(StringType),
 		"c": NewUnionType(StringType, BoolType),
@@ -732,7 +732,7 @@ func TestBindTupleCons(t *testing.T) {
 func TestBindUnaryOp(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": NumberType,
 		"b": BoolType,
 		"c": NewOutputType(NumberType),

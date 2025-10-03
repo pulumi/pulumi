@@ -290,7 +290,7 @@ type nonfatalT struct {
 	messages []string
 }
 
-func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
+func (t *nonfatalT) Fatalf(msg string, args ...any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

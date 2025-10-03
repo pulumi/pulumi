@@ -67,7 +67,7 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 		return nil, "", err
 	}
 	if clientAddress != "" {
-		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]any{
 			"address": clientAddress,
 		})
 	}

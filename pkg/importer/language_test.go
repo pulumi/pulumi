@@ -137,7 +137,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			ID:     "bucket-object-1",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				"bucket": "bucket-object-2",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
@@ -147,7 +147,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			ID:     "bucket-object-2",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				"bucket": "bucket-object-1",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),

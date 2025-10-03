@@ -37,7 +37,7 @@ type ObjectType struct {
 	// Properties records the types of the object's properties.
 	Properties map[string]Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	propertyUnion Type
 	s             atomic.Value // Value<string>
@@ -48,7 +48,7 @@ type ObjectType struct {
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
-func NewObjectType(properties map[string]Type, annotations ...interface{}) *ObjectType {
+func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
 	return &ObjectType{
 		Properties:  properties,
 		Annotations: annotations,
@@ -58,7 +58,7 @@ func NewObjectType(properties map[string]Type, annotations ...interface{}) *Obje
 }
 
 // Annotate adds annotations to the object type. Annotations may be retrieved by GetObjectTypeAnnotation.
-func (t *ObjectType) Annotate(annotations ...interface{}) {
+func (t *ObjectType) Annotate(annotations ...any) {
 	t.Annotations = append(t.Annotations, annotations...)
 }
 

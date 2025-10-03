@@ -230,7 +230,7 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 }
 
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
-func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...interface{}) error {
+func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...any) error {
 	sg.deployment.Diag().Errorf(diag, args...)
 	return result.BailErrorf(diag.Message, args...)
 }
@@ -2656,7 +2656,7 @@ func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.
 }
 
 // issueCheckErrors prints any check errors to the given printer function.
-func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
+func issueCheckFailures(printf func(*diag.Diag, ...any), new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
 	if len(failures) == 0 {

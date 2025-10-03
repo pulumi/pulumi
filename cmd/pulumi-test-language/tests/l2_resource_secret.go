@@ -48,7 +48,7 @@ func init() {
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"public":  "open",
 						"private": resource.MakeSecret(resource.NewProperty("closed")),
-						"publicData": map[string]interface{}{
+						"publicData": map[string]any{
 							"public": "open",
 							// TODO https://github.com/pulumi/pulumi/issues/10319: This should be a secret,
 							// but currently _all_ the SDKs send it as a plain value and the engine doesn't

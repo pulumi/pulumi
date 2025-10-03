@@ -351,7 +351,7 @@ func linkNodeJsPackage(ctx *LinkPackageContext) error {
 }
 
 // printNodeJsImportInstructions prints instructions for importing the NodeJS SDK to the specified writer.
-func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map[string]interface{}) error {
+func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map[string]any) error {
 	importName := cgstrings.Camel(pkg.Name)
 
 	useTypescript := true

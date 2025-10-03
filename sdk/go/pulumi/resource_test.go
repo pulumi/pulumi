@@ -576,8 +576,8 @@ func TestNewResourceInput(t *testing.T) {
 
 	resourceOutput := resourceInput.ToResourceOutput()
 
-	channel := make(chan interface{})
-	resourceOutput.ApplyT(func(res interface{}) interface{} {
+	channel := make(chan any)
+	resourceOutput.ApplyT(func(res any) any {
 		channel <- res
 		return res
 	})

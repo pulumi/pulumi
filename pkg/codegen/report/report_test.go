@@ -100,4 +100,4 @@ func TestReportExample(t *testing.T) {
 	}, reporter.Summary())
 }
 
-func handleAsNormal(args ...interface{}) {}
+func handleAsNormal(args ...any) {}

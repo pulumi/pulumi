@@ -731,7 +731,7 @@ type TestPlan struct {
 	Project        string
 	Stack          string
 	Runtime        string
-	RuntimeOptions map[string]interface{}
+	RuntimeOptions map[string]any
 	Config         config.Map
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient

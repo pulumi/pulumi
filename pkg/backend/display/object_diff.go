@@ -96,18 +96,18 @@ func writeString(b io.StringWriter, s string) {
 	contract.IgnoreError(err)
 }
 
-func writeIndentedf(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...interface{}) {
+func writeIndentedf(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...any) {
 	writeString(b, deploy.Color(op))
 	writeString(b, getIndentationString(indent, op, prefix))
 	writeString(b, fmt.Sprintf(format, a...))
 	writeString(b, colors.Reset)
 }
 
-func writeUnprefixedIndentedf(b io.StringWriter, indent int, op display.StepOp, format string, a ...interface{}) {
+func writeUnprefixedIndentedf(b io.StringWriter, indent int, op display.StepOp, format string, a ...any) {
 	writeIndentedf(b, indent, op, false, format, a...)
 }
 
-func writef(b io.StringWriter, op display.StepOp, format string, a ...interface{}) {
+func writef(b io.StringWriter, op display.StepOp, format string, a ...any) {
 	writeUnprefixedIndentedf(b, 0, op, format, a...)
 }
 
@@ -544,7 +544,7 @@ func (p *propertyPrinter) writeString(s string) {
 	writeString(p.dest, s)
 }
 
-func (p *propertyPrinter) writeIndentedf(format string, a ...interface{}) {
+func (p *propertyPrinter) writeIndentedf(format string, a ...any) {
 	if p.truncateOutput {
 		for i, item := range a {
 			if item, ok := item.(string); ok {
@@ -555,11 +555,11 @@ func (p *propertyPrinter) writeIndentedf(format string, a ...interface{}) {
 	writeIndentedf(p.dest, p.indent, p.op, p.prefix, format, a...)
 }
 
-func (p *propertyPrinter) writeUnprefixedIndentedf(format string, a ...interface{}) {
+func (p *propertyPrinter) writeUnprefixedIndentedf(format string, a ...any) {
 	writeUnprefixedIndentedf(p.dest, p.indent, p.op, format, a...)
 }
 
-func (p *propertyPrinter) writef(format string, a ...interface{}) {
+func (p *propertyPrinter) writef(format string, a ...any) {
 	writef(p.dest, p.op, format, a...)
 }
 
@@ -665,12 +665,12 @@ func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 	}
 }
 
-func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
+func (p *propertyPrinter) printAssetOrArchive(v any, name string) {
 	p.writeIndentedf("    \"%v\": ", name)
 	p.indented(1).printPropertyValue(assetOrArchiveToPropertyValue(v))
 }
 
-func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
+func assetOrArchiveToPropertyValue(v any) resource.PropertyValue {
 	switch t := v.(type) {
 	case *asset.Asset:
 		return resource.NewProperty(t)
@@ -927,7 +927,7 @@ func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
 	p.printAdd(assetOrArchiveToPropertyValue(newArchive), titleFunc)
 }
 
-func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interface{}) {
+func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]any) {
 	// Diffing assets proceeds by getting the sorted list of asset names from both the old and
 	// new assets, and then stepwise processing each.  For any asset in old that isn't in new,
 	// we print this out as a delete.  For any asset in new that isn't in old, we print this out
@@ -1069,7 +1069,7 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 	p.printAdd(assetOrArchiveToPropertyValue(newAsset), titleFunc)
 }
 
-func (p *propertyPrinter) printAssetArchiveDiff(titleFunc func(p *propertyPrinter), old, new interface{}) {
+func (p *propertyPrinter) printAssetArchiveDiff(titleFunc func(p *propertyPrinter), old, new any) {
 	p.printDelete(assetOrArchiveToPropertyValue(old), titleFunc)
 	p.printAdd(assetOrArchiveToPropertyValue(new), titleFunc)
 }
@@ -1243,13 +1243,13 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 // decodeValue attempts to decode a string as JSON or YAML. The second return value is the kind of value that was
 // decoded, either "json" or "yaml".
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
-	decode := func() (interface{}, string, bool) {
+	decode := func() (any, string, bool) {
 		// Strip whitespace for the purposes of decoding.
 		repr = strings.TrimSpace(repr)
 		r := strings.NewReader(repr)
 
 		jsonDecoder := json.NewDecoder(r)
-		var object interface{}
+		var object any
 		if err := jsonDecoder.Decode(&object); err == nil {
 			// Make sure _all_ the string was consumed as JSON.
 			if !jsonDecoder.More() {
@@ -1269,7 +1269,7 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 			// Make sure _all_ the string was consumed as YAML. Unlike JsonDecoder above, the YamlDecoder
 			// doesn't give an easy way to do this, so our workaround is we ask it to try and decode another
 			// value, and if it fails with io.EOF, then we know we've consumed the whole string.
-			var ignored interface{}
+			var ignored any
 			eofErr := yamlDecoder.Decode(&ignored)
 			if errors.Is(eofErr, io.EOF) {
 				translated, ok := p.translateYAMLValue(object)
@@ -1286,20 +1286,20 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 	object, kind, ok := decode()
 	if ok {
 		switch object.(type) {
-		case []interface{}, map[string]interface{}:
+		case []any, map[string]any:
 			return resource.NewPropertyValue(object), kind, true
 		}
 	}
 	return resource.PropertyValue{}, "", false
 }
 
-// translateYAMLValue attempts to replace map[interface{}]interface{} values in a decoded YAML value with
-// map[string]interface{} values. map[interface{}]interface{} values can arise from YAML mappings with keys that are
+// translateYAMLValue attempts to replace map[any]any values in a decoded YAML value with
+// map[string]any values. map[any]any values can arise from YAML mappings with keys that are
 // not strings. This method only translates such maps if they have purely numeric keys--maps with slice or map keys
 // are not translated.
-func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) {
+func (p *propertyPrinter) translateYAMLValue(v any) (any, bool) {
 	switch v := v.(type) {
-	case []interface{}:
+	case []any:
 		for i, e := range v {
 			ee, ok := p.translateYAMLValue(e)
 			if !ok {
@@ -1308,7 +1308,7 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 			v[i] = ee
 		}
 		return v, true
-	case map[string]interface{}:
+	case map[string]any:
 		for k, e := range v {
 			ee, ok := p.translateYAMLValue(e)
 			if !ok {
@@ -1317,8 +1317,8 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 			v[k] = ee
 		}
 		return v, true
-	case map[interface{}]interface{}:
-		vv := make(map[string]interface{}, len(v))
+	case map[any]any:
+		vv := make(map[string]any, len(v))
 		for k, e := range v {
 			var sk string
 			switch k := k.(type) {

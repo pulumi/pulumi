@@ -1800,7 +1800,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 
 	prop := &Property{
 		Name: "prop1",
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpProp1",
 			},
@@ -1812,7 +1812,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		Properties: []*Property{
 			prop,
 		},
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpResource",
 			},
@@ -1889,10 +1889,10 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			fspec: FunctionSpec{
 				Outputs: ots,
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1910,14 +1910,14 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			fspec: FunctionSpec{
 				Outputs: otsPlain,
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
-					"plain": []interface{}{"x"},
+					"plain": []any{"x"},
 					"type":  "object",
 				},
 			},
@@ -1937,8 +1937,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					},
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"plain": true,
 					"type":  "integer",
 				},
@@ -1953,8 +1953,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					},
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"type": "integer",
 				},
 			},
@@ -1967,11 +1967,11 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpecIsPlain: true,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"plain": true,
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1986,10 +1986,10 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpec: ots,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -2004,11 +2004,11 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpec: otsPlain,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"plain": []interface{}{"x"},
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"plain": []any{"x"},
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},

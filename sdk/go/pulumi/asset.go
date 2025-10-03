@@ -89,7 +89,7 @@ type Archive interface {
 	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Assets returns a map of named assets or archives, for collections.
-	Assets() map[string]interface{}
+	Assets() map[string]any
 	// Path returns the filesystem path, for file-based archives.
 	Path() string
 	// URI returns a URI, for remote network-based archives.
@@ -99,14 +99,14 @@ type Archive interface {
 }
 
 type archive struct {
-	assets  map[string]interface{}
+	assets  map[string]any
 	path    string
 	uri     string
 	invalid bool
 }
 
 // NewAssetArchive creates a new archive from an in-memory collection of named assets or other archives.
-func NewAssetArchive(assets map[string]interface{}) Archive {
+func NewAssetArchive(assets map[string]any) Archive {
 	for k, a := range assets {
 		if _, ok := a.(Asset); !ok {
 			if _, ok2 := a.(Archive); !ok2 {
@@ -129,7 +129,7 @@ func NewRemoteArchive(uri string) Archive {
 }
 
 // Assets returns the archive's asset map, if this is a collection of archives/assets, or nil otherwise.
-func (a *archive) Assets() map[string]interface{} { return a.assets }
+func (a *archive) Assets() map[string]any { return a.assets }
 
 // Path returns the archive's file path, if this is a file archive, or an empty string otherwise.
 func (a *archive) Path() string { return a.path }
