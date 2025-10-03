@@ -419,11 +419,34 @@ func getResourceOutputsPropertiesString(
 	}
 	op := step.Op
 
+	var hiddenProperties []resource.PropertyPath
+	if step.New != nil && step.New.State != nil {
+		hiddenProperties = step.New.State.HideDiff
+	} else if step.Old != nil && step.Old.State != nil {
+		hiddenProperties = step.Old.State.HideDiff
+	}
+	var hiddenDiffs []resource.PropertyPath
+
 	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
 	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
-		outputDiff = step.Old.Outputs.Diff(outs, resource.IsInternalPropertyKey)
+		outputDiff = step.Old.Outputs.DiffWithOptions(outs,
+			resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+			resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+				for _, p := range hiddenProperties {
+					if p.Contains(path) {
+						hiddenDiffs = append(hiddenDiffs, p)
+						return true
+					}
+				}
+				return false
+			}),
+		)
+		// If there is no diff only because of hidden properties, construct an empty diff.
+		if outputDiff == nil && len(hiddenDiffs) > 0 {
+			outputDiff = &resource.ObjectDiff{}
+		}
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
@@ -456,9 +479,25 @@ func getResourceOutputsPropertiesString(
 		truncateOutput: truncateOutput,
 	}
 
+	if len(hiddenDiffs) > 0 {
+		slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+			return cmp.Compare(a.String(), b.String())
+		})
+		hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+			return a.String() == b.String()
+		})
+		p.printHiddenPaths(hiddenDiffs)
+	}
+
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {
 		out := outs[k]
+
+		for _, p := range hiddenProperties {
+			if p.Contains(resource.PropertyPath{string(k)}) {
+				continue
+			}
+		}
 
 		// Print this property if it is printable and if any of the following are true:
 		// - a property with the same key is not present in the inputs
@@ -466,7 +505,18 @@ func getResourceOutputsPropertiesString(
 		// - we are doing a refresh, in which case we always want to show state differences
 		if outputDiff != nil || (!resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
 			if in, has := ins[k]; has && !refresh {
-				if out.Diff(in, resource.IsInternalPropertyKey) == nil {
+				if out.DiffWithOptions(in,
+					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+					resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+						for _, p := range hiddenProperties {
+							if p.Contains(path) {
+								return true
+							}
+						}
+						return false
+					}),
+					resource.InitialPropertyPath{string(k)},
+				) == nil {
 					continue
 				}
 			}
