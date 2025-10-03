@@ -352,7 +352,11 @@ func pulumiAPICall(ctx context.Context,
 		if err != nil {
 			return "", nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
 		}
-		err = decodeError(respBody, resp.StatusCode, opts, resp.Header)
+		reqID := ""
+		if resp.StatusCode >= 500 {
+			reqID = resp.Header.Get("X-Pulumi-Request-ID")
+		}
+		err = decodeError(respBody, resp.StatusCode, opts, reqID)
 		if resp.StatusCode == 403 {
 			err = backenderr.ForbiddenError{Err: err}
 		}
@@ -363,7 +367,7 @@ func pulumiAPICall(ctx context.Context,
 	return url, resp, nil
 }
 
-func decodeError(respBody []byte, statusCode int, opts httpCallOptions, header http.Header) error {
+func decodeError(respBody []byte, statusCode int, opts httpCallOptions, reqID string) error {
 	if opts.ErrorResponse != nil {
 		if err := json.Unmarshal(respBody, opts.ErrorResponse); err == nil {
 			return opts.ErrorResponse.(error)
@@ -375,7 +379,7 @@ func decodeError(respBody []byte, statusCode int, opts httpCallOptions, header h
 		errResp.Code = statusCode
 		errResp.Message = strings.TrimSpace(string(respBody))
 	}
-	if reqID := header.Get("X-Pulumi-Request-ID"); reqID != "" {
+	if reqID != "" {
 		errResp.Message = fmt.Sprintf("%s (Request ID: %s)", errResp.Message, reqID)
 	}
 	return &errResp
