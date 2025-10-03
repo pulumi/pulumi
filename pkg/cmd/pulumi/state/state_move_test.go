@@ -1366,9 +1366,14 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "provider_id",
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
 			Custom: true,
 		},
 		{
@@ -1386,14 +1391,15 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 	}
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithOptions(
-		t, sourceResources, []string{string(sourceResources[1].URN)},
+		t, sourceResources, []string{string(sourceResources[2].URN)},
 		&MoveOptions{IncludeParents: true})
 
 	assert.Contains(t, stdout.String(),
 		"Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:\n\n"+
 			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name")
 
-	require.Len(t, sourceSnapshot.Resources, 2) // The provider and "name2" should remain in the source stack
+	// The root stack, provider and "name2" should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 3)
 
 	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
