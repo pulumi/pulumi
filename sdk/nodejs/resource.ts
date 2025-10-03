@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1467,9 +1467,9 @@ export class ComponentResource<TData = any> extends Resource {
      */
     protected async initialize(
         args: Inputs,
-        opts: ComponentResourceOptions,
-        name: string,
-        type: string,
+        opts?: ComponentResourceOptions,
+        name?: string,
+        type?: string,
     ): Promise<TData> {
         return <TData>undefined!;
     }
