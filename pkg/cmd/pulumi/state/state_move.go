@@ -245,7 +245,7 @@ func (cmd *stateMoveCmd) Run(
 	if cmd.IncludeParents {
 		for _, res := range resourcesToMove {
 			for _, parent := range sourceDepGraph.ParentsOf(res) {
-				if res.Type == resource.RootStackType && res.Parent == "" ||
+				if (parent.Type == resource.RootStackType && parent.Parent == "") ||
 					strings.HasPrefix(string(parent.Type), providerPrefix) {
 					// We don't move the root stack or providers explicitly, the code below
 					// will take care of dealing with that correctly.
