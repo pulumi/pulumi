@@ -95,7 +95,6 @@ func TestIntoQName(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.input, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, QName(c.expected), IntoQName(c.input))

@@ -55,7 +55,6 @@ func TestBindProgram(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, v := range testdata {
-		v := v
 		if !v.IsDir() {
 			continue
 		}

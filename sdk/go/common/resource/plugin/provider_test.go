@@ -120,7 +120,6 @@ func TestNewDetailedDiff(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -211,7 +210,6 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 	}
 
 	for name, tt := range cases {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

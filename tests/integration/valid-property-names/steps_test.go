@@ -57,7 +57,6 @@ func TestPropertyNameDiffs(t *testing.T) {
 	}
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, propName := range validPropertyNames {
-		propName := propName
 		t.Run("validate path "+propName, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          "step1",

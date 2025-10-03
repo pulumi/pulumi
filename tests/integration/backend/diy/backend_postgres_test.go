@@ -517,7 +517,6 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	// Create stacks concurrently
 	stackRefs := make([]backend.StackReference, numConcurrentOperations)
 	for i := 0; i < numConcurrentOperations; i++ {
-		i := i // capture loop variable
 		stackName := "concurrent-stack-" + pgtest.GenerateID()
 		stackRef, err := backends[i].ParseStackReference(stackName)
 		require.NoError(t, err, "Failed to parse stack reference %d", i)

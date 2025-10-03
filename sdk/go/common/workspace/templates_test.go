@@ -192,7 +192,6 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 
 	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -229,7 +228,6 @@ Did you mean this?
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.templateName, func(t *testing.T) {
 			_, err := RetrieveTemplates(context.Background(), tt.templateName, false, TemplateKindPulumiProject)
 			assert.ErrorAs(t, err, &TemplateNotFoundError{})
@@ -258,7 +256,6 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateName, false, tt.templateKind)
 			require.NoError(t, err)
@@ -302,7 +299,6 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateURL, false, tt.templateKind)
 			require.NoError(t, err)
@@ -352,7 +348,6 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -379,7 +374,6 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), ".", false, tt.templateKind)
 			require.NoError(t, err)
@@ -437,7 +431,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Copy"
 
@@ -454,7 +447,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-CopyForce"
 
@@ -471,7 +463,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Overwrite"
 
@@ -491,7 +482,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
 

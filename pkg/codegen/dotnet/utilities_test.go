@@ -40,7 +40,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"Equals", "EqualsValue", false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -67,7 +66,6 @@ func Test_makeValidIdentifier(t *testing.T) {
 		{"8", "_8"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 

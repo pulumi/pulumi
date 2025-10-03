@@ -47,7 +47,6 @@ func TestStackLoadOption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprint(tt.give), func(t *testing.T) {
 			t.Parallel()
 

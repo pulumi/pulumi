@@ -435,7 +435,6 @@ func TestInvalidTypes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
@@ -453,7 +452,6 @@ func TestEnums(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range enumTests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
@@ -601,7 +599,6 @@ func TestRejectDuplicateNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -676,7 +673,6 @@ func TestImportResourceRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -820,7 +816,6 @@ func Test_parseTypeSpecRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1307,7 +1302,6 @@ func TestMethods(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
@@ -1530,7 +1524,6 @@ func TestReplaceOnChanges(t *testing.T) {
 			errors:   []string{},
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1641,7 +1634,6 @@ func TestValidateTypeToken(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1688,7 +1680,6 @@ func TestTypeString(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.output, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, c.output, c.input.String())
@@ -1756,7 +1747,6 @@ func TestPackageIdentity(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.nameA, func(t *testing.T) {
 			t.Parallel()
 
@@ -2029,7 +2019,6 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		fspec := tc.fspec
 		expectSerial := tc.serial
 		expectFSpec := fspec
@@ -2105,7 +2094,6 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name+"/marshalFunction", func(t *testing.T) {
 			t.Parallel()
 			pkg := Package{}

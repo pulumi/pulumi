@@ -176,7 +176,6 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
-		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 
@@ -221,7 +220,6 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 			continue
 		}
 
-		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 
@@ -553,7 +551,6 @@ func TestInstall(t *testing.T) {
 
 	for _, runtime := range Runtimes {
 		// Reassign runtime before capture since it changes while looping.
-		runtime := runtime
 
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
@@ -633,7 +630,6 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 	//nolint:paralleltest
 	for _, runtime := range Runtimes {
 		for _, c := range cases {
-			c := c
 			name := fmt.Sprintf("%s %s", runtime, c.name)
 
 			t.Run(name, func(t *testing.T) {

@@ -56,7 +56,6 @@ func TestRelPathToRelImport(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pathTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -357,7 +356,6 @@ func TestCalculateDeps(t *testing.T) {
 	}}
 
 	for i, tc := range cases {
-		tc := tc
 		name := fmt.Sprintf("CalculateDeps #%d", i+1)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()

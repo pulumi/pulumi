@@ -76,7 +76,6 @@ func TestConfigSet(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			project := workspace.Project{
 				Name: "testProject",
@@ -191,7 +190,6 @@ func TestConfigSetTypes(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run("", func(t *testing.T) {
 			project := workspace.Project{
 				Name: "testProject",

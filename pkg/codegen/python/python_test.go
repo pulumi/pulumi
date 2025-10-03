@@ -47,7 +47,6 @@ func TestPyName(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pyNameTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -69,7 +68,6 @@ func TestPyNameLegacy(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pyNameTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 

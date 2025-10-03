@@ -1106,7 +1106,6 @@ func TestDisableDefaultProviders(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range cases {
-		tt := tt
 		var name []string
 		if tt.disableDefault {
 			name = append(name, "disableDefault")
@@ -1456,7 +1455,6 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1845,7 +1843,6 @@ func TestRequestFromNodeJS(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := requestFromNodeJS(tt.ctx)
@@ -1920,7 +1917,6 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := transformAliasForNodeJSCompat(tt.input)
@@ -2211,7 +2207,6 @@ func TestParseSourcePosition(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			s := &sourcePositions{
@@ -3715,7 +3710,6 @@ func TestDowngradeOutputValues(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := downgradeOutputValues(tt.input)

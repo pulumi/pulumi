@@ -69,7 +69,6 @@ func TestAliasResolution(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range aliasTestCases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			parent := newResource(t, URN("AnUrn::ASegment"), ID("hello"))

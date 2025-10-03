@@ -266,7 +266,6 @@ func TestGenerateHCL2Definition(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
-		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			require.NoError(t, err)

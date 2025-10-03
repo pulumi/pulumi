@@ -242,7 +242,6 @@ func Test_isStringType(t *testing.T) {
 		}, false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if got := isStringType(tt.input); got != tt.expected {

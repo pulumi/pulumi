@@ -625,7 +625,6 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("project=%q/stackRef=%q", tt.projectName, tt.stackRef), func(t *testing.T) {
 			t.Parallel()
 			err := compareStackProjectName(b, tt.stackRef, tt.projectName)
@@ -695,7 +694,6 @@ func TestProjectExists(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName, false /* generateOnly */, display.Options{})
@@ -724,7 +722,6 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tempdir := tempProjectDir(t)
 			chdir(t, tempdir)
@@ -813,7 +810,6 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		name := tt.argument
 		if name == "" {
 			name = tt.prompted

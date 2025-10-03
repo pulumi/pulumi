@@ -1131,8 +1131,6 @@ func (eng *languageTestServer) RunLanguageTest(
 			// for every package, so the fuzzy check by name then exact check by version should be unique.
 			var found *string
 			for _, actual := range dependencies {
-				actual := actual
-
 				sanatize := func(s string) string {
 					return strings.ToLower(
 						strings.ReplaceAll(
