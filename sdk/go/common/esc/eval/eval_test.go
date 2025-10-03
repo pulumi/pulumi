@@ -420,7 +420,7 @@ func TestEval(t *testing.T) {
 				var rotated *esc.Environment
 				var patches []*Patch
 				var rotateDiags syntax.Diagnostics
-				var rotationResult *RotationResult
+				var rotationResult RotationResult
 				if doRotate {
 					rotated, rotationResult, rotateDiags = RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
 						&testEnvironments{basePath}, execContext, rotatePaths)

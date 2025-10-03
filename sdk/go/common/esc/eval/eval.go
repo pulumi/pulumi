@@ -20,18 +20,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/internal/spell"
 	"github.com/pulumi/esc/internal/util"
 	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"golang.org/x/exp/maps"
 )
 
 // A ProviderLoader provides the environment evaluator the capability to load providers.
@@ -117,7 +118,7 @@ func RotateEnvironment(
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
 	paths []resource.PropertyPath,
-) (*esc.Environment, *RotationResult, syntax.Diagnostics) {
+) (*esc.Environment, RotationResult, syntax.Diagnostics) {
 	rotateDocPaths := make(map[string]bool, len(paths))
 	for _, path := range paths {
 		rotateDocPaths["values."+path.String()] = true
@@ -138,7 +139,7 @@ func evalEnvironment(
 	execContext *esc.ExecContext,
 	showSecrets bool,
 	rotatePaths map[string]bool,
-) (*esc.Environment, *RotationResult, syntax.Diagnostics) {
+) (*esc.Environment, RotationResult, syntax.Diagnostics) {
 	if env == nil || (len(env.Values.GetEntries()) == 0 && len(env.Imports.GetElements()) == 0) {
 		return nil, nil, nil
 	}
@@ -171,7 +172,7 @@ func evalEnvironment(
 		Properties:       envProperties.Value.(map[string]esc.Value),
 		Schema:           s,
 		ExecutionContext: executionContext,
-	}, &ec.rotationResult, diags
+	}, ec.rotationResult, diags
 }
 
 type imported struct {
@@ -684,8 +685,7 @@ func (e *evalContext) evaluateObject(x *expr, repr *objectExpr, accept *schema.S
 	// NOTE: technically, evaluation order of maps is unspecified and the result should be independent of order.
 	// However, we always evaluate in lexicographic order so that we can produce predictable diagnostics in the
 	// face of cycles.
-	keys := maps.Keys(repr.properties)
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(repr.properties))
 
 	object, properties := make(map[string]*value, len(keys)), make(schema.SchemaMap, len(keys))
 	for _, k := range keys {
@@ -786,7 +786,8 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor,
 				if receiver.base.isObject() {
 					return e.evaluateValueAccess(x.repr.syntax(), receiver.base, accessors)
 				}
-				e.accessorErrorf(x.repr.syntax(), accessor.accessor, "unknown property %q", key)
+				nearest := spell.Nearest(key, maps.Keys(repr.properties))
+				e.accessorErrorf(x.repr.syntax(), accessor.accessor, "unknown property %q%v", key, didYouMean(nearest))
 				return e.invalidPropertyAccess(x.repr.syntax(), accessors)
 			}
 			receiver = prop
@@ -888,7 +889,8 @@ func (e *evalContext) evaluateValueAccess(syntax ast.Expr, receiver *value, acce
 				if receiver.base.isObject() {
 					return e.evaluateValueAccess(syntax, receiver.base, accessors)
 				}
-				e.accessorErrorf(syntax, accessor.accessor, "unknown property %q", key)
+				nearest := spell.Nearest(key, maps.Keys(repr))
+				e.accessorErrorf(syntax, accessor.accessor, "unknown property %q%v", key, didYouMean(nearest))
 				return e.invalidPropertyAccess(syntax, accessors)
 			}
 			receiver = prop
@@ -1381,4 +1383,13 @@ func (e *evalContext) evaluateBuiltinToString(x *expr, repr *toStringExpr) *valu
 		v.repr = s
 	}
 	return v
+}
+
+type didYouMean string
+
+func (name didYouMean) String() string {
+	if name == "" {
+		return ""
+	}
+	return fmt.Sprintf("; did you mean %q?", string(name))
 }

@@ -39,10 +39,11 @@ func (e NonExistentFieldFormatter) messageHeader(fieldLabel string) string {
 }
 
 func (e NonExistentFieldFormatter) messageBody(field string) string {
-	existing := sortByEditDistance(e.Fields, field)
-	if len(existing) == 0 {
+	if len(e.Fields) == 0 {
 		return fmt.Sprintf("%s has no %s", e.ParentLabel, e.fieldsName())
 	}
+
+	existing := sortByEditDistance(field, e.Fields)
 	list := strings.Join(existing, ", ")
 	if len(existing) > e.MaxElements && e.MaxElements != 0 {
 		extraLength := len(existing) - e.MaxElements

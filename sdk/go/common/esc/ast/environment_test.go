@@ -39,7 +39,7 @@ func TestExample(t *testing.T) {
 imports:
   - green-channel
   - us-west-2
-config:
+values:
   aws:
     fn::open:
       provider: aws-oidc
@@ -68,7 +68,7 @@ func TestExample2(t *testing.T) {
 imports:
   - green-channel
   - us-west-2
-config:
+values:
   aws:
     fn::open::aws-oidc:
       sessionName: site-prod-session

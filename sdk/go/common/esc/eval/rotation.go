@@ -35,9 +35,9 @@ type Rotation struct {
 	Patch  *Patch             // updated rotation state generated during evaluation, to be written back to the environment definition
 }
 
-func (r *RotationResult) Patches() []*Patch {
+func (r RotationResult) Patches() []*Patch {
 	var patches []*Patch
-	for _, rotation := range *r {
+	for _, rotation := range r {
 		if rotation.Patch != nil {
 			patches = append(patches, rotation.Patch)
 		}

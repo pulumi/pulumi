@@ -140,7 +140,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "unknown property \"bar\"",
+            "Summary": "unknown property \"bar\"; did you mean \"baz\"?",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access",
@@ -4630,7 +4630,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "unknown property \"bar\"",
+            "Summary": "unknown property \"bar\"; did you mean \"baz\"?",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access",

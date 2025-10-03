@@ -57,7 +57,7 @@ func TestNonExistentFieldFormatterMessageBody(t *testing.T) {
 	}{
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{}}, "field", "parent has no fields"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"a", "b"}}, "field", "Existing fields are: a, b"},
-		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field3", "field2", "field1"}}, "field", "Existing fields are: field1, field2, field3"},
+		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field3", "field2", "field1"}}, "field", "Existing fields are: field3, field2, field1"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field1", "field2", "field3"}, MaxElements: 4}, "field", "Existing fields are: field1, field2, field3"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field1", "field2", "field3"}, MaxElements: 3}, "field", "Existing fields are: field1, field2, field3"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field1", "field2", "field3"}, MaxElements: 2}, "field", "Existing fields are: field1, field2 and 1 other"},
@@ -78,7 +78,7 @@ func TestNonExistentFieldFormatterMessage(t *testing.T) {
 	}{
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{}}, "field", "label", "label does not exist on parent. parent has no fields"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"a", "b"}}, "field", "label", "label does not exist on parent. Existing fields are: a, b"},
-		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field3", "field2", "field1"}}, "field", "label", "label does not exist on parent. Existing fields are: field1, field2, field3"},
+		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field3", "field2", "field1"}}, "field", "label", "label does not exist on parent. Existing fields are: field3, field2, field1"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field1", "field2", "field3"}, MaxElements: 2}, "field", "label", "label does not exist on parent. Existing fields are: field1, field2 and 1 other"},
 	}
 	for _, tt := range tests {
@@ -97,7 +97,7 @@ func TestNonExistentFieldFormatterMessageWithDetail(t *testing.T) {
 	}{
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{}}, "field", "label", "label does not exist on parent", "parent has no fields"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"a", "b"}}, "field", "label", "label does not exist on parent", "Existing fields are: a, b"},
-		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field3", "field2", "field1"}}, "field", "label", "label does not exist on parent", "Existing fields are: field1, field2, field3"},
+		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field3", "field2", "field1"}}, "field", "label", "label does not exist on parent", "Existing fields are: field3, field2, field1"},
 		{NonExistentFieldFormatter{ParentLabel: "parent", Fields: []string{"field1", "field2", "field3"}, MaxElements: 2}, "field", "label", "label does not exist on parent", "Existing fields are: field1, field2 and 1 other"},
 	}
 	for _, tt := range tests {

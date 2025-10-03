@@ -240,7 +240,7 @@ func Environment(description *StringExpr, imports ImportListDecl, values Propert
 func ParseEnvironment(source []byte, node syntax.Node) (*EnvironmentDecl, syntax.Diagnostics) {
 	environment := EnvironmentDecl{source: source}
 
-	diags := parseRecord("environment", &environment, node, false)
+	diags := parseRecord("environment", &environment, node, true)
 	return &environment, diags
 }
 
