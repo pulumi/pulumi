@@ -2431,6 +2431,9 @@ func TestPackageAddNode(t *testing.T) {
 			require.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
 
 			require.FileExists(t, filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			b, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			require.NoError(t, err)
+			require.Equal(t, "node_modules/\nbin/\n", string(b))
 		})
 	}
 }
