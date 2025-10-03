@@ -1,5 +1,39 @@
 # Changelog
 
+## 3.200.0 (2025-10-03)
+
+
+### Features
+
+- [cli] Look for .cmd and .ps1 extensions as well on Windows when looking for executables
+  [#20637](https://github.com/pulumi/pulumi/pull/20637)
+
+- [sdk/go] Add a new resource option: `HideDiffs`
+  [#20631](https://github.com/pulumi/pulumi/pull/20631)
+
+- [sdk/nodejs] Add a new resource option: `hideDiffs`
+  [#20631](https://github.com/pulumi/pulumi/pull/20631)
+
+- [sdkgen/python] Support non-object return types in functions
+  [#20624](https://github.com/pulumi/pulumi/pull/20624)
+
+
+### Bug Fixes
+
+- [build] Use ruff to auto fix lints in python
+  [#20644](https://github.com/pulumi/pulumi/pull/20644)
+
+- [sdk/nodejs] Make new arguments to `initialize` optional
+  [#20650](https://github.com/pulumi/pulumi/pull/20650)
+
+- [sdkgen/nodejs] Generate a .gitignore file inside local SDKs
+  [#20643](https://github.com/pulumi/pulumi/pull/20643)
+
+- [cli/state] Treat providers that are marked as parents in a move as providers still instead of as regular resources
+  [#20639](https://github.com/pulumi/pulumi/pull/20639)
+
+- [cli/state] Exclude root stack correctly when moving resources and when --include-parents is passed
+
 ## 3.199.0 (2025-10-01)
 
 
