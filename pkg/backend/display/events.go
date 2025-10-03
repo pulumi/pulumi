@@ -344,6 +344,11 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
 	contract.IgnoreError(err)
 
+	var hideDiffs []resource.PropertyPath
+	if md.State != nil {
+		hideDiffs = md.State.HideDiff
+	}
+
 	return &apitype.StepEventStateMetadata{
 		Type: string(md.Type),
 		URN:  string(md.URN),
@@ -359,6 +364,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      hideDiffs,
 	}
 }
 
@@ -626,5 +632,8 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		State: &resource.State{
+			HideDiff: md.HideDiffs,
+		},
 	}
 }
