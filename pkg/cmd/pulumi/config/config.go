@@ -50,7 +50,9 @@ import (
 
 // encrypterFactory provides encryption functionality for configuration values.
 type encrypterFactory interface {
-	GetEncrypter(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) (config.Encrypter, cmdStack.SecretsManagerState, error)
+	GetEncrypter(
+		ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack,
+	) (config.Encrypter, cmdStack.SecretsManagerState, error)
 }
 
 func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -778,7 +780,9 @@ func (c *configSetCmd) Run(
 	return cmdStack.SaveProjectStack(ctx, s, ps)
 }
 
-func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, ssml encrypterFactory) *cobra.Command {
+func newConfigSetAllCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, ssml encrypterFactory,
+) *cobra.Command {
 	var plaintextArgs []string
 	var secretArgs []string
 	var path bool

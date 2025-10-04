@@ -267,7 +267,8 @@ func TestConfigSetAll(t *testing.T) {
 		{
 			name:       "secret values",
 			secretArgs: []string{"testProject:secretKey1=secret1", "testProject:secretKey2=secret2"},
-			expected:   "config:\n  testProject:secretKey1:\n    secure: c2VjcmV0MQ==\n  testProject:secretKey2:\n    secure: c2VjcmV0Mg==\n",
+			expected: "config:\n  testProject:secretKey1:\n    secure: c2VjcmV0MQ==\n" +
+				"  testProject:secretKey2:\n    secure: c2VjcmV0Mg==\n",
 		},
 		{
 			name:       "secret with path",
@@ -279,7 +280,8 @@ func TestConfigSetAll(t *testing.T) {
 			name:          "mixed plaintext and secret",
 			plaintextArgs: []string{"testProject:plainKey=plainValue"},
 			secretArgs:    []string{"testProject:secretKey=secretValue"},
-			expected:      "config:\n  testProject:plainKey: plainValue\n  testProject:secretKey:\n    secure: c2VjcmV0VmFsdWU=\n",
+			expected: "config:\n  testProject:plainKey: plainValue\n" +
+				"  testProject:secretKey:\n    secure: c2VjcmV0VmFsdWU=\n",
 		},
 		{
 			name:     "json plaintext values",
@@ -287,14 +289,18 @@ func TestConfigSetAll(t *testing.T) {
 			expected: "config:\n  testProject:key1: value1\n  testProject:key2: value2\n",
 		},
 		{
-			name:     "json secret values",
-			jsonArg:  `{"testProject:secretKey1": {"value": "secret1", "secret": true}, "testProject:secretKey2": {"value": "secret2", "secret": true}}`,
-			expected: "config:\n  testProject:secretKey1:\n    secure: c2VjcmV0MQ==\n  testProject:secretKey2:\n    secure: c2VjcmV0Mg==\n",
+			name: "json secret values",
+			jsonArg: `{"testProject:secretKey1": {"value": "secret1", "secret": true}, ` +
+				`"testProject:secretKey2": {"value": "secret2", "secret": true}}`,
+			expected: "config:\n  testProject:secretKey1:\n    secure: c2VjcmV0MQ==\n" +
+				"  testProject:secretKey2:\n    secure: c2VjcmV0Mg==\n",
 		},
 		{
-			name:     "json mixed plaintext and secret",
-			jsonArg:  `{"testProject:plainKey": {"value": "plainValue"}, "testProject:secretKey": {"value": "secretValue", "secret": true}}`,
-			expected: "config:\n  testProject:plainKey: plainValue\n  testProject:secretKey:\n    secure: c2VjcmV0VmFsdWU=\n",
+			name: "json mixed plaintext and secret",
+			jsonArg: `{"testProject:plainKey": {"value": "plainValue"}, ` +
+				`"testProject:secretKey": {"value": "secretValue", "secret": true}}`,
+			expected: "config:\n  testProject:plainKey: plainValue\n" +
+				"  testProject:secretKey:\n    secure: c2VjcmV0VmFsdWU=\n",
 		},
 		{
 			name:          "json with plaintext flag should error",
@@ -315,9 +321,11 @@ func TestConfigSetAll(t *testing.T) {
 			expectError: "the --json option cannot be used with the --plaintext, --secret or --path options",
 		},
 		{
-			name:        "json with invalid key",
-			jsonArg:     `{"testProject:key1:invalid": {"value": "value"}}`,
-			expectError: "invalid --json object key \"testProject:key1:invalid\": could not parse testProject:key1:invalid as a configuration key (configuration keys should be of the form `<namespace>:<name>`)",
+			name:    "json with invalid key",
+			jsonArg: `{"testProject:key1:invalid": {"value": "value"}}`,
+			expectError: "invalid --json object key \"testProject:key1:invalid\": " +
+				"could not parse testProject:key1:invalid as a configuration key " +
+				"(configuration keys should be of the form `<namespace>:<name>`)",
 		},
 		{
 			name:        "json with nil value",
