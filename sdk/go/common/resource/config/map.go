@@ -28,29 +28,76 @@ type Map map[Key]Value
 
 // Decrypt returns the configuration as a map from module member to decrypted value.
 func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
-	r := map[Key]string{}
-	for k, c := range m {
-		v, err := c.Value(decrypter)
+	ctx := context.TODO()
+
+	if decrypter == NopDecrypter {
+		result := map[Key]string{}
+		for k, v := range m {
+			vv, err := v.Value(decrypter)
+			if err != nil {
+				return nil, err
+			}
+			result[k] = vv
+		}
+		return result, nil
+	}
+
+	objectMap := map[Key]object{}
+	for k, v := range m {
+		obj, err := v.unmarshalObject()
 		if err != nil {
 			return nil, err
 		}
-		r[k] = v
+		objectMap[k] = obj
 	}
-	return r, nil
+
+	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[Key]string{}
+	for k, pt := range plaintextMap {
+		v, err := pt.marshalText()
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
 }
 
 func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
-	newConfig := make(Map)
-	for k, c := range m {
-		val, err := c.Copy(decrypter, encrypter)
+	ctx := context.TODO()
+
+	objectMap := map[Key]object{}
+	for k, v := range m {
+		obj, err := v.unmarshalObject()
 		if err != nil {
 			return nil, err
 		}
-
-		newConfig[k] = val
+		objectMap[k] = obj
 	}
 
-	return newConfig, nil
+	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	newObjectMap, err := encryptMap(ctx, plaintextMap, encrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := Map{}
+	for k, obj := range newObjectMap {
+		v, err := obj.marshalValue()
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
 }
 
 // SecureKeys returns a list of keys that have secure values.
@@ -77,20 +124,25 @@ func (m Map) HasSecureValue() bool {
 
 // AsDecryptedPropertyMap returns the config as a property map, with secret values decrypted.
 func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (resource.PropertyMap, error) {
-	pm := resource.PropertyMap{}
-
+	objectMap := map[Key]object{}
 	for k, v := range m {
-		newV, err := v.coerceObject()
+		obj, err := v.coerceObject()
 		if err != nil {
-			return resource.PropertyMap{}, err
+			return nil, err
 		}
-		plaintext, err := newV.toDecryptedPropertyValue(ctx, decrypter)
-		if err != nil {
-			return resource.PropertyMap{}, err
-		}
-		pm[resource.PropertyKey(k.String())] = plaintext
+		objectMap[k] = obj
 	}
-	return pm, nil
+
+	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := resource.PropertyMap{}
+	for k, pt := range plaintextMap {
+		result[resource.PropertyKey(k.String())] = pt.PropertyValue()
+	}
+	return result, nil
 }
 
 // Get gets the value for a given key. If path is true, the key's name portion is treated as a path.
