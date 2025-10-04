@@ -230,6 +230,53 @@ type LinkPackageContext struct {
 	Writer  io.Writer
 }
 
+// prepareNodeJsPackageForLinking prepares NodeJS packages for linking,
+// this means modifying the package.json file of the main converted project
+// and removing references to local (parameterized) packages.
+// because the current references after project generation are not valid, pointing to non-existent versions
+// of (parameterized) packages whereas they should point to the local package being linked.
+func prepareNodeJsPackageForLinking(root string, pkg *schema.Package) error {
+	type packageJSON struct {
+		Name            string            `json:"name"`
+		DevDependencies map[string]string `json:"devDependencies"`
+		Dependencies    map[string]string `json:"dependencies"`
+	}
+
+	filePath := filepath.Join(root, "package.json")
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("error reading package.json: %w", err)
+	}
+
+	var pkgJSON packageJSON
+	err = json.Unmarshal(fileBytes, &pkgJSON)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling package.json: %w", err)
+	}
+
+	// remove the package from the dependencies
+	if pkgJSON.Dependencies != nil {
+		delete(pkgJSON.Dependencies, getNodeJSPkgName(pkg))
+	}
+
+	// write the modified package.json back to disk
+	fileBytes, err = json.MarshalIndent(pkgJSON, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshalling package.json: %w", err)
+	}
+
+	return os.WriteFile(filePath, fileBytes, 0o600)
+}
+
+// PrepareLocalPackageForLinking prepares a local package for linking
+func PrepareLocalPackageForLinking(root string, language string, pkg *schema.Package) error {
+	if language == "nodejs" {
+		return prepareNodeJsPackageForLinking(root, pkg)
+	}
+
+	return nil
+}
+
 // LinkPackage links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackage(ctx *LinkPackageContext) error {
@@ -874,6 +921,66 @@ func SchemaFromSchemaSource(
 	}
 	setSpecNamespace(&spec, pluginSpec)
 	return bind(spec, specOverride)
+}
+
+func SchemaFromSchemaSourceValueArgs(
+	pctx *plugin.Context,
+	packageSource string,
+	parameterization *schema.ParameterizationDescriptor,
+	registry registry.Registry,
+) (*schema.Package, error) {
+	var spec schema.PackageSpec
+	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
+		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		return pkg, nil
+	}
+
+	p, _, err := ProviderFromSource(pctx, packageSource, registry)
+	if err != nil {
+		return nil, err
+	}
+	defer p.Provider.Close()
+
+	var request plugin.GetSchemaRequest
+	if parameterization != nil {
+		if p.AlreadyParameterized {
+			return nil,
+				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
+		}
+		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{
+				Value:   parameterization.Value,
+				Name:    parameterization.Name,
+				Version: parameterization.Version,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize: %w", err)
+		}
+
+		request = plugin.GetSchemaRequest{
+			SubpackageName:    resp.Name,
+			SubpackageVersion: &resp.Version,
+		}
+	}
+
+	schema, err := p.Provider.GetSchema(pctx.Request(), request)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(schema.Schema, &spec)
+	if err != nil {
+		return nil, err
+	}
+	return bind(spec)
 }
 
 type Provider struct {
