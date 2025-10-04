@@ -137,8 +137,10 @@ type PrepareLanguageTestsRequest struct {
 	// A folder pointing to policy packs to use for the tests. This is used to test the language plugin's policy pack
 	// support. These must be manually written.
 	PolicyPackDirectory string `protobuf:"bytes,10,opt,name=policy_pack_directory,json=policyPackDirectory,proto3" json:"policy_pack_directory,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed.
+	Local         bool `protobuf:"varint,11,opt,name=local,proto3" json:"local,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PrepareLanguageTestsRequest) Reset() {
@@ -239,6 +241,13 @@ func (x *PrepareLanguageTestsRequest) GetPolicyPackDirectory() string {
 		return x.PolicyPackDirectory
 	}
 	return ""
+}
+
+func (x *PrepareLanguageTestsRequest) GetLocal() bool {
+	if x != nil {
+		return x.Local
+	}
+	return false
 }
 
 type PrepareLanguageTestsResponse struct {
@@ -523,7 +532,7 @@ const file_pulumi_testing_language_proto_rawDesc = "" +
 	"\x1dpulumi/testing/language.proto\x12\x11pulumirpc.testing\"\x19\n" +
 	"\x17GetLanguageTestsRequest\"0\n" +
 	"\x18GetLanguageTestsResponse\x12\x14\n" +
-	"\x05tests\x18\x01 \x03(\tR\x05tests\"\xfa\x06\n" +
+	"\x05tests\x18\x01 \x03(\tR\x05tests\"\x90\a\n" +
 	"\x1bPrepareLanguageTestsRequest\x120\n" +
 	"\x14language_plugin_name\x18\x01 \x01(\tR\x12languagePluginName\x124\n" +
 	"\x16language_plugin_target\x18\x02 \x01(\tR\x14languagePluginTarget\x12-\n" +
@@ -535,7 +544,8 @@ const file_pulumi_testing_language_proto_rawDesc = "" +
 	"\rlanguage_info\x18\b \x01(\tR\flanguageInfo\x12q\n" +
 	"\x11program_overrides\x18\t \x03(\v2D.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntryR\x10programOverrides\x122\n" +
 	"\x15policy_pack_directory\x18\n" +
-	" \x01(\tR\x13policyPackDirectory\x1a]\n" +
+	" \x01(\tR\x13policyPackDirectory\x12\x14\n" +
+	"\x05local\x18\v \x01(\bR\x05local\x1a]\n" +
 	"\vReplacement\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
 	"\apattern\x18\x02 \x01(\tR\apattern\x12 \n" +
