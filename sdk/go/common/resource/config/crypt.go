@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/crypto/pbkdf2"
@@ -336,4 +337,88 @@ func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, err
 
 func (c *base64Crypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBatchDecrypt(ctx, c, ciphertexts)
+}
+
+// CiphertextToPlaintextCachedCrypter is a Crypter that caches the mapping from ciphertext to plaintext in memory.
+// It uses the provided Encrypter and Decrypter to perform the actual encryption and decryption.
+// All encrypt operations produce a new ciphertext, even for the same plaintext, so the cache is only
+// populated after encryption operations. Decrypt operations will populate the cache if the ciphertext is not
+// already present. Caching is safe for concurrent use.
+type CiphertextToPlaintextCachedCrypter struct {
+	encrypter                  Encrypter
+	decrypter                  Decrypter
+	ciphertextToPlaintextCache sync.Map
+}
+
+func NewCiphertextToPlaintextCachedCrypter(
+	encrypter Encrypter, decrypter Decrypter,
+) *CiphertextToPlaintextCachedCrypter {
+	return &CiphertextToPlaintextCachedCrypter{
+		encrypter:                  encrypter,
+		decrypter:                  decrypter,
+		ciphertextToPlaintextCache: sync.Map{},
+	}
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	ciphertext, err := c.encrypter.EncryptValue(ctx, plaintext)
+	if err != nil {
+		return "", err
+	}
+	c.ciphertextToPlaintextCache.Store(ciphertext, plaintext)
+	return ciphertext, nil
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) BatchEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	ciphertexts, err := c.encrypter.BatchEncrypt(ctx, plaintexts)
+	if err != nil {
+		return nil, err
+	}
+	for i, ciphertext := range ciphertexts {
+		c.ciphertextToPlaintextCache.Store(ciphertext, plaintexts[i])
+	}
+	return ciphertexts, nil
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	if cachedPlaintext, ok := c.ciphertextToPlaintextCache.Load(ciphertext); ok {
+		return cachedPlaintext.(string), nil
+	}
+	plaintext, err := c.decrypter.DecryptValue(ctx, ciphertext)
+	if err != nil {
+		return "", err
+	}
+	c.ciphertextToPlaintextCache.Store(ciphertext, plaintext)
+	return plaintext, nil
+}
+
+func (c *CiphertextToPlaintextCachedCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	if len(ciphertexts) == 0 {
+		return nil, nil
+	}
+	result := make([]string, len(ciphertexts))
+	var cacheMissedResultIndexes []int
+	var cacheMissedCiphertexts []string
+	for i, ct := range ciphertexts {
+		if cached, ok := c.ciphertextToPlaintextCache.Load(ct); ok {
+			result[i] = cached.(string)
+		} else {
+			cacheMissedResultIndexes = append(cacheMissedResultIndexes, i)
+			cacheMissedCiphertexts = append(cacheMissedCiphertexts, ct)
+		}
+	}
+	if len(cacheMissedCiphertexts) == 0 {
+		return result, nil
+	}
+	plaintexts, err := c.decrypter.BatchDecrypt(ctx, cacheMissedCiphertexts)
+	if err != nil {
+		return nil, err
+	}
+	for i, ciphertext := range cacheMissedCiphertexts {
+		plaintext := plaintexts[i]
+		c.ciphertextToPlaintextCache.Store(ciphertext, plaintext)
+		resultIndex := cacheMissedResultIndexes[i]
+		result[resultIndex] = plaintext
+	}
+	return result, nil
 }
