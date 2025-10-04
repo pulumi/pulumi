@@ -151,69 +151,82 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	cancel := make(chan bool)
-
-	// Run the language plugin
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, "", "")
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
-		Cancel: cancel,
-	})
-	require.NoError(t, err)
-
-	// Create a temp project dir for the test to run in
-	rootDir := t.TempDir()
-
-	snapshotDir := "./testdata/"
-
-	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-		LanguagePluginName:   "go",
-		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-		TemporaryDirectory:   rootDir,
-		SnapshotDirectory:    snapshotDir,
-		CoreSdkDirectory:     "../..",
-		CoreSdkVersion:       sdk.Version.String(),
-		PolicyPackDirectory:  "./testdata/policies",
-		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-			{
-				Path:        "go\\.mod",
-				Pattern:     rootDir + "/artifacts",
-				Replacement: "/ROOT/artifacts",
-			},
-		},
-		ProgramOverrides: programOverrides,
-	})
-	require.NoError(t, err)
-
-	for _, tt := range tests.Tests {
-		t.Run(tt, func(t *testing.T) {
-			t.Parallel()
-
-			if expected, ok := expectedFailures[tt]; ok {
-				t.Skipf("Skipping known failure: %s", expected)
-			}
-
-			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-				Token: prepare.Token,
-				Test:  tt,
+	for _, local := range []bool{false, true} {
+		t.Run(fmt.Sprintf("local=%v", local), func(t *testing.T) {
+			cancel := make(chan bool)
+			// Run the language plugin
+			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+				Init: func(srv *grpc.Server) error {
+					host := newLanguageHost(engineAddress, "", "")
+					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+					return nil
+				},
+				Cancel: cancel,
 			})
-
 			require.NoError(t, err)
-			for _, msg := range result.Messages {
-				t.Log(msg)
+
+			// Create a temp project dir for the test to run in
+			rootDir := t.TempDir()
+
+			snapshotDir := "./testdata"
+			// Don't snapshot all the local tests, they're similar enough to the non-local ones and we're
+			// still testing correctness.
+			if local {
+				snapshotDir = ""
 			}
-			ptesting.LogTruncated(t, "stdout", result.Stdout)
-			ptesting.LogTruncated(t, "stderr", result.Stderr)
-			assert.True(t, result.Success)
+
+			// Prepare to run the tests
+			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
+				LanguagePluginName:   "go",
+				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				TemporaryDirectory:   rootDir,
+				SnapshotDirectory:    snapshotDir,
+				CoreSdkDirectory:     "../..",
+				CoreSdkVersion:       sdk.Version.String(),
+				PolicyPackDirectory:  "./testdata/policies",
+				Local:                local,
+				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+					{
+						Path:        "go\\.mod",
+						Pattern:     rootDir + "/artifacts",
+						Replacement: "/ROOT/artifacts",
+					},
+				},
+				ProgramOverrides: programOverrides,
+			})
+			require.NoError(t, err)
+
+			for _, tt := range tests.Tests {
+				t.Run(tt, func(t *testing.T) {
+					t.Parallel()
+
+					if expected, ok := expectedFailures[tt]; ok {
+						t.Skipf("Skipping known failure: %s", expected)
+					}
+
+					if _, has := programOverrides[tt]; local && has {
+						t.Skip("Skipping override tests in local mode")
+					}
+
+					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
+						Token: prepare.Token,
+						Test:  tt,
+					})
+
+					require.NoError(t, err)
+					for _, msg := range result.Messages {
+						t.Log(msg)
+					}
+					ptesting.LogTruncated(t, "stdout", result.Stdout)
+					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					assert.True(t, result.Success)
+				})
+			}
+
+			t.Cleanup(func() {
+				close(cancel)
+				require.NoError(t, <-handle.Done)
+			})
 		})
 	}
-
-	t.Cleanup(func() {
-		close(cancel)
-		require.NoError(t, <-handle.Done)
-	})
 }

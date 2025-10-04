@@ -443,6 +443,7 @@ type testToken struct {
 	LanguageInfo         string
 	ProgramOverrides     map[string]programOverride
 	PolicyPackDirectory  string
+	Local                bool
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -455,19 +456,18 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	if req.LanguagePluginTarget == "" {
 		return nil, errors.New("language plugin target must be specified")
 	}
-	if req.SnapshotDirectory == "" {
-		return nil, errors.New("snapshot directory must be specified")
-	}
 	if req.TemporaryDirectory == "" {
 		return nil, errors.New("temporary directory must be specified")
 	}
 
-	err := os.MkdirAll(req.SnapshotDirectory, 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("create snapshot directory %s: %w", req.SnapshotDirectory, err)
+	if req.SnapshotDirectory != "" {
+		err := os.MkdirAll(req.SnapshotDirectory, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create snapshot directory %s: %w", req.SnapshotDirectory, err)
+		}
 	}
 
-	err = os.RemoveAll(req.TemporaryDirectory)
+	err := os.RemoveAll(req.TemporaryDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("remove temporary directory %s: %w", req.TemporaryDirectory, err)
 	}
@@ -567,6 +567,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		LanguageInfo:         req.LanguageInfo,
 		ProgramOverrides:     programOverrides,
 		PolicyPackDirectory:  policyPackDirectory,
+		Local:                req.Local,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -817,7 +818,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			diags, err := languageClient.GeneratePackage(
-				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
+				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, token.Local)
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 			}
@@ -827,57 +828,74 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-			sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
-			if err != nil {
-				return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-			}
-			validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-			// If we made a snapshot edit we can clean it up now
-			if sdkSnapshotDir != sdkTempDir {
-				err := os.RemoveAll(sdkSnapshotDir)
+			if token.SnapshotDirectory != "" {
+				sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
 				if err != nil {
-					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+				}
+				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+				// If we made a snapshot edit we can clean it up now
+				if sdkSnapshotDir != sdkTempDir {
+					err := os.RemoveAll(sdkSnapshotDir)
+					if err != nil {
+						return nil, fmt.Errorf("remove snapshot dir: %w", err)
+					}
+				}
+				if err != nil {
+					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
+				}
+				if len(validations) > 0 {
+					return makeTestResponse(
+						fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
+							pkg.Name, strings.Join(validations, "\n"))), nil
 				}
 			}
-			if err != nil {
-				return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
-			}
-			if len(validations) > 0 {
-				return makeTestResponse(
-					fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
-						pkg.Name, strings.Join(validations, "\n"))), nil
-			}
 
-			// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
-			// any intermediate build files don't end up getting captured in the snapshot folder.
-			sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
-			if err != nil {
-				return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
-			}
-			localDependencies[pkg.Name] = sdkArtifact
-			eng.artifactMap.Store(sdkTempDir, sdkArtifact)
-
-			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-			// Again we need to make a snapshot edit for this.
-			sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
-			if err != nil {
-				return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-			}
-			validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-			// If we made a snapshot edit we can clean it up now
-			if sdkSnapshotDir != sdkTempDir {
-				err := os.RemoveAll(sdkSnapshotDir)
+			// If not local we need to pack the SDK
+			if !token.Local {
+				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
+				// any intermediate build files don't end up getting captured in the snapshot folder.
+				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
 				if err != nil {
-					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 				}
-			}
-			if err != nil {
-				return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
-			}
-			if len(validations) > 0 {
-				return makeTestResponse(
-					fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
-						pkg.Name, strings.Join(validations, "\n"))), nil
+				localDependencies[pkg.Name] = sdkArtifact
+				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
+
+				if token.SnapshotDirectory != "" {
+					// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
+					// Again we need to make a snapshot edit for this.
+					sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+					if err != nil {
+						return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+					}
+					validations, err := compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
+					// If we made a snapshot edit we can clean it up now
+					if sdkSnapshotDir != sdkTempDir {
+						err := os.RemoveAll(sdkSnapshotDir)
+						if err != nil {
+							return nil, fmt.Errorf("remove snapshot dir: %w", err)
+						}
+					}
+					if err != nil {
+						return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
+					}
+					if len(validations) > 0 {
+						return makeTestResponse(
+							fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
+								pkg.Name, strings.Join(validations, "\n"))), nil
+					}
+				}
+			} else {
+				// Else we are using local SDKs, so just point to the directory. We copy to the artifacts
+				// directory still so that relative paths behave the same.
+				destDir := filepath.Join(artifactsDir, sdkName)
+				err = os.CopyFS(destDir, os.DirFS(sdkTempDir))
+				if err != nil {
+					return nil, fmt.Errorf("copy local SDK for %s: %w", pkg.Name, err)
+				}
+				localDependencies[pkg.Name] = destDir
+				eng.artifactMap.Store(sdkTempDir, destDir)
 			}
 
 			return nil, nil
@@ -1026,26 +1044,28 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
 
-				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-				if len(test.Runs) > 1 && !test.RunsShareSource {
-					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
-				}
-				projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("program snapshot creation: %w", err)
-				}
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
-				if err != nil {
-					return nil, fmt.Errorf("program snapshot validation: %w", err)
-				}
-				if len(validations) > 0 {
-					return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-				}
-				// If we made a snapshot edit we can clean it up now
-				if projectDirSnapshot != projectDir {
-					err = os.RemoveAll(projectDirSnapshot)
+				if token.SnapshotDirectory != "" {
+					snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+					if len(test.Runs) > 1 && !test.RunsShareSource {
+						snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+					}
+					projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
 					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
+						return nil, fmt.Errorf("program snapshot creation: %w", err)
+					}
+					validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+					if err != nil {
+						return nil, fmt.Errorf("program snapshot validation: %w", err)
+					}
+					if len(validations) > 0 {
+						return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
+					}
+					// If we made a snapshot edit we can clean it up now
+					if projectDirSnapshot != projectDir {
+						err = os.RemoveAll(projectDirSnapshot)
+						if err != nil {
+							return nil, fmt.Errorf("remove snapshot dir: %w", err)
+						}
 					}
 				}
 			}

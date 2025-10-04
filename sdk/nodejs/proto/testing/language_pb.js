@@ -503,7 +503,8 @@ snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
     proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject, includeInstance),
 languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
 programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : [],
-policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, "")
+policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, ""),
+local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
   };
 
   if (includeInstance) {
@@ -582,6 +583,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.setPolicyPackDirectory(value);
+      break;
+    case 11:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setLocal(value);
       break;
     default:
       reader.skipField();
@@ -677,6 +682,13 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   if (f.length > 0) {
     writer.writeString(
       10,
+      f
+    );
+  }
+  f = message.getLocal();
+  if (f) {
+    writer.writeBool(
+      11,
       f
     );
   }
@@ -1231,6 +1243,24 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getPolicyPackDirec
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setPolicyPackDirectory = function(value) {
   return jspb.Message.setProto3StringField(this, 10, value);
+};
+
+
+/**
+ * optional bool local = 11;
+ * @return {boolean}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getLocal = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 11, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setLocal = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 11, value);
 };
 
 

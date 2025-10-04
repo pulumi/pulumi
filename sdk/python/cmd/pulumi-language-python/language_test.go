@@ -155,95 +155,102 @@ func TestLanguage(t *testing.T) {
 		},
 	}
 
-	for _, config := range configs {
-		t.Run(config.name, func(t *testing.T) {
-			t.Parallel()
+	for _, local := range []bool{false, true} {
+		for _, config := range configs {
+			t.Run(fmt.Sprintf("local=%v/%s", local, config.name), func(t *testing.T) {
+				t.Parallel()
 
-			cancel := make(chan bool)
+				cancel := make(chan bool)
 
-			// Run the language plugin
-			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-				Init: func(srv *grpc.Server) error {
-					pythonExec, err := filepath.Abs("../pulumi-language-python-exec")
-					if err != nil {
-						return err
-					}
-					host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker, config.toolchain)
-					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-					return nil
-				},
-				Cancel: cancel,
-			})
-			require.NoError(t, err)
-
-			// Create a temp project dir for the test to run in
-			rootDir := t.TempDir()
-
-			snapshotDir := "./testdata/" + config.snapshotDir
-
-			var languageInfo string
-			if config.useTOML || config.inputTypes != "" {
-				var info codegen.PackageInfo
-				info.PyProject.Enabled = config.useTOML
-				info.InputTypes = config.inputTypes
-
-				json, err := json.Marshal(info)
-				require.NoError(t, err)
-				languageInfo = string(json)
-			}
-
-			// Prepare to run the tests
-			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-				LanguagePluginName:   "python",
-				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-				TemporaryDirectory:   rootDir,
-				SnapshotDirectory:    snapshotDir,
-				CoreSdkDirectory:     "../..",
-				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "testdata/policies",
-				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-					{
-						Path:        "requirements\\.txt",
-						Pattern:     fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
-						Replacement: "pulumi-CORE.VERSION-py3-none-any.whl",
+				// Run the language plugin
+				handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+					Init: func(srv *grpc.Server) error {
+						pythonExec, err := filepath.Abs("../pulumi-language-python-exec")
+						if err != nil {
+							return err
+						}
+						host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker, config.toolchain)
+						pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+						return nil
 					},
-					{
-						Path:        "requirements\\.txt",
-						Pattern:     rootDir + "/artifacts",
-						Replacement: "ROOT/artifacts",
-					},
-				},
-				LanguageInfo: languageInfo,
-			})
-			require.NoError(t, err)
-
-			for _, tt := range tests.Tests {
-				t.Run(tt, func(t *testing.T) {
-					t.Parallel()
-
-					if expected, ok := expectedFailures[tt]; ok {
-						t.Skipf("Skipping known failure: %s", expected)
-					}
-
-					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-						Token: prepare.Token,
-						Test:  tt,
-					})
-
-					require.NoError(t, err)
-					for _, msg := range result.Messages {
-						t.Log(msg)
-					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
-					assert.True(t, result.Success)
+					Cancel: cancel,
 				})
-			}
+				require.NoError(t, err)
 
-			t.Cleanup(func() {
-				close(cancel)
-				require.NoError(t, <-handle.Done)
+				// Create a temp project dir for the test to run in
+				rootDir := t.TempDir()
+
+				snapshotDir := "./testdata/" + config.snapshotDir
+				// Don't snapshot all the local tests, they're similar enough to the non-local ones and we're
+				// still testing correctness.
+				if local {
+					snapshotDir = ""
+				}
+
+				var languageInfo string
+				if config.useTOML || config.inputTypes != "" {
+					var info codegen.PackageInfo
+					info.PyProject.Enabled = config.useTOML
+					info.InputTypes = config.inputTypes
+
+					json, err := json.Marshal(info)
+					require.NoError(t, err)
+					languageInfo = string(json)
+				}
+
+				// Prepare to run the tests
+				prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
+					LanguagePluginName:   "python",
+					LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+					TemporaryDirectory:   rootDir,
+					SnapshotDirectory:    snapshotDir,
+					CoreSdkDirectory:     "../..",
+					CoreSdkVersion:       sdk.Version.String(),
+					PolicyPackDirectory:  "testdata/policies",
+					SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+						{
+							Path:        "requirements\\.txt",
+							Pattern:     fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
+							Replacement: "pulumi-CORE.VERSION-py3-none-any.whl",
+						},
+						{
+							Path:        "requirements\\.txt",
+							Pattern:     rootDir + "/artifacts",
+							Replacement: "ROOT/artifacts",
+						},
+					},
+					LanguageInfo: languageInfo,
+				})
+				require.NoError(t, err)
+
+				for _, tt := range tests.Tests {
+					t.Run(tt, func(t *testing.T) {
+						t.Parallel()
+
+						if expected, ok := expectedFailures[tt]; ok {
+							t.Skipf("Skipping known failure: %s", expected)
+						}
+
+						result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
+							Token: prepare.Token,
+							Test:  tt,
+						})
+
+						require.NoError(t, err)
+						for _, msg := range result.Messages {
+							t.Log(msg)
+						}
+						ptesting.LogTruncated(t, "stdout", result.Stdout)
+						ptesting.LogTruncated(t, "stderr", result.Stderr)
+						assert.True(t, result.Success)
+					})
+				}
+
+				t.Cleanup(func() {
+					close(cancel)
+					require.NoError(t, <-handle.Done)
+				})
 			})
-		})
+		}
 	}
 }
