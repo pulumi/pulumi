@@ -48,6 +48,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// encrypterFactory provides encryption functionality for configuration values.
+type encrypterFactory interface {
+	GetEncrypter(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) (config.Encrypter, cmdStack.SecretsManagerState, error)
+}
+
 func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stack string
 	var showSecrets bool
@@ -137,7 +142,8 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigRmCmd(ws, &stack))
 	cmd.AddCommand(newConfigRmAllCmd(ws, &stack))
 	cmd.AddCommand(newConfigSetCmd(ws, &stack))
-	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager))
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack))
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
@@ -772,7 +778,7 @@ func (c *configSetCmd) Run(
 	return cmdStack.SaveProjectStack(ctx, s, ps)
 }
 
-func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager) *cobra.Command {
+func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, ssml encrypterFactory) *cobra.Command {
 	var plaintextArgs []string
 	var secretArgs []string
 	var path bool
@@ -846,8 +852,6 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.Lo
 				}
 			}
 
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-
 			// We only want to fetch the stack encrypter once, and then only if we actually have one or more secrets to
 			// encrypt. We thus set up a little helper function to encrypt a value, caching the crypter once we've initially
 			// loaded it.
@@ -855,7 +859,7 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string, lm cmdBackend.Lo
 			encrypt := func(plaintext string) (string, error) {
 				var err error
 				if c == nil {
-					// We're always going to save, so can ignore the bool for if GetStackEncrypter changed the config data.
+					// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
 					c, _, err = ssml.GetEncrypter(ctx, stack, ps)
 					if err != nil {
 						return "", err
