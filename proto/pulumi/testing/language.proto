@@ -81,6 +81,9 @@ message PrepareLanguageTestsRequest {
     // A folder pointing to policy packs to use for the tests. This is used to test the language plugin's policy pack
     // support. These must be manually written.
     string policy_pack_directory = 10;
+
+    // If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed.
+    bool local = 11;
 }
 
 message PrepareLanguageTestsResponse {

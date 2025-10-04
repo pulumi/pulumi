@@ -269,19 +269,6 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 		assert.ErrorContains(t, err, "temporary directory must be specified")
 	})
 
-	t.Run("missing snapshot directory", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
-			LanguagePluginName:   "mock",
-			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-			TemporaryDirectory:   tempDir,
-			CoreSdkDirectory:     "sdk/dir",
-		})
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "snapshot directory must be specified")
-	})
-
 	t.Run("fail packing of core sdk", func(t *testing.T) {
 		t.Parallel()
 
