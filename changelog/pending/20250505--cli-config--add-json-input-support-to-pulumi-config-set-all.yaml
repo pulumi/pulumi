@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Add `--json` input support to `pulumi config set-all`
