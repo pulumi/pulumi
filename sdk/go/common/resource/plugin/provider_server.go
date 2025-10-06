@@ -365,7 +365,7 @@ func (p *providerServer) Configure(ctx context.Context,
 				return nil, err
 			}
 
-			var value interface{}
+			var value any
 			if err = json.Unmarshal([]byte(v), &value); err != nil {
 				// If we couldn't unmarshal a JSON value, just pass the raw string through.
 				value = v

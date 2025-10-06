@@ -44,7 +44,7 @@ type builtin struct {
 	RegisterInput  bool
 	defaultValue   string
 
-	// Used with the "array-contravariance" strategy to attempt to convert []interface{} slices to
+	// Used with the "array-contravariance" strategy to attempt to convert []any slices to
 	// []T.
 	InnerElementType string
 
@@ -183,7 +183,7 @@ var builtins = makeBuiltins([]*builtin{
 	{Name: "Bool", Type: "bool", Example: "Bool(true)", GenerateConfig: true, DefaultConfig: "false", elemExample: "true", RegisterInput: true, defaultValue: "Bool(false)"},
 	{Name: "Float64", Type: "float64", Example: "Float64(999.9)", GenerateConfig: true, DefaultConfig: "0", elemExample: "999.9", RegisterInput: true, defaultValue: "Float64(0)"},
 	{Name: "ID", Type: "ID", inputType: "ID", implements: []string{"String"}, Example: "ID(\"foo\")", RegisterInput: true, defaultValue: "ID(\"\")"},
-	{Name: "Input", Type: "interface{}", Example: "String(\"any\")"},
+	{Name: "Input", Type: "any", Example: "String(\"any\")"},
 	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0", elemExample: "42", RegisterInput: true, defaultValue: "Int(0)"},
 	{Name: "String", Type: "string", Example: "String(\"foo\")", elemExample: "\"foo\"", RegisterInput: true, defaultValue: "String(\"\")"},
 	{Name: "URN", Type: "URN", inputType: "URN", implements: []string{"String"}, Example: "URN(\"foo\")", RegisterInput: true, defaultValue: "URN(\"\")"},
@@ -341,7 +341,7 @@ func main() {
 		log.Fatalf("failed to parse templates: %v", err)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Builtins": builtins,
 	}
 	for _, t := range templates.Templates() {

@@ -312,7 +312,6 @@ func TestResourceOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -380,7 +379,6 @@ func TestInvokeOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -578,8 +576,8 @@ func TestNewResourceInput(t *testing.T) {
 
 	resourceOutput := resourceInput.ToResourceOutput()
 
-	channel := make(chan interface{})
-	resourceOutput.ApplyT(func(res interface{}) interface{} {
+	channel := make(chan any)
+	resourceOutput.ApplyT(func(res any) any {
 		channel <- res
 		return res
 	})
@@ -656,7 +654,6 @@ func TestUninitializedParentResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1144,7 +1141,6 @@ func TestNewResourceOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1208,7 +1204,6 @@ func TestNewInvokeOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

@@ -65,7 +65,7 @@ func TestRetainOnDelete(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -97,7 +97,7 @@ func TestRetainOnDelete(t *testing.T) {
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 
 	// Run a new update which will cause a replace, we shouldn't see a provider delete but should get a new id
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")

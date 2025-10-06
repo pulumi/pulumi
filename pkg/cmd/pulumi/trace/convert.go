@@ -76,7 +76,7 @@ func (s *traceSample) key() string {
 func findGRPCPayloads(t *appdash.Trace) []string {
 	return fx.ToSlice(fx.FMap(fx.IterSlice(t.Annotations), func(a appdash.Annotation) (string, bool) {
 		if a.Key == "Msg" {
-			var msg map[string]interface{}
+			var msg map[string]any
 			if err := json.Unmarshal(a.Value, &msg); err == nil {
 				if req, ok := msg["gRPC request"]; ok {
 					s, _ := req.(string)

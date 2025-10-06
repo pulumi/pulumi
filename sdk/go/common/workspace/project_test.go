@@ -36,7 +36,7 @@ import (
 func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	t.Parallel()
 
-	doTest := func(marshal func(interface{}) ([]byte, error), unmarshal func([]byte, interface{}) error) {
+	doTest := func(marshal func(any) ([]byte, error), unmarshal func([]byte, any) error) {
 		ri := NewProjectRuntimeInfo("nodejs", nil)
 		byts, err := marshal(ri)
 		require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Nil(t, riRountrip.Options())
 
-		ri = NewProjectRuntimeInfo("nodejs", map[string]interface{}{
+		ri = NewProjectRuntimeInfo("nodejs", map[string]any{
 			"typescript":   true,
 			"stringOption": "hello",
 		})
@@ -90,7 +90,7 @@ func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
 	objectType := "object"
 	config["example"] = ProjectConfigType{
 		Type:    &objectType,
-		Default: map[string]interface{}{"hello": "world"},
+		Default: map[string]any{"hello": "world"},
 	}
 
 	project.Config = config
@@ -114,7 +114,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
 
-	invalidValues := make([]interface{}, 0)
+	invalidValues := make([]any, 0)
 	invalidValues = append(invalidValues, "hello")
 	// default value here has type array<string>
 	// config type specified is array<array<string>>
@@ -153,10 +153,10 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	require.NoError(t, err, "There should be no validation error")
 
 	// validValues = ["hello"]
-	validValues := make([]interface{}, 0)
+	validValues := make([]any, 0)
 	validValues = append(validValues, "hello")
 	// validValuesArray = [["hello"]]
-	validValuesArray := make([]interface{}, 0)
+	validValuesArray := make([]any, 0)
 	validValuesArray = append(validValuesArray, validValues)
 
 	// default value here has type array<array<string>>
@@ -546,7 +546,7 @@ config:
 	assert.False(t, simpleArrayOfStrings.Secret)
 	require.NotNil(t, simpleArrayOfStrings.Items)
 	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
-	arrayValues := simpleArrayOfStrings.Default.([]interface{})
+	arrayValues := simpleArrayOfStrings.Default.([]any)
 	assert.Equal(t, "hello", arrayValues[0])
 
 	arrayOfArrays, ok := project.Config["arrayOfArrays"]
@@ -577,14 +577,14 @@ func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 	return value
 }
 
-func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) interface{} {
+func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) any {
 	parsedKey, err := config.ParseKey(key)
 	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	valueJSON, valueError := configValue.Value(config.NopDecrypter)
 	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
-	var value interface{}
+	var value any
 	err = json.Unmarshal([]byte(valueJSON), &value)
 	require.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
 	return value
@@ -667,7 +667,7 @@ config:
 	// aws:region is namespaced and is inherited from the project
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
 	assert.Equal(t, "[\"*\"]", getConfigValue(t, stack.Config, "pulumi:disable-default-providers"))
-	assert.Equal(t, []interface{}{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
+	assert.Equal(t, []any{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
 }
 
 func TestLoadingStackConfigWithoutNamespacingTheProject(t *testing.T) {
@@ -1405,7 +1405,6 @@ func TestProjectSaveLoadRoundtrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1450,7 +1449,7 @@ func TestProjectEditRoundtrip(t *testing.T) {
 			edit: func(proj *Project) {
 				proj.Runtime = NewProjectRuntimeInfo(
 					proj.Runtime.Name(),
-					map[string]interface{}{
+					map[string]any{
 						"setting": "test",
 					})
 			},
@@ -1459,7 +1458,6 @@ func TestProjectEditRoundtrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

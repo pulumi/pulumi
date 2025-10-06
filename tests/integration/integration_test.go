@@ -632,8 +632,8 @@ func TestProviderDownloadURL(t *testing.T) {
 		err = json.Unmarshal(deployment.Deployment, data)
 		require.NoError(t, err)
 		urlKey := "pluginDownloadURL"
-		getPluginDownloadURL := func(inputs map[string]interface{}) string {
-			internal, ok := inputs["__internal"].(map[string]interface{})
+		getPluginDownloadURL := func(inputs map[string]any) string {
+			internal, ok := inputs["__internal"].(map[string]any)
 			if ok {
 				pluginDownloadURL, _ := internal[urlKey].(string)
 				return pluginDownloadURL
@@ -673,7 +673,6 @@ func TestProviderDownloadURL(t *testing.T) {
 
 	//nolint:paralleltest // uses parallel programtest
 	for _, lang := range languages {
-		lang := lang
 		t.Run(lang.name, func(t *testing.T) {
 			dir := filepath.Join("gather_plugin", lang.name)
 			integration.ProgramTest(t, &integration.ProgramTestOptions{

@@ -44,7 +44,6 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
-		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			t.Parallel()
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
@@ -138,7 +137,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			ID:     "bucket-object-1",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				"bucket": "bucket-object-2",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
@@ -148,7 +147,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			ID:     "bucket-object-2",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				"bucket": "bucket-object-1",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),

@@ -500,6 +500,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
 			RetainOnDelete:          nil,
+			HideDiff:                nil,
 			DeletedWith:             "",
 			SourcePosition:          "",
 			StackTrace:              nil,
@@ -590,7 +591,7 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 
 	denyCreation := false
 	if value, ok := pConfig["disable-default-providers"]; ok {
-		array := []interface{}{}
+		array := []any{}
 		if !value.IsString() {
 			return true, errors.New("Unexpected encoding of pulumi:disable-default-providers")
 		}
@@ -836,7 +837,7 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 
 	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if rm.grpcDialOptions != nil {
-		opts := rm.grpcDialOptions(map[string]interface{}{
+		opts := rm.grpcDialOptions(map[string]any{
 			"mode": "client",
 			"kind": "callbacks",
 		})
@@ -892,7 +893,7 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, l
 			// ignoring
 			return nil
 		}
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "server",
 		}
 		serveOpts = append(serveOpts, di.ServerOptions(interceptors.LogOptions{
@@ -2176,6 +2177,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Aliases:                 aliases,
 		Provider:                provider,
 		Providers:               req.GetProviders(),
+		HideDiff:                req.GetHideDiffs(),
 		CustomTimeouts:          req.GetCustomTimeouts(),
 		PluginDownloadUrl:       req.GetPluginDownloadURL(),
 		RetainOnDelete:          req.RetainOnDelete,
@@ -2437,6 +2439,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	protect := opts.Protect
 	ignoreChanges := opts.IgnoreChanges
+	hiddenDiffs := slice.Prealloc[resource.PropertyPath](len(opts.GetHideDiff()))
+	for i, v := range opts.GetHideDiff() {
+		path, err := resource.ParsePropertyPath(v)
+		if err != nil {
+			return nil, fmt.Errorf("%d: %w", i, err)
+		}
+		hiddenDiffs = append(hiddenDiffs, path)
+	}
 	replaceOnChanges := opts.ReplaceOnChanges
 	retainOnDelete := opts.RetainOnDelete
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
@@ -2497,9 +2507,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
+			"hideDiffs=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks,
+		hiddenDiffs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -2657,6 +2669,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			ReplaceOnChanges:        replaceOnChanges,
 			RetainOnDelete:          retainOnDelete,
 			DeletedWith:             deletedWith,
+			HideDiff:                hiddenDiffs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
@@ -2971,7 +2984,7 @@ func generateTimeoutInSeconds(timeout string) (float64, error) {
 	return duration.Seconds(), nil
 }
 
-func decorateResourceSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+func decorateResourceSpans(span opentracing.Span, method string, req, resp any, grpcError error) {
 	if req == nil {
 		return
 	}

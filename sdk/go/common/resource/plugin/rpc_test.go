@@ -29,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func setProperty(key resource.PropertyKey, s *structpb.Value, k string, v interface{}) {
+func setProperty(key resource.PropertyKey, s *structpb.Value, k string, v any) {
 	marshaled, err := MarshalPropertyValue(key, resource.NewPropertyValue(v), MarshalOptions{})
 	contract.Assertf(err == nil, "error marshaling property value")
 	s.GetStructValue().Fields[k] = marshaled
@@ -77,7 +77,7 @@ func TestAssetSerialize(t *testing.T) {
 	assert.EqualError(t, err, "unexpected asset URI of type float64")
 	setProperty(pk, assetProps, resource.AssetURIProperty, "")
 
-	arch, err := archive.FromAssets(map[string]interface{}{"foo": anAsset})
+	arch, err := archive.FromAssets(map[string]any{"foo": anAsset})
 	require.NoError(t, err)
 	switch runtime.Version() {
 	case "go1.9":
@@ -224,7 +224,7 @@ func TestAssetReject(t *testing.T) {
 		assert.Nil(t, assetPropU)
 	}
 
-	arch, err := archive.FromAssets(map[string]interface{}{"foo": asset})
+	arch, err := archive.FromAssets(map[string]any{"foo": asset})
 	require.NoError(t, err)
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewProperty(arch), opts)
@@ -243,7 +243,7 @@ func TestAssetReject(t *testing.T) {
 func TestUnsupportedSecret(t *testing.T) {
 	t.Parallel()
 
-	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
 	}))
@@ -260,7 +260,7 @@ func TestUnsupportedSecret(t *testing.T) {
 func TestSupportedSecret(t *testing.T) {
 	t.Parallel()
 
-	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
 	}))
@@ -278,7 +278,7 @@ func TestSupportedSecret(t *testing.T) {
 func TestUnknownSig(t *testing.T) {
 	t.Parallel()
 
-	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+	rawProp := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 		resource.SigKey: "foobar",
 	}))
 	pk := resource.PropertyKey("pk")
@@ -304,9 +304,9 @@ func TestSkipInternalKeys(t *testing.T) {
 			},
 		},
 	}
-	props := resource.NewPropertyMapFromMap(map[string]interface{}{
+	props := resource.NewPropertyMapFromMap(map[string]any{
 		"__defaults": []string{},
-		"keepers": map[string]interface{}{
+		"keepers": map[string]any{
 			"__defaults": []string{},
 		},
 	})
@@ -745,7 +745,6 @@ func TestMarshalProperties(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -865,7 +864,6 @@ func TestOutputValueRoundTrip(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1152,7 +1150,6 @@ func TestOutputValueMarshaling(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1582,7 +1579,6 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1807,7 +1803,6 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

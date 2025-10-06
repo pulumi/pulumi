@@ -111,7 +111,6 @@ func TestGitClone(t *testing.T) {
 		{testName: "head of default as hash", commitHash: defaultHead.String(), expectedHead: defaultHead},
 		{testName: "head of nondefault as hash", commitHash: nondefaultHead.String(), expectedHead: nondefaultHead},
 	} {
-		tc := tc
 		if tc.testName == "" {
 			tc.testName = tc.branchName
 		}
@@ -167,7 +166,6 @@ func TestGitClone(t *testing.T) {
 				"but got \"refs/remotes/upstream/default\"",
 		},
 	} {
-		tc := tc
 		if tc.testName == "" {
 			tc.testName = tc.branchName
 		}

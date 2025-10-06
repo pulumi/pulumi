@@ -266,7 +266,6 @@ func TestGenerateHCL2Definition(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
-		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			require.NoError(t, err)
@@ -505,7 +504,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 			ID:     "provider-generated-bucket-object-id-abc123",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.id in the generated code
 				"bucket":       "provider-generated-bucket-id-abc123",
 				"storageClass": "STANDARD",
@@ -587,7 +586,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 			ID:     "provider-generated-bucket-object-id-abc123",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.id in the generated code
 				"bucket":       "provider-generated-bucket-id-abc123",
 				"storageClass": "STANDARD",
@@ -655,7 +654,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 			ID:       "provider-generated-bucket-id-abc123",
 			Custom:   true,
 			Type:     "aws:s3/bucket:Bucket",
-			Outputs: map[string]interface{}{
+			Outputs: map[string]any{
 				"name": "bucketName-12345",
 				"arn":  "arn:aws:s3:bucket-12345",
 			},
@@ -666,7 +665,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
 			Type:     "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.name in the generated code
 				"bucket":       "bucketName-12345",
 				"storageClass": "STANDARD",
@@ -678,7 +677,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
 			Type:     "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.arn in the generated code
 				"bucket":       "arn:aws:s3:bucket-12345",
 				"storageClass": "STANDARD",
@@ -764,7 +763,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
 			Type:     "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				// this will *NOT* be replaced with a reference to either firstBucket.id or secondBucket.id
 				// because both have the same ID and it would be ambiguous
 				"bucket":       "provider-generated-bucket-id-abc123",
@@ -835,7 +834,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
 			Type:     "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				// this literal value will stay as is since it shouldn't self-reference the bucket object itself
 				"bucket":       "provider-generated-bucket-object-id-abc123",
 				"storageClass": "STANDARD",

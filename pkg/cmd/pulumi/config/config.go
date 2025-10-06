@@ -882,9 +882,9 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 type configValueJSON struct {
 	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
 	// If the value is an object, ObjectValue will be set.
-	Value       *string     `json:"value,omitempty"`
-	ObjectValue interface{} `json:"objectValue,omitempty"`
-	Secret      bool        `json:"secret"`
+	Value       *string `json:"value,omitempty"`
+	ObjectValue any     `json:"objectValue,omitempty"`
+	Secret      bool    `json:"secret"`
 }
 
 func listConfig(
@@ -980,7 +980,7 @@ func listConfig(
 			entry.Value = &decrypted
 
 			if cfg[key].Object() {
-				var obj interface{}
+				var obj any
 				if err := json.Unmarshal([]byte(decrypted), &obj); err != nil {
 					return err
 				}
@@ -1151,7 +1151,7 @@ func getConfig(
 			}
 
 			if v.Object() {
-				var obj interface{}
+				var obj any
 				if err := json.Unmarshal([]byte(raw), &obj); err != nil {
 					return err
 				}

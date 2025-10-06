@@ -27,6 +27,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -482,6 +483,81 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	return events, nil
 }
 
+func replaceProviderID(provider string, operationIDMap map[string]int64, id *int) string {
+	if provider == "" {
+		return ""
+	}
+	// build the regex for the provider ID
+	re := regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	// find the ID in the provider string
+	found := re.FindString(provider)
+	if found != "" {
+		// see if we've already mapped this ID
+		mapped, ok := operationIDMap[found]
+		if !ok {
+			// if not, map it to the next ID
+			*id++
+			mapped = int64(*id)
+			operationIDMap[found] = mapped
+		}
+		// replace the ID in the provider string with the mapped value
+		return strings.ReplaceAll(provider, found, strconv.FormatInt(mapped, 10))
+	}
+	return provider
+}
+
+func stripIDFromStateMetadata(meta *engine.StepEventStateMetadata, operationIDMap map[string]int64, id *int) {
+	if meta == nil {
+		return
+	}
+	mapped, ok := operationIDMap[string(meta.ID)]
+	if !ok {
+		*id++
+		mapped = int64(*id)
+		operationIDMap[string(meta.ID)] = mapped
+	}
+	meta.ID = resource.ID(strconv.FormatInt(mapped, 10))
+	meta.Provider = replaceProviderID(meta.Provider, operationIDMap, id)
+}
+
+func stripIDFromMetadata(meta *engine.StepEventMetadata, operationIDMap map[string]int64, id *int) {
+	stripIDFromStateMetadata(meta.Old, operationIDMap, id)
+	stripIDFromStateMetadata(meta.New, operationIDMap, id)
+	stripIDFromStateMetadata(meta.Res, operationIDMap, id)
+
+	// Provider IDs are in the format `3c0abdd1-199f-40a2-b818-73e457967b21`.  Check if the string
+	// contains an ID, and if so, replace it with a normalized value.
+	meta.Provider = replaceProviderID(meta.Provider, operationIDMap, id)
+}
+
+func fixupEventIDs(events []engine.Event) []engine.Event {
+	// Normalize IDs in events, so multiple runs of the tests with PULUMI_ACCEPT=true
+	// returns the same results.
+	operationIDMap := make(map[string]int64)
+	id := 0
+	newEvents := make([]engine.Event, len(events))
+	for i, e := range events {
+		//nolint:exhaustive // We only care about a few event types here.
+		switch e.Type {
+		case engine.ResourceOperationFailed:
+			roe := e.Payload().(engine.ResourceOperationFailedPayload)
+			stripIDFromMetadata(&roe.Metadata, operationIDMap, &id)
+			newEvents[i] = engine.NewEvent(roe)
+		case engine.ResourceOutputsEvent:
+			roe := e.Payload().(engine.ResourceOutputsEventPayload)
+			stripIDFromMetadata(&roe.Metadata, operationIDMap, &id)
+			newEvents[i] = engine.NewEvent(roe)
+		case engine.ResourcePreEvent:
+			rpe := e.Payload().(engine.ResourcePreEventPayload)
+			stripIDFromMetadata(&rpe.Metadata, operationIDMap, &id)
+			newEvents[i] = engine.NewEvent(rpe)
+		default:
+			newEvents[i] = e
+		}
+	}
+	return newEvents
+}
+
 func AssertDisplay(t TB, events []engine.Event, path string) {
 	var expectedStdout []byte
 	var expectedStderr []byte
@@ -498,6 +574,8 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+
+	events = fixupEventIDs(events)
 
 	var expectedEvents []engine.Event
 	if accept {
@@ -653,7 +731,7 @@ type TestPlan struct {
 	Project        string
 	Stack          string
 	Runtime        string
-	RuntimeOptions map[string]interface{}
+	RuntimeOptions map[string]any
 	Config         config.Map
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient

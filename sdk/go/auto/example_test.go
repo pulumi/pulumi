@@ -195,7 +195,7 @@ func ExampleGitRepo() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -872,7 +872,7 @@ func ExampleNewStackRemoteSource() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -903,7 +903,7 @@ func ExampleUpsertStackRemoteSource() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -934,7 +934,7 @@ func ExampleSelectStackRemoteSource() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}

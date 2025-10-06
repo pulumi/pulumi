@@ -22,11 +22,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func errorf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	return diagf(hcl.DiagError, subject, f, args...)
 }
 
-func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	message := fmt.Sprintf(f, args...)
 	return &hcl.Diagnostic{
 		Severity: severity,
@@ -36,7 +36,7 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 	}
 }
 
-func labelsErrorf(block *hclsyntax.Block, f string, args ...interface{}) *hcl.Diagnostic {
+func labelsErrorf(block *hclsyntax.Block, f string, args ...any) *hcl.Diagnostic {
 	startRange := block.LabelRanges[0]
 
 	diagRange := hcl.Range{

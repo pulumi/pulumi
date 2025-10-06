@@ -87,7 +87,7 @@ func (p *printer) format(f fmt.State, c rune, pp printable) {
 	}
 }
 
-func (p *printer) fprintf(w io.Writer, f string, v ...interface{}) {
+func (p *printer) fprintf(w io.Writer, f string, v ...any) {
 	for i, e := range v {
 		if printable, ok := e.(printable); ok {
 			v[i] = formatter(func(f fmt.State, c rune) {

@@ -380,7 +380,6 @@ func TestRefreshWithDelete(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, parallelFactor := range []int32{1, 4} {
-		parallelFactor := parallelFactor
 		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
 			t.Parallel()
 

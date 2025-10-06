@@ -77,7 +77,6 @@ func testComponentProviderSchema(t *testing.T, path string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			// Start the plugin binary.
@@ -137,7 +136,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -175,8 +173,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		},
 	}
 	for _, test := range tests {
-		test := test
-
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -294,7 +290,7 @@ type nonfatalT struct {
 	messages []string
 }
 
-func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
+func (t *nonfatalT) Fatalf(msg string, args ...any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -321,7 +317,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -371,7 +366,6 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := "the failure reason (the failure property)"
@@ -414,7 +408,6 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -454,7 +447,6 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -597,7 +589,6 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason
@@ -641,7 +632,6 @@ func testCallFailures(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := `error: call to function 'testcomponent:index:Component/getMessage' failed:

@@ -49,15 +49,15 @@ type SeekInfo struct {
 }
 
 type logger interface {
-	Fatal(v ...interface{})
-	Fatalf(format string, v ...interface{})
-	Fatalln(v ...interface{})
-	Panic(v ...interface{})
-	Panicf(format string, v ...interface{})
-	Panicln(v ...interface{})
-	Print(v ...interface{})
-	Printf(format string, v ...interface{})
-	Println(v ...interface{})
+	Fatal(v ...any)
+	Fatalf(format string, v ...any)
+	Fatalln(v ...any)
+	Panic(v ...any)
+	Panicf(format string, v ...any)
+	Panicln(v ...any)
+	Print(v ...any)
+	Printf(format string, v ...any)
+	Println(v ...any)
 }
 
 // Config is used to specify how a file must be tailed.

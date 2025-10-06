@@ -245,7 +245,7 @@ func parseImportFile(
 
 	// TODO: When Go 1.21 is released, switch to errors.Join.
 	var errs error
-	pusherrf := func(format string, args ...interface{}) {
+	pusherrf := func(format string, args ...any) {
 		errs = multierror.Append(errs, fmt.Errorf(format, args...))
 	}
 

@@ -786,7 +786,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	fmt.Fprintf(w, "%s}\n", indent)
 }
 
-func primitiveValue(value interface{}) (string, error) {
+func primitiveValue(value any) (string, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()

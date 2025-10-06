@@ -2015,7 +2015,7 @@ const (
 
 type displayEvent struct {
 	Kind    DisplayEventType
-	Payload interface{}
+	Payload any
 }
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
@@ -2037,7 +2037,7 @@ func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, up
 	for {
 		// Query for the latest update results, including log entries so we can provide active status updates.
 		_, results, err := retry.Until(context.Background(), retry.Acceptor{
-			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 				return b.tryNextUpdate(ctx, update, continuationToken, try, nextRetryTime)
 			},
 		})
@@ -2106,7 +2106,7 @@ func displayEvents(action string, events <-chan displayEvent, done chan<- bool, 
 // false returned in the first return value.  If a non-nil error is returned, this operation should fail.
 func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateIdentifier, continuationToken *string,
 	try int, nextRetryTime time.Duration,
-) (bool, interface{}, error) {
+) (bool, any, error) {
 	// If there is no error, we're done.
 	results, err := b.client.GetUpdateEvents(ctx, update, continuationToken)
 	if err == nil {

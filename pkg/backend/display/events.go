@@ -359,6 +359,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      md.HideDiffs,
 	}
 }
 
@@ -626,5 +627,6 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      md.HideDiffs,
 	}
 }

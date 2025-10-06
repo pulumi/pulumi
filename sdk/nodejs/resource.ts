@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -857,6 +857,11 @@ export interface ResourceOptions {
      */
     hooks?: ResourceHookBinding;
 
+    /**
+     * A list of property paths where the diffs will be hidden. This only changes display logic.
+     */
+    hideDiffs?: string[];
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }
@@ -1467,9 +1472,9 @@ export class ComponentResource<TData = any> extends Resource {
      */
     protected async initialize(
         args: Inputs,
-        opts: ComponentResourceOptions,
-        name: string,
-        type: string,
+        opts?: ComponentResourceOptions,
+        name?: string,
+        type?: string,
     ): Promise<TData> {
         return <TData>undefined!;
     }

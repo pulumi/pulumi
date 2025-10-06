@@ -36,13 +36,13 @@ func RejectOutput(o OutputOrState, err error) {
 }
 
 // ResolveOutput resolves the given output with the given value and dependencies.
-func ResolveOutput(o OutputOrState, value interface{}, known, secret bool, deps []Resource) {
+func ResolveOutput(o OutputOrState, value any, known, secret bool, deps []Resource) {
 	o.getState().resolve(value, known, secret, deps)
 }
 
 // AwaitOutput awaits the given output and returns the resulting state.
 func AwaitOutput(ctx context.Context, o OutputOrState) (
-	value interface{}, known, secret bool, deps []Resource, err error,
+	value any, known, secret bool, deps []Resource, err error,
 ) {
 	return o.getState().await(ctx)
 }
@@ -52,13 +52,13 @@ func AwaitOutput(ctx context.Context, o OutputOrState) (
 //
 // That is, given an 'Output<Output<string>>', this will return 'Output<string>',
 // while [AwaitOutput] would return 'string'.
-func AwaitOutputNoUnwrap(ctx context.Context, o OutputOrState) (interface{}, bool, bool, []Resource, error) {
+func AwaitOutputNoUnwrap(ctx context.Context, o OutputOrState) (any, bool, bool, []Resource, error) {
 	return o.getState().awaitWithOptions(ctx, false /* unwrapOutputs */)
 }
 
 // FulfillOutput fulfills the given output with the given value and dependencies,
 // or rejects it with the given error.
-func FulfillOutput(o OutputOrState, value interface{}, known, secret bool, deps []Resource, err error) {
+func FulfillOutput(o OutputOrState, value any, known, secret bool, deps []Resource, err error) {
 	o.getState().fulfill(value, known, secret, deps, err)
 }
 
@@ -110,6 +110,6 @@ func GetOutputStatus(o OutputOrState) OutputStatus {
 // GetOutputValue returns the value currently held in the Output.
 //
 // If the Output has not yet resolved (see [GetOutputStatus], it will return nil.
-func GetOutputValue(o OutputOrState) interface{} {
+func GetOutputValue(o OutputOrState) any {
 	return o.getState().value
 }

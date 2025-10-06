@@ -35,7 +35,6 @@ func TestRetryPolicy_String(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.want, func(t *testing.T) {
 			t.Parallel()
 
@@ -102,7 +101,6 @@ func TestRetryPolicy_shouldRetry(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

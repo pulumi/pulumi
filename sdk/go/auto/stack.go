@@ -547,7 +547,7 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 
 	if importOpts.Resources != nil {
 		importFilePath := filepath.Join(tempDir, "import.json")
-		importContent := map[string]interface{}{
+		importContent := map[string]any{
 			"resources": importOpts.Resources,
 		}
 
@@ -1353,7 +1353,7 @@ type UpdateSummary struct {
 
 // OutputValue models a Pulumi Stack output, providing the plaintext value and a boolean indicating secretness.
 type OutputValue struct {
-	Value  interface{}
+	Value  any
 	Secret bool
 }
 

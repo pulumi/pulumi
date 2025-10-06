@@ -14,6 +14,8 @@
 
 package apitype
 
+import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
 // breaking changes.
@@ -47,7 +49,7 @@ type DiagnosticEvent struct {
 
 // StartDebuggingEvent is emitted to start a debugging session.
 type StartDebuggingEvent struct {
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config map[string]any `json:"config,omitempty"`
 }
 
 // PolicyEvent is emitted whenever there is Policy violation.
@@ -66,14 +68,14 @@ type PolicyEvent struct {
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.
 type PolicyRemediationEvent struct {
-	ResourceURN          string                 `json:"resourceUrn,omitempty"`
-	Color                string                 `json:"color"`
-	PolicyName           string                 `json:"policyName"`
-	PolicyPackName       string                 `json:"policyPackName"`
-	PolicyPackVersion    string                 `json:"policyPackVersion"`
-	PolicyPackVersionTag string                 `json:"policyPackVersionTag"`
-	Before               map[string]interface{} `json:"before,omitempty"`
-	After                map[string]interface{} `json:"after,omitempty"`
+	ResourceURN          string         `json:"resourceUrn,omitempty"`
+	Color                string         `json:"color"`
+	PolicyName           string         `json:"policyName"`
+	PolicyPackName       string         `json:"policyPackName"`
+	PolicyPackVersion    string         `json:"policyPackVersion"`
+	PolicyPackVersionTag string         `json:"policyPackVersionTag"`
+	Before               map[string]any `json:"before,omitempty"`
+	After                map[string]any `json:"after,omitempty"`
 }
 
 // PolicyAnalyzeSummaryEvent is emitted after a call to Analyze on an analyzer, summarizing the results.
@@ -231,13 +233,15 @@ type StepEventStateMetadata struct {
 	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
 	// filtered out, and large assets have been replaced by hashes as applicable.
-	Inputs map[string]interface{} `json:"inputs"`
+	Inputs map[string]any `json:"inputs"`
 	// Outputs contains the resource's complete output state (as returned by the resource provider).
-	Outputs map[string]interface{} `json:"outputs"`
+	Outputs map[string]any `json:"outputs"`
 	// Provider is the resource's provider reference
 	Provider string `json:"provider"`
 	// InitErrors is the set of errors encountered in the process of initializing resource.
 	InitErrors []string `json:"initErrors,omitempty"`
+	// HideDiffs is the set of property paths where diffs are not displayed.
+	HideDiffs []resource.PropertyPath `json:"hideDiffs,omitempty"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.

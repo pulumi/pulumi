@@ -49,7 +49,7 @@ func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	t.Parallel()
 	s := &schema.Package{
 		Name: "pulumiservice",
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"nodejs": NodePackageInfo{
 				PackageName: "@pulumi/bar",
 			},

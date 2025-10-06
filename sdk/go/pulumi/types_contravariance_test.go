@@ -24,13 +24,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// asAnySlice converts []T to []interface{} by reflection, simulating covariance.
-func asAnySlice(t *testing.T, values interface{}) []interface{} {
+// asAnySlice converts []T to []any by reflection, simulating covariance.
+func asAnySlice(t *testing.T, values any) []any {
 	v := reflect.ValueOf(values)
 	// use reflect.valueOf to iterate over items of values
 	require.Equalf(t, v.Kind(), reflect.Slice, "expected a slice, got %v", v.Type())
 
-	out := slice.Prealloc[interface{}](v.Len())
+	out := slice.Prealloc[any](v.Len())
 	for i := 0; i < v.Len(); i++ {
 		out = append(out, v.Index(i).Interface())
 	}
@@ -41,7 +41,7 @@ func asAnySlice(t *testing.T, values interface{}) []interface{} {
 func TestArchiveArrayContravariance(t *testing.T) {
 	t.Parallel()
 
-	plain := []Archive{NewAssetArchive(make(map[string]interface{}))}
+	plain := []Archive{NewAssetArchive(make(map[string]any))}
 
 	anyout := Any(asAnySlice(t, plain))
 	out := anyout.AsArchiveArrayOutput()
@@ -71,7 +71,7 @@ func TestAssetArrayContravariance(t *testing.T) {
 func TestAssetOrArchiveArrayContravariance(t *testing.T) {
 	t.Parallel()
 
-	plain := []AssetOrArchive{NewStringAsset("foo"), NewAssetArchive(make(map[string]interface{}))}
+	plain := []AssetOrArchive{NewStringAsset("foo"), NewAssetArchive(make(map[string]any))}
 
 	anyout := Any(asAnySlice(t, plain))
 	out := anyout.AsAssetOrArchiveArrayOutput()

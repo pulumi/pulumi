@@ -107,7 +107,6 @@ func TestInstallPluginErrorText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			assert.EqualError(t, &tt.Err, tt.ExpectedError)

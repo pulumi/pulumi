@@ -312,7 +312,6 @@ func TestFileImporter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -368,7 +367,6 @@ func TestToIdentifier(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.give, func(t *testing.T) {
 			t.Parallel()
 
@@ -423,7 +421,6 @@ func TestSecondLastIndex(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

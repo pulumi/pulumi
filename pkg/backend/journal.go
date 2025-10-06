@@ -218,6 +218,19 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 		}
 
 		r.base.SecretsProviders = entry.SecretsProvider
+	case apitype.JournalEntryKindRebuiltBaseState:
+		// We need to build the snapshot from the current state here and discard the
+		// current journal entries. This happens after a refresh operation.
+		deployment, _, _ := r.GenerateDeployment()
+		r.base = deployment
+		r.toRemove = make(map[int64]struct{})
+		r.toDeleteInSnapshot = make(map[int64]struct{})
+		r.toReplaceInSnapshot = make(map[int64]*apitype.ResourceV3)
+		r.markAsDeletion = make(map[int64]struct{})
+		r.markAsPendingReplacement = make(map[int64]struct{})
+		r.operationIDToResourceIndex = make(map[int64]int64)
+		r.incompleteOps = make(map[int64]apitype.JournalEntry)
+		r.newResources = make([]*apitype.ResourceV3, 0)
 	}
 }
 
@@ -387,8 +400,18 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 	replayer := NewJournalReplayer(snap)
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
-	for _, entry := range sj.journalEntries {
+	for i, entry := range sj.journalEntries {
 		replayer.Add(entry)
+		// If the entry we're adding is a RebuiltBaseState entry, it's only valid if
+		// there are no new resources, or the journal entry is the last entry. Validate
+		// that, and add a validation error if this is not the case. For a detailed
+		// example see https://github.com/pulumi/pulumi/pull/20596#discussion_r2392049682
+		if entry.Kind == apitype.JournalEntryKindRebuiltBaseState &&
+			len(replayer.newResources) > 0 && i < len(sj.journalEntries)-1 {
+			sj.errors = append(sj.errors,
+				fmt.Errorf("invalid RebuiltBaseState journal entry. Have %d new resources, but entry is not last in journal",
+					len(replayer.newResources)))
+		}
 	}
 
 	deploymentV3, _, _ := replayer.GenerateDeployment()

@@ -114,7 +114,6 @@ func TestGlobUrn(t *testing.T) {
 		},
 	}
 	for _, tt := range globs {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 

@@ -144,7 +144,7 @@ type dependencyEdge struct {
 }
 
 // In this simple case, edges have no data.
-func (edge *dependencyEdge) Data() interface{} {
+func (edge *dependencyEdge) Data() any {
 	return nil
 }
 
@@ -173,7 +173,7 @@ type parentEdge struct {
 	color string
 }
 
-func (edge *parentEdge) Data() interface{} {
+func (edge *parentEdge) Data() any {
 	return nil
 }
 
@@ -205,7 +205,7 @@ type dependencyVertex struct {
 	useShortName  bool
 }
 
-func (vertex *dependencyVertex) Data() interface{} {
+func (vertex *dependencyVertex) Data() any {
 	return vertex.resource
 }
 

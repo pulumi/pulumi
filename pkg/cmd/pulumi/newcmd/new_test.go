@@ -625,7 +625,6 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("project=%q/stackRef=%q", tt.projectName, tt.stackRef), func(t *testing.T) {
 			t.Parallel()
 			err := compareStackProjectName(b, tt.stackRef, tt.projectName)
@@ -695,7 +694,6 @@ func TestProjectExists(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName, false /* generateOnly */, display.Options{})
@@ -724,7 +722,6 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tempdir := tempProjectDir(t)
 			chdir(t, tempdir)
@@ -813,7 +810,6 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		name := tt.argument
 		if name == "" {
 			name = tt.prompted
@@ -835,7 +831,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
-			) (map[string]interface{}, error) {
+			) (map[string]any, error) {
 				return nil, nil
 			}
 
@@ -859,7 +855,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			require.NoError(t, err)
 			tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
 			assert.True(t, has)
-			tagsObject, ok := tagsValue.Value.(map[string]interface{})
+			tagsObject, ok := tagsValue.Value.(map[string]any)
 			assert.True(t, ok)
 			assert.Equal(t, tt.expected, tagsObject[apitype.ProjectTemplateTag])
 		})
@@ -873,8 +869,8 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 
 	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
-	) (map[string]interface{}, error) {
-		return map[string]interface{}{"someOption": "someValue"}, nil
+	) (map[string]any, error) {
+		return map[string]any{"someOption": "someValue"}, nil
 	}
 
 	args := newArgs{

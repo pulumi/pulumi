@@ -60,12 +60,12 @@ func main() {
 	// Bootup a policy plugin but first assert that the config is what we expect
 
 	config := os.Getenv("PULUMI_CONFIG")
-	var actual map[string]interface{}
+	var actual map[string]any
 	if err := json.Unmarshal([]byte(config), &actual); err != nil {
 		fmt.Printf("fatal: %v\n", err)
 		os.Exit(1)
 	}
-	expect := map[string]interface{}{
+	expect := map[string]any{
 		"test-project:bool":   "true",
 		"test-project:float":  "1.5",
 		"test-project:string": "hello",

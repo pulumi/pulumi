@@ -44,7 +44,7 @@ func TestUntil_exhaustAttempts(t *testing.T) {
 		Delay:    &delay,
 		Backoff:  &backoff,
 		MaxDelay: &maxDelay,
-		Accept: func(try int, delay time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			if try > 3 {
 				return false, nil, errTooManyTries
 			}
@@ -69,7 +69,7 @@ func TestUntil_contextExpired(t *testing.T) {
 	ok, _, _ := (&Retryer{
 		After: newAfterRecorder(time.Now()).After,
 	}).Until(ctx, Acceptor{
-		Accept: func(try int, delay time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			if try > 2 {
 				cancel()
 			}
@@ -99,7 +99,7 @@ func TestUntil_maxDelay(t *testing.T) {
 		Delay:    &delay,
 		Backoff:  &backoff,
 		MaxDelay: &maxDelay,
-		Accept: func(try int, delay time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			// 100 tries should be enough to reach maxDelay.
 			if try < 100 {
 				return false, nil, nil

@@ -15,6 +15,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
@@ -22,35 +23,58 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPropertyPathMarshal(t *testing.T) {
+	t.Parallel()
+
+	test := func(t *testing.T, path PropertyPath, repr string) {
+		t.Run(repr, func(t *testing.T) {
+			type ex struct {
+				P PropertyPath `json:"p"`
+			}
+			bytes, err := json.Marshal(ex{path})
+			require.NoError(t, err)
+			assert.Equal(t, `{"p":"`+repr+`"}`, string(bytes))
+			var dst ex
+			err = json.Unmarshal(bytes, &dst)
+			require.NoError(t, err)
+			assert.Equal(t, path, dst.P)
+		})
+	}
+
+	test(t, nil, "")
+	test(t, PropertyPath{"a", 1, "b"}, "a[1].b")
+	test(t, PropertyPath{1, "*", 2}, `[1][\"*\"][2]`)
+}
+
 func TestPropertyPath(t *testing.T) {
 	t.Parallel()
 
 	makeValue := func() PropertyValue {
-		return NewProperty(NewPropertyMapFromMap(map[string]interface{}{
-			"root": map[string]interface{}{
-				"nested": map[string]interface{}{
-					"array": []interface{}{
-						map[string]interface{}{
-							"double": []interface{}{
+		return NewProperty(NewPropertyMapFromMap(map[string]any{
+			"root": map[string]any{
+				"nested": map[string]any{
+					"array": []any{
+						map[string]any{
+							"double": []any{
 								nil,
 								true,
 							},
 						},
 					},
 				},
-				"double": map[string]interface{}{
+				"double": map[string]any{
 					"nest": true,
 				},
-				"array": []interface{}{
-					map[string]interface{}{
+				"array": []any{
+					map[string]any{
 						"nested": true,
 					},
 					true,
 				},
-				"array2": []interface{}{
-					[]interface{}{
+				"array2": []any{
+					[]any{
 						nil,
-						map[string]interface{}{
+						map[string]any{
 							"nested": true,
 						},
 					},
@@ -58,10 +82,10 @@ func TestPropertyPath(t *testing.T) {
 				`key with "escaped" quotes`: true,
 				"key with a .":              true,
 			},
-			`root key with "escaped" quotes`: map[string]interface{}{
+			`root key with "escaped" quotes`: map[string]any{
 				"nested": true,
 			},
-			"root key with a .": []interface{}{
+			"root key with a .": []any{
 				nil,
 				true,
 			},
@@ -164,7 +188,6 @@ func TestPropertyPath(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.path, func(t *testing.T) {
 			t.Parallel()
 
@@ -225,7 +248,6 @@ func TestPropertyPath(t *testing.T) {
 		t.Parallel()
 
 		for _, c := range simpleCases {
-			c := c
 			t.Run(c.path, func(t *testing.T) {
 				t.Parallel()
 
@@ -253,7 +275,6 @@ func TestPropertyPath(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCases {
-		c := c
 		t.Run(c, func(t *testing.T) {
 			t.Parallel()
 
@@ -275,7 +296,6 @@ func TestPropertyPath(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCasesStrict {
-		c := c
 		t.Run(c, func(t *testing.T) {
 			t.Parallel()
 
@@ -873,7 +893,6 @@ func TestReset(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

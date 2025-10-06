@@ -294,7 +294,7 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
+func (mod *modContext) typeAst(t schema.Type, input bool, constValue any) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		return tstypes.Union(
@@ -360,7 +360,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 	panic(fmt.Errorf("unexpected type %T", t))
 }
 
-func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
+func (mod *modContext) typeString(t schema.Type, input bool, constValue any) string {
 	return tstypes.TypeLiteral(tstypes.Normalize(mod.typeAst(t, input, constValue)))
 }
 
@@ -528,7 +528,7 @@ func (mod *modContext) provideDefaultsFuncName(typ schema.Type, input bool) stri
 	return provideDefaultsFuncNameFromName(typeName)
 }
 
-func tsPrimitiveValue(value interface{}) (string, error) {
+func tsPrimitiveValue(value any) (string, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
@@ -554,7 +554,7 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (mod *modContext) getConstValue(cv interface{}) (string, error) {
+func (mod *modContext) getConstValue(cv any) (string, error) {
 	if cv == nil {
 		return "", nil
 	}
@@ -1553,11 +1553,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	}
 }
 
-func (mod *modContext) getImports(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
+func (mod *modContext) getImports(member any, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
 	return mod.getImportsForResource(member, externalImports, imports, nil)
 }
 
-func (mod *modContext) getImportsForResource(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet, res *schema.Resource) bool {
+func (mod *modContext) getImportsForResource(member any, externalImports codegen.StringSet, imports map[string]codegen.StringSet, res *schema.Resource) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
@@ -2377,6 +2377,7 @@ func genPackageMetadata(
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
 	if localSDK {
 		fs.Add("scripts/postinstall.js", genPostInstallScript())
+		fs.Add(".gitignore", genGitignoreFile())
 	}
 	return nil
 }
@@ -2590,6 +2591,12 @@ try {
 }
 // TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
 fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
+`)
+}
+
+func genGitignoreFile() []byte {
+	return []byte(`node_modules/
+bin/
 `)
 }
 

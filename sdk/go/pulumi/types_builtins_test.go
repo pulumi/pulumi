@@ -38,7 +38,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 		var ranApp bool
-		app := out.ApplyT(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (any, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -53,7 +53,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.ResolveOutput(out, 42, false, false, nil) }()
 		var ranApp bool
-		app := out.ApplyT(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (any, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -67,7 +67,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.RejectOutput(out, errors.New("boom")) }()
 		var ranApp bool
-		app := out.ApplyT(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (any, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -81,7 +81,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 		var ranApp bool
-		app := out.ApplyT(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (any, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 1) }()
 			ranApp = true
@@ -93,7 +93,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
-		app = out.ApplyT(func(v int) (interface{}, error) {
+		app = out.ApplyT(func(v int) (any, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 2) }()
 			ranApp = true
@@ -110,7 +110,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 		var ranApp bool
-		app := out.ApplyT(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (any, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
@@ -121,7 +121,7 @@ func TestOutputApply(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, v)
 
-		app = out.ApplyT(func(v int) (interface{}, error) {
+		app = out.ApplyT(func(v int) (any, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
@@ -409,43 +409,43 @@ func TestOutputApply(t *testing.T) {
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) []interface{} { return *new([]interface{}) }).(ArrayOutput)
+			_, ok := out.ApplyT(func(v int) []any { return *new([]any) }).(ArrayOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) map[string]interface{} { return *new(map[string]interface{}) }).(MapOutput)
+			_, ok := out.ApplyT(func(v int) map[string]any { return *new(map[string]any) }).(MapOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) map[string][]interface{} { return *new(map[string][]interface{}) }).(ArrayMapOutput)
+			_, ok := out.ApplyT(func(v int) map[string][]any { return *new(map[string][]any) }).(ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapArrayOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) []map[string]interface{} { return *new([]map[string]interface{}) }).(MapArrayOutput)
+			_, ok := out.ApplyT(func(v int) []map[string]any { return *new([]map[string]any) }).(MapArrayOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) map[string]map[string]interface{} { return *new(map[string]map[string]interface{}) }).(MapMapOutput)
+			_, ok := out.ApplyT(func(v int) map[string]map[string]any { return *new(map[string]map[string]any) }).(MapMapOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) [][]interface{} { return *new([][]interface{}) }).(ArrayArrayOutput)
+			_, ok := out.ApplyT(func(v int) [][]any { return *new([][]any) }).(ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayMapOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) map[string][][]interface{} { return *new(map[string][][]interface{}) }).(ArrayArrayMapOutput)
+			_, ok := out.ApplyT(func(v int) map[string][][]any { return *new(map[string][][]any) }).(ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -619,7 +619,7 @@ func TestOutputApply(t *testing.T) {
 			ApplyT(func(v int) myStructType {
 				return myStructType{foo: v, bar: "qux,zed"}
 			}).
-			ApplyT(func(v interface{}) (string, error) {
+			ApplyT(func(v any) (string, error) {
 				bar := v.(myStructType).bar
 				if bar != "qux,zed" {
 					return "", errors.New("unexpected value")
@@ -638,7 +638,7 @@ func TestOutputApply(t *testing.T) {
 			ApplyT(func(v int) myStructType {
 				return myStructType{foo: v, bar: "foo,bar"}
 			}).
-			ApplyT(func(v interface{}) (string, error) {
+			ApplyT(func(v any) (string, error) {
 				bar := v.(myStructType).bar
 				if bar != "foo,bar" {
 					return "", errors.New("unexpected value")
@@ -653,20 +653,20 @@ func TestOutputApply(t *testing.T) {
 				return []string{strs[0], strs[1]}, nil
 			})
 
-		res3 := All(res, res2).ApplyT(func(v []interface{}) string {
+		res3 := All(res, res2).ApplyT(func(v []any) string {
 			res, res2 := v[0].([]string), v[1].([]string)
 			return strings.Join(append(res2, res...), ",")
 		})
 
-		res4 := All(out, out2).ApplyT(func(v []interface{}) *myStructType {
+		res4 := All(out, out2).ApplyT(func(v []any) *myStructType {
 			return &myStructType{
 				foo: v[0].(int),
 				bar: v[1].(string),
 			}
 		})
 
-		res5 := All(res3, res4).ApplyT(func(v interface{}) (interface{}, error) {
-			vs := v.([]interface{})
+		res5 := All(res3, res4).ApplyT(func(v any) (any, error) {
+			vs := v.([]any)
 			res3 := vs[0].(string)
 			res4 := vs[1].(*myStructType)
 			return fmt.Sprintf("%v;%v;%v", res3, res4.foo, res4.bar), nil
@@ -5578,7 +5578,7 @@ func TestArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.([]interface{})[0], iv)
+	assert.EqualValues(t, av.([]any)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
@@ -5589,7 +5589,7 @@ func TestArrayIndex(t *testing.T) {
 func TestToArray(t *testing.T) {
 	t.Parallel()
 
-	out := ToArray([]interface{}{String("any")}).ToArrayOutput()
+	out := ToArray([]any{String("any")}).ToArrayOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5599,7 +5599,7 @@ func TestToArray(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.([]interface{})[0], iv)
+	assert.EqualValues(t, av.([]any)[0], iv)
 }
 
 func TestTopLevelToArrayOutput(t *testing.T) {
@@ -5615,7 +5615,7 @@ func TestTopLevelToArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.([]interface{})[0], iv)
+	assert.EqualValues(t, av.([]any)[0], iv)
 }
 
 func TestMapArrayIndex(t *testing.T) {
@@ -5630,7 +5630,7 @@ func TestMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
+	assert.EqualValues(t, av.([]map[string]any)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
@@ -5641,7 +5641,7 @@ func TestMapArrayIndex(t *testing.T) {
 func TestToMapArray(t *testing.T) {
 	t.Parallel()
 
-	out := ToMapArray([]map[string]interface{}{{"baz": String("any")}}).ToMapArrayOutput()
+	out := ToMapArray([]map[string]any{{"baz": String("any")}}).ToMapArrayOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5651,7 +5651,7 @@ func TestToMapArray(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
+	assert.EqualValues(t, av.([]map[string]any)[0], iv)
 }
 
 func TestTopLevelToMapArrayOutput(t *testing.T) {
@@ -5667,7 +5667,7 @@ func TestTopLevelToMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
+	assert.EqualValues(t, av.([]map[string]any)[0], iv)
 }
 
 func TestArrayArrayIndex(t *testing.T) {
@@ -5682,7 +5682,7 @@ func TestArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.([][]interface{})[0], iv)
+	assert.EqualValues(t, av.([][]any)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
@@ -5693,7 +5693,7 @@ func TestArrayArrayIndex(t *testing.T) {
 func TestToArrayArray(t *testing.T) {
 	t.Parallel()
 
-	out := ToArrayArray([][]interface{}{{String("any")}}).ToArrayArrayOutput()
+	out := ToArrayArray([][]any{{String("any")}}).ToArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5703,7 +5703,7 @@ func TestToArrayArray(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.([][]interface{})[0], iv)
+	assert.EqualValues(t, av.([][]any)[0], iv)
 }
 
 func TestTopLevelToArrayArrayOutput(t *testing.T) {
@@ -5719,7 +5719,7 @@ func TestTopLevelToArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.([][]interface{})[0], iv)
+	assert.EqualValues(t, av.([][]any)[0], iv)
 }
 
 func TestIntArrayIndex(t *testing.T) {
@@ -7044,7 +7044,7 @@ func TestMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string]any)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
@@ -7055,7 +7055,7 @@ func TestMapIndex(t *testing.T) {
 func TestToMap(t *testing.T) {
 	t.Parallel()
 
-	out := ToMap(map[string]interface{}{"baz": String("any")}).ToMapOutput()
+	out := ToMap(map[string]any{"baz": String("any")}).ToMapOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -7065,7 +7065,7 @@ func TestToMap(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string]any)["baz"], iv)
 }
 
 func TestTopLevelToMapOutput(t *testing.T) {
@@ -7081,7 +7081,7 @@ func TestTopLevelToMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string]any)["baz"], iv)
 }
 
 func TestArrayMapIndex(t *testing.T) {
@@ -7096,7 +7096,7 @@ func TestArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string][]any)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
@@ -7107,7 +7107,7 @@ func TestArrayMapIndex(t *testing.T) {
 func TestToArrayMap(t *testing.T) {
 	t.Parallel()
 
-	out := ToArrayMap(map[string][]interface{}{"baz": {String("any")}}).ToArrayMapOutput()
+	out := ToArrayMap(map[string][]any{"baz": {String("any")}}).ToArrayMapOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -7117,7 +7117,7 @@ func TestToArrayMap(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string][]any)["baz"], iv)
 }
 
 func TestTopLevelToArrayMapOutput(t *testing.T) {
@@ -7133,7 +7133,7 @@ func TestTopLevelToArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string][]any)["baz"], iv)
 }
 
 func TestMapMapIndex(t *testing.T) {
@@ -7148,7 +7148,7 @@ func TestMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string]map[string]any)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
@@ -7159,7 +7159,7 @@ func TestMapMapIndex(t *testing.T) {
 func TestToMapMap(t *testing.T) {
 	t.Parallel()
 
-	out := ToMapMap(map[string]map[string]interface{}{"baz": {"baz": String("any")}}).ToMapMapOutput()
+	out := ToMapMap(map[string]map[string]any{"baz": {"baz": String("any")}}).ToMapMapOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -7169,7 +7169,7 @@ func TestToMapMap(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string]map[string]any)["baz"], iv)
 }
 
 func TestTopLevelToMapMapOutput(t *testing.T) {
@@ -7185,7 +7185,7 @@ func TestTopLevelToMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string]map[string]any)["baz"], iv)
 }
 
 func TestArrayArrayMapIndex(t *testing.T) {
@@ -7200,7 +7200,7 @@ func TestArrayArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	require.NoError(t, err)
-	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string][][]any)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
@@ -7211,7 +7211,7 @@ func TestArrayArrayMapIndex(t *testing.T) {
 func TestToArrayArrayMap(t *testing.T) {
 	t.Parallel()
 
-	out := ToArrayArrayMap(map[string][][]interface{}{"baz": {{String("any")}}}).ToArrayArrayMapOutput()
+	out := ToArrayArrayMap(map[string][][]any{"baz": {{String("any")}}}).ToArrayArrayMapOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -7221,7 +7221,7 @@ func TestToArrayArrayMap(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string][][]any)["baz"], iv)
 }
 
 func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
@@ -7237,7 +7237,7 @@ func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
+	assert.EqualValues(t, av.(map[string][][]any)["baz"], iv)
 }
 
 func TestIntMapIndex(t *testing.T) {

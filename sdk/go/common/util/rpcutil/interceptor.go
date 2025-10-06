@@ -64,7 +64,7 @@ func OpenTracingStreamServerInterceptor(parentSpan opentracing.Span,
 func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInterceptor {
 	options = append(append(options,
 		// Do not trace calls to the empty method
-		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ interface{}) bool {
+		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ any) bool {
 			return method != ""
 		})), logPayloads()...)
 	return otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer(), options...)
@@ -74,7 +74,7 @@ func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInte
 func OpenTracingStreamClientInterceptor(options ...otgrpc.Option) grpc.StreamClientInterceptor {
 	options = append(append(options,
 		// Do not trace calls to the empty method
-		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ interface{}) bool {
+		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ any) bool {
 			return method != ""
 		})), logPayloads()...)
 	return otgrpc.OpenTracingStreamClientInterceptor(opentracing.GlobalTracer(), options...)
@@ -102,11 +102,11 @@ func (t *reparentingTracer) StartSpan(operationName string, opts ...opentracing.
 	return t.underlying.StartSpan(operationName, opts...)
 }
 
-func (t *reparentingTracer) Inject(sm opentracing.SpanContext, format interface{}, carrier interface{}) error {
+func (t *reparentingTracer) Inject(sm opentracing.SpanContext, format any, carrier any) error {
 	return t.underlying.Inject(sm, format, carrier)
 }
 
-func (t *reparentingTracer) Extract(format interface{}, carrier interface{}) (opentracing.SpanContext, error) {
+func (t *reparentingTracer) Extract(format any, carrier any) (opentracing.SpanContext, error) {
 	return t.underlying.Extract(format, carrier)
 }
 

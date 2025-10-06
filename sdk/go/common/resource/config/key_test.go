@@ -83,8 +83,8 @@ func roundtripKeyJSON(k Key) (Key, error) {
 	return roundtripKey(k, json.Marshal, json.Unmarshal)
 }
 
-func roundtripKey(m Key, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error,
+func roundtripKey(m Key, marshal func(v any) ([]byte, error),
+	unmarshal func([]byte, any) error,
 ) (Key, error) {
 	b, err := marshal(m)
 	if err != nil {

@@ -378,12 +378,11 @@ pulumi:autonaming:
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.Map{}
-			err := cfg.UnmarshalYAML(func(v interface{}) error {
+			err := cfg.UnmarshalYAML(func(v any) error {
 				var raw map[string]config.Value
 				if err := yaml.Unmarshal([]byte(tt.configYAML), &raw); err != nil {
 					return err

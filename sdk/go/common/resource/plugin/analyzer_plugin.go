@@ -700,7 +700,7 @@ func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "analyzer",
 		}
@@ -850,7 +850,7 @@ func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyCo
 
 	props := make(map[string]JSONSchema)
 	for k, v := range schema.GetProperties().AsMap() {
-		s := v.(map[string]interface{})
+		s := v.(map[string]any)
 		props[k] = JSONSchema(s)
 	}
 

@@ -688,7 +688,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -797,7 +797,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -2566,7 +2566,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		assert.False(t, outputs["exp_cfg"].Secret)
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
-		assert.Equal(t, map[string]interface{}{
+		assert.Equal(t, map[string]any{
 			"is_a_secret":  "iamsecret",
 			"not_a_secret": "foo",
 		}, outputs["nested_obj"].Value)
@@ -2648,7 +2648,6 @@ func TestShallowClone(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -3007,7 +3006,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 		c.RequireSecretFloat64("plainfloat11")
 		c.TrySecretFloat64("plainfloat12")
 
-		var obj interface{}
+		var obj any
 		config.GetObject(ctx, "plainobjj1", &obj)
 		config.RequireObject(ctx, "plainobj2", &obj)
 		config.TryObject(ctx, "plainobj3", &obj)

@@ -62,17 +62,17 @@ func TestNewPropertyNonGeneric(t *testing.T) {
 func TestMappable(t *testing.T) {
 	t.Parallel()
 
-	ma1 := map[string]interface{}{
+	ma1 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
-		"f": []interface{}{},
+		"f": []any{},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
 	assert.Equal(t, len(ma1), len(ma1p))
@@ -86,15 +86,15 @@ func TestMapReplValues(t *testing.T) {
 	t.Parallel()
 
 	// First, no replacements (nil repl).
-	ma1 := map[string]interface{}{
+	ma1 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
@@ -103,39 +103,39 @@ func TestMapReplValues(t *testing.T) {
 	assert.Equal(t, ma1, ma1mm)
 
 	// First, no replacements (false-returning repl).
-	ma2 := map[string]interface{}{
+	ma2 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma2p := NewPropertyMapFromMap(ma2)
 	assert.Equal(t, len(ma2), len(ma2p))
-	ma2mm := ma2p.MapRepl(nil, func(v PropertyValue) (interface{}, bool) {
+	ma2mm := ma2p.MapRepl(nil, func(v PropertyValue) (any, bool) {
 		return nil, false
 	})
 	assert.Equal(t, ma2, ma2mm)
 
 	// Finally, actually replace some numbers with ints.
-	ma3 := map[string]interface{}{
+	ma3 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma3p := NewPropertyMapFromMap(ma3)
 	assert.Equal(t, len(ma3), len(ma3p))
-	ma3mm := ma3p.MapRepl(nil, func(v PropertyValue) (interface{}, bool) {
+	ma3mm := ma3p.MapRepl(nil, func(v PropertyValue) (any, bool) {
 		if v.IsNumber() {
 			return int(v.NumberValue()), true
 		}
@@ -143,23 +143,23 @@ func TestMapReplValues(t *testing.T) {
 	})
 	// patch the original map so it can compare easily
 	ma3["a"] = int(ma3["a"].(float64))
-	ma3["d"].([]interface{})[1] = int(ma3["d"].([]interface{})[1].(float64))
-	ma3["e"].(map[string]interface{})["e.n"] = int(ma3["e"].(map[string]interface{})["e.n"].(float64))
+	ma3["d"].([]any)[1] = int(ma3["d"].([]any)[1].(float64))
+	ma3["e"].(map[string]any)["e.n"] = int(ma3["e"].(map[string]any)["e.n"].(float64))
 	assert.Equal(t, ma3, ma3mm)
 }
 
 func TestMapReplKeys(t *testing.T) {
 	t.Parallel()
 
-	m := map[string]interface{}{
+	m := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma := NewPropertyMapFromMap(m)
@@ -171,9 +171,9 @@ func TestMapReplKeys(t *testing.T) {
 	assert.Equal(t, m["b"], mam["B"])
 	assert.Equal(t, m["c"], mam["C"])
 	assert.Equal(t, m["d"], mam["D"])
-	assert.Equal(t, m["e"].(map[string]interface{})["e.1"], mam["E"].(map[string]interface{})["E.1"])
-	assert.Equal(t, m["e"].(map[string]interface{})["e.n"], mam["E"].(map[string]interface{})["E.N"])
-	assert.Equal(t, m["e"].(map[string]interface{})["e.^"], mam["E"].(map[string]interface{})["E.^"])
+	assert.Equal(t, m["e"].(map[string]any)["e.1"], mam["E"].(map[string]any)["E.1"])
+	assert.Equal(t, m["e"].(map[string]any)["e.n"], mam["E"].(map[string]any)["E.N"])
+	assert.Equal(t, m["e"].(map[string]any)["e.^"], mam["E"].(map[string]any)["E.^"])
 }
 
 func TestMapReplComputedOutput(t *testing.T) {
@@ -191,7 +191,7 @@ func TestMapReplComputedOutput(t *testing.T) {
 func TestCopy(t *testing.T) {
 	t.Parallel()
 
-	src := NewPropertyMapFromMap(map[string]interface{}{
+	src := NewPropertyMapFromMap(map[string]any{
 		"a": "str",
 		"b": 42,
 	})
@@ -255,7 +255,6 @@ func TestTypeString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -300,7 +299,6 @@ func TestString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -337,7 +335,6 @@ func TestContainsUnknowns(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -388,7 +385,6 @@ func TestContainsSecrets(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -430,7 +426,6 @@ func TestHasValue(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -443,9 +438,9 @@ func TestHasValue(t *testing.T) {
 func TestMapFromMapNestedPropertyValues(t *testing.T) {
 	t.Parallel()
 
-	actual := NewPropertyMapFromMap(map[string]interface{}{
+	actual := NewPropertyMapFromMap(map[string]any{
 		"prop": NewProperty("value"),
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"obj": NewProperty(PropertyMap{
 				"k": NewProperty("v"),
 			}),

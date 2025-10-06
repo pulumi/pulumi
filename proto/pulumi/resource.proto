@@ -178,6 +178,7 @@ message RegisterResourceRequest {
 
     // The resource hooks that should run at certain points in the resource's lifecycle.
     optional ResourceHooksBinding hooks = 34;
+    repeated string hideDiffs = 37;
 }
 
 enum Result {
@@ -271,6 +272,7 @@ message TransformResourceOptions {
     map<string, bytes> plugin_checksums = 15;
     RegisterResourceRequest.ResourceHooksBinding hooks = 16;
     string import = 17;
+    repeated string hide_diff = 18;
 }
 
 message TransformRequest {

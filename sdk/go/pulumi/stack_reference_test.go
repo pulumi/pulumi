@@ -27,10 +27,10 @@ import (
 func TestStackReference(t *testing.T) {
 	t.Parallel()
 	var resName string
-	outputs := map[string]interface{}{
+	outputs := map[string]any{
 		"foo": "bar",
-		"baz": []interface{}{"qux"},
-		"zed": map[string]interface{}{
+		"baz": []any{"qux"},
+		"zed": map[string]any{
 			"alpha": "beta",
 		},
 		"numf": 123.4,
@@ -40,12 +40,12 @@ func TestStackReference(t *testing.T) {
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
 			assert.Equal(t, resName, args.Name)
-			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
 				"name": "stack",
 			})))
 			assert.Equal(t, "", args.Provider)
 			assert.Equal(t, args.Inputs["name"].StringValue(), args.ID)
-			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
+			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]any{
 				"name":    "stack",
 				"outputs": outputs,
 			}), nil
@@ -112,7 +112,7 @@ func TestStackReference(t *testing.T) {
 		return nil
 	}, WithDryRun(true), WithMocks("project", "stack", &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
+			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]any{
 				"name":    "stack",
 				"outputs": outputs,
 			}), nil
@@ -125,18 +125,18 @@ func TestStackReferenceSecrets(t *testing.T) {
 	t.Parallel()
 	var resName string
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"foo": "bar",
-		"baz": []interface{}{"qux"},
-		"zed": map[string]interface{}{
+		"baz": []any{"qux"},
+		"zed": map[string]any{
 			"alpha": "beta",
 		},
 		"numf": 123.4,
 		"numi": 567.0,
 
 		"secret-foo": "bar",
-		"secret-baz": []interface{}{"qux"},
-		"secret-zed": map[string]interface{}{
+		"secret-baz": []any{"qux"},
+		"secret-zed": map[string]any{
 			"alpha": "beta",
 		},
 		"secret-numf": 123.4,
@@ -158,7 +158,7 @@ func TestStackReferenceSecrets(t *testing.T) {
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
 			assert.Equal(t, resName, args.Name)
-			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
 				"name": "stack",
 			})))
 			assert.Equal(t, "", args.Provider)
@@ -252,7 +252,6 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

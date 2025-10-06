@@ -145,7 +145,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("getting outputs: %w", err)
 	}
 	if outputs == nil {
-		outputs = make(map[string]interface{})
+		outputs = make(map[string]any)
 	}
 
 	// If there is an argument, just print that property.  Else, print them all (similar to `pulumi stack`).
@@ -175,8 +175,8 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 // stackOutputWriter writes one or more properties to stdout
 // on behalf of 'pulumi stack output'.
 type stackOutputWriter interface {
-	WriteOne(name string, value interface{}) error
-	WriteMany(outputs map[string]interface{}) error
+	WriteOne(name string, value any) error
+	WriteMany(outputs map[string]any) error
 }
 
 // consoleStackOutputWriter writes human-readable stack output to stdout.
@@ -186,12 +186,12 @@ type consoleStackOutputWriter struct {
 
 var _ stackOutputWriter = (*consoleStackOutputWriter)(nil)
 
-func (w *consoleStackOutputWriter) WriteOne(_ string, v interface{}) error {
+func (w *consoleStackOutputWriter) WriteOne(_ string, v any) error {
 	_, err := fmt.Fprintf(w.W, "%v\n", stringifyOutput(v))
 	return err
 }
 
-func (w *consoleStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *consoleStackOutputWriter) WriteMany(outputs map[string]any) error {
 	return fprintStackOutputs(w.W, outputs)
 }
 
@@ -202,11 +202,11 @@ type jsonStackOutputWriter struct {
 
 var _ stackOutputWriter = (*jsonStackOutputWriter)(nil)
 
-func (w *jsonStackOutputWriter) WriteOne(_ string, v interface{}) error {
+func (w *jsonStackOutputWriter) WriteOne(_ string, v any) error {
 	return ui.FprintJSON(w.W, v)
 }
 
-func (w *jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *jsonStackOutputWriter) WriteMany(outputs map[string]any) error {
 	return ui.FprintJSON(w.W, outputs)
 }
 
@@ -228,13 +228,13 @@ type bashStackOutputWriter struct {
 
 var _ stackOutputWriter = (*bashStackOutputWriter)(nil)
 
-func (w *bashStackOutputWriter) WriteOne(k string, v interface{}) error {
+func (w *bashStackOutputWriter) WriteOne(k string, v any) error {
 	s := shellquote.Join(stringifyOutput(v))
 	_, err := fmt.Fprintf(w.W, "%v=%v\n", k, s)
 	return err
 }
 
-func (w *bashStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *bashStackOutputWriter) WriteMany(outputs map[string]any) error {
 	keys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		keys = append(keys, v)
@@ -256,7 +256,7 @@ type powershellStackOutputWriter struct {
 
 var _ stackOutputWriter = (*powershellStackOutputWriter)(nil)
 
-func (w *powershellStackOutputWriter) WriteOne(k string, v interface{}) error {
+func (w *powershellStackOutputWriter) WriteOne(k string, v any) error {
 	// In Powershell, single-quoted strings are taken verbatim.
 	// The only escaping necessary is to ' itself:
 	// replace each instance with two to escape.
@@ -265,7 +265,7 @@ func (w *powershellStackOutputWriter) WriteOne(k string, v interface{}) error {
 	return err
 }
 
-func (w *powershellStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *powershellStackOutputWriter) WriteMany(outputs map[string]any) error {
 	keys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		keys = append(keys, v)
@@ -280,14 +280,14 @@ func (w *powershellStackOutputWriter) WriteMany(outputs map[string]interface{}) 
 	return nil
 }
 
-func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
+func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]any, error) {
 	state, err := stack.GetRootStackResource(snap)
 	if err != nil {
 		return nil, err
 	}
 
 	if state == nil {
-		return map[string]interface{}{}, nil
+		return map[string]any{}, nil
 	}
 
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic

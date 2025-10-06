@@ -1172,7 +1172,6 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1695,8 +1694,6 @@ func TestCreateStack_WritesInitialState(t *testing.T) {
 	stack := "teststack"
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 

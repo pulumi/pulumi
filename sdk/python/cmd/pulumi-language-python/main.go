@@ -204,7 +204,7 @@ type pythonLanguageHost struct {
 	toolchain string
 }
 
-func parseOptions(root string, programDir string, options map[string]interface{}) (toolchain.PythonOptions, error) {
+func parseOptions(root string, programDir string, options map[string]any) (toolchain.PythonOptions, error) {
 	pythonOptions := toolchain.PythonOptions{
 		Root:       root,
 		ProgramDir: programDir,
@@ -859,11 +859,11 @@ func startDebugging(
 	}
 
 	// emit a debug configuration
-	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+	debugConfig, err := structpb.NewStruct(map[string]any{
 		"name":    name,
 		"type":    "python",
 		"request": "attach",
-		"connect": map[string]interface{}{
+		"connect": map[string]any{
 			"host": dbg.Host,
 			"port": dbg.Port,
 		},

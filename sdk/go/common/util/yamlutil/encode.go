@@ -22,7 +22,7 @@ import (
 )
 
 // Encodes a value using a two space indentation.
-func YamlEncode(v interface{}) ([]byte, error) {
+func YamlEncode(v any) ([]byte, error) {
 	var b bytes.Buffer
 	yamlEncoder := yaml.NewEncoder(&b)
 	yamlEncoder.SetIndent(2)

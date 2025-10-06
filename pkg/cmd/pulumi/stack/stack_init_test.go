@@ -111,7 +111,6 @@ func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// If the test case provides at least one valid team,

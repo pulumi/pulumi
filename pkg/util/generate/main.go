@@ -78,7 +78,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create %v: %v", fullname, err)
 	}
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Names": names,
 	}
 	if err := template.Execute(f, data); err != nil {

@@ -272,8 +272,6 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -708,8 +706,6 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -938,8 +934,6 @@ func TestSnapshotToposort_PreservesValidSnapshots(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1139,8 +1133,6 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1243,8 +1235,6 @@ func TestSnapshotToposort_DetectsCycles(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 

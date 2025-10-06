@@ -56,7 +56,7 @@ func readFileStripUTF8BOM(path string) ([]byte, error) {
 //
 //	config:
 //	  {projectName}:instanceSize:t3.micro
-func stackConfigNamespacedWithProject(project *Project, projectStack map[string]interface{}) map[string]interface{} {
+func stackConfigNamespacedWithProject(project *Project, projectStack map[string]any) map[string]any {
 	if project == nil {
 		// return the original config if we don't have a project
 		return projectStack
@@ -64,9 +64,9 @@ func stackConfigNamespacedWithProject(project *Project, projectStack map[string]
 
 	config, ok := projectStack["config"]
 	if ok {
-		configAsMap, isMap := config.(map[string]interface{})
+		configAsMap, isMap := config.(map[string]any)
 		if isMap {
-			modifiedConfig := make(map[string]interface{})
+			modifiedConfig := make(map[string]any)
 			for key, value := range configAsMap {
 				if strings.Contains(key, ":") {
 					// key is already namespaced
@@ -105,7 +105,7 @@ func LoadProject(path string) (*Project, error) {
 
 // LoadProjectBytes reads a project definition from a byte slice.
 func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Project, error) {
-	var raw interface{}
+	var raw any
 	err := marshaller.Unmarshal(b, &raw)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
@@ -193,7 +193,7 @@ func LoadProjectStackBytes(
 	path string,
 	marshaller encoding.Marshaler,
 ) (*ProjectStack, error) {
-	var projectStackRaw interface{}
+	var projectStackRaw any
 	err := marshaller.Unmarshal(b, &projectStackRaw)
 	if err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func LoadProjectStackBytes(
 	if diags != nil {
 		configObj, ok := simplifiedStackForm["config"]
 		if ok {
-			if configMap, ok := configObj.(map[string]interface{}); ok {
+			if configMap, ok := configObj.(map[string]any); ok {
 				checkForEmptyConfig(configMap, diags)
 			}
 		}
@@ -338,7 +338,7 @@ func LoadPolicyPack(path string) (*PolicyPackProject, error) {
 //	somekey6: ~
 //
 // ```
-func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
+func checkForEmptyConfig(config map[string]any, diags diag.Sink) {
 	keys := []string{}
 	for k, v := range config {
 		if v == nil {

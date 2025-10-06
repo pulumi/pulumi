@@ -33,6 +33,7 @@ type Goal struct {
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
 	IgnoreChanges           []string              // a list of property paths to ignore when diffing.
+	HideDiff                []PropertyPath        // a list of property paths to hide the diffs of.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
 	Aliases                 []Alias               // additional structured Aliases that should be assigned.
 	ID                      ID                    // the expected ID of the resource, if any.
@@ -118,6 +119,9 @@ type NewGoal struct {
 
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[HookType][]string // required
+
+	// If set, the list of property paths to hide the diff output of.
+	HideDiff []PropertyPath // required
 }
 
 // Make consumes the NewGoal to create a *Goal.
@@ -139,6 +143,7 @@ func (g NewGoal) Make() *Goal {
 		PropertyDependencies:    g.PropertyDependencies,
 		DeleteBeforeReplace:     g.DeleteBeforeReplace,
 		IgnoreChanges:           g.IgnoreChanges,
+		HideDiff:                g.HideDiff,
 		AdditionalSecretOutputs: g.AdditionalSecretOutputs,
 		Aliases:                 g.Aliases,
 		ID:                      g.ID,

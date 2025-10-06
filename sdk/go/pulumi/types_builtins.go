@@ -160,7 +160,7 @@ func (o ArchiveArrayOutput) ToArchiveArrayOutputWithContext(ctx context.Context)
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o ArchiveArrayOutput) Index(i IntInput) ArchiveOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) Archive {
+	return All(o, i).ApplyT(func(vs []any) Archive {
 		arr := vs[0].([]Archive)
 		idx := vs[1].(int)
 		var ret Archive
@@ -247,7 +247,7 @@ func (o ArchiveMapOutput) ToArchiveMapOutputWithContext(ctx context.Context) Arc
 
 // MapIndex looks up the key k in the map.
 func (o ArchiveMapOutput) MapIndex(k StringInput) ArchiveOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) Archive {
+	return All(o, k).ApplyT(func(vs []any) Archive {
 		return vs[0].(map[string]Archive)[vs[1].(string)]
 	}).(ArchiveOutput)
 }
@@ -328,7 +328,7 @@ func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutputWithContext(ctx context.Co
 
 // MapIndex looks up the key k in the map.
 func (o ArchiveArrayMapOutput) MapIndex(k StringInput) ArchiveArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []Archive {
+	return All(o, k).ApplyT(func(vs []any) []Archive {
 		return vs[0].(map[string][]Archive)[vs[1].(string)]
 	}).(ArchiveArrayOutput)
 }
@@ -410,7 +410,7 @@ func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutputWithContext(ctx context.Co
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o ArchiveMapArrayOutput) Index(i IntInput) ArchiveMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]Archive {
+	return All(o, i).ApplyT(func(vs []any) map[string]Archive {
 		arr := vs[0].([]map[string]Archive)
 		idx := vs[1].(int)
 		var ret map[string]Archive
@@ -497,7 +497,7 @@ func (o ArchiveMapMapOutput) ToArchiveMapMapOutputWithContext(ctx context.Contex
 
 // MapIndex looks up the key k in the map.
 func (o ArchiveMapMapOutput) MapIndex(k StringInput) ArchiveMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]Archive {
+	return All(o, k).ApplyT(func(vs []any) map[string]Archive {
 		return vs[0].(map[string]map[string]Archive)[vs[1].(string)]
 	}).(ArchiveMapOutput)
 }
@@ -579,7 +579,7 @@ func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutputWithContext(ctx contex
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o ArchiveArrayArrayOutput) Index(i IntInput) ArchiveArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []Archive {
+	return All(o, i).ApplyT(func(vs []any) []Archive {
 		arr := vs[0].([][]Archive)
 		idx := vs[1].(int)
 		var ret []Archive
@@ -740,7 +740,7 @@ func (o AssetArrayOutput) ToAssetArrayOutputWithContext(ctx context.Context) Ass
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o AssetArrayOutput) Index(i IntInput) AssetOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) Asset {
+	return All(o, i).ApplyT(func(vs []any) Asset {
 		arr := vs[0].([]Asset)
 		idx := vs[1].(int)
 		var ret Asset
@@ -827,7 +827,7 @@ func (o AssetMapOutput) ToAssetMapOutputWithContext(ctx context.Context) AssetMa
 
 // MapIndex looks up the key k in the map.
 func (o AssetMapOutput) MapIndex(k StringInput) AssetOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) Asset {
+	return All(o, k).ApplyT(func(vs []any) Asset {
 		return vs[0].(map[string]Asset)[vs[1].(string)]
 	}).(AssetOutput)
 }
@@ -908,7 +908,7 @@ func (o AssetArrayMapOutput) ToAssetArrayMapOutputWithContext(ctx context.Contex
 
 // MapIndex looks up the key k in the map.
 func (o AssetArrayMapOutput) MapIndex(k StringInput) AssetArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []Asset {
+	return All(o, k).ApplyT(func(vs []any) []Asset {
 		return vs[0].(map[string][]Asset)[vs[1].(string)]
 	}).(AssetArrayOutput)
 }
@@ -990,7 +990,7 @@ func (o AssetMapArrayOutput) ToAssetMapArrayOutputWithContext(ctx context.Contex
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o AssetMapArrayOutput) Index(i IntInput) AssetMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]Asset {
+	return All(o, i).ApplyT(func(vs []any) map[string]Asset {
 		arr := vs[0].([]map[string]Asset)
 		idx := vs[1].(int)
 		var ret map[string]Asset
@@ -1077,7 +1077,7 @@ func (o AssetMapMapOutput) ToAssetMapMapOutputWithContext(ctx context.Context) A
 
 // MapIndex looks up the key k in the map.
 func (o AssetMapMapOutput) MapIndex(k StringInput) AssetMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]Asset {
+	return All(o, k).ApplyT(func(vs []any) map[string]Asset {
 		return vs[0].(map[string]map[string]Asset)[vs[1].(string)]
 	}).(AssetMapOutput)
 }
@@ -1159,7 +1159,7 @@ func (o AssetArrayArrayOutput) ToAssetArrayArrayOutputWithContext(ctx context.Co
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o AssetArrayArrayOutput) Index(i IntInput) AssetArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []Asset {
+	return All(o, i).ApplyT(func(vs []any) []Asset {
 		arr := vs[0].([][]Asset)
 		idx := vs[1].(int)
 		var ret []Asset
@@ -1283,7 +1283,7 @@ func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx co
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o AssetOrArchiveArrayOutput) Index(i IntInput) AssetOrArchiveOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) AssetOrArchive {
+	return All(o, i).ApplyT(func(vs []any) AssetOrArchive {
 		arr := vs[0].([]AssetOrArchive)
 		idx := vs[1].(int)
 		var ret AssetOrArchive
@@ -1354,7 +1354,7 @@ func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx contex
 
 // MapIndex looks up the key k in the map.
 func (o AssetOrArchiveMapOutput) MapIndex(k StringInput) AssetOrArchiveOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) AssetOrArchive {
+	return All(o, k).ApplyT(func(vs []any) AssetOrArchive {
 		return vs[0].(map[string]AssetOrArchive)[vs[1].(string)]
 	}).(AssetOrArchiveOutput)
 }
@@ -1419,7 +1419,7 @@ func (o AssetOrArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutputWithContext(
 
 // MapIndex looks up the key k in the map.
 func (o AssetOrArchiveArrayMapOutput) MapIndex(k StringInput) AssetOrArchiveArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []AssetOrArchive {
+	return All(o, k).ApplyT(func(vs []any) []AssetOrArchive {
 		return vs[0].(map[string][]AssetOrArchive)[vs[1].(string)]
 	}).(AssetOrArchiveArrayOutput)
 }
@@ -1485,7 +1485,7 @@ func (o AssetOrArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutputWithContext(
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o AssetOrArchiveMapArrayOutput) Index(i IntInput) AssetOrArchiveMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]AssetOrArchive {
+	return All(o, i).ApplyT(func(vs []any) map[string]AssetOrArchive {
 		arr := vs[0].([]map[string]AssetOrArchive)
 		idx := vs[1].(int)
 		var ret map[string]AssetOrArchive
@@ -1556,7 +1556,7 @@ func (o AssetOrArchiveMapMapOutput) ToAssetOrArchiveMapMapOutputWithContext(ctx 
 
 // MapIndex looks up the key k in the map.
 func (o AssetOrArchiveMapMapOutput) MapIndex(k StringInput) AssetOrArchiveMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]AssetOrArchive {
+	return All(o, k).ApplyT(func(vs []any) map[string]AssetOrArchive {
 		return vs[0].(map[string]map[string]AssetOrArchive)[vs[1].(string)]
 	}).(AssetOrArchiveMapOutput)
 }
@@ -1622,7 +1622,7 @@ func (o AssetOrArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutputWithCont
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o AssetOrArchiveArrayArrayOutput) Index(i IntInput) AssetOrArchiveArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []AssetOrArchive {
+	return All(o, i).ApplyT(func(vs []any) []AssetOrArchive {
 		arr := vs[0].([][]AssetOrArchive)
 		idx := vs[1].(int)
 		var ret []AssetOrArchive
@@ -1853,7 +1853,7 @@ func (o BoolArrayOutput) ToBoolArrayOutputWithContext(ctx context.Context) BoolA
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o BoolArrayOutput) Index(i IntInput) BoolOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) bool {
+	return All(o, i).ApplyT(func(vs []any) bool {
 		arr := vs[0].([]bool)
 		idx := vs[1].(int)
 		var ret bool
@@ -1940,7 +1940,7 @@ func (o BoolMapOutput) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOu
 
 // MapIndex looks up the key k in the map.
 func (o BoolMapOutput) MapIndex(k StringInput) BoolOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) bool {
+	return All(o, k).ApplyT(func(vs []any) bool {
 		return vs[0].(map[string]bool)[vs[1].(string)]
 	}).(BoolOutput)
 }
@@ -2021,7 +2021,7 @@ func (o BoolArrayMapOutput) ToBoolArrayMapOutputWithContext(ctx context.Context)
 
 // MapIndex looks up the key k in the map.
 func (o BoolArrayMapOutput) MapIndex(k StringInput) BoolArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []bool {
+	return All(o, k).ApplyT(func(vs []any) []bool {
 		return vs[0].(map[string][]bool)[vs[1].(string)]
 	}).(BoolArrayOutput)
 }
@@ -2103,7 +2103,7 @@ func (o BoolMapArrayOutput) ToBoolMapArrayOutputWithContext(ctx context.Context)
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o BoolMapArrayOutput) Index(i IntInput) BoolMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]bool {
+	return All(o, i).ApplyT(func(vs []any) map[string]bool {
 		arr := vs[0].([]map[string]bool)
 		idx := vs[1].(int)
 		var ret map[string]bool
@@ -2190,7 +2190,7 @@ func (o BoolMapMapOutput) ToBoolMapMapOutputWithContext(ctx context.Context) Boo
 
 // MapIndex looks up the key k in the map.
 func (o BoolMapMapOutput) MapIndex(k StringInput) BoolMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]bool {
+	return All(o, k).ApplyT(func(vs []any) map[string]bool {
 		return vs[0].(map[string]map[string]bool)[vs[1].(string)]
 	}).(BoolMapOutput)
 }
@@ -2272,7 +2272,7 @@ func (o BoolArrayArrayOutput) ToBoolArrayArrayOutputWithContext(ctx context.Cont
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o BoolArrayArrayOutput) Index(i IntInput) BoolArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []bool {
+	return All(o, i).ApplyT(func(vs []any) []bool {
 		arr := vs[0].([][]bool)
 		idx := vs[1].(int)
 		var ret []bool
@@ -2519,7 +2519,7 @@ func (o Float64ArrayOutput) ToFloat64ArrayOutputWithContext(ctx context.Context)
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o Float64ArrayOutput) Index(i IntInput) Float64Output {
-	return All(o, i).ApplyT(func(vs []interface{}) float64 {
+	return All(o, i).ApplyT(func(vs []any) float64 {
 		arr := vs[0].([]float64)
 		idx := vs[1].(int)
 		var ret float64
@@ -2606,7 +2606,7 @@ func (o Float64MapOutput) ToFloat64MapOutputWithContext(ctx context.Context) Flo
 
 // MapIndex looks up the key k in the map.
 func (o Float64MapOutput) MapIndex(k StringInput) Float64Output {
-	return All(o, k).ApplyT(func(vs []interface{}) float64 {
+	return All(o, k).ApplyT(func(vs []any) float64 {
 		return vs[0].(map[string]float64)[vs[1].(string)]
 	}).(Float64Output)
 }
@@ -2687,7 +2687,7 @@ func (o Float64ArrayMapOutput) ToFloat64ArrayMapOutputWithContext(ctx context.Co
 
 // MapIndex looks up the key k in the map.
 func (o Float64ArrayMapOutput) MapIndex(k StringInput) Float64ArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []float64 {
+	return All(o, k).ApplyT(func(vs []any) []float64 {
 		return vs[0].(map[string][]float64)[vs[1].(string)]
 	}).(Float64ArrayOutput)
 }
@@ -2769,7 +2769,7 @@ func (o Float64MapArrayOutput) ToFloat64MapArrayOutputWithContext(ctx context.Co
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o Float64MapArrayOutput) Index(i IntInput) Float64MapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]float64 {
+	return All(o, i).ApplyT(func(vs []any) map[string]float64 {
 		arr := vs[0].([]map[string]float64)
 		idx := vs[1].(int)
 		var ret map[string]float64
@@ -2856,7 +2856,7 @@ func (o Float64MapMapOutput) ToFloat64MapMapOutputWithContext(ctx context.Contex
 
 // MapIndex looks up the key k in the map.
 func (o Float64MapMapOutput) MapIndex(k StringInput) Float64MapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]float64 {
+	return All(o, k).ApplyT(func(vs []any) map[string]float64 {
 		return vs[0].(map[string]map[string]float64)[vs[1].(string)]
 	}).(Float64MapOutput)
 }
@@ -2938,7 +2938,7 @@ func (o Float64ArrayArrayOutput) ToFloat64ArrayArrayOutputWithContext(ctx contex
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o Float64ArrayArrayOutput) Index(i IntInput) Float64ArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []float64 {
+	return All(o, i).ApplyT(func(vs []any) []float64 {
 		arr := vs[0].([][]float64)
 		idx := vs[1].(int)
 		var ret []float64
@@ -3200,7 +3200,7 @@ func (o IDArrayOutput) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOu
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o IDArrayOutput) Index(i IntInput) IDOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) ID {
+	return All(o, i).ApplyT(func(vs []any) ID {
 		arr := vs[0].([]ID)
 		idx := vs[1].(int)
 		var ret ID
@@ -3287,7 +3287,7 @@ func (o IDMapOutput) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 
 // MapIndex looks up the key k in the map.
 func (o IDMapOutput) MapIndex(k StringInput) IDOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) ID {
+	return All(o, k).ApplyT(func(vs []any) ID {
 		return vs[0].(map[string]ID)[vs[1].(string)]
 	}).(IDOutput)
 }
@@ -3368,7 +3368,7 @@ func (o IDArrayMapOutput) ToIDArrayMapOutputWithContext(ctx context.Context) IDA
 
 // MapIndex looks up the key k in the map.
 func (o IDArrayMapOutput) MapIndex(k StringInput) IDArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []ID {
+	return All(o, k).ApplyT(func(vs []any) []ID {
 		return vs[0].(map[string][]ID)[vs[1].(string)]
 	}).(IDArrayOutput)
 }
@@ -3450,7 +3450,7 @@ func (o IDMapArrayOutput) ToIDMapArrayOutputWithContext(ctx context.Context) IDM
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o IDMapArrayOutput) Index(i IntInput) IDMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]ID {
+	return All(o, i).ApplyT(func(vs []any) map[string]ID {
 		arr := vs[0].([]map[string]ID)
 		idx := vs[1].(int)
 		var ret map[string]ID
@@ -3537,7 +3537,7 @@ func (o IDMapMapOutput) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMa
 
 // MapIndex looks up the key k in the map.
 func (o IDMapMapOutput) MapIndex(k StringInput) IDMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]ID {
+	return All(o, k).ApplyT(func(vs []any) map[string]ID {
 		return vs[0].(map[string]map[string]ID)[vs[1].(string)]
 	}).(IDMapOutput)
 }
@@ -3619,7 +3619,7 @@ func (o IDArrayArrayOutput) ToIDArrayArrayOutputWithContext(ctx context.Context)
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o IDArrayArrayOutput) Index(i IntInput) IDArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []ID {
+	return All(o, i).ApplyT(func(vs []any) []ID {
 		arr := vs[0].([][]ID)
 		idx := vs[1].(int)
 		var ret []ID
@@ -3646,7 +3646,7 @@ func ToIDArrayArrayOutput(in []IDArrayOutput) IDArrayArrayOutput {
 	return a.ToIDArrayArrayOutput()
 }
 
-var arrayType = reflect.TypeOf((*[]interface{})(nil)).Elem()
+var arrayType = reflect.TypeOf((*[]any)(nil)).Elem()
 
 // ArrayInput is an input type that accepts Array and ArrayOutput values.
 type ArrayInput interface {
@@ -3659,13 +3659,13 @@ type ArrayInput interface {
 // Array is an input type for []Input values.
 type Array []Input
 
-// ElementType returns the element type of this Input ([]interface{}).
+// ElementType returns the element type of this Input ([]any).
 func (Array) ElementType() reflect.Type {
 	return arrayType
 }
 
-func (in Array) ToOutput(ctx context.Context) pulumix.Output[[]interface{}] {
-	return pulumix.Output[[]interface{}]{
+func (in Array) ToOutput(ctx context.Context) pulumix.Output[[]any] {
+	return pulumix.Output[[]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -3678,20 +3678,20 @@ func (in Array) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 	return ToOutputWithContext(ctx, in).(ArrayOutput)
 }
 
-// ArrayOutput is an Output that returns []interface{} values.
+// ArrayOutput is an Output that returns []any values.
 type ArrayOutput struct{ *OutputState }
 
 func (ArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o ArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]interface{}] {
-	return pulumix.Output[[]interface{}]{
+func (o ArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]any] {
+	return pulumix.Output[[]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output ([]interface{}).
+// ElementType returns the element type of this Output ([]any).
 func (ArrayOutput) ElementType() reflect.Type {
 	return arrayType
 }
@@ -3707,10 +3707,10 @@ func (o ArrayOutput) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o ArrayOutput) Index(i IntInput) Output {
-	return All(o, i).ApplyT(func(vs []interface{}) interface{} {
-		arr := vs[0].([]interface{})
+	return All(o, i).ApplyT(func(vs []any) any {
+		arr := vs[0].([]any)
 		idx := vs[1].(int)
-		var ret interface{}
+		var ret any
 		if idx >= 0 && idx < len(arr) {
 			ret = arr[idx]
 		}
@@ -3718,7 +3718,7 @@ func (o ArrayOutput) Index(i IntInput) Output {
 	}).(Output)
 }
 
-func ToArray(in []interface{}) Array {
+func ToArray(in []any) Array {
 	a := make(Array, len(in))
 	for i, v := range in {
 		a[i] = ToOutput(v)
@@ -3734,7 +3734,7 @@ func ToArrayOutput(in []Output) ArrayOutput {
 	return a.ToArrayOutput()
 }
 
-var mapType = reflect.TypeOf((*map[string]interface{})(nil)).Elem()
+var mapType = reflect.TypeOf((*map[string]any)(nil)).Elem()
 
 // MapInput is an input type that accepts Map and MapOutput values.
 type MapInput interface {
@@ -3747,13 +3747,13 @@ type MapInput interface {
 // Map is an input type for map[string]Input values.
 type Map map[string]Input
 
-// ElementType returns the element type of this Input (map[string]interface{}).
+// ElementType returns the element type of this Input (map[string]any).
 func (Map) ElementType() reflect.Type {
 	return mapType
 }
 
-func (in Map) ToOutput(ctx context.Context) pulumix.Output[map[string]interface{}] {
-	return pulumix.Output[map[string]interface{}]{
+func (in Map) ToOutput(ctx context.Context) pulumix.Output[map[string]any] {
+	return pulumix.Output[map[string]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -3766,20 +3766,20 @@ func (in Map) ToMapOutputWithContext(ctx context.Context) MapOutput {
 	return ToOutputWithContext(ctx, in).(MapOutput)
 }
 
-// MapOutput is an Output that returns map[string]interface{} values.
+// MapOutput is an Output that returns map[string]any values.
 type MapOutput struct{ *OutputState }
 
 func (MapOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o MapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]interface{}] {
-	return pulumix.Output[map[string]interface{}]{
+func (o MapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]any] {
+	return pulumix.Output[map[string]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output (map[string]interface{}).
+// ElementType returns the element type of this Output (map[string]any).
 func (MapOutput) ElementType() reflect.Type {
 	return mapType
 }
@@ -3794,12 +3794,12 @@ func (o MapOutput) ToMapOutputWithContext(ctx context.Context) MapOutput {
 
 // MapIndex looks up the key k in the map.
 func (o MapOutput) MapIndex(k StringInput) Output {
-	return All(o, k).ApplyT(func(vs []interface{}) interface{} {
-		return vs[0].(map[string]interface{})[vs[1].(string)]
+	return All(o, k).ApplyT(func(vs []any) any {
+		return vs[0].(map[string]any)[vs[1].(string)]
 	}).(Output)
 }
 
-func ToMap(in map[string]interface{}) Map {
+func ToMap(in map[string]any) Map {
 	m := make(Map)
 	for k, v := range in {
 		m[k] = ToOutput(v)
@@ -3815,7 +3815,7 @@ func ToMapOutput(in map[string]Output) MapOutput {
 	return m.ToMapOutput()
 }
 
-var arrayMapType = reflect.TypeOf((*map[string][]interface{})(nil)).Elem()
+var arrayMapType = reflect.TypeOf((*map[string][]any)(nil)).Elem()
 
 // ArrayMapInput is an input type that accepts ArrayMap and ArrayMapOutput values.
 type ArrayMapInput interface {
@@ -3828,13 +3828,13 @@ type ArrayMapInput interface {
 // ArrayMap is an input type for map[string]ArrayInput values.
 type ArrayMap map[string]ArrayInput
 
-// ElementType returns the element type of this Input (map[string][]interface{}).
+// ElementType returns the element type of this Input (map[string][]any).
 func (ArrayMap) ElementType() reflect.Type {
 	return arrayMapType
 }
 
-func (in ArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]interface{}] {
-	return pulumix.Output[map[string][]interface{}]{
+func (in ArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]any] {
+	return pulumix.Output[map[string][]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -3847,20 +3847,20 @@ func (in ArrayMap) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutp
 	return ToOutputWithContext(ctx, in).(ArrayMapOutput)
 }
 
-// ArrayMapOutput is an Output that returns map[string][]interface{} values.
+// ArrayMapOutput is an Output that returns map[string][]any values.
 type ArrayMapOutput struct{ *OutputState }
 
 func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o ArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]interface{}] {
-	return pulumix.Output[map[string][]interface{}]{
+func (o ArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]any] {
+	return pulumix.Output[map[string][]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output (map[string][]interface{}).
+// ElementType returns the element type of this Output (map[string][]any).
 func (ArrayMapOutput) ElementType() reflect.Type {
 	return arrayMapType
 }
@@ -3875,12 +3875,12 @@ func (o ArrayMapOutput) ToArrayMapOutputWithContext(ctx context.Context) ArrayMa
 
 // MapIndex looks up the key k in the map.
 func (o ArrayMapOutput) MapIndex(k StringInput) ArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []interface{} {
-		return vs[0].(map[string][]interface{})[vs[1].(string)]
+	return All(o, k).ApplyT(func(vs []any) []any {
+		return vs[0].(map[string][]any)[vs[1].(string)]
 	}).(ArrayOutput)
 }
 
-func ToArrayMap(in map[string][]interface{}) ArrayMap {
+func ToArrayMap(in map[string][]any) ArrayMap {
 	m := make(ArrayMap)
 	for k, v := range in {
 		m[k] = ToArray(v)
@@ -3896,7 +3896,7 @@ func ToArrayMapOutput(in map[string]ArrayOutput) ArrayMapOutput {
 	return m.ToArrayMapOutput()
 }
 
-var mapArrayType = reflect.TypeOf((*[]map[string]interface{})(nil)).Elem()
+var mapArrayType = reflect.TypeOf((*[]map[string]any)(nil)).Elem()
 
 // MapArrayInput is an input type that accepts MapArray and MapArrayOutput values.
 type MapArrayInput interface {
@@ -3909,13 +3909,13 @@ type MapArrayInput interface {
 // MapArray is an input type for []MapInput values.
 type MapArray []MapInput
 
-// ElementType returns the element type of this Input ([]map[string]interface{}).
+// ElementType returns the element type of this Input ([]map[string]any).
 func (MapArray) ElementType() reflect.Type {
 	return mapArrayType
 }
 
-func (in MapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]interface{}] {
-	return pulumix.Output[[]map[string]interface{}]{
+func (in MapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]any] {
+	return pulumix.Output[[]map[string]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -3928,20 +3928,20 @@ func (in MapArray) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutp
 	return ToOutputWithContext(ctx, in).(MapArrayOutput)
 }
 
-// MapArrayOutput is an Output that returns []map[string]interface{} values.
+// MapArrayOutput is an Output that returns []map[string]any values.
 type MapArrayOutput struct{ *OutputState }
 
 func (MapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o MapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]interface{}] {
-	return pulumix.Output[[]map[string]interface{}]{
+func (o MapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]any] {
+	return pulumix.Output[[]map[string]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output ([]map[string]interface{}).
+// ElementType returns the element type of this Output ([]map[string]any).
 func (MapArrayOutput) ElementType() reflect.Type {
 	return mapArrayType
 }
@@ -3957,10 +3957,10 @@ func (o MapArrayOutput) ToMapArrayOutputWithContext(ctx context.Context) MapArra
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o MapArrayOutput) Index(i IntInput) MapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]interface{} {
-		arr := vs[0].([]map[string]interface{})
+	return All(o, i).ApplyT(func(vs []any) map[string]any {
+		arr := vs[0].([]map[string]any)
 		idx := vs[1].(int)
-		var ret map[string]interface{}
+		var ret map[string]any
 		if idx >= 0 && idx < len(arr) {
 			ret = arr[idx]
 		}
@@ -3968,7 +3968,7 @@ func (o MapArrayOutput) Index(i IntInput) MapOutput {
 	}).(MapOutput)
 }
 
-func ToMapArray(in []map[string]interface{}) MapArray {
+func ToMapArray(in []map[string]any) MapArray {
 	a := make(MapArray, len(in))
 	for i, v := range in {
 		a[i] = ToMap(v)
@@ -3984,7 +3984,7 @@ func ToMapArrayOutput(in []MapOutput) MapArrayOutput {
 	return a.ToMapArrayOutput()
 }
 
-var mapMapType = reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem()
+var mapMapType = reflect.TypeOf((*map[string]map[string]any)(nil)).Elem()
 
 // MapMapInput is an input type that accepts MapMap and MapMapOutput values.
 type MapMapInput interface {
@@ -3997,13 +3997,13 @@ type MapMapInput interface {
 // MapMap is an input type for map[string]MapInput values.
 type MapMap map[string]MapInput
 
-// ElementType returns the element type of this Input (map[string]map[string]interface{}).
+// ElementType returns the element type of this Input (map[string]map[string]any).
 func (MapMap) ElementType() reflect.Type {
 	return mapMapType
 }
 
-func (in MapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]interface{}] {
-	return pulumix.Output[map[string]map[string]interface{}]{
+func (in MapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]any] {
+	return pulumix.Output[map[string]map[string]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -4016,20 +4016,20 @@ func (in MapMap) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
 	return ToOutputWithContext(ctx, in).(MapMapOutput)
 }
 
-// MapMapOutput is an Output that returns map[string]map[string]interface{} values.
+// MapMapOutput is an Output that returns map[string]map[string]any values.
 type MapMapOutput struct{ *OutputState }
 
 func (MapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o MapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]interface{}] {
-	return pulumix.Output[map[string]map[string]interface{}]{
+func (o MapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]any] {
+	return pulumix.Output[map[string]map[string]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output (map[string]map[string]interface{}).
+// ElementType returns the element type of this Output (map[string]map[string]any).
 func (MapMapOutput) ElementType() reflect.Type {
 	return mapMapType
 }
@@ -4044,12 +4044,12 @@ func (o MapMapOutput) ToMapMapOutputWithContext(ctx context.Context) MapMapOutpu
 
 // MapIndex looks up the key k in the map.
 func (o MapMapOutput) MapIndex(k StringInput) MapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]interface{} {
-		return vs[0].(map[string]map[string]interface{})[vs[1].(string)]
+	return All(o, k).ApplyT(func(vs []any) map[string]any {
+		return vs[0].(map[string]map[string]any)[vs[1].(string)]
 	}).(MapOutput)
 }
 
-func ToMapMap(in map[string]map[string]interface{}) MapMap {
+func ToMapMap(in map[string]map[string]any) MapMap {
 	m := make(MapMap)
 	for k, v := range in {
 		m[k] = ToMap(v)
@@ -4065,7 +4065,7 @@ func ToMapMapOutput(in map[string]MapOutput) MapMapOutput {
 	return m.ToMapMapOutput()
 }
 
-var arrayArrayType = reflect.TypeOf((*[][]interface{})(nil)).Elem()
+var arrayArrayType = reflect.TypeOf((*[][]any)(nil)).Elem()
 
 // ArrayArrayInput is an input type that accepts ArrayArray and ArrayArrayOutput values.
 type ArrayArrayInput interface {
@@ -4078,13 +4078,13 @@ type ArrayArrayInput interface {
 // ArrayArray is an input type for []ArrayInput values.
 type ArrayArray []ArrayInput
 
-// ElementType returns the element type of this Input ([][]interface{}).
+// ElementType returns the element type of this Input ([][]any).
 func (ArrayArray) ElementType() reflect.Type {
 	return arrayArrayType
 }
 
-func (in ArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]interface{}] {
-	return pulumix.Output[[][]interface{}]{
+func (in ArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]any] {
+	return pulumix.Output[[][]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -4097,20 +4097,20 @@ func (in ArrayArray) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArr
 	return ToOutputWithContext(ctx, in).(ArrayArrayOutput)
 }
 
-// ArrayArrayOutput is an Output that returns [][]interface{} values.
+// ArrayArrayOutput is an Output that returns [][]any values.
 type ArrayArrayOutput struct{ *OutputState }
 
 func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o ArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]interface{}] {
-	return pulumix.Output[[][]interface{}]{
+func (o ArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]any] {
+	return pulumix.Output[[][]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output ([][]interface{}).
+// ElementType returns the element type of this Output ([][]any).
 func (ArrayArrayOutput) ElementType() reflect.Type {
 	return arrayArrayType
 }
@@ -4126,10 +4126,10 @@ func (o ArrayArrayOutput) ToArrayArrayOutputWithContext(ctx context.Context) Arr
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o ArrayArrayOutput) Index(i IntInput) ArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []interface{} {
-		arr := vs[0].([][]interface{})
+	return All(o, i).ApplyT(func(vs []any) []any {
+		arr := vs[0].([][]any)
 		idx := vs[1].(int)
-		var ret []interface{}
+		var ret []any
 		if idx >= 0 && idx < len(arr) {
 			ret = arr[idx]
 		}
@@ -4137,7 +4137,7 @@ func (o ArrayArrayOutput) Index(i IntInput) ArrayOutput {
 	}).(ArrayOutput)
 }
 
-func ToArrayArray(in [][]interface{}) ArrayArray {
+func ToArrayArray(in [][]any) ArrayArray {
 	a := make(ArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToArray(v)
@@ -4153,7 +4153,7 @@ func ToArrayArrayOutput(in []ArrayOutput) ArrayArrayOutput {
 	return a.ToArrayArrayOutput()
 }
 
-var arrayArrayMapType = reflect.TypeOf((*map[string][][]interface{})(nil)).Elem()
+var arrayArrayMapType = reflect.TypeOf((*map[string][][]any)(nil)).Elem()
 
 // ArrayArrayMapInput is an input type that accepts ArrayArrayMap and ArrayArrayMapOutput values.
 type ArrayArrayMapInput interface {
@@ -4166,13 +4166,13 @@ type ArrayArrayMapInput interface {
 // ArrayArrayMap is an input type for map[string]ArrayArrayInput values.
 type ArrayArrayMap map[string]ArrayArrayInput
 
-// ElementType returns the element type of this Input (map[string][][]interface{}).
+// ElementType returns the element type of this Input (map[string][][]any).
 func (ArrayArrayMap) ElementType() reflect.Type {
 	return arrayArrayMapType
 }
 
-func (in ArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]interface{}] {
-	return pulumix.Output[map[string][][]interface{}]{
+func (in ArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]any] {
+	return pulumix.Output[map[string][][]any]{
 		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
 	}
 }
@@ -4185,20 +4185,20 @@ func (in ArrayArrayMap) ToArrayArrayMapOutputWithContext(ctx context.Context) Ar
 	return ToOutputWithContext(ctx, in).(ArrayArrayMapOutput)
 }
 
-// ArrayArrayMapOutput is an Output that returns map[string][][]interface{} values.
+// ArrayArrayMapOutput is an Output that returns map[string][][]any values.
 type ArrayArrayMapOutput struct{ *OutputState }
 
 func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
-func (o ArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]interface{}] {
-	return pulumix.Output[map[string][][]interface{}]{
+func (o ArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]any] {
+	return pulumix.Output[map[string][][]any]{
 		OutputState: o.OutputState,
 	}
 }
 
-// ElementType returns the element type of this Output (map[string][][]interface{}).
+// ElementType returns the element type of this Output (map[string][][]any).
 func (ArrayArrayMapOutput) ElementType() reflect.Type {
 	return arrayArrayMapType
 }
@@ -4213,12 +4213,12 @@ func (o ArrayArrayMapOutput) ToArrayArrayMapOutputWithContext(ctx context.Contex
 
 // MapIndex looks up the key k in the map.
 func (o ArrayArrayMapOutput) MapIndex(k StringInput) ArrayArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) [][]interface{} {
-		return vs[0].(map[string][][]interface{})[vs[1].(string)]
+	return All(o, k).ApplyT(func(vs []any) [][]any {
+		return vs[0].(map[string][][]any)[vs[1].(string)]
 	}).(ArrayArrayOutput)
 }
 
-func ToArrayArrayMap(in map[string][][]interface{}) ArrayArrayMap {
+func ToArrayArrayMap(in map[string][][]any) ArrayArrayMap {
 	m := make(ArrayArrayMap)
 	for k, v := range in {
 		m[k] = ToArrayArray(v)
@@ -4454,7 +4454,7 @@ func (o IntArrayOutput) ToIntArrayOutputWithContext(ctx context.Context) IntArra
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o IntArrayOutput) Index(i IntInput) IntOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) int {
+	return All(o, i).ApplyT(func(vs []any) int {
 		arr := vs[0].([]int)
 		idx := vs[1].(int)
 		var ret int
@@ -4541,7 +4541,7 @@ func (o IntMapOutput) ToIntMapOutputWithContext(ctx context.Context) IntMapOutpu
 
 // MapIndex looks up the key k in the map.
 func (o IntMapOutput) MapIndex(k StringInput) IntOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) int {
+	return All(o, k).ApplyT(func(vs []any) int {
 		return vs[0].(map[string]int)[vs[1].(string)]
 	}).(IntOutput)
 }
@@ -4622,7 +4622,7 @@ func (o IntArrayMapOutput) ToIntArrayMapOutputWithContext(ctx context.Context) I
 
 // MapIndex looks up the key k in the map.
 func (o IntArrayMapOutput) MapIndex(k StringInput) IntArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []int {
+	return All(o, k).ApplyT(func(vs []any) []int {
 		return vs[0].(map[string][]int)[vs[1].(string)]
 	}).(IntArrayOutput)
 }
@@ -4704,7 +4704,7 @@ func (o IntMapArrayOutput) ToIntMapArrayOutputWithContext(ctx context.Context) I
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o IntMapArrayOutput) Index(i IntInput) IntMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]int {
+	return All(o, i).ApplyT(func(vs []any) map[string]int {
 		arr := vs[0].([]map[string]int)
 		idx := vs[1].(int)
 		var ret map[string]int
@@ -4791,7 +4791,7 @@ func (o IntMapMapOutput) ToIntMapMapOutputWithContext(ctx context.Context) IntMa
 
 // MapIndex looks up the key k in the map.
 func (o IntMapMapOutput) MapIndex(k StringInput) IntMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]int {
+	return All(o, k).ApplyT(func(vs []any) map[string]int {
 		return vs[0].(map[string]map[string]int)[vs[1].(string)]
 	}).(IntMapOutput)
 }
@@ -4873,7 +4873,7 @@ func (o IntArrayArrayOutput) ToIntArrayArrayOutputWithContext(ctx context.Contex
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o IntArrayArrayOutput) Index(i IntInput) IntArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []int {
+	return All(o, i).ApplyT(func(vs []any) []int {
 		arr := vs[0].([][]int)
 		idx := vs[1].(int)
 		var ret []int
@@ -5120,7 +5120,7 @@ func (o StringArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) S
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o StringArrayOutput) Index(i IntInput) StringOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) string {
+	return All(o, i).ApplyT(func(vs []any) string {
 		arr := vs[0].([]string)
 		idx := vs[1].(int)
 		var ret string
@@ -5207,7 +5207,7 @@ func (o StringMapOutput) ToStringMapOutputWithContext(ctx context.Context) Strin
 
 // MapIndex looks up the key k in the map.
 func (o StringMapOutput) MapIndex(k StringInput) StringOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) string {
+	return All(o, k).ApplyT(func(vs []any) string {
 		return vs[0].(map[string]string)[vs[1].(string)]
 	}).(StringOutput)
 }
@@ -5288,7 +5288,7 @@ func (o StringArrayMapOutput) ToStringArrayMapOutputWithContext(ctx context.Cont
 
 // MapIndex looks up the key k in the map.
 func (o StringArrayMapOutput) MapIndex(k StringInput) StringArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []string {
+	return All(o, k).ApplyT(func(vs []any) []string {
 		return vs[0].(map[string][]string)[vs[1].(string)]
 	}).(StringArrayOutput)
 }
@@ -5370,7 +5370,7 @@ func (o StringMapArrayOutput) ToStringMapArrayOutputWithContext(ctx context.Cont
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o StringMapArrayOutput) Index(i IntInput) StringMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]string {
+	return All(o, i).ApplyT(func(vs []any) map[string]string {
 		arr := vs[0].([]map[string]string)
 		idx := vs[1].(int)
 		var ret map[string]string
@@ -5457,7 +5457,7 @@ func (o StringMapMapOutput) ToStringMapMapOutputWithContext(ctx context.Context)
 
 // MapIndex looks up the key k in the map.
 func (o StringMapMapOutput) MapIndex(k StringInput) StringMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]string {
+	return All(o, k).ApplyT(func(vs []any) map[string]string {
 		return vs[0].(map[string]map[string]string)[vs[1].(string)]
 	}).(StringMapOutput)
 }
@@ -5539,7 +5539,7 @@ func (o StringArrayArrayOutput) ToStringArrayArrayOutputWithContext(ctx context.
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o StringArrayArrayOutput) Index(i IntInput) StringArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []string {
+	return All(o, i).ApplyT(func(vs []any) []string {
 		arr := vs[0].([][]string)
 		idx := vs[1].(int)
 		var ret []string
@@ -5626,7 +5626,7 @@ func (o StringMapMapMapOutput) ToStringMapMapMapOutputWithContext(ctx context.Co
 
 // MapIndex looks up the key k in the map.
 func (o StringMapMapMapOutput) MapIndex(k StringInput) StringMapMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]map[string]string {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]string {
 		return vs[0].(map[string]map[string]map[string]string)[vs[1].(string)]
 	}).(StringMapMapOutput)
 }
@@ -5882,7 +5882,7 @@ func (o URNArrayOutput) ToURNArrayOutputWithContext(ctx context.Context) URNArra
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o URNArrayOutput) Index(i IntInput) URNOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) URN {
+	return All(o, i).ApplyT(func(vs []any) URN {
 		arr := vs[0].([]URN)
 		idx := vs[1].(int)
 		var ret URN
@@ -5969,7 +5969,7 @@ func (o URNMapOutput) ToURNMapOutputWithContext(ctx context.Context) URNMapOutpu
 
 // MapIndex looks up the key k in the map.
 func (o URNMapOutput) MapIndex(k StringInput) URNOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) URN {
+	return All(o, k).ApplyT(func(vs []any) URN {
 		return vs[0].(map[string]URN)[vs[1].(string)]
 	}).(URNOutput)
 }
@@ -6050,7 +6050,7 @@ func (o URNArrayMapOutput) ToURNArrayMapOutputWithContext(ctx context.Context) U
 
 // MapIndex looks up the key k in the map.
 func (o URNArrayMapOutput) MapIndex(k StringInput) URNArrayOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) []URN {
+	return All(o, k).ApplyT(func(vs []any) []URN {
 		return vs[0].(map[string][]URN)[vs[1].(string)]
 	}).(URNArrayOutput)
 }
@@ -6132,7 +6132,7 @@ func (o URNMapArrayOutput) ToURNMapArrayOutputWithContext(ctx context.Context) U
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o URNMapArrayOutput) Index(i IntInput) URNMapOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) map[string]URN {
+	return All(o, i).ApplyT(func(vs []any) map[string]URN {
 		arr := vs[0].([]map[string]URN)
 		idx := vs[1].(int)
 		var ret map[string]URN
@@ -6219,7 +6219,7 @@ func (o URNMapMapOutput) ToURNMapMapOutputWithContext(ctx context.Context) URNMa
 
 // MapIndex looks up the key k in the map.
 func (o URNMapMapOutput) MapIndex(k StringInput) URNMapOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) map[string]URN {
+	return All(o, k).ApplyT(func(vs []any) map[string]URN {
 		return vs[0].(map[string]map[string]URN)[vs[1].(string)]
 	}).(URNMapOutput)
 }
@@ -6301,7 +6301,7 @@ func (o URNArrayArrayOutput) ToURNArrayArrayOutputWithContext(ctx context.Contex
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o URNArrayArrayOutput) Index(i IntInput) URNArrayOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) []URN {
+	return All(o, i).ApplyT(func(vs []any) []URN {
 		arr := vs[0].([][]URN)
 		idx := vs[1].(int)
 		var ret []URN
@@ -6333,20 +6333,20 @@ func init() {
 	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
 }
 
-// AsArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveOutput asserts that the type of the AnyOutput's underlying any value is
 // Archive and returns a `ArchiveOutput` with that value. AsArchiveOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsArchiveOutput() ArchiveOutput {
-	return a.ApplyT(func(i interface{}) Archive {
+	return a.ApplyT(func(i any) Archive {
 		return i.(Archive)
 	}).(ArchiveOutput)
 }
 
-// AsArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []Archive or a compatible type and returns a `ArchiveArrayOutput` with that value.
 // AsArchiveArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveArrayOutput() ArchiveArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]Archive, error) {
+	return a.ApplyT(func(i any) ([]Archive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Archive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6355,11 +6355,11 @@ func (a AnyOutput) AsArchiveArrayOutput() ArchiveArrayOutput {
 	}).(ArchiveArrayOutput)
 }
 
-// AsArchiveMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]Archive or a compatible type and returns a `ArchiveMapOutput` with that value.
 // AsArchiveMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveMapOutput() ArchiveMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]Archive, error) {
+	return a.ApplyT(func(i any) (map[string]Archive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Archive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6368,11 +6368,11 @@ func (a AnyOutput) AsArchiveMapOutput() ArchiveMapOutput {
 	}).(ArchiveMapOutput)
 }
 
-// AsArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]Archive or a compatible type and returns a `ArchiveArrayMapOutput` with that value.
 // AsArchiveArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveArrayMapOutput() ArchiveArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]Archive, error) {
+	return a.ApplyT(func(i any) (map[string][]Archive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Archive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6381,11 +6381,11 @@ func (a AnyOutput) AsArchiveArrayMapOutput() ArchiveArrayMapOutput {
 	}).(ArchiveArrayMapOutput)
 }
 
-// AsArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]Archive or a compatible type and returns a `ArchiveMapArrayOutput` with that value.
 // AsArchiveMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveMapArrayOutput() ArchiveMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]Archive, error) {
+	return a.ApplyT(func(i any) ([]map[string]Archive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Archive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6394,11 +6394,11 @@ func (a AnyOutput) AsArchiveMapArrayOutput() ArchiveMapArrayOutput {
 	}).(ArchiveMapArrayOutput)
 }
 
-// AsArchiveMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]Archive or a compatible type and returns a `ArchiveMapMapOutput` with that value.
 // AsArchiveMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveMapMapOutput() ArchiveMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]Archive, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]Archive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Archive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6407,11 +6407,11 @@ func (a AnyOutput) AsArchiveMapMapOutput() ArchiveMapMapOutput {
 	}).(ArchiveMapMapOutput)
 }
 
-// AsArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]Archive or a compatible type and returns a `ArchiveArrayArrayOutput` with that value.
 // AsArchiveArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]Archive, error) {
+	return a.ApplyT(func(i any) ([][]Archive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Archive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6420,20 +6420,20 @@ func (a AnyOutput) AsArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
 	}).(ArchiveArrayArrayOutput)
 }
 
-// AsAssetOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOutput asserts that the type of the AnyOutput's underlying any value is
 // Asset and returns a `AssetOutput` with that value. AsAssetOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsAssetOutput() AssetOutput {
-	return a.ApplyT(func(i interface{}) Asset {
+	return a.ApplyT(func(i any) Asset {
 		return i.(Asset)
 	}).(AssetOutput)
 }
 
-// AsAssetArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []Asset or a compatible type and returns a `AssetArrayOutput` with that value.
 // AsAssetArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetArrayOutput() AssetArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]Asset, error) {
+	return a.ApplyT(func(i any) ([]Asset, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Asset)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6442,11 +6442,11 @@ func (a AnyOutput) AsAssetArrayOutput() AssetArrayOutput {
 	}).(AssetArrayOutput)
 }
 
-// AsAssetMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]Asset or a compatible type and returns a `AssetMapOutput` with that value.
 // AsAssetMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetMapOutput() AssetMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]Asset, error) {
+	return a.ApplyT(func(i any) (map[string]Asset, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Asset)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6455,11 +6455,11 @@ func (a AnyOutput) AsAssetMapOutput() AssetMapOutput {
 	}).(AssetMapOutput)
 }
 
-// AsAssetArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]Asset or a compatible type and returns a `AssetArrayMapOutput` with that value.
 // AsAssetArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetArrayMapOutput() AssetArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]Asset, error) {
+	return a.ApplyT(func(i any) (map[string][]Asset, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Asset)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6468,11 +6468,11 @@ func (a AnyOutput) AsAssetArrayMapOutput() AssetArrayMapOutput {
 	}).(AssetArrayMapOutput)
 }
 
-// AsAssetMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]Asset or a compatible type and returns a `AssetMapArrayOutput` with that value.
 // AsAssetMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetMapArrayOutput() AssetMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]Asset, error) {
+	return a.ApplyT(func(i any) ([]map[string]Asset, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Asset)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6481,11 +6481,11 @@ func (a AnyOutput) AsAssetMapArrayOutput() AssetMapArrayOutput {
 	}).(AssetMapArrayOutput)
 }
 
-// AsAssetMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]Asset or a compatible type and returns a `AssetMapMapOutput` with that value.
 // AsAssetMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetMapMapOutput() AssetMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]Asset, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]Asset, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6494,11 +6494,11 @@ func (a AnyOutput) AsAssetMapMapOutput() AssetMapMapOutput {
 	}).(AssetMapMapOutput)
 }
 
-// AsAssetArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]Asset or a compatible type and returns a `AssetArrayArrayOutput` with that value.
 // AsAssetArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetArrayArrayOutput() AssetArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]Asset, error) {
+	return a.ApplyT(func(i any) ([][]Asset, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Asset)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6507,20 +6507,20 @@ func (a AnyOutput) AsAssetArrayArrayOutput() AssetArrayArrayOutput {
 	}).(AssetArrayArrayOutput)
 }
 
-// AsAssetOrArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveOutput asserts that the type of the AnyOutput's underlying any value is
 // AssetOrArchive and returns a `AssetOrArchiveOutput` with that value. AsAssetOrArchiveOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return a.ApplyT(func(i interface{}) AssetOrArchive {
+	return a.ApplyT(func(i any) AssetOrArchive {
 		return i.(AssetOrArchive)
 	}).(AssetOrArchiveOutput)
 }
 
-// AsAssetOrArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayOutput` with that value.
 // AsAssetOrArchiveArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]AssetOrArchive, error) {
+	return a.ApplyT(func(i any) ([]AssetOrArchive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6529,11 +6529,11 @@ func (a AnyOutput) AsAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
 	}).(AssetOrArchiveArrayOutput)
 }
 
-// AsAssetOrArchiveMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapOutput` with that value.
 // AsAssetOrArchiveMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]AssetOrArchive, error) {
+	return a.ApplyT(func(i any) (map[string]AssetOrArchive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6542,11 +6542,11 @@ func (a AnyOutput) AsAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
 	}).(AssetOrArchiveMapOutput)
 }
 
-// AsAssetOrArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayMapOutput` with that value.
 // AsAssetOrArchiveArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]AssetOrArchive, error) {
+	return a.ApplyT(func(i any) (map[string][]AssetOrArchive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6555,11 +6555,11 @@ func (a AnyOutput) AsAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput
 	}).(AssetOrArchiveArrayMapOutput)
 }
 
-// AsAssetOrArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapArrayOutput` with that value.
 // AsAssetOrArchiveMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]AssetOrArchive, error) {
+	return a.ApplyT(func(i any) ([]map[string]AssetOrArchive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6568,11 +6568,11 @@ func (a AnyOutput) AsAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput
 	}).(AssetOrArchiveMapArrayOutput)
 }
 
-// AsAssetOrArchiveMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapMapOutput` with that value.
 // AsAssetOrArchiveMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]AssetOrArchive, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]AssetOrArchive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6581,11 +6581,11 @@ func (a AnyOutput) AsAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
 	}).(AssetOrArchiveMapMapOutput)
 }
 
-// AsAssetOrArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsAssetOrArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayArrayOutput` with that value.
 // AsAssetOrArchiveArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]AssetOrArchive, error) {
+	return a.ApplyT(func(i any) ([][]AssetOrArchive, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6594,20 +6594,20 @@ func (a AnyOutput) AsAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOu
 	}).(AssetOrArchiveArrayArrayOutput)
 }
 
-// AsBoolOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolOutput asserts that the type of the AnyOutput's underlying any value is
 // bool and returns a `BoolOutput` with that value. AsBoolOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsBoolOutput() BoolOutput {
-	return a.ApplyT(func(i interface{}) bool {
+	return a.ApplyT(func(i any) bool {
 		return i.(bool)
 	}).(BoolOutput)
 }
 
-// AsBoolPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolPtrOutput asserts that the type of the AnyOutput's underlying any value is
 // *bool or a compatible type and returns a `BoolPtrOutput` with that value.
 // AsBoolPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolPtrOutput() BoolPtrOutput {
-	return a.ApplyT(func(i interface{}) (*bool, error) {
+	return a.ApplyT(func(i any) (*bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((**bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6616,11 +6616,11 @@ func (a AnyOutput) AsBoolPtrOutput() BoolPtrOutput {
 	}).(BoolPtrOutput)
 }
 
-// AsBoolArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []bool or a compatible type and returns a `BoolArrayOutput` with that value.
 // AsBoolArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolArrayOutput() BoolArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]bool, error) {
+	return a.ApplyT(func(i any) ([]bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6629,11 +6629,11 @@ func (a AnyOutput) AsBoolArrayOutput() BoolArrayOutput {
 	}).(BoolArrayOutput)
 }
 
-// AsBoolMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]bool or a compatible type and returns a `BoolMapOutput` with that value.
 // AsBoolMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolMapOutput() BoolMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]bool, error) {
+	return a.ApplyT(func(i any) (map[string]bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6642,11 +6642,11 @@ func (a AnyOutput) AsBoolMapOutput() BoolMapOutput {
 	}).(BoolMapOutput)
 }
 
-// AsBoolArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]bool or a compatible type and returns a `BoolArrayMapOutput` with that value.
 // AsBoolArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolArrayMapOutput() BoolArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]bool, error) {
+	return a.ApplyT(func(i any) (map[string][]bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6655,11 +6655,11 @@ func (a AnyOutput) AsBoolArrayMapOutput() BoolArrayMapOutput {
 	}).(BoolArrayMapOutput)
 }
 
-// AsBoolMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]bool or a compatible type and returns a `BoolMapArrayOutput` with that value.
 // AsBoolMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolMapArrayOutput() BoolMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]bool, error) {
+	return a.ApplyT(func(i any) ([]map[string]bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6668,11 +6668,11 @@ func (a AnyOutput) AsBoolMapArrayOutput() BoolMapArrayOutput {
 	}).(BoolMapArrayOutput)
 }
 
-// AsBoolMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]bool or a compatible type and returns a `BoolMapMapOutput` with that value.
 // AsBoolMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolMapMapOutput() BoolMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]bool, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6681,11 +6681,11 @@ func (a AnyOutput) AsBoolMapMapOutput() BoolMapMapOutput {
 	}).(BoolMapMapOutput)
 }
 
-// AsBoolArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsBoolArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]bool or a compatible type and returns a `BoolArrayArrayOutput` with that value.
 // AsBoolArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolArrayArrayOutput() BoolArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]bool, error) {
+	return a.ApplyT(func(i any) ([][]bool, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]bool)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6694,20 +6694,20 @@ func (a AnyOutput) AsBoolArrayArrayOutput() BoolArrayArrayOutput {
 	}).(BoolArrayArrayOutput)
 }
 
-// AsFloat64Output asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64Output asserts that the type of the AnyOutput's underlying any value is
 // float64 and returns a `Float64Output` with that value. AsFloat64Output panics if the value
 // was not the expected type.
 func (a AnyOutput) AsFloat64Output() Float64Output {
-	return a.ApplyT(func(i interface{}) float64 {
+	return a.ApplyT(func(i any) float64 {
 		return i.(float64)
 	}).(Float64Output)
 }
 
-// AsFloat64PtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64PtrOutput asserts that the type of the AnyOutput's underlying any value is
 // *float64 or a compatible type and returns a `Float64PtrOutput` with that value.
 // AsFloat64PtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64PtrOutput() Float64PtrOutput {
-	return a.ApplyT(func(i interface{}) (*float64, error) {
+	return a.ApplyT(func(i any) (*float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((**float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6716,11 +6716,11 @@ func (a AnyOutput) AsFloat64PtrOutput() Float64PtrOutput {
 	}).(Float64PtrOutput)
 }
 
-// AsFloat64ArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64ArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []float64 or a compatible type and returns a `Float64ArrayOutput` with that value.
 // AsFloat64ArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64ArrayOutput() Float64ArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]float64, error) {
+	return a.ApplyT(func(i any) ([]float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6729,11 +6729,11 @@ func (a AnyOutput) AsFloat64ArrayOutput() Float64ArrayOutput {
 	}).(Float64ArrayOutput)
 }
 
-// AsFloat64MapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64MapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]float64 or a compatible type and returns a `Float64MapOutput` with that value.
 // AsFloat64MapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64MapOutput() Float64MapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]float64, error) {
+	return a.ApplyT(func(i any) (map[string]float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6742,11 +6742,11 @@ func (a AnyOutput) AsFloat64MapOutput() Float64MapOutput {
 	}).(Float64MapOutput)
 }
 
-// AsFloat64ArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64ArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]float64 or a compatible type and returns a `Float64ArrayMapOutput` with that value.
 // AsFloat64ArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64ArrayMapOutput() Float64ArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]float64, error) {
+	return a.ApplyT(func(i any) (map[string][]float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6755,11 +6755,11 @@ func (a AnyOutput) AsFloat64ArrayMapOutput() Float64ArrayMapOutput {
 	}).(Float64ArrayMapOutput)
 }
 
-// AsFloat64MapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64MapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]float64 or a compatible type and returns a `Float64MapArrayOutput` with that value.
 // AsFloat64MapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64MapArrayOutput() Float64MapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]float64, error) {
+	return a.ApplyT(func(i any) ([]map[string]float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6768,11 +6768,11 @@ func (a AnyOutput) AsFloat64MapArrayOutput() Float64MapArrayOutput {
 	}).(Float64MapArrayOutput)
 }
 
-// AsFloat64MapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64MapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]float64 or a compatible type and returns a `Float64MapMapOutput` with that value.
 // AsFloat64MapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64MapMapOutput() Float64MapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]float64, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6781,11 +6781,11 @@ func (a AnyOutput) AsFloat64MapMapOutput() Float64MapMapOutput {
 	}).(Float64MapMapOutput)
 }
 
-// AsFloat64ArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsFloat64ArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]float64 or a compatible type and returns a `Float64ArrayArrayOutput` with that value.
 // AsFloat64ArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]float64, error) {
+	return a.ApplyT(func(i any) ([][]float64, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]float64)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6794,20 +6794,20 @@ func (a AnyOutput) AsFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
 	}).(Float64ArrayArrayOutput)
 }
 
-// AsIDOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDOutput asserts that the type of the AnyOutput's underlying any value is
 // ID and returns a `IDOutput` with that value. AsIDOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsIDOutput() IDOutput {
-	return a.ApplyT(func(i interface{}) ID {
+	return a.ApplyT(func(i any) ID {
 		return i.(ID)
 	}).(IDOutput)
 }
 
-// AsIDPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDPtrOutput asserts that the type of the AnyOutput's underlying any value is
 // *ID or a compatible type and returns a `IDPtrOutput` with that value.
 // AsIDPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDPtrOutput() IDPtrOutput {
-	return a.ApplyT(func(i interface{}) (*ID, error) {
+	return a.ApplyT(func(i any) (*ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((**ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6816,11 +6816,11 @@ func (a AnyOutput) AsIDPtrOutput() IDPtrOutput {
 	}).(IDPtrOutput)
 }
 
-// AsIDArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []ID or a compatible type and returns a `IDArrayOutput` with that value.
 // AsIDArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDArrayOutput() IDArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]ID, error) {
+	return a.ApplyT(func(i any) ([]ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6829,11 +6829,11 @@ func (a AnyOutput) AsIDArrayOutput() IDArrayOutput {
 	}).(IDArrayOutput)
 }
 
-// AsIDMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]ID or a compatible type and returns a `IDMapOutput` with that value.
 // AsIDMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDMapOutput() IDMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]ID, error) {
+	return a.ApplyT(func(i any) (map[string]ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6842,11 +6842,11 @@ func (a AnyOutput) AsIDMapOutput() IDMapOutput {
 	}).(IDMapOutput)
 }
 
-// AsIDArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]ID or a compatible type and returns a `IDArrayMapOutput` with that value.
 // AsIDArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDArrayMapOutput() IDArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]ID, error) {
+	return a.ApplyT(func(i any) (map[string][]ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6855,11 +6855,11 @@ func (a AnyOutput) AsIDArrayMapOutput() IDArrayMapOutput {
 	}).(IDArrayMapOutput)
 }
 
-// AsIDMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]ID or a compatible type and returns a `IDMapArrayOutput` with that value.
 // AsIDMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDMapArrayOutput() IDMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]ID, error) {
+	return a.ApplyT(func(i any) ([]map[string]ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6868,11 +6868,11 @@ func (a AnyOutput) AsIDMapArrayOutput() IDMapArrayOutput {
 	}).(IDMapArrayOutput)
 }
 
-// AsIDMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]ID or a compatible type and returns a `IDMapMapOutput` with that value.
 // AsIDMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDMapMapOutput() IDMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]ID, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6881,11 +6881,11 @@ func (a AnyOutput) AsIDMapMapOutput() IDMapMapOutput {
 	}).(IDMapMapOutput)
 }
 
-// AsIDArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIDArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]ID or a compatible type and returns a `IDArrayArrayOutput` with that value.
 // AsIDArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDArrayArrayOutput() IDArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]ID, error) {
+	return a.ApplyT(func(i any) ([][]ID, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]ID)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -6894,111 +6894,111 @@ func (a AnyOutput) AsIDArrayArrayOutput() IDArrayArrayOutput {
 	}).(IDArrayArrayOutput)
 }
 
-// AsArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []interface{} or a compatible type and returns a `ArrayOutput` with that value.
+// AsArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []any or a compatible type and returns a `ArrayOutput` with that value.
 // AsArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayOutput() ArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) ([]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.([]interface{}), nil
+		return v.([]any), nil
 	}).(ArrayOutput)
 }
 
-// AsMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]interface{} or a compatible type and returns a `MapOutput` with that value.
+// AsMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]any or a compatible type and returns a `MapOutput` with that value.
 // AsMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsMapOutput() MapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) (map[string]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.(map[string]interface{}), nil
+		return v.(map[string]any), nil
 	}).(MapOutput)
 }
 
-// AsArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]interface{} or a compatible type and returns a `ArrayMapOutput` with that value.
+// AsArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]any or a compatible type and returns a `ArrayMapOutput` with that value.
 // AsArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayMapOutput() ArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) (map[string][]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.(map[string][]interface{}), nil
+		return v.(map[string][]any), nil
 	}).(ArrayMapOutput)
 }
 
-// AsMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]interface{} or a compatible type and returns a `MapArrayOutput` with that value.
+// AsMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]any or a compatible type and returns a `MapArrayOutput` with that value.
 // AsMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsMapArrayOutput() MapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) ([]map[string]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.([]map[string]interface{}), nil
+		return v.([]map[string]any), nil
 	}).(MapArrayOutput)
 }
 
-// AsMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]interface{} or a compatible type and returns a `MapMapOutput` with that value.
+// AsMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]any or a compatible type and returns a `MapMapOutput` with that value.
 // AsMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsMapMapOutput() MapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) (map[string]map[string]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.(map[string]map[string]interface{}), nil
+		return v.(map[string]map[string]any), nil
 	}).(MapMapOutput)
 }
 
-// AsArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]interface{} or a compatible type and returns a `ArrayArrayOutput` with that value.
+// AsArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][]any or a compatible type and returns a `ArrayArrayOutput` with that value.
 // AsArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayArrayOutput() ArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) ([][]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.([][]interface{}), nil
+		return v.([][]any), nil
 	}).(ArrayArrayOutput)
 }
 
-// AsArrayArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][][]interface{} or a compatible type and returns a `ArrayArrayMapOutput` with that value.
+// AsArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]any or a compatible type and returns a `ArrayArrayMapOutput` with that value.
 // AsArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayArrayMapOutput() ArrayArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][][]interface{}, error) {
-		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]interface{})(nil)).Elem())
+	return a.ApplyT(func(i any) (map[string][][]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]any)(nil)).Elem())
 		if err != nil {
 			return nil, err
 		}
-		return v.(map[string][][]interface{}), nil
+		return v.(map[string][][]any), nil
 	}).(ArrayArrayMapOutput)
 }
 
-// AsIntOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntOutput asserts that the type of the AnyOutput's underlying any value is
 // int and returns a `IntOutput` with that value. AsIntOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsIntOutput() IntOutput {
-	return a.ApplyT(func(i interface{}) int {
+	return a.ApplyT(func(i any) int {
 		return i.(int)
 	}).(IntOutput)
 }
 
-// AsIntPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntPtrOutput asserts that the type of the AnyOutput's underlying any value is
 // *int or a compatible type and returns a `IntPtrOutput` with that value.
 // AsIntPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntPtrOutput() IntPtrOutput {
-	return a.ApplyT(func(i interface{}) (*int, error) {
+	return a.ApplyT(func(i any) (*int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((**int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7007,11 +7007,11 @@ func (a AnyOutput) AsIntPtrOutput() IntPtrOutput {
 	}).(IntPtrOutput)
 }
 
-// AsIntArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []int or a compatible type and returns a `IntArrayOutput` with that value.
 // AsIntArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntArrayOutput() IntArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]int, error) {
+	return a.ApplyT(func(i any) ([]int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7020,11 +7020,11 @@ func (a AnyOutput) AsIntArrayOutput() IntArrayOutput {
 	}).(IntArrayOutput)
 }
 
-// AsIntMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]int or a compatible type and returns a `IntMapOutput` with that value.
 // AsIntMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntMapOutput() IntMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]int, error) {
+	return a.ApplyT(func(i any) (map[string]int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7033,11 +7033,11 @@ func (a AnyOutput) AsIntMapOutput() IntMapOutput {
 	}).(IntMapOutput)
 }
 
-// AsIntArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]int or a compatible type and returns a `IntArrayMapOutput` with that value.
 // AsIntArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntArrayMapOutput() IntArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]int, error) {
+	return a.ApplyT(func(i any) (map[string][]int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7046,11 +7046,11 @@ func (a AnyOutput) AsIntArrayMapOutput() IntArrayMapOutput {
 	}).(IntArrayMapOutput)
 }
 
-// AsIntMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]int or a compatible type and returns a `IntMapArrayOutput` with that value.
 // AsIntMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntMapArrayOutput() IntMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]int, error) {
+	return a.ApplyT(func(i any) ([]map[string]int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7059,11 +7059,11 @@ func (a AnyOutput) AsIntMapArrayOutput() IntMapArrayOutput {
 	}).(IntMapArrayOutput)
 }
 
-// AsIntMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]int or a compatible type and returns a `IntMapMapOutput` with that value.
 // AsIntMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntMapMapOutput() IntMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]int, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7072,11 +7072,11 @@ func (a AnyOutput) AsIntMapMapOutput() IntMapMapOutput {
 	}).(IntMapMapOutput)
 }
 
-// AsIntArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsIntArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]int or a compatible type and returns a `IntArrayArrayOutput` with that value.
 // AsIntArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntArrayArrayOutput() IntArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]int, error) {
+	return a.ApplyT(func(i any) ([][]int, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]int)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7085,20 +7085,20 @@ func (a AnyOutput) AsIntArrayArrayOutput() IntArrayArrayOutput {
 	}).(IntArrayArrayOutput)
 }
 
-// AsStringOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringOutput asserts that the type of the AnyOutput's underlying any value is
 // string and returns a `StringOutput` with that value. AsStringOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsStringOutput() StringOutput {
-	return a.ApplyT(func(i interface{}) string {
+	return a.ApplyT(func(i any) string {
 		return i.(string)
 	}).(StringOutput)
 }
 
-// AsStringPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringPtrOutput asserts that the type of the AnyOutput's underlying any value is
 // *string or a compatible type and returns a `StringPtrOutput` with that value.
 // AsStringPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringPtrOutput() StringPtrOutput {
-	return a.ApplyT(func(i interface{}) (*string, error) {
+	return a.ApplyT(func(i any) (*string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((**string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7107,11 +7107,11 @@ func (a AnyOutput) AsStringPtrOutput() StringPtrOutput {
 	}).(StringPtrOutput)
 }
 
-// AsStringArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []string or a compatible type and returns a `StringArrayOutput` with that value.
 // AsStringArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringArrayOutput() StringArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]string, error) {
+	return a.ApplyT(func(i any) ([]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7120,11 +7120,11 @@ func (a AnyOutput) AsStringArrayOutput() StringArrayOutput {
 	}).(StringArrayOutput)
 }
 
-// AsStringMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]string or a compatible type and returns a `StringMapOutput` with that value.
 // AsStringMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapOutput() StringMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]string, error) {
+	return a.ApplyT(func(i any) (map[string]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7133,11 +7133,11 @@ func (a AnyOutput) AsStringMapOutput() StringMapOutput {
 	}).(StringMapOutput)
 }
 
-// AsStringArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]string or a compatible type and returns a `StringArrayMapOutput` with that value.
 // AsStringArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringArrayMapOutput() StringArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]string, error) {
+	return a.ApplyT(func(i any) (map[string][]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7146,11 +7146,11 @@ func (a AnyOutput) AsStringArrayMapOutput() StringArrayMapOutput {
 	}).(StringArrayMapOutput)
 }
 
-// AsStringMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]string or a compatible type and returns a `StringMapArrayOutput` with that value.
 // AsStringMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapArrayOutput() StringMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]string, error) {
+	return a.ApplyT(func(i any) ([]map[string]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7159,11 +7159,11 @@ func (a AnyOutput) AsStringMapArrayOutput() StringMapArrayOutput {
 	}).(StringMapArrayOutput)
 }
 
-// AsStringMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]string or a compatible type and returns a `StringMapMapOutput` with that value.
 // AsStringMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapMapOutput() StringMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]string, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7172,11 +7172,11 @@ func (a AnyOutput) AsStringMapMapOutput() StringMapMapOutput {
 	}).(StringMapMapOutput)
 }
 
-// AsStringArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]string or a compatible type and returns a `StringArrayArrayOutput` with that value.
 // AsStringArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringArrayArrayOutput() StringArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]string, error) {
+	return a.ApplyT(func(i any) ([][]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7185,11 +7185,11 @@ func (a AnyOutput) AsStringArrayArrayOutput() StringArrayArrayOutput {
 	}).(StringArrayArrayOutput)
 }
 
-// AsStringMapMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsStringMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]map[string]string or a compatible type and returns a `StringMapMapMapOutput` with that value.
 // AsStringMapMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapMapMapOutput() StringMapMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]map[string]string, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]string, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7198,20 +7198,20 @@ func (a AnyOutput) AsStringMapMapMapOutput() StringMapMapMapOutput {
 	}).(StringMapMapMapOutput)
 }
 
-// AsURNOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNOutput asserts that the type of the AnyOutput's underlying any value is
 // URN and returns a `URNOutput` with that value. AsURNOutput panics if the value
 // was not the expected type.
 func (a AnyOutput) AsURNOutput() URNOutput {
-	return a.ApplyT(func(i interface{}) URN {
+	return a.ApplyT(func(i any) URN {
 		return i.(URN)
 	}).(URNOutput)
 }
 
-// AsURNPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNPtrOutput asserts that the type of the AnyOutput's underlying any value is
 // *URN or a compatible type and returns a `URNPtrOutput` with that value.
 // AsURNPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNPtrOutput() URNPtrOutput {
-	return a.ApplyT(func(i interface{}) (*URN, error) {
+	return a.ApplyT(func(i any) (*URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((**URN)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7220,11 +7220,11 @@ func (a AnyOutput) AsURNPtrOutput() URNPtrOutput {
 	}).(URNPtrOutput)
 }
 
-// AsURNArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []URN or a compatible type and returns a `URNArrayOutput` with that value.
 // AsURNArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNArrayOutput() URNArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]URN, error) {
+	return a.ApplyT(func(i any) ([]URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]URN)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7233,11 +7233,11 @@ func (a AnyOutput) AsURNArrayOutput() URNArrayOutput {
 	}).(URNArrayOutput)
 }
 
-// AsURNMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]URN or a compatible type and returns a `URNMapOutput` with that value.
 // AsURNMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNMapOutput() URNMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]URN, error) {
+	return a.ApplyT(func(i any) (map[string]URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]URN)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7246,11 +7246,11 @@ func (a AnyOutput) AsURNMapOutput() URNMapOutput {
 	}).(URNMapOutput)
 }
 
-// AsURNArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][]URN or a compatible type and returns a `URNArrayMapOutput` with that value.
 // AsURNArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNArrayMapOutput() URNArrayMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string][]URN, error) {
+	return a.ApplyT(func(i any) (map[string][]URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]URN)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7259,11 +7259,11 @@ func (a AnyOutput) AsURNArrayMapOutput() URNArrayMapOutput {
 	}).(URNArrayMapOutput)
 }
 
-// AsURNMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []map[string]URN or a compatible type and returns a `URNMapArrayOutput` with that value.
 // AsURNMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNMapArrayOutput() URNMapArrayOutput {
-	return a.ApplyT(func(i interface{}) ([]map[string]URN, error) {
+	return a.ApplyT(func(i any) ([]map[string]URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]URN)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7272,11 +7272,11 @@ func (a AnyOutput) AsURNMapArrayOutput() URNMapArrayOutput {
 	}).(URNMapArrayOutput)
 }
 
-// AsURNMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNMapMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string]map[string]URN or a compatible type and returns a `URNMapMapOutput` with that value.
 // AsURNMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNMapMapOutput() URNMapMapOutput {
-	return a.ApplyT(func(i interface{}) (map[string]map[string]URN, error) {
+	return a.ApplyT(func(i any) (map[string]map[string]URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem())
 		if err != nil {
 			return nil, err
@@ -7285,11 +7285,11 @@ func (a AnyOutput) AsURNMapMapOutput() URNMapMapOutput {
 	}).(URNMapMapOutput)
 }
 
-// AsURNArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AsURNArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // [][]URN or a compatible type and returns a `URNArrayArrayOutput` with that value.
 // AsURNArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNArrayArrayOutput() URNArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) ([][]URN, error) {
+	return a.ApplyT(func(i any) ([][]URN, error) {
 		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]URN)(nil)).Elem())
 		if err != nil {
 			return nil, err

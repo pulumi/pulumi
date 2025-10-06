@@ -42,7 +42,6 @@ func TestValidateVenv(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run("Doesnt-exist-"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
@@ -88,7 +87,6 @@ func TestCommand(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run("empty/"+Name(opts.Toolchain), func(t *testing.T) {
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
@@ -183,8 +181,6 @@ func TestListPackages(t *testing.T) {
 			expectedPackages: []string{},
 		},
 	} {
-		test := test
-
 		t.Run("empty/"+Name(test.opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
@@ -265,7 +261,6 @@ func TestAbout(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run(Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)

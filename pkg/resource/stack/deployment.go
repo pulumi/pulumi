@@ -156,7 +156,7 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 		return err
 	}
 
-	var raw interface{}
+	var raw any
 	if err := json.Unmarshal(bytes, &raw); err != nil {
 		return err
 	}
@@ -447,7 +447,7 @@ func SerializeResource(
 	defer res.Lock.Unlock()
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
-	var inputs map[string]interface{}
+	var inputs map[string]any
 	if inp := res.Inputs; inp != nil {
 		sinp, err := SerializeProperties(ctx, inp, enc, showSecrets)
 		if err != nil {
@@ -455,7 +455,7 @@ func SerializeResource(
 		}
 		inputs = sinp
 	}
-	var outputs map[string]interface{}
+	var outputs map[string]any
 	if outp := res.Outputs; outp != nil {
 		soutp, err := SerializeProperties(ctx, outp, enc, showSecrets)
 		if err != nil {
@@ -494,6 +494,7 @@ func SerializeResource(
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
 		StackTrace:              stackTrace,
+		HideDiff:                res.HideDiff,
 		IgnoreChanges:           res.IgnoreChanges,
 		ReplaceOnChanges:        res.ReplaceOnChanges,
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
@@ -525,8 +526,8 @@ func SerializeOperation(
 // SerializeProperties serializes a resource property bag so that it's suitable for serialization.
 func SerializeProperties(ctx context.Context, props resource.PropertyMap, enc config.Encrypter,
 	showSecrets bool,
-) (map[string]interface{}, error) {
-	dst := make(map[string]interface{})
+) (map[string]any, error) {
+	dst := make(map[string]any)
 	for _, k := range props.StableKeys() {
 		v, err := SerializePropertyValue(ctx, props[k], enc, showSecrets)
 		if err != nil {
@@ -540,7 +541,7 @@ func SerializeProperties(ctx context.Context, props resource.PropertyMap, enc co
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
 func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, enc config.Encrypter,
 	showSecrets bool,
-) (interface{}, error) {
+) (any, error) {
 	// Serialize nulls as nil.
 	if prop.IsNull() {
 		return nil, nil
@@ -556,7 +557,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 	// For arrays, make sure to recurse.
 	if prop.IsArray() {
 		srcarr := prop.ArrayValue()
-		dstarr := make([]interface{}, len(srcarr))
+		dstarr := make([]any, len(srcarr))
 		for i, elem := range prop.ArrayValue() {
 			selem, err := SerializePropertyValue(ctx, elem, enc, showSecrets)
 			if err != nil {
@@ -582,7 +583,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 	// We serialize resource references using a map-based representation similar to assets, archives, and secrets.
 	if prop.IsResourceReference() {
 		ref := prop.ResourceReferenceValue()
-		serialized := map[string]interface{}{
+		serialized := map[string]any{
 			resource.SigKey:  resource.ResourceReferenceSig,
 			"urn":            string(ref.URN),
 			"packageVersion": ref.PackageVersion,
@@ -692,6 +693,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			SourcePosition:          res.SourcePosition,
 			StackTrace:              stackTrace,
 			IgnoreChanges:           res.IgnoreChanges,
+			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
@@ -711,7 +713,7 @@ func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
-func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
+func DeserializeProperties(props map[string]any, dec config.Decrypter,
 ) (resource.PropertyMap, error) {
 	result := make(resource.PropertyMap)
 	for k, prop := range props {
@@ -767,7 +769,7 @@ func deserializeSecret(
 }
 
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
-func DeserializePropertyValue(v interface{}, dec config.Decrypter,
+func DeserializePropertyValue(v any, dec config.Decrypter,
 ) (resource.PropertyValue, error) {
 	ctx := context.TODO()
 	if v != nil {
@@ -781,7 +783,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 				return resource.MakeComputed(resource.NewProperty("")), nil
 			}
 			return resource.NewProperty(w), nil
-		case []interface{}:
+		case []any:
 			arr := make([]resource.PropertyValue, len(w))
 			for i, elem := range w {
 				ev, err := DeserializePropertyValue(elem, dec)
@@ -791,7 +793,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 				arr[i] = ev
 			}
 			return resource.NewProperty(arr), nil
-		case map[string]interface{}:
+		case map[string]any:
 			obj, err := DeserializeProperties(w, dec)
 			if err != nil {
 				return resource.PropertyValue{}, err
@@ -845,7 +847,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					urn := resource.URN(urnStr)
 
 					// deserializeID handles two cases, one of which arose from a bug in a refactoring of resource.ResourceReference.
-					// This bug caused the raw ID PropertyValue to be serialized as a map[string]interface{}. In the normal case, the
+					// This bug caused the raw ID PropertyValue to be serialized as a map[string]any. In the normal case, the
 					// ID is serialized as a string.
 					deserializeID := func() (string, bool, error) {
 						idV, ok := objmap["id"]
@@ -856,7 +858,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						switch idV := idV.(type) {
 						case string:
 							return idV, true, nil
-						case map[string]interface{}:
+						case map[string]any:
 							switch v := idV["V"].(type) {
 							case nil:
 								// This happens for component resource references, which do not have an associated ID.
@@ -864,7 +866,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 							case string:
 								// This happens for custom resource references, which do have an associated ID.
 								return v, true, nil
-							case map[string]interface{}:
+							case map[string]any:
 								// This happens for custom resource references with an unknown ID. In this case, the ID should be
 								// deserialized as the empty string.
 								return "", true, nil

@@ -660,7 +660,6 @@ func TestConstructPlainGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -718,7 +717,6 @@ func TestConstructMethodsGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -794,7 +792,6 @@ func TestConstructProviderGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -832,7 +829,7 @@ func TestGetResourceGo(t *testing.T) {
 			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
 
-			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			out, ok := stack.Outputs["secret"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -1118,7 +1115,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 	d := filepath.Join("stack_outputs_program_error", "go")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -1131,7 +1128,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -1140,7 +1137,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 				Dir:           filepath.Join(d, "step2"),
 				Additive:      true,
 				ExpectFailure: true,
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",       // Expected to be updated
 					"foo": float64(42), // Expected to remain the same
 				}),
@@ -1157,7 +1154,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 	d := filepath.Join("stack_outputs_resource_error", "go")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -1173,7 +1170,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -1184,7 +1181,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 				ExpectFailure: true,
 				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
 				// called for the stack.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -1194,7 +1191,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				// Expect the values to be updated.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",
 					"foo": float64(1),
 				}),

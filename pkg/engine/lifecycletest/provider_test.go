@@ -1441,7 +1441,6 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		},
 	}
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1578,7 +1577,6 @@ func TestProviderVersionAssignment(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			programF := deploytest.NewLanguageRuntimeF(c.prog, c.packages...)
@@ -2247,7 +2245,7 @@ func TestInternalKey(t *testing.T) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 					news := req.News.Copy()
-					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 						"some": "internal data",
 					}))
 					return plugin.CheckConfigResponse{

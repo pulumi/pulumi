@@ -46,7 +46,7 @@ func TestClosePanic(t *testing.T) {
 			defer wg.Done()
 			// We expect some of these to error that the host is shutting down, that's fine this test is just
 			// checking nothing panics.
-			_, _ = host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+			_, _ = host.loadPlugin(host.loadRequests, func() (any, error) {
 				return nil, nil
 			})
 		}()

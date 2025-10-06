@@ -23,13 +23,13 @@ import (
 )
 
 // Decoder is a func that knows how to decode into particular type.
-type Decoder func(m Mapper, obj map[string]interface{}) (interface{}, error)
+type Decoder func(m Mapper, obj map[string]any) (any, error)
 
 // Decoders is a map from type to a decoder func that understands how to decode that type.
 type Decoders map[reflect.Type]Decoder
 
 // Decode decodes an entire map into a target object, using tag-directed mappings.
-func (md *mapper) Decode(obj map[string]interface{}, target interface{}) MappingError {
+func (md *mapper) Decode(obj map[string]any, target any) MappingError {
 	// Fetch the destination types and validate that we can store into the target (i.e., a valid lval).
 	vdst := reflect.ValueOf(target)
 	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
@@ -78,8 +78,8 @@ func (md *mapper) Decode(obj map[string]interface{}, target interface{}) Mapping
 }
 
 // DecodeValue decodes primitive type fields.  For fields of complex types, we use custom deserialization.
-func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key string,
-	target interface{}, optional bool,
+func (md *mapper) DecodeValue(obj map[string]any, ty reflect.Type, key string,
+	target any, optional bool,
 ) FieldError {
 	vdst := reflect.ValueOf(target)
 	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
@@ -136,7 +136,7 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 }
 
 var (
-	emptyObject         = map[string]interface{}{}
+	emptyObject         = map[string]any{}
 	textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
 )
 
@@ -165,7 +165,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			contract.Assertf(adjusted.Type().AssignableTo(to), "type %v is not assignable to %v", adjusted.Type(), to)
 			return adjusted, nil
 		} else if val.Kind() == reflect.Interface {
-			// It could be that the source is an interface{} with the right element type (or the right element type
+			// It could be that the source is an any with the right element type (or the right element type
 			// through a series of successive conversions); go ahead and give it a try.
 			val = val.Elem()
 		} else if val.Type().Kind() == reflect.Slice && to.Kind() == reflect.Slice {
@@ -216,7 +216,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			val = m
 		} else if val.Type() == reflect.TypeOf(emptyObject) {
 			// The value is an object and needs to be decoded into a value.
-			obj := val.Interface().(map[string]interface{})
+			obj := val.Interface().(map[string]any)
 			if decode, has := md.opts.CustomDecoders[to]; has {
 				// A custom decoder exists; use it to unmarshal the type.
 				target, err := decode(md, obj)
@@ -226,7 +226,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				val = reflect.ValueOf(target)
 			} else if to.Kind() == reflect.Struct || (to.Kind() == reflect.Ptr && to.Elem().Kind() == reflect.Struct) {
 				// If the target is a struct, we can use the built-in decoding logic.
-				var target interface{}
+				var target any
 				if to.Kind() == reflect.Ptr {
 					target = reflect.New(to.Elem()).Interface()
 				} else {

@@ -896,6 +896,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
 	}
+	if opts.HideDiffs != nil {
+		appendOption("hideDiffs", opts.HideDiffs)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
@@ -1371,7 +1374,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

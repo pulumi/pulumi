@@ -82,7 +82,7 @@ func converterPluginDialOptions(ctx *Context, name string, path string) []grpc.D
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "converter",
 		}

@@ -167,7 +167,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
-	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	options map[string]any, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
@@ -350,7 +350,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "resource",
 		}
@@ -829,7 +829,7 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
-func removeSecrets(v resource.PropertyValue) interface{} {
+func removeSecrets(v resource.PropertyValue) any {
 	switch {
 	case v.IsNull():
 		return nil
@@ -840,7 +840,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 	case v.IsString():
 		return v.StringValue()
 	case v.IsArray():
-		arr := []interface{}{}
+		arr := []any{}
 		for _, v := range v.ArrayValue() {
 			arr = append(arr, removeSecrets(v))
 		}
@@ -857,7 +857,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 		return removeSecrets(v.SecretValue().Element)
 	default:
 		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 		for k, v := range v.ObjectValue() {
 			obj[string(k)] = removeSecrets(v)
 		}
@@ -2319,7 +2319,7 @@ func decorateSpanWithType(span opentracing.Span, urn string) {
 	}
 }
 
-func decorateProviderSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+func decorateProviderSpans(span opentracing.Span, method string, req, resp any, grpcError error) {
 	if req == nil {
 		return
 	}

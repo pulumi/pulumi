@@ -21,7 +21,7 @@ import (
 )
 
 // Ignore explicitly ignores a value.  This is similar to `_ = x`, but tells linters ignoring is intentional.
-func Ignore(v interface{}) {
+func Ignore(v any) {
 	// Log something at a VERY verbose level just in case it helps to track down issues (e.g., an error that was
 	// ignored that represents something even more egregious than the eventual failure mode).  If this truly matters, it
 	// probably implies the ignore was not appropriate, but as a safeguard, logging seems useful.

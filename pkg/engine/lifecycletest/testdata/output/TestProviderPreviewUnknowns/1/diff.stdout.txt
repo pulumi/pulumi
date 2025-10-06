@@ -3,7 +3,7 @@
 <{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"alpha"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::ed6c5763-ba9f-4860-80dd-1e3cdd25824c]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::2]
 <{%reset%}><{%fg 2%}>    baz: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        a: <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>

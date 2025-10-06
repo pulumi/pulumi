@@ -218,7 +218,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 	return nil
 }
 
-func fprintStackOutputs(w io.Writer, outputs map[string]interface{}) error {
+func fprintStackOutputs(w io.Writer, outputs map[string]any) error {
 	_, err := fmt.Fprintf(w, "Current stack outputs (%d):\n", len(outputs))
 	if err != nil {
 		return err
@@ -249,7 +249,7 @@ func fprintStackOutputs(w io.Writer, outputs map[string]interface{}) error {
 
 // stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case
 // of top level strings, where we just return the raw value.
-func stringifyOutput(v interface{}) string {
+func stringifyOutput(v any) string {
 	s, ok := v.(string)
 	if ok {
 		return s

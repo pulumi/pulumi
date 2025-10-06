@@ -428,7 +428,7 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"value": value,
 			"ref":   refPropVal,
 		}),
@@ -527,7 +527,7 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"inputRef":  inputRefPropVal,
 			"outputRef": outputRefPropVal,
 		}),
@@ -583,7 +583,7 @@ func (p *ComponentProvider) constructComponentCallable(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"value": value,
 		}),
 	}, nil
@@ -638,7 +638,7 @@ func (p *ComponentProvider) callComponentCallableIdentity(
 	result := value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
@@ -681,7 +681,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 	result := prefix.StringValue() + value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
