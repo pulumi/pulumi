@@ -4,9 +4,6 @@ go 1.23.11
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
-// Working around https://github.com/sergi/go-diff/issues/123
-replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
-
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
 require (
@@ -37,7 +34,7 @@ require (
 	github.com/pulumi/inflector v0.1.1
 	github.com/pulumi/pulumi/sdk/v3 v3.201.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
+	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
