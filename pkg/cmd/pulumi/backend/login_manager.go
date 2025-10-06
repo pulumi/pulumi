@@ -49,6 +49,7 @@ type LoginManager interface {
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
+		insecure bool,
 		color colors.Colorization,
 	) (backend.Backend, error)
 }
@@ -75,7 +76,7 @@ func (f *lm) Current(
 
 func (f *lm) Login(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	color colors.Colorization,
+	insecure bool, color colors.Colorization,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
@@ -84,7 +85,6 @@ func (f *lm) Login(
 		return diy.New(ctx, sink, url, project)
 	}
 
-	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
 	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
 	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
@@ -115,6 +115,7 @@ type MockLoginManager struct {
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
+		insecure bool,
 		color colors.Colorization,
 	) (backend.Backend, error)
 }
@@ -128,10 +129,11 @@ func (lm *MockLoginManager) Login(
 	url string,
 	project *workspace.Project,
 	setCurrent bool,
+	insecure bool,
 	color colors.Colorization,
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
-		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, color)
+		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
 	}
 	panic("not implemented")
 }
