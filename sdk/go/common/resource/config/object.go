@@ -87,6 +87,8 @@ func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypt
 		}
 		// Assign decrypted values back into original structure
 		// We are accepting that a Ciphertext Secret now has a Plaintext value
+		// TODO: https://github.com/pulumi/pulumi/issues/20663
+		// Prefer using a caching decrypter to avoid mixing plaintext and ciphertext
 		for i, decrypted := range decryptedChunk {
 			refs[offset+i].setObject(newObject(CiphertextSecret{decrypted}))
 		}

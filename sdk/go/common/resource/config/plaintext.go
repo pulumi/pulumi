@@ -156,6 +156,8 @@ func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter E
 		}
 		// Assign encrypted values back into original structure
 		// We are accepting that a Plaintext Secret now has a ciphertext value
+		// TODO: https://github.com/pulumi/pulumi/issues/20663
+		// Prefer using a caching encrypter to avoid mixing plaintext and ciphertext
 		for i, encrypted := range encryptedChunk {
 			refs[offset+i].setPlaintext(NewPlaintext(PlaintextSecret(encrypted)))
 		}
