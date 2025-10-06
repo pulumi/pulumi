@@ -189,7 +189,10 @@ func TestEncryptMap(t *testing.T) {
 		}
 		result, err := encryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, newObject(CiphertextSecret{"Plaintext"}), result[MustParseKey("ns:secret")].value.(map[string]object)["foo"])
+		assert.Equal(t,
+			newObject(CiphertextSecret{"Plaintext"}),
+			result[MustParseKey("ns:secret")].value.(map[string]object)["foo"],
+		)
 		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
