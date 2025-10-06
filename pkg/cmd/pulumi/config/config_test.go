@@ -15,20 +15,457 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
+
+func TestListConfig(t *testing.T) {
+	ctx := context.Background()
+
+	openEnv := &esc.Environment{
+		Properties: map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{
+				"env:value":  esc.NewValue("envVal1"),
+				"env:secret": esc.NewSecret("envSecret1"),
+				"common:obj": esc.NewValue(map[string]esc.Value{
+					"envValue":    esc.NewValue("envVal2"),
+					"commonValue": esc.NewValue("envVal3"),
+					"commonArray": esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
+				}),
+				"env:obj": esc.NewValue(map[string]esc.Value{
+					"secret": esc.NewValue([]esc.Value{esc.NewSecret("envSecret2")}),
+				}),
+			}),
+		},
+	}
+
+	checkEnv := &esc.Environment{
+		Properties: map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{
+				"env:value":  esc.NewValue("envVal1"),
+				"env:secret": {Secret: true, Unknown: true},
+				"common:obj": esc.NewValue(map[string]esc.Value{
+					"envValue":    esc.NewValue("envVal2"),
+					"commonValue": esc.NewValue("envVal3"),
+					"commonArray": esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
+				}),
+				"env:obj": esc.NewValue(map[string]esc.Value{
+					"secret": esc.NewValue([]esc.Value{{Secret: true, Unknown: true}}),
+				}),
+			}),
+		},
+	}
+
+	plainEnv := &esc.Environment{
+		Properties: map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{
+				"env:value": esc.NewValue("envVal1"),
+				"common:obj": esc.NewValue(map[string]esc.Value{
+					"envValue":    esc.NewValue("envVal2"),
+					"commonValue": esc.NewValue("envVal3"),
+					"commonArray": esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
+				}),
+				"env:obj": esc.NewValue(map[string]esc.Value{
+					"value": esc.NewValue([]esc.Value{esc.NewValue("envVal6")}),
+				}),
+			}),
+		},
+	}
+
+	commonObjValue := `{"commonValue":"cfgVal2","commonArray":["cfgVal3","cfgVal4"]}`
+
+	cfg := map[config.Key]config.Value{
+		config.MustMakeKey("cfg", "value"):  config.NewValue("cfgVal1"),
+		config.MustMakeKey("cfg", "secret"): config.NewSecureValue("Y2ZnU2VjcmV0MQ==" /*base64 of cfgSecret1*/),
+		config.MustMakeKey("common", "obj"): config.NewObjectValue(commonObjValue),
+	}
+
+	plainCfg := map[config.Key]config.Value{
+		config.MustMakeKey("cfg", "value"):  config.NewValue("cfgVal1"),
+		config.MustMakeKey("common", "obj"): config.NewObjectValue(commonObjValue),
+	}
+
+	t.Run("with no env and with cfg and showSecrets=true openEnv=true", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, nil)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 0, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 1, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:secret  cfgSecret1
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2"}
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and no cfg and showSecrets=true openEnv=true", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, config.Map{}, openEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 1, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+common:obj  {"commonArray":["envVal4","envVal5"],"commonValue":"envVal3","envValue":"envVal2"}
+env:obj     {"secret":["envSecret2"]}
+env:secret  envSecret1
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and cfg and showSecrets=true openEnv=true", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 1, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:secret  cfgSecret1
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"secret":["envSecret2"]}
+env:secret  envSecret1
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and cfg and showSecrets=false openEnv=true", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 0, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:secret  [secret]
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"secret":["[secret]"]}
+env:secret  [secret]
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and cfg and showSecrets=true openEnv=false", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, false)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 1, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:secret  cfgSecret1
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"secret":["[unknown]"]}
+env:secret  [unknown]
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and cfg and showSecrets=false openEnv=false", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, false)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 0, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:secret  [secret]
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"secret":["[secret]"]}
+env:secret  [secret]
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with plain env and plain cfg and showSecrets=true openEnv=true", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, plainEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 0, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 0, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"value":["envVal6"]}
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and plain cfg and showSecrets=true openEnv=true", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, false)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 1, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"secret":["envSecret2"]}
+env:secret  envSecret1
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+
+	t.Run("with env and plain cfg and showSecrets=true openEnv=true and cached crypter", func(t *testing.T) {
+		t.Parallel()
+
+		secretsManager, calledEncryptValue, calledBatchEncrypt, calledDecryptValue,
+			calledBatchDecrypt := getCountingBase64SecretsManager(ctx, t, true)
+		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
+
+		var stdout bytes.Buffer
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, *calledEncryptValue)
+		require.Equal(t, 1, *calledBatchEncrypt)
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 0, *calledBatchDecrypt)
+
+		expectedStdOut := strings.TrimSpace(`
+KEY         VALUE
+cfg:value   cfgVal1
+common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2","envValue":"envVal2"}
+env:obj     {"secret":["envSecret2"]}
+env:secret  envSecret1
+env:value   envVal1
+`)
+		require.Equal(t, expectedStdOut, strings.TrimSpace(stdout.String()))
+	})
+}
+
+func getCountingBase64SecretsManager(
+	ctx context.Context,
+	t *testing.T,
+	withCachedCrypter bool,
+) (*secrets.MockSecretsManager, *int, *int, *int, *int) {
+	calledEncryptValue := 0
+	calledBatchEncrypt := 0
+	calledDecryptValue := 0
+	calledBatchDecrypt := 0
+	encrypter := &secrets.MockEncrypter{
+		EncryptValueF: func(input string) string {
+			calledEncryptValue++
+			ct, err := config.Base64Crypter.EncryptValue(ctx, input)
+			require.NoError(t, err)
+			return ct
+		},
+		BatchEncryptF: func(input []string) []string {
+			calledBatchEncrypt++
+			ct, err := config.Base64Crypter.BatchEncrypt(ctx, input)
+			require.NoError(t, err)
+			return ct
+		},
+	}
+	decrypter := &secrets.MockDecrypter{
+		DecryptValueF: func(input string) string {
+			calledDecryptValue++
+			pt, err := config.Base64Crypter.DecryptValue(ctx, input)
+			require.NoError(t, err)
+			return pt
+		},
+		BatchDecryptF: func(input []string) []string {
+			calledBatchDecrypt++
+			pt, err := config.Base64Crypter.BatchDecrypt(ctx, input)
+			require.NoError(t, err)
+			return pt
+		},
+	}
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(encrypter, decrypter)
+	secretsManager := &secrets.MockSecretsManager{
+		TypeF: func() string { return "mock" },
+		EncrypterF: func() config.Encrypter {
+			if withCachedCrypter {
+				return cachedCrypter
+			}
+			return encrypter
+		},
+		DecrypterF: func() config.Decrypter {
+			if withCachedCrypter {
+				return cachedCrypter
+			}
+			return decrypter
+		},
+	}
+	return secretsManager, &calledEncryptValue, &calledBatchEncrypt, &calledDecryptValue, &calledBatchDecrypt
+}
+
+func prepareConfig(
+	t *testing.T,
+	secretsManager secrets.Manager,
+	cfg config.Map,
+	env *esc.Environment,
+) (backend.MockStack, workspace.Project, *workspace.ProjectStack, cmdStack.SecretsManagerLoader) {
+	snapshot := &deploy.Snapshot{SecretsManager: stack.NewBatchingCachingSecretsManager(secretsManager)}
+
+	mockStack := backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV: tokens.MustParseStackName("testStack"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{}
+		},
+		OrgNameF: func() string {
+			return "testOrg"
+		},
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
+		},
+		BackendF: func() backend.Backend {
+			return &backend.MockEnvironmentsBackend{
+				CheckYAMLEnvironmentF: func(
+					ctx context.Context,
+					org string,
+					yaml []byte,
+				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+					return env, apitype.EnvironmentDiagnostics{}, nil
+				},
+				OpenYAMLEnvironmentF: func(
+					ctx context.Context,
+					org string,
+					yaml []byte,
+					duration time.Duration,
+				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+					return env, apitype.EnvironmentDiagnostics{}, nil
+				},
+			}
+		},
+	}
+
+	project := workspace.Project{Name: "testProject"}
+	stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{
+		Environment: workspace.NewEnvironment([]string{"env"}),
+		Config:      cfg,
+	})
+	require.NoError(t, err)
+
+	projectStack, err := workspace.LoadProjectStackBytes(
+		cmdutil.Diag(), &project, stackYAML, "Pulumi.stack.yaml", encoding.YAML,
+	)
+	require.NoError(t, err)
+
+	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
+
+	return mockStack, project, projectStack, ssml
+}
 
 //nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSet(t *testing.T) {
@@ -105,9 +542,9 @@ func TestConfigSet(t *testing.T) {
 			}
 
 			tmpdir := t.TempDir()
-			stack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
+			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
 			defer func() {
-				stack.ConfigFile = ""
+				cmdStack.ConfigFile = ""
 			}()
 
 			ws := &pkgWorkspace.MockContext{}
@@ -116,7 +553,7 @@ func TestConfigSet(t *testing.T) {
 			require.NoError(t, err)
 
 			// verify the config was set
-			data, err := os.ReadFile(stack.ConfigFile)
+			data, err := os.ReadFile(cmdStack.ConfigFile)
 			require.NoError(t, err)
 
 			require.Equal(t, c.expected, string(data))
@@ -216,9 +653,9 @@ func TestConfigSetTypes(t *testing.T) {
 			}
 
 			tmpdir := t.TempDir()
-			stack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
+			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
 			defer func() {
-				stack.ConfigFile = ""
+				cmdStack.ConfigFile = ""
 			}()
 
 			ws := &pkgWorkspace.MockContext{}
@@ -227,7 +664,7 @@ func TestConfigSetTypes(t *testing.T) {
 			require.NoError(t, err)
 
 			// verify the config was set
-			data, err := os.ReadFile(stack.ConfigFile)
+			data, err := os.ReadFile(cmdStack.ConfigFile)
 			require.NoError(t, err)
 
 			require.Equal(t, c.expected, string(data))

@@ -67,17 +67,59 @@ type (
 	ProjectConfigKey = string
 )
 
-func validateStackConfigValue(
+func validateStackConfigValues(
 	stackName string,
-	projectConfigKey string,
-	projectConfigType ProjectConfigType,
-	stackValue config.Value,
+	project *Project,
+	stackConfig config.Map,
 	dec config.Decrypter,
 ) error {
 	if dec == nil {
 		return nil
 	}
 
+	decryptedConfig, err := stackConfig.Decrypt(dec)
+	if err != nil {
+		return err
+	}
+
+	keys := make([]string, 0, len(project.Config))
+	for k := range project.Config {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, projectConfigKey := range keys {
+		projectConfigType := project.Config[projectConfigKey]
+
+		key, err := parseConfigKey(project.Name.String(), projectConfigKey)
+		if err != nil {
+			return err
+		}
+
+		stackValue, _, err := stackConfig.Get(key, true)
+		if err != nil {
+			return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
+		}
+
+		if projectConfigType.IsExplicitlyTyped() {
+			decryptedValue := decryptedConfig[key]
+			err := validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decryptedValue)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateStackConfigValue(
+	stackName string,
+	projectConfigKey string,
+	projectConfigType ProjectConfigType,
+	stackValue config.Value,
+	decryptedValue string,
+) error {
 	// First check if the project says this should be secret, and if so that the stack value is
 	// secure.
 	if projectConfigType.Secret && !stackValue.Secure() {
@@ -88,14 +130,10 @@ func validateStackConfigValue(
 		return validationError
 	}
 
-	value, err := stackValue.Value(dec)
-	if err != nil {
-		return err
-	}
 	// Content will be a JSON string if object is true, so marshal that back into an actual structure
-	var content any = value
+	var content any = decryptedValue
 	if stackValue.Object() {
-		err = json.Unmarshal([]byte(value), &content)
+		err := json.Unmarshal([]byte(decryptedValue), &content)
 		if err != nil {
 			return err
 		}
@@ -142,7 +180,23 @@ func createConfigValue(rawValue any) (config.Value, error) {
 	return config.NewObjectValue(string(configValueJSON)), nil
 }
 
-func envConfigValue(v esc.Value) config.Plaintext {
+func toConfigMap(
+	ctx context.Context, environmentPulumiConfig esc.Value, defaultNamespace string, encrypter config.Encrypter,
+) (config.Map, error) {
+	plaintextMap := map[config.Key]config.Plaintext{}
+	if envMap, ok := environmentPulumiConfig.Value.(map[string]esc.Value); ok {
+		for rawKey, value := range envMap {
+			key, err := parseConfigKey(defaultNamespace, rawKey)
+			if err != nil {
+				return nil, err
+			}
+			plaintextMap[key] = toPlaintext(value)
+		}
+	}
+	return config.EncryptMap(ctx, plaintextMap, encrypter)
+}
+
+func toPlaintext(v esc.Value) config.Plaintext {
 	if v.Unknown {
 		if v.Secret {
 			return config.NewPlaintext(config.PlaintextSecret("[unknown]"))
@@ -171,13 +225,13 @@ func envConfigValue(v esc.Value) config.Plaintext {
 	case []esc.Value:
 		vs := make([]config.Plaintext, len(repr))
 		for i, v := range repr {
-			vs[i] = envConfigValue(v)
+			vs[i] = toPlaintext(v)
 		}
 		return config.NewPlaintext(vs)
 	case map[string]esc.Value:
 		vs := make(map[string]config.Plaintext, len(repr))
 		for k, v := range repr {
-			vs[k] = envConfigValue(v)
+			vs[k] = toPlaintext(v)
 		}
 		return config.NewPlaintext(vs)
 	default:
@@ -196,47 +250,42 @@ func mergeConfig(
 	decrypter config.Decrypter,
 	validate bool,
 ) error {
-	missingConfigurationKeys := make([]string, 0)
 	projectName := project.Name.String()
 
+	envConfig, err := toConfigMap(ctx, stackEnv, projectName, encrypter)
+	if err != nil {
+		return err
+	}
+
+	// First merge the stack environment and the stack config together.
+	for key, envValue := range envConfig {
+		stackValue, foundOnStack, err := stackConfig.Get(key, false)
+		if err != nil {
+			return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
+		}
+
+		if !foundOnStack {
+			err = stackConfig.Set(key, envValue, false)
+		} else {
+			// Uses JSON merge patch semantics: https://datatracker.ietf.org/doc/html/rfc7386
+			// Prefers stack values over env values.
+			merged, mergeErr := stackValue.Merge(envValue)
+			if mergeErr != nil {
+				return fmt.Errorf("merging environment config for key '%v': %w", key.String(), err)
+			}
+			err = stackConfig.Set(key, merged, false)
+		}
+		if err != nil {
+			return fmt.Errorf("setting merged config value for key '%v': %w", key.String(), err)
+		}
+	}
+
+	missingConfigurationKeys := make([]string, 0)
 	keys := make([]string, 0, len(project.Config))
 	for k := range project.Config {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-
-	// First merge the stack environment and the stack config together.
-	if envMap, ok := stackEnv.Value.(map[string]esc.Value); ok {
-		for rawKey, value := range envMap {
-			key, err := parseConfigKey(projectName, rawKey)
-			if err != nil {
-				return err
-			}
-
-			envValue, err := envConfigValue(value).Encrypt(ctx, encrypter)
-			if err != nil {
-				return err
-			}
-
-			stackValue, foundOnStack, err := stackConfig.Get(key, false)
-			if err != nil {
-				return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
-			}
-
-			if !foundOnStack {
-				err = stackConfig.Set(key, envValue, false)
-			} else {
-				merged, mergeErr := stackValue.Merge(envValue)
-				if mergeErr != nil {
-					return fmt.Errorf("merging environment config for key '%v': %w", key.String(), err)
-				}
-				err = stackConfig.Set(key, merged, false)
-			}
-			if err != nil {
-				return fmt.Errorf("setting merged config value for key '%v': %w", key.String(), err)
-			}
-		}
-	}
 
 	// Next validate the merged config and merge in the project config.
 	for _, projectConfigKey := range keys {
@@ -247,7 +296,7 @@ func mergeConfig(
 			return err
 		}
 
-		stackValue, foundOnStack, err := stackConfig.Get(key, true)
+		_, foundOnStack, err := stackConfig.Get(key, true)
 		if err != nil {
 			return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
 		}
@@ -285,20 +334,20 @@ func mergeConfig(
 
 			continue
 		}
-
-		// Validate stack level value against the config defined at the project level
-		if validate && projectConfigType.IsExplicitlyTyped() {
-			err := validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decrypter)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	if len(missingConfigurationKeys) > 0 {
 		// there are missing configuration keys in the stack
 		// return them as a single error.
 		return missingStackConfigurationKeysError(missingConfigurationKeys, stackName)
+	}
+
+	// Validate stack level values against the config defined at the project level
+	if validate {
+		err := validateStackConfigValues(stackName, project, stackConfig, decrypter)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
