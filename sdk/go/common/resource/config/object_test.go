@@ -100,6 +100,18 @@ func TestDecryptMap(t *testing.T) {
 		assert.True(t, result[MustParseKey("ns:secret")].Secure())
 	})
 
+	t.Run("nested secure values", func(t *testing.T) {
+		input := map[Key]object{
+			MustParseKey("ns:secret"): newObject(map[string]object{
+				"foo": newObject(CiphertextSecret{"ciphertext"}),
+			}),
+		}
+		result, err := decryptMap(context.Background(), input, nopCrypter{})
+		require.NoError(t, err)
+		assert.Equal(t, NewPlaintext(PlaintextSecret("ciphertext")), result[MustParseKey("ns:secret")].value.(map[string]Plaintext)["foo"])
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
+	})
+
 	t.Run("mixed values", func(t *testing.T) {
 		input := map[Key]object{
 			MustParseKey("ns:plain"):  newObject("value"),

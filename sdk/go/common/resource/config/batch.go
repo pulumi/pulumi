@@ -14,6 +14,8 @@
 
 package config
 
+import "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 // As of time of writing, the Pulumi Service batch encrypt and decrypt endpoints have a limit of 200MB per request.
 // To avoid hitting this limit, we chunk secrets into pieces no larger than half this size as conservative limit.
 var defaultMaxChunkSize = 100 * 1024 * 1024 // 100MB
@@ -50,6 +52,8 @@ func collectCiphertextSecrets(objMap map[Key]object, refs *[]containerRef, ctChu
 	var process func(obj object, ref containerRef)
 	process = func(obj object, ref containerRef) {
 		switch v := obj.value.(type) {
+		case bool, int64, uint64, float64, string:
+			// Nothing to do
 		case map[Key]object:
 			for k, vv := range v {
 				process(vv, containerRef{container: v, key: k})
@@ -65,6 +69,8 @@ func collectCiphertextSecrets(objMap map[Key]object, refs *[]containerRef, ctChu
 		case CiphertextSecret:
 			*refs = append(*refs, ref)
 			addStringToChunks(ctChunks, v.value, defaultMaxChunkSize)
+		default:
+			contract.Failf("unexpected value of type %T", v)
 		}
 	}
 	for k, obj := range objMap {
@@ -76,6 +82,8 @@ func collectPlaintextSecrets(ptMap map[Key]Plaintext, refs *[]containerRef, ptCh
 	var process func(pt Plaintext, ref containerRef)
 	process = func(pt Plaintext, ref containerRef) {
 		switch v := pt.value.(type) {
+		case bool, int64, uint64, float64, string:
+			// Nothing to do
 		case map[Key]Plaintext:
 			for k, vv := range v {
 				process(vv, containerRef{container: v, key: k})
@@ -91,6 +99,8 @@ func collectPlaintextSecrets(ptMap map[Key]Plaintext, refs *[]containerRef, ptCh
 		case PlaintextSecret:
 			*refs = append(*refs, ref)
 			addStringToChunks(ptChunks, string(v), defaultMaxChunkSize)
+		default:
+			contract.Failf("unexpected value of type %T", v)
 		}
 	}
 	for k, pt := range ptMap {
