@@ -138,6 +138,46 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 	return prop
 }
 
+func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter Encrypter) (map[Key]object, error) {
+	// Collect all secure values
+	var refs []containerRef
+	var ptChunks [][]string
+	collectPlaintextSecrets(plaintextMap, &refs, &ptChunks)
+
+	// Encrypt objects in batches
+	offset := 0
+	for _, ptChunk := range ptChunks {
+		if len(ptChunk) == 0 {
+			continue
+		}
+		encryptedChunk, err := encrypter.BatchEncrypt(ctx, ptChunk)
+		if err != nil {
+			return nil, err
+		}
+		// Assign encrypted values back into original structure
+		// We are accepting that a Plaintext Secret now has a ciphertext value
+		// TODO: https://github.com/pulumi/pulumi/issues/20663
+		// Prefer using a caching encrypter to avoid mixing plaintext and ciphertext
+		for i, encrypted := range encryptedChunk {
+			refs[offset+i].setPlaintext(NewPlaintext(PlaintextSecret(encrypted)))
+		}
+		offset += len(ptChunk)
+	}
+
+	// Marshal each top-level object back into an object value.
+	// Note that at this point, all Plaintext Secrets have been encrypted.
+	// So we can use the NopEncrypter here.
+	result := map[Key]object{}
+	for k, pt := range plaintextMap {
+		obj, err := pt.encrypt(ctx, nil, NopEncrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = obj
+	}
+	return result, nil
+}
+
 // Encrypt converts the receiver as a Value. All secure strings in the result are encrypted using encrypter.
 func (c Plaintext) Encrypt(ctx context.Context, encrypter Encrypter) (Value, error) {
 	obj, err := c.encrypt(ctx, nil, encrypter)
