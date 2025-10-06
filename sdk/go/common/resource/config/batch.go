@@ -52,7 +52,7 @@ func collectCiphertextSecrets(objMap map[Key]object, refs *[]containerRef, ctChu
 	var process func(obj object, ref containerRef)
 	process = func(obj object, ref containerRef) {
 		switch v := obj.value.(type) {
-		case bool, int64, uint64, float64, string:
+		case bool, int64, uint64, float64, string, nil:
 			// Nothing to do
 		case map[Key]object:
 			for k, vv := range v {
@@ -82,7 +82,7 @@ func collectPlaintextSecrets(ptMap map[Key]Plaintext, refs *[]containerRef, ptCh
 	var process func(pt Plaintext, ref containerRef)
 	process = func(pt Plaintext, ref containerRef) {
 		switch v := pt.value.(type) {
-		case bool, int64, uint64, float64, string:
+		case bool, int64, uint64, float64, string, nil:
 			// Nothing to do
 		case map[Key]Plaintext:
 			for k, vv := range v {
