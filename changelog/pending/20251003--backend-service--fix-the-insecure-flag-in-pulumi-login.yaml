@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/service
-  description: Fix the --insecure flag in `pulumi login`
