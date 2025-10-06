@@ -1087,7 +1087,7 @@ description: A Pulumi program testing config set-all --json.
 
 	// Retrieve configuration, including secrets, in JSON format and unmarshal it.
 	jsonOutputWithSecrets, _ := e.RunCommand("pulumi", configShow("--json", "--show-secrets")...)
-	var config map[string]interface{}
+	var config map[string]any
 	err := json.Unmarshal([]byte(jsonOutputWithSecrets), &config)
 	assert.Nil(t, err)
 	assert.Equal(t, jsonInput, jsonOutputWithSecrets)
@@ -1097,27 +1097,27 @@ description: A Pulumi program testing config set-all --json.
 
 	// Retrieve configuration, not including secrets, in JSON format and unmarshal it.
 	jsonOutputWithoutSecrets, _ := e.RunCommand("pulumi", configShow("--json")...)
-	var configWithoutSecrets map[string]interface{}
+	var configWithoutSecrets map[string]any
 	err = json.Unmarshal([]byte(jsonOutputWithoutSecrets), &configWithoutSecrets)
 	assert.Nil(t, err)
 
 	// Assert that key1, a scalar, has the correct value.
-	key1, ok := config["pulumi-test:key1"].(map[string]interface{})
+	key1, ok := config["pulumi-test:key1"].(map[string]any)
 	assert.Truef(t, ok, "key1 should be a JSON object")
 
 	assert.Equal(t, "value1", key1["value"])
 
 	// Assert that myList, a nested list, has the correct value.
-	myList, ok := config["pulumi-test:myList"].(map[string]interface{})
+	myList, ok := config["pulumi-test:myList"].(map[string]any)
 	assert.Truef(t, ok, "myList should be a JSON object")
 
 	assert.Equal(t, "[\"foo\"]", myList["value"])
-	myListObjectValue := myList["objectValue"].([]interface{})
+	myListObjectValue := myList["objectValue"].([]any)
 	assert.Contains(t, myListObjectValue, "foo")
 	require.Len(t, myListObjectValue, 1)
 
 	// Assert that myList[0], a scalar (--json input does _not_ set --path), has the correct value.
-	myList0, ok := config["pulumi-test:myList[0]"].(map[string]interface{})
+	myList0, ok := config["pulumi-test:myList[0]"].(map[string]any)
 	assert.Truef(t, ok, "myList[0] should be a JSON object")
 
 	assert.Equal(t, "foo", myList0["value"])
@@ -1125,7 +1125,7 @@ description: A Pulumi program testing config set-all --json.
 	assert.Falsef(t, ok, "myList[0] should not have an objectValue key")
 
 	// Assert that my_token, a scalar secret, has the correct value in the configuration we loaded with secrets.
-	myToken, ok := config["pulumi-test:my_token"].(map[string]interface{})
+	myToken, ok := config["pulumi-test:my_token"].(map[string]any)
 	assert.Truef(t, ok, "my_token should be a JSON object")
 
 	assert.Equal(t, "my_secret_token", myToken["value"])
@@ -1134,18 +1134,18 @@ description: A Pulumi program testing config set-all --json.
 	assert.Truef(t, ok && secret, "my_token should be a secret in the configuration with secrets")
 
 	// Assert that my_token, a scalar secret, does not have a value in the configuration we loaded without secrets.
-	_, ok = configWithoutSecrets["pulumi-test:my_token"].(map[string]interface{})["value"]
+	_, ok = configWithoutSecrets["pulumi-test:my_token"].(map[string]any)["value"]
 	assert.Falsef(t, ok, "my_token should not have a value in the configuration without secrets")
 
 	// Assert that outer, an object value, has the correct value.
-	outer, ok := config["pulumi-test:outer"].(map[string]interface{})
+	outer, ok := config["pulumi-test:outer"].(map[string]any)
 	assert.Truef(t, ok, "outer should be a JSON object")
 
-	outerObjectValue := outer["objectValue"].(map[string]interface{})
+	outerObjectValue := outer["objectValue"].(map[string]any)
 	assert.Equal(t, "value2", outerObjectValue["inner"])
 
 	// Assert that outer.inner, a scalar (--json input does _not_ set --path), has the correct value.
-	outerInner, ok := config["pulumi-test:outer.inner"].(map[string]interface{})
+	outerInner, ok := config["pulumi-test:outer.inner"].(map[string]any)
 	assert.Truef(t, ok, "outer.inner should be a JSON object")
 
 	assert.Equal(t, "value2", outerInner["value"])
