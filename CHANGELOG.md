@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.201.0 (2025-10-06)
+
+
+### Features
+
+- [sdkgen/go] Support non-object return types in functions
+  [#20646](https://github.com/pulumi/pulumi/pull/20646)
+
+
+### Bug Fixes
+
+- [backend/service] Fix the --insecure flag in `pulumi login`
+
 ## 3.200.0 (2025-10-03)
 
 
