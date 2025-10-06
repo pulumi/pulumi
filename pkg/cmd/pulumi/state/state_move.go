@@ -25,6 +25,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -113,10 +114,10 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
 
-			sourceSecretsProvider := stack.NamedStackSecretsProvider{
+			sourceSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
 			}
-			destSecretsProvider := stack.NamedStackSecretsProvider{
+			destSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 

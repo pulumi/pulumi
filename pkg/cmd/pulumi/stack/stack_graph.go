@@ -20,11 +20,11 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -85,7 +85,7 @@ func newStackGraphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 			if err != nil {
 				return err
 			}

@@ -41,6 +41,7 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -725,7 +726,7 @@ func GetLogs(
 	snap, err := stack.DeserializeDeploymentV3(
 		context.Background(),
 		*stackInfo.Deployment,
-		stack.DefaultSecretsProvider)
+		secrets.DefaultProvider)
 	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
