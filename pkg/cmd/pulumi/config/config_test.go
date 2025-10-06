@@ -396,6 +396,7 @@ func TestConfigSetAll(t *testing.T) {
 					url string,
 					project *workspace.Project,
 					setCurrent bool,
+					insecure bool,
 					color colors.Colorization,
 				) (backend.Backend, error) {
 					return &backend.MockBackend{
