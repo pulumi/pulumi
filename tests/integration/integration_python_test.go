@@ -785,7 +785,7 @@ func TestConstructSlowPython(t *testing.T) {
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
+	// module to run `bun install && bun link @pulumi/pulumi` in the Python program's directory, allowing
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
@@ -800,6 +800,7 @@ func TestConstructSlowPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
+		UseBun:         true,
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		NoParallel:     true,
@@ -832,7 +833,7 @@ func TestConstructPlainPython(t *testing.T) {
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// module to run `bun install && bun link @pulumi/pulumi` in the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
@@ -869,6 +870,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
+		UseBun:         true,
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {

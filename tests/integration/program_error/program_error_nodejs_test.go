@@ -36,6 +36,7 @@ func TestProgramErrorNodejs(t *testing.T) {
 		Dependencies: []string{
 			"@pulumi/pulumi",
 		},
+		UseBun: true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 		},

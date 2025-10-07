@@ -121,14 +121,14 @@ lint_pulumi_json::
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && bun run biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && bun run biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
@@ -157,7 +157,7 @@ lint_actions:
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 format:: ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && bun run biome format --write ../../pkg/codegen/schema/pulumi.json
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}

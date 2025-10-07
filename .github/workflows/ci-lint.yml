@@ -125,8 +125,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -184,8 +184,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
       - name: Ensure Node # We need to install Node.js deps so that biome is available
         run: |
           cd sdk/nodejs && make ensure

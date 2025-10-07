@@ -17,7 +17,7 @@ install the following on your machine:
 - [gofumpt](https://github.com/mvdan/gofumpt) for formatting Go code. See
   [installation](https://github.com/mvdan/gofumpt#installation) for editor setup
   instructions.
-- [Yarn](https://yarnpkg.com/), for building and working with the NodeJS SDK.
+- [Bun](https://bun.com), for building and working with the NodeJS SDK.
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 - [jq](https://stedolan.github.io/jq/)
 

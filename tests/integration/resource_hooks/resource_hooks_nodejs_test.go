@@ -31,6 +31,7 @@ func TestNodejsResourceHooks(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "step-1"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 		},
@@ -56,6 +57,7 @@ func TestNodejsResourceHooksTransform(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "nodejs_transform",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 		},

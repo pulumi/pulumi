@@ -29,6 +29,7 @@ func TestDuplicateURNs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		Quick:         true,
 		ExpectFailure: true,
 		EditDirs: []integration.EditDir{

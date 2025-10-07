@@ -74,18 +74,18 @@ async function run(typescriptVersion: string, nodeTypesVersion: string) {
     const tmpDir = tmp.dirSync({ prefix: "closure-test-", unsafeCleanup: true });
     const sdkRoot = path.join(__dirname, "..", "..", "..");
     const sdkRootBin = path.join(sdkRoot, "bin");
-    // Add a random suffix to the package name to avoid any issues with yarn caching the tgz.
+    // Add a random suffix to the package name to avoid any issues with bun caching the tgz.
     const packageName = `pulumi-${randomInt(10000, 99999)}.tgz`;
     const pulumiPackagePath = path.join(tmpDir.name, packageName);
     await pack(sdkRootBin, pulumiPackagePath);
     await writePackageJSON(tmpDir.name, pulumiPackagePath, typescriptVersion, nodeTypesVersion);
     await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir.name);
 
-    await execa("yarn", ["install"], { cwd: tmpDir.name });
+    await execa("bun", ["install"], { cwd: tmpDir.name });
 
-    await execa("yarn", ["tsc"], { cwd: tmpDir.name });
+    await execa("bun", ["run", "tsc"], { cwd: tmpDir.name });
 
-    await execa("yarn", ["mocha", "--timeout", "30000", "test.js"], {
+    await execa("bun", ["run", "mocha", "--timeout", "30000", "test.js"], {
         cwd: tmpDir.name,
         stdio: "inherit",
     });
