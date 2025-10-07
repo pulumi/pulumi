@@ -178,6 +178,23 @@ func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter E
 	return result, nil
 }
 
+func EncryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter Encrypter) (map[Key]Value, error) {
+	objectMap, err := encryptMap(ctx, plaintextMap, encrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := Map{}
+	for k, obj := range objectMap {
+		v, err := obj.marshalValue()
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
+}
+
 // Encrypt converts the receiver as a Value. All secure strings in the result are encrypted using encrypter.
 func (c Plaintext) Encrypt(ctx context.Context, encrypter Encrypter) (Value, error) {
 	obj, err := c.encrypt(ctx, nil, encrypter)
