@@ -468,8 +468,8 @@ class ResourceOptions:
 
     hide_diffs: Optional[list[str]]
     """
-    If set, diffs from the included property paths will not be show.
-    This only effects the diff display, and does not effect update behavior.
+    If set, diffs from the included property paths will not be shown.
+    This only affects the diff display, and does not affect update behavior.
     """
 
     def __init__(
