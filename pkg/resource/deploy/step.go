@@ -97,14 +97,12 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is custom")
 	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
 		"old", "must have or be a provider if it is a custom resource")
-	contract.Requiref(!old.Delete, "old", "must not be marked for deletion")
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID == "", "new", "must not have an ID")
 	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
 		"new", "must have or be a provider if it is a custom resource")
-	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
 	return &SameStep{
 		deployment: deployment,
