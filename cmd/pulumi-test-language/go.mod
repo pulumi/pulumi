@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/cmd/pulumi-test-language
 
-go 1.24.1
+go 1.24.7
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../sdk
 
@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.200.0
+	github.com/pulumi/pulumi/sdk/v3 v3.201.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.1
@@ -160,7 +160,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect

@@ -28,7 +28,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newPolicyArgs{
 		templateNameOrURL: "aws-javascript",
@@ -50,7 +50,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		args := newPolicyArgs{
 			templateNameOrURL: nonExistantTemplate,
@@ -63,7 +63,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		args := newPolicyArgs{
 			generateOnly:      true,

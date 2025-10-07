@@ -98,7 +98,7 @@ func (s *Source) addErrorOnEmpty(err error) {
 
 func (s *Source) lockOpen(action string) {
 	s.m.Lock()
-	contract.Assertf(!s.closed, "Attempted to act on closed source: "+action)
+	contract.Assertf(!s.closed, "%s", "Attempted to act on closed source: "+action)
 }
 
 // Close cleans up the [Source] and any associated templates.

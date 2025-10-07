@@ -24,12 +24,7 @@ import (
 
 //nolint:paralleltest // this test sets the global login state
 func TestAzureLoginSasToken(t *testing.T) {
-	err := os.Chdir("project")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := os.Chdir("..")
-		require.NoError(t, err)
-	})
+	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
 
 	// Make sure we use the SAS token for login here
@@ -51,12 +46,7 @@ func TestAzureLoginSasToken(t *testing.T) {
 
 //nolint:paralleltest // this test uses the global azure login state
 func TestAzureLoginAzLogin(t *testing.T) {
-	err := os.Chdir("project")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := os.Chdir("..")
-		require.NoError(t, err)
-	})
+	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
 	clientID := os.Getenv("AZURE_CLIENT_ID")
 	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
@@ -69,7 +59,7 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
 	//nolint:gosec // this is a test
-	err = exec.Command("az", "login", "--service-principal",
+	err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
 		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()

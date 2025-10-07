@@ -1536,7 +1536,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 							}
 
 							//nolint:govet
-							return nil, result.BailErrorf(message)
+							return nil, result.BailErrorf("%s", message)
 						}
 
 						depSteps, err := getDependencySteps(depOld, nil)
