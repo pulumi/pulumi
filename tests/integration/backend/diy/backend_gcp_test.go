@@ -17,8 +17,6 @@ package diy
 import (
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func skipIfNoCredentials(t *testing.T) {
@@ -38,12 +36,7 @@ func skipIfNoCredentials(t *testing.T) {
 
 //nolint:paralleltest // this test sets the global login state
 func TestGcpLogin(t *testing.T) {
-	err := os.Chdir("project")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := os.Chdir("..")
-		require.NoError(t, err)
-	})
+	t.Chdir("project")
 
 	skipIfNoCredentials(t)
 

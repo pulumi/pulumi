@@ -114,8 +114,7 @@ func GenerateGoYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 	sdkDir, err := filepath.Abs(filepath.Join(rootDir, "sdk"))
 	require.NoError(t, err)
 
-	err = os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "go"))
-	require.NoError(t, err)
+	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "go"))
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
