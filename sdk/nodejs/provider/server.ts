@@ -365,8 +365,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async construct(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const callbackId = Symbol("id");
             this._callbacks.set(callbackId, callback);
             try {
@@ -458,8 +457,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async call(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const callbackId = Symbol("id");
             this._callbacks.set(callbackId, callback);
             try {

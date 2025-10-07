@@ -45,11 +45,6 @@ const pulumiEnvKeys = {
 /**
  * @internal
  */
-export const asyncLocalStorage = new AsyncLocalStorage<Store>();
-
-/**
- * @internal
- */
 export interface WriteableOptions {
     /**
      * The name of the current project.
@@ -310,15 +305,34 @@ export function setStackResource(newStackResource?: Stack) {
 
 declare global {
     /* eslint-disable no-var */
+
+    // globalStore & asyncLocalStorage need to be in the global namespace to work with
+    // multiple versions of the runtime module, as we might see in pre-compiled local
+    // SDKs.
     var globalStore: Store;
+    var asyncLocalStorage: AsyncLocalStorage<Store>;
     var stackResource: Stack | undefined;
+}
+
+// Ensure there is a global.asyncLocalStorage if this is the first copy of `runtime` to
+// load.
+if (global.asyncLocalStorage === undefined) {
+    global.asyncLocalStorage = new AsyncLocalStorage<Store>();
+}
+
+/**
+ * @internal
+ */
+export function withLocalStorage<R>(callback: (...args1: any[]) => R, ...args: any[]): R {
+    const store = new LocalStore();
+    return global.asyncLocalStorage.run(store, callback, ...args);
 }
 
 /**
  * @internal
  */
 export function getLocalStore(): Store | undefined {
-    return asyncLocalStorage.getStore();
+    return global.asyncLocalStorage.getStore();
 }
 
 (<any>getLocalStore).captureReplacement = () => {
