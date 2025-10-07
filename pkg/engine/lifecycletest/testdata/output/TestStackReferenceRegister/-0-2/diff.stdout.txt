@@ -4,6 +4,6 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
 <{%reset%}><{%fg 2%}>    name: <{%reset%}><{%fg 2%}>"rehto"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    [31m1 errored[m
+    <{%fg 1%}>1 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

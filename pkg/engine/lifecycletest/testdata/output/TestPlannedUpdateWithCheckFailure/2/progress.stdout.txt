@@ -11,7 +11,7 @@
     <{%fg 1%}>error: <{%reset%}><{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    [31m1 errored[m
+    <{%fg 1%}>1 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

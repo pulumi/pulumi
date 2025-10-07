@@ -2,8 +2,8 @@
 
 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgB default <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
- <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgB:m:typB failing <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgB default <{%fg 3%}>refresh<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgB:m:typB failing <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%fg 3%}>~ <{%reset%}> pkgB:m:typB failing <{%fg 3%}>refresh<{%reset%}> [diff: <{%fg 1%}>-foo<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgB default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgB:m:typB failing <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 2%}>+foo<{%reset%}><{%reset%}>]
@@ -28,7 +28,7 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 3 created<{%reset%}>
-    [31m2 errored[m
+    <{%fg 1%}>2 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

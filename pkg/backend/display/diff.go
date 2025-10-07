@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/go-git/go-git/v5/plumbing/color"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -303,7 +302,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int, 
 
 	// add error summary
 	if resourcesErrored > 0 {
-		errSummary := fmt.Sprintf("    %s%d errored%s", color.Red, resourcesErrored, color.Reset)
+		errSummary := "    " + colors.Red + fmt.Sprintf("%d errored", resourcesErrored) + colors.Reset
 		out.WriteString(errSummary)
 		out.WriteString("\n")
 	}

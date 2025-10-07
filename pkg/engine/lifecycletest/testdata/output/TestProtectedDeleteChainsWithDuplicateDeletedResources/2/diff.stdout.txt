@@ -5,6 +5,6 @@
 <{%fg 9%}>    [id=3]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:modA:typA::resA]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    [31m1 errored[m
+    <{%fg 1%}>1 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

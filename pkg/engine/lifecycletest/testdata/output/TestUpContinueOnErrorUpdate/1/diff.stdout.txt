@@ -19,6 +19,6 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::independent3]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 3 created<{%reset%}>
-    [31m2 errored[m
+    <{%fg 1%}>2 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

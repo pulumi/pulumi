@@ -26,5 +26,5 @@
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 3 to update<{%reset%}>
     9 unchanged
-    [31m1 errored[m
+    <{%fg 1%}>1 errored<{%reset%}>
 
