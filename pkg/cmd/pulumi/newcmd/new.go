@@ -570,10 +570,7 @@ func NewNewCmd() *cobra.Command {
 		// Show default help.
 		defaultHelp(cmd, args)
 
-		// You'd think you could use cmd.Context() here but cobra doesn't set context on the cmd even though
-		// the parent help command has it. If https://github.com/spf13/cobra/issues/2240 gets fixed we can
-		// change back to cmd.Context() here.
-		templates, closer, err := getTemplates(context.Background())
+		templates, closer, err := getTemplates(cmd.Context())
 		contract.IgnoreClose(closer)
 		if err != nil {
 			logging.Warningf("could not list templates: %v", err)

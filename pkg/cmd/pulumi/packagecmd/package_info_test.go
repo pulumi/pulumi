@@ -131,7 +131,8 @@ func TestPackageInfo(t *testing.T) {
 	cmd := newPackageInfoCmd()
 	cmd.SetArgs([]string{schemaPath})
 	var output bytes.Buffer
-	cmd.SetOutput(&output)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf(`\x1b[1mName\x1b[0m: test
@@ -160,7 +161,8 @@ func TestModuleInfo(t *testing.T) {
 	cmd := newPackageInfoCmd()
 	cmd.SetArgs([]string{"--module", "index", schemaPath})
 	var output bytes.Buffer
-	cmd.SetOutput(&output)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, `\x1b[1mName\x1b[0m: test
@@ -186,7 +188,8 @@ func TestResourceInfo(t *testing.T) {
 	cmd := newPackageInfoCmd()
 	cmd.SetArgs([]string{"--module", "index", "--resource", "Test", schemaPath})
 	var output bytes.Buffer
-	cmd.SetOutput(&output)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test
