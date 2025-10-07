@@ -19,7 +19,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -183,4 +185,59 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		},
 	}}
 	p.Run(t, old)
+}
+
+func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+			// Skip display tests because different ordering makes the colouring different.
+			SkipDisplayTests: true,
+			UpdateOptions: engine.UpdateOptions{
+				Targets: deploy.NewUrnTargetsFromUrns(
+					[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
+			},
+		},
+	}
+
+	resAURN := p.NewURN("pkgA:m:typA", "resA", "")
+	resBURN := p.NewURN("pkgA:m:typA", "resB", "")
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:    resAURN.Type(),
+				URN:     resAURN,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+			{
+				Type:    resBURN.Type(),
+				URN:     resBURN,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+				Delete:  true,
+			},
+		},
+	}
+
+	p.Steps = []lt.TestStep{{
+		Op: Destroy,
+	}}
+	snap := p.Run(t, old)
+	// ResB was not targeted, so it should remain in the snapshot.
+	require.Len(t, snap.Resources, 1)
+	require.Equal(t, resBURN, snap.Resources[0].URN)
+	require.Equal(t, true, snap.Resources[0].Delete)
 }
