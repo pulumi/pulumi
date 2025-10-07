@@ -418,7 +418,11 @@ func GeneratedResourceSpec(
 
 		typ := GeneratedResourceType(pkg).Draw(t, "ResourceSpec.Type")
 		name := GeneratedResourceName.Draw(t, "ResourceSpec.Name")
-		id := GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		custom := rso.Custom.Draw(t, "ResourceSpec.Custom")
+		id := resource.ID("")
+		if custom {
+			id = GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		}
 
 		r := &ResourceSpec{
 			Project: tokens.PackageName(sso.Project),
@@ -427,7 +431,7 @@ func GeneratedResourceSpec(
 			Name:    name,
 			ID:      id,
 
-			Custom:             rso.Custom.Draw(t, "ResourceSpec.Custom"),
+			Custom:             custom,
 			Delete:             false,
 			Protect:            rso.Protect.Draw(t, "ResourceSpec.Protect"),
 			PendingReplacement: rso.PendingReplacement.Draw(t, "ResourceSpec.PendingReplacement"),
