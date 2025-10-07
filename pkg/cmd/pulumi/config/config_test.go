@@ -794,9 +794,9 @@ func TestConfigSetAll(t *testing.T) {
 			}
 
 			tmpdir := t.TempDir()
-			stack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
+			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
 			defer func() {
-				stack.ConfigFile = ""
+				cmdStack.ConfigFile = ""
 			}()
 
 			ws := &pkgWorkspace.MockContext{
@@ -886,7 +886,7 @@ func TestConfigSetAll(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify the config was set correctly
-			data, err := os.ReadFile(stack.ConfigFile)
+			data, err := os.ReadFile(cmdStack.ConfigFile)
 			require.NoError(t, err)
 
 			require.Equal(t, c.expected, string(data))
@@ -902,6 +902,6 @@ func (m *mockEncrypterFactory) GetEncrypter(
 	_ context.Context,
 	_ backend.Stack,
 	_ *workspace.ProjectStack,
-) (config.Encrypter, stack.SecretsManagerState, error) {
-	return m.encrypter, stack.SecretsManagerUnchanged, nil
+) (config.Encrypter, cmdStack.SecretsManagerState, error) {
+	return m.encrypter, cmdStack.SecretsManagerUnchanged, nil
 }
