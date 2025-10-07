@@ -1018,6 +1018,141 @@ description: A Pulumi program testing config rm and config rm-all.
 	assert.Contains(t, stderr, "'baz' not found")
 }
 
+func TestConfigSetAllJSON(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.Passphrase = "test-passphrase"
+	defer e.DeleteIfNotFailed()
+
+	pulumiProject := `
+name: config-set-all-json-test
+runtime: yaml
+description: A Pulumi program testing config set-all --json.
+`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "config-set-all-json-test")
+
+	configCmd := func(cmd string) func(args ...string) []string {
+		return func(args ...string) []string {
+			if cmd != "" {
+				return append([]string{"config", cmd}, args...)
+			}
+
+			return append([]string{"config"}, args...)
+		}
+	}
+
+	configShow := configCmd("")
+	configSetAll := configCmd("set-all")
+
+	// Set configuration all at once using the --json flag.
+	jsonInput := `{
+  "pulumi-test:key1": {
+    "value": "value1",
+    "secret": false
+  },
+  "pulumi-test:myList": {
+    "value": "[\"foo\"]",
+    "objectValue": [
+      "foo"
+    ],
+    "secret": false
+  },
+  "pulumi-test:myList[0]": {
+    "value": "foo",
+    "secret": false
+  },
+  "pulumi-test:my_token": {
+    "value": "my_secret_token",
+    "secret": true
+  },
+  "pulumi-test:outer": {
+    "value": "{\"inner\":\"value2\"}",
+    "objectValue": {
+      "inner": "value2"
+    },
+    "secret": false
+  },
+  "pulumi-test:outer.inner": {
+    "value": "value2",
+    "secret": false
+  }
+}
+`
+
+	e.RunCommand("pulumi", configSetAll("--json", jsonInput)...)
+
+	// Retrieve configuration, including secrets, in JSON format and unmarshal it.
+	jsonOutputWithSecrets, _ := e.RunCommand("pulumi", configShow("--json", "--show-secrets")...)
+	var config map[string]any
+	err := json.Unmarshal([]byte(jsonOutputWithSecrets), &config)
+	assert.Nil(t, err)
+	assert.Equal(t, jsonInput, jsonOutputWithSecrets)
+
+	// When secrets are included, the retrieved configuration should match that we sent in exactly.
+	assert.Equal(t, jsonInput, jsonOutputWithSecrets)
+
+	// Retrieve configuration, not including secrets, in JSON format and unmarshal it.
+	jsonOutputWithoutSecrets, _ := e.RunCommand("pulumi", configShow("--json")...)
+	var configWithoutSecrets map[string]any
+	err = json.Unmarshal([]byte(jsonOutputWithoutSecrets), &configWithoutSecrets)
+	assert.Nil(t, err)
+
+	// Assert that key1, a scalar, has the correct value.
+	key1, ok := config["pulumi-test:key1"].(map[string]any)
+	assert.Truef(t, ok, "key1 should be a JSON object")
+
+	assert.Equal(t, "value1", key1["value"])
+
+	// Assert that myList, a nested list, has the correct value.
+	myList, ok := config["pulumi-test:myList"].(map[string]any)
+	assert.Truef(t, ok, "myList should be a JSON object")
+
+	assert.Equal(t, "[\"foo\"]", myList["value"])
+	myListObjectValue := myList["objectValue"].([]any)
+	assert.Contains(t, myListObjectValue, "foo")
+	require.Len(t, myListObjectValue, 1)
+
+	// Assert that myList[0], a scalar (--json input does _not_ set --path), has the correct value.
+	myList0, ok := config["pulumi-test:myList[0]"].(map[string]any)
+	assert.Truef(t, ok, "myList[0] should be a JSON object")
+
+	assert.Equal(t, "foo", myList0["value"])
+	_, ok = myList0["objectValue"]
+	assert.Falsef(t, ok, "myList[0] should not have an objectValue key")
+
+	// Assert that my_token, a scalar secret, has the correct value in the configuration we loaded with secrets.
+	myToken, ok := config["pulumi-test:my_token"].(map[string]any)
+	assert.Truef(t, ok, "my_token should be a JSON object")
+
+	assert.Equal(t, "my_secret_token", myToken["value"])
+	secretValue := myToken["secret"]
+	secret, ok := secretValue.(bool)
+	assert.Truef(t, ok && secret, "my_token should be a secret in the configuration with secrets")
+
+	// Assert that my_token, a scalar secret, does not have a value in the configuration we loaded without secrets.
+	_, ok = configWithoutSecrets["pulumi-test:my_token"].(map[string]any)["value"]
+	assert.Falsef(t, ok, "my_token should not have a value in the configuration without secrets")
+
+	// Assert that outer, an object value, has the correct value.
+	outer, ok := config["pulumi-test:outer"].(map[string]any)
+	assert.Truef(t, ok, "outer should be a JSON object")
+
+	outerObjectValue := outer["objectValue"].(map[string]any)
+	assert.Equal(t, "value2", outerObjectValue["inner"])
+
+	// Assert that outer.inner, a scalar (--json input does _not_ set --path), has the correct value.
+	outerInner, ok := config["pulumi-test:outer.inner"].(map[string]any)
+	assert.Truef(t, ok, "outer.inner should be a JSON object")
+
+	assert.Equal(t, "value2", outerInner["value"])
+	_, ok = outerInner["objectValue"]
+	assert.Falsef(t, ok, "outer.inner should not have an objectValue key")
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12593.
 //
 // Verifies that a "provider" option passed to a remote component
