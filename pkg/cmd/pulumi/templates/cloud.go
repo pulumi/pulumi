@@ -138,6 +138,11 @@ func (s *Source) getCloudTemplates(
 }
 
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
+	b := s.getBackend(ctx, e)
+	if !s.supportsCloudTemplates(ctx, b) {
+		return
+	}
+
 	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
 	matches, err := NewTemplateMatcher(templateName)
@@ -228,21 +233,18 @@ func (r registryTemplate) GetTemplateName() string { return r.Name() }
 func (r registryTemplate) GetSource() string       { return r.t.Source }
 func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
 
-func (s *Source) getOrgTemplates(
-	ctx context.Context, templateName string,
-	wg *sync.WaitGroup, e env.Env,
-) {
+func (s *Source) getBackend(ctx context.Context, e env.Env) backend.Backend {
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		s.addError(fmt.Errorf("could not read the current project: %w", err))
-		return
+		return nil
 	}
 
 	url, err := pkgWorkspace.GetCurrentCloudURL(ws, e, project)
 	if err != nil {
 		s.addError(fmt.Errorf("could not get current cloud url: %w", err))
-		return
+		return nil
 	}
 
 	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
@@ -251,24 +253,32 @@ func (s *Source) getOrgTemplates(
 			s.addError(fmt.Errorf("could not get the current backend: %w", err))
 		}
 		logging.Infof("could not get a backend for org templates")
-		return
+		return nil
 	} else if b == nil {
 		logging.Infof("no current logged in user")
-		return
+		return nil
 	}
 
-	// Attempt to retrieve the current user
-	if _, _, _, err := b.CurrentUser(); err != nil {
-		if errors.Is(err, backenderr.ErrLoginRequired) {
-			logging.Infof("user is not logged in")
-			return // No current user - so don't proceed
-		}
-		s.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
-		return
+	return b
+}
+
+func (s *Source) supportsCloudTemplates(ctx context.Context, b backend.Backend) bool {
+	if b == nil {
+		return false
 	}
 
 	if !b.SupportsTemplates() {
 		logging.Infof("%s does not support Org Templates", b.Name())
+	}
+	return b.SupportsTemplates()
+}
+
+func (s *Source) getOrgTemplates(
+	ctx context.Context, templateName string,
+	wg *sync.WaitGroup, e env.Env,
+) {
+	b := s.getBackend(ctx, e)
+	if !s.supportsCloudTemplates(ctx, b) {
 		return
 	}
 
