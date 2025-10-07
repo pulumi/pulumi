@@ -1175,12 +1175,12 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 		}
 
 		switch name {
-		case "IgnoreChanges":
-			// ignore changes need to be special cased
-			// because new [] { "field" } cannot be implicitly casted to List<string>
-			// which is the type of IgnoreChanges
+		case "IgnoreChanges", "HideDiffs":
+			// IgnoreChanges and HideDiffs need to be special cased because
+			// new [] { "field" } cannot be implicitly casted to List<string>
+			// which is the type of IgnoreChanges and HideDiffs
 			if changes, isTuple := value.(*model.TupleConsExpression); isTuple {
-				g.Fgenf(&result, "\n%sIgnoreChanges =", g.Indent)
+				g.Fgenf(&result, "\n%s%s =", g.Indent, name)
 				g.Fgenf(&result, "\n%s{", g.Indent)
 				g.Indented(func() {
 					for _, v := range changes.Expressions {
@@ -1281,6 +1281,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	}
 	if opts.ImportID != nil {
 		appendOption("ImportId", opts.ImportID)
+	}
+	if opts.HideDiffs != nil {
+		appendOption("HideDiffs", opts.HideDiffs)
 	}
 
 	if result.Len() != 0 {
