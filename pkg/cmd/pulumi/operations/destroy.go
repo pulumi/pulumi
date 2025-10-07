@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -34,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -270,7 +270,7 @@ func NewDestroyCmd() *cobra.Command {
 			excludeUrns := *excludes
 			protectedCount := 0
 			if excludeProtected {
-				snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+				snapshot, err := s.Snapshot(ctx, secrets.DefaultProvider)
 				if err != nil {
 					return err
 				} else if snapshot == nil {
@@ -323,7 +323,7 @@ func NewDestroyCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			})
 

@@ -30,12 +30,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -394,7 +394,7 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
