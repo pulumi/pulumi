@@ -377,6 +377,16 @@ type Client interface {
 		projectName string,
 		envName string,
 	) (exists bool, err error)
+
+	// CreateEnvironmentOpenRequest creates a request for opening a protected environment.
+	CreateEnvironmentOpenRequest(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		grantExpirationSeconds int,
+		accessDurationSeconds int,
+	) (*CreateEnvironmentOpenRequestResponse, error)
 }
 
 type client struct {
@@ -1263,6 +1273,34 @@ func (pc *client) EnvironmentExists(
 	}
 
 	return true, nil
+}
+
+// CreateEnvironmentOpenRequest creates a request for opening a protected environment.
+func (pc *client) CreateEnvironmentOpenRequest(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	grantExpirationSeconds int,
+	accessDurationSeconds int,
+) (*CreateEnvironmentOpenRequestResponse, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/open/request", orgName, projectName, envName)
+
+	req := struct {
+		GrantExpirationSeconds int `json:"grantExpirationSeconds"`
+		AccessDurationSeconds  int `json:"accessDurationSeconds"`
+	}{
+		GrantExpirationSeconds: grantExpirationSeconds,
+		AccessDurationSeconds:  accessDurationSeconds,
+	}
+
+	var resp CreateEnvironmentOpenRequestResponse
+	err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 type httpCallOptions struct {

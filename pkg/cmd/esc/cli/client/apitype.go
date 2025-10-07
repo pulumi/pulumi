@@ -217,6 +217,18 @@ type OpenEnvironmentResponse struct {
 	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
 }
 
+type CreateEnvironmentOpenRequestResponse struct {
+	ChangeRequests []EnvironmentOpenRequestChangeRequest `json:"changeRequests"`
+}
+
+type EnvironmentOpenRequestChangeRequest struct {
+	ProjectName          string `json:"projectName"`
+	EnvironmentName      string `json:"environmentName"`
+	ChangeRequestID      string `json:"changeRequestId"`
+	LatestRevisionNumber int    `json:"latestRevisionNumber"`
+	ETag                 string `json:"etag"`
+}
+
 type RetractEnvironmentRevisionRequest struct {
 	Replacement *int   `json:"replacement,omitempty"`
 	Reason      string `json:"reason,omitempty"`

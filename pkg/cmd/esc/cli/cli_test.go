@@ -1168,6 +1168,34 @@ func (c *testPulumiClient) EnvironmentExists(
 	return false, nil
 }
 
+func (c *testPulumiClient) CreateEnvironmentOpenRequest(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	grantExpirationSeconds int,
+	accessDurationSeconds int,
+) (*client.CreateEnvironmentOpenRequestResponse, error) {
+	// Check if environment exists
+	key := fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)
+	if _, exists := c.environments[key]; !exists {
+		return nil, errors.New("environment not found")
+	}
+
+	// Mock implementation for testing
+	return &client.CreateEnvironmentOpenRequestResponse{
+		ChangeRequests: []client.EnvironmentOpenRequestChangeRequest{
+			{
+				ProjectName:          projectName,
+				EnvironmentName:      envName,
+				ChangeRequestID:      "test-request-id-12345",
+				LatestRevisionNumber: 0,
+				ETag:                 "test-etag/0",
+			},
+		},
+	}, nil
+}
+
 type testExec struct {
 	fs       testFS
 	environ  map[string]string

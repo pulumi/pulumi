@@ -1,0 +1,9 @@
+run: esc env open-request nonexistent-org/nonexistent-project/nonexistent-env
+error: exit status 1
+
+---
+> esc env open-request nonexistent-org/nonexistent-project/nonexistent-env
+
+---
+> esc env open-request nonexistent-org/nonexistent-project/nonexistent-env
+Error: environment not found

@@ -1,0 +1,17 @@
+run: |
+  esc env open-request test-org/test-project/test-env
+  esc env open-request test-org/test-project/test-env --grant-expiration-seconds 3600s --access-duration-seconds 7200s  
+environments:
+  test-org/test-project/test-env:
+    values:
+      foo: bar
+
+---
+> esc env open-request test-org/test-project/test-env
+Created environment open request with ID: test-request-id-12345
+> esc env open-request test-org/test-project/test-env --grant-expiration-seconds 3600s --access-duration-seconds 7200s
+Created environment open request with ID: test-request-id-12345
+
+---
+> esc env open-request test-org/test-project/test-env
+> esc env open-request test-org/test-project/test-env --grant-expiration-seconds 3600s --access-duration-seconds 7200s
