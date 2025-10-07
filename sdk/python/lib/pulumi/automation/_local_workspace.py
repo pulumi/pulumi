@@ -25,7 +25,13 @@ import yaml
 from semver import VersionInfo
 
 from ._cmd import CommandResult, OnOutput, PulumiCommand
-from ._config import _SECRET_SENTINEL, ConfigMap, ConfigValue
+from ._config import (
+    _SECRET_SENTINEL,
+    ConfigMap,
+    ConfigValue,
+    ConfigOptions,
+    GetAllConfigOptions,
+)
 from ._env import _SKIP_VERSION_CHECK_VAR
 from ._output import OutputMap, OutputValue
 from ._project_settings import ProjectSettings
@@ -303,35 +309,108 @@ class LocalWorkspace(Workspace):
             )
 
     def get_config(
-        self, stack_name: str, key: str, *, path: bool = False
+        self,
+        stack_name: str,
+        key: str,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
     ) -> ConfigValue:
         args = ["config", "get"]
+
         if path:
             args.append("--path")
-        args.extend([key, "--json", "--stack", stack_name])
-        result = self._run_pulumi_cmd_sync(args)
-        val = json.loads(result.stdout)
-        return ConfigValue(value=val["value"], secret=val["secret"])
 
-    def get_all_config(self, stack_name: str) -> ConfigMap:
-        result = self._run_pulumi_cmd_sync(
-            ["config", "--show-secrets", "--json", "--stack", stack_name]
+        if config_file:
+            args.extend(["--config-file", config_file])
+
+        args.extend([key, "--json", "--stack", stack_name])
+        try:
+            result = self._run_pulumi_cmd_sync(args)
+            val = json.loads(result.stdout)
+
+            # Check if this is a secret
+            secret = val.get("secret", False)
+            value = val.get("value")
+
+            return ConfigValue(value, secret)
+        except KeyError as e:
+            # Add better error context if this fails
+            raise KeyError(f"Error accessing key in config JSON: {e}. Response: {val}")
+
+    def get_all_config(
+        self,
+        stack_name: str,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
+        show_secrets: bool = False,
+    ) -> ConfigMap:
+        return self.get_all_config_with_options(
+            stack_name,
+            GetAllConfigOptions(
+                path=path,
+                config_file=config_file,
+                show_secrets=show_secrets,
+            ),
         )
+
+    def get_all_config_with_options(
+        self,
+        stack_name: str,
+        options: GetAllConfigOptions,
+    ) -> ConfigMap:
+        args = ["config", "--json", "--stack", stack_name]
+        if options.show_secrets:
+            args.append("--show-secrets")
+
+        if options.path:
+            args.append("--path")
+
+        if options.config_file:
+            args.extend(["--config-file", options.config_file])
+
+        result = self._run_pulumi_cmd_sync(args)
         config_json = json.loads(result.stdout)
+
         config_map: ConfigMap = {}
-        for key in config_json:
-            config_val_json = config_json[key]
+        for key, config_val_json in config_json.items():
+            is_secret = config_val_json.get("secret", False)
+            value = config_val_json.get("value")
+
+            # If it's a secret and we're not showing secrets, the value will be None
+            # In that case, use the sentinel value
+            if value is None and is_secret:
+                value = _SECRET_SENTINEL
+
+            # Ensure value is a string
+            if value is not None and not isinstance(value, str):
+                value = str(value)
+
             config_map[key] = ConfigValue(
-                value=config_val_json["value"], secret=config_val_json["secret"]
+                value=value if value is not None else _SECRET_SENTINEL,
+                secret=is_secret,
             )
+
         return config_map
 
     def set_config(
-        self, stack_name: str, key: str, value: ConfigValue, *, path: bool = False
+        self,
+        stack_name: str,
+        key: str,
+        value: ConfigValue,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
     ) -> None:
         args = ["config", "set"]
+
         if path:
             args.append("--path")
+
+        if config_file:
+            args.extend(["--config-file", config_file])
+
         secret_arg = "--secret" if value.secret else "--plaintext"
         args.extend(
             [
@@ -347,11 +426,35 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def set_all_config(
-        self, stack_name: str, config: ConfigMap, *, path: bool = False
+        self,
+        stack_name: str,
+        config: ConfigMap,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
+    ) -> None:
+        self.set_all_config_with_options(
+            stack_name,
+            config,
+            ConfigOptions(
+                path=path,
+                config_file=config_file,
+            ),
+        )
+
+    def set_all_config_with_options(
+        self,
+        stack_name: str,
+        config: ConfigMap,
+        options: ConfigOptions,
     ) -> None:
         args = ["config", "set-all", "--stack", stack_name]
-        if path:
+
+        if options.path:
             args.append("--path")
+
+        if options.config_file:
+            args.extend(["--config-file", options.config_file])
 
         for key, value in config.items():
             secret_arg = "--secret" if value.secret else "--plaintext"
@@ -359,18 +462,53 @@ class LocalWorkspace(Workspace):
 
         self._run_pulumi_cmd_sync(args)
 
-    def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
+    def remove_config(
+        self,
+        stack_name: str,
+        key: str,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
+    ) -> None:
         args = ["config", "rm", key, "--stack", stack_name]
+
         if path:
             args.append("--path")
+
+        if config_file:
+            args.extend(["--config-file", config_file])
         self._run_pulumi_cmd_sync(args)
 
     def remove_all_config(
-        self, stack_name: str, keys: list[str], *, path: bool = False
+        self,
+        stack_name: str,
+        keys: list[str],
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
+    ) -> None:
+        self.remove_all_config_with_options(
+            stack_name,
+            keys,
+            ConfigOptions(
+                path=path,
+                config_file=config_file,
+            ),
+        )
+
+    def remove_all_config_with_options(
+        self,
+        stack_name: str,
+        keys: list[str],
+        options: ConfigOptions,
     ) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
-        if path:
+
+        if options.path:
             args.append("--path")
+
+        if options.config_file:
+            args.extend(["--config-file", options.config_file])
         args.extend(keys)
         self._run_pulumi_cmd_sync(args)
 
@@ -403,6 +541,7 @@ class LocalWorkspace(Workspace):
     def who_am_i(self) -> WhoAmIResult:
         # Assume an old version. Doesn't really matter what this is as long as it's pre-3.58.
         ver = VersionInfo(3)
+
         if self.pulumi_command.version is not None:
             ver = self.pulumi_command.version
 

@@ -258,7 +258,12 @@ class Workspace(ABC):
 
     @abstractmethod
     def get_config(
-        self, stack_name: str, key: str, *, path: bool = False
+        self,
+        stack_name: str,
+        key: str,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
     ) -> ConfigValue:
         """
         Returns the value associated with the specified stack name and key,
@@ -267,21 +272,38 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param key: The key for the config item to get.
         :param path: The key contains a path to a property in a map or list to get.
+        :param config_file: Path to a Pulumi config file to use.
         :returns: ConfigValue
         """
 
     @abstractmethod
-    def get_all_config(self, stack_name: str) -> ConfigMap:
+    def get_all_config(
+        self,
+        stack_name: str,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
+        show_secrets: bool = False,
+    ) -> ConfigMap:
         """
         Returns the config map for the specified stack name, scoped to the current Workspace.
 
         :param stack_name: The name of the stack.
+        :param path: The keys contain a path to a property in a map or list to get.
+        :param config_file: Path to a Pulumi config file to use.
+        :param show_secrets: Include config secrets in the ConfigMap.
         :returns: ConfigMap
         """
 
     @abstractmethod
     def set_config(
-        self, stack_name: str, key: str, value: ConfigValue, *, path: bool = False
+        self,
+        stack_name: str,
+        key: str,
+        value: ConfigValue,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
     ) -> None:
         """
         Sets the specified key-value pair on the provided stack name.
@@ -290,11 +312,17 @@ class Workspace(ABC):
         :param key: The config key to add.
         :param value: The config value to add.
         :param path: The key contains a path to a property in a map or list to set.
+        :param config_file: Path to a Pulumi config file to use.
         """
 
     @abstractmethod
     def set_all_config(
-        self, stack_name: str, config: ConfigMap, *, path: bool = False
+        self,
+        stack_name: str,
+        config: ConfigMap,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
     ) -> None:
         """
         Sets all values in the provided config map for the specified stack name.
@@ -302,21 +330,35 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param config: A mapping of key to ConfigValue to set to config.
         :param path: The keys contain a path to a property in a map or list to set.
+        :param config_file: Path to a Pulumi config file to use.
         """
 
     @abstractmethod
-    def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
+    def remove_config(
+        self,
+        stack_name: str,
+        key: str,
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
+    ) -> None:
         """
         Removes the specified key-value pair on the provided stack name.
 
         :param stack_name: The name of the stack.
         :param key: The key to remove from config.
         :param path: The key contains a path to a property in a map or list to remove.
+        :param config_file: Path to a Pulumi config file to use.
         """
 
     @abstractmethod
     def remove_all_config(
-        self, stack_name: str, keys: list[str], *, path: bool = False
+        self,
+        stack_name: str,
+        keys: list[str],
+        *,
+        path: bool = False,
+        config_file: Optional[str] = None,
     ) -> None:
         """
         Removes all values in the provided key list for the specified stack name.
@@ -324,6 +366,7 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param keys: The keys to remove from config.
         :param path: The keys contain a path to a property in a map or list to remove.
+        :param config_file: Path to a Pulumi config file to use.
         """
 
     @abstractmethod
