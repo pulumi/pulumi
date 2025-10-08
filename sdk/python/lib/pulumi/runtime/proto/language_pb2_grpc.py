@@ -268,7 +268,10 @@ class LanguageRuntimeServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Link(self, request, context):
-        """`Link` links a local dependency into a project.
+        """`Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+        as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+        `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+        user on how to use the linked package in the project.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

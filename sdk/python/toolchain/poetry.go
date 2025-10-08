@@ -22,16 +22,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -140,6 +143,18 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter
 	return poetryCmd.Run()
+}
+
+func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) error {
+	logging.V(9).Infof("poetry linking %s", packages)
+	args := []string{"add", "--lock"} // Add package to lockfile only
+	paths := slices.Collect(maps.Values(packages))
+	args = append(args, paths...)
+	cmd := exec.Command("poetry", args...)
+	if err := cmd.Run(); err != nil {
+		return errutil.ErrorWithStderr(err, "linking packages")
+	}
+	return nil
 }
 
 func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
@@ -252,10 +267,11 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, s
 		return fmt.Errorf("failed to open %q", requirementsTxt)
 	}
 
-	deps, err := dependenciesFromRequirementsTxt(f)
+	basePath := filepath.Dir(pyprojectToml)
+	deps, err := dependenciesFromRequirementsTxt(f, basePath)
 	contract.IgnoreError(f.Close())
 	if err != nil {
-		return fmt.Errorf("failed to gather dependencies from %q", requirementsTxt)
+		return fmt.Errorf("failed to gather dependencies from %q: %w", requirementsTxt, err)
 	}
 
 	b, err := p.generatePyProjectTOML(deps)
@@ -286,7 +302,7 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, s
 	return nil
 }
 
-func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, error) {
+func (p *poetry) generatePyProjectTOML(dependencies map[string]any) (string, error) {
 	pp := Pyproject{
 		BuildSystem: &BuildSystem{
 			Requires:     []string{"poetry-core"},
@@ -309,15 +325,15 @@ func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, 
 	return w.String(), nil
 }
 
-func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
+func dependenciesFromRequirementsTxt(r io.Reader, basePath string) (map[string]any, error) {
 	versionRe := regexp.MustCompile("[<>=]+.+")
-	deps := map[string]string{
+	deps := map[string]any{
 		"python": "^3.10",
 	}
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		if err := scanner.Err(); err != nil {
-			return map[string]string{}, err
+			return map[string]any{}, err
 		}
 		line := strings.TrimSpace(scanner.Text())
 		// Skip empty lines and comment lines
@@ -335,6 +351,27 @@ func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
 
 		version = strings.TrimSpace(version)
 		if version == "" {
+			// If the pkg references a local path, we have to create a dependency entry that points to the path instead
+			// of a versioned dependency.
+			if info, err := os.Stat(pkg); err == nil {
+				relPath, err := filepath.Rel(basePath, pkg)
+				if err != nil {
+					return map[string]any{}, err
+				}
+				if info.IsDir() {
+					name := strings.ReplaceAll(info.Name(), "-", "_")
+					deps[name] = map[string]string{"path": relPath}
+				} else if strings.HasSuffix(pkg, ".whl") {
+					// If it's a wheel file, we get the package name from the wheel filename. By convention, everything
+					// up to the first `-` is the package name.
+					parts := strings.SplitN(filepath.Base(pkg), "-", 2)
+					if len(parts) == 2 {
+						deps[parts[0]] = map[string]string{"path": relPath}
+					}
+				}
+				continue
+			}
+
 			version = "*"
 		}
 		// Drop `==` for an exact version match
