@@ -85,10 +85,16 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 			if event.Type == engine.ResourceOperationFailed {
 				resourcesErrored++
 			}
-			msg := RenderDiffEvent(event, seen, opts)
-			if event.Type == engine.SummaryEvent {
-				msg = renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
+
+			var msg string
+
+			// When the event received is SummaryEvent we can safely use `resourcesErrored` as all resource events have finished at this point.
+			if event.Type != engine.SummaryEvent {
+				msg = RenderDiffEvent(event, 0, seen, opts)
+			} else {
+				msg = RenderDiffEvent(event, resourcesErrored, seen, opts)
 			}
+
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -100,7 +106,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	}
 }
 
-func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
+func RenderDiffEvent(event engine.Event, resourcesErrored int, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
@@ -124,7 +130,7 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), 0, true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -538,7 +544,7 @@ func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
 			continue
 		}
 
-		msg := RenderDiffEvent(e, seen, displayOpts)
+		msg := RenderDiffEvent(e, 0, seen, displayOpts)
 		if msg == "" {
 			continue
 		}
