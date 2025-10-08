@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -226,6 +227,13 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	}
 	if err != nil {
 		return err
+	}
+
+	if wt, err := repo.Worktree(); err == nil {
+		repoRelPath, err := filepath.Rel(wt.Filesystem.Root(), projPath)
+		if err == nil && filepath.IsLocal(repoRelPath) {
+			tags[apitype.VCSRepositoryRootTag] = repoRelPath
+		}
 	}
 
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
