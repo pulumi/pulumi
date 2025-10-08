@@ -123,14 +123,14 @@ lint_pulumi_json::
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && bun run biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && bun run biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
@@ -159,7 +159,7 @@ lint_actions:
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 format:: ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && bun run biome format --write ../../pkg/codegen/schema/pulumi.json
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
@@ -245,7 +245,7 @@ schema-%: .make/ensure/curl .make/ensure/jq
 #
 # pkg/codegen/testing/test/helpers.go depends on some of this list, update that file on changes.
 #
-# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.2, update that file on changes.
+# pkg/codegen/schema/schema_test.go depends on kubernetes@4.23.0, update that file on changes.
 #
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
@@ -262,7 +262,7 @@ get_schemas: \
 			schema-azure!4.18.0         \
 			schema-kubernetes!3.0.0     \
 			schema-kubernetes!3.7.0     \
-			schema-kubernetes!3.7.2     \
+			schema-kubernetes!4.23.0    \
 			schema-random!4.2.0         \
 			schema-random!4.3.1         \
 			schema-random!4.11.2        \

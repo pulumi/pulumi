@@ -111,6 +111,11 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
+	// Bun can error when running `bun install` multiple times in parallel in the same
+	// directory, so we use a mutex to ensure we don't run it in parallel when preparing
+	// the tests. See https://github.com/oven-sh/bun/issues/12917
+	var prepareMutex sync.Mutex
+
 	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
 	for _, forceTsc := range []bool{false, true} {
 		t.Run(fmt.Sprintf("forceTsc=%v", forceTsc), func(t *testing.T) {
@@ -141,6 +146,7 @@ func TestLanguage(t *testing.T) {
 			}
 
 			// Prepare to run the tests
+			prepareMutex.Lock()
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 				LanguagePluginName:   "nodejs",
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
@@ -162,6 +168,7 @@ func TestLanguage(t *testing.T) {
 					},
 				},
 			})
+			prepareMutex.Unlock()
 			require.NoError(t, err)
 
 			for _, tt := range tests.Tests {

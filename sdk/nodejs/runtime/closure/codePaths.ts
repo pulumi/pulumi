@@ -13,7 +13,9 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import { fdir } from "fdir";
+// fdir v6+ is a pure ESM module. Since our project still uses "commonjs" we can't use the import form, otherwise,
+// we'd get a module not found / import error because Node won't load the ESM file.
+const { fdir } = require("fdir");
 // Picomatch is not used in this file, but the dependency is required for fdir
 // to support globbing. The import here serves as a marker so that we don't
 // accidentally remove the dependency from the package.json.
@@ -215,7 +217,7 @@ export async function findWorkspaceRoot(startingPath: string): Promise<string | 
         const workspaces = parseWorkspaces(p);
         for (const workspace of workspaces) {
             const globber = new fdir().withBasePath().glob(upath.join(currentDir, workspace, "package.json"));
-            const files = await globber.crawl(currentDir).withPromise();
+            const files: string[] = await globber.crawl(currentDir).withPromise();
             const normalized = upath.normalizeTrim(upath.join(packageJSONDir, "package.json"));
             if (files.map((f) => upath.normalizeTrim(f)).includes(normalized)) {
                 return currentDir;

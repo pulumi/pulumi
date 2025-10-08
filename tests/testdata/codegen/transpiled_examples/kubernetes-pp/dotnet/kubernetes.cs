@@ -13,7 +13,7 @@ return await Deployment.RunAsync(() =>
     {
         Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
-            Namespace = nginxDemo.Metadata.Apply(metadata => metadata?.Name),
+            Namespace = nginxDemo.Metadata.Apply(metadata => metadata.Name),
         },
         Spec = new Kubernetes.Types.Inputs.Apps.V1.DeploymentSpecArgs
         {
@@ -53,7 +53,7 @@ return await Deployment.RunAsync(() =>
     {
         Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
-            Namespace = nginxDemo.Metadata.Apply(metadata => metadata?.Name),
+            Namespace = nginxDemo.Metadata.Apply(metadata => metadata.Name),
             Labels = 
             {
                 { "app.kubernetes.io/name", "nginx-demo" },
@@ -82,7 +82,7 @@ return await Deployment.RunAsync(() =>
     {
         Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
-            Namespace = nginxDemo.Metadata.Apply(metadata => metadata?.Name),
+            Namespace = nginxDemo.Metadata.Apply(metadata => metadata.Name),
         },
         Spec = new Kubernetes.Types.Inputs.Networking.V1.IngressSpecArgs
         {
@@ -103,7 +103,7 @@ return await Deployment.RunAsync(() =>
                                 {
                                     Service = new Kubernetes.Types.Inputs.Networking.V1.IngressServiceBackendArgs
                                     {
-                                        Name = service.Metadata.Apply(metadata => metadata?.Name),
+                                        Name = service.Metadata.Apply(metadata => metadata.Name),
                                         Port = new Kubernetes.Types.Inputs.Networking.V1.ServiceBackendPortArgs
                                         {
                                             Number = 80,

@@ -37,6 +37,7 @@ func TestPartialState(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {

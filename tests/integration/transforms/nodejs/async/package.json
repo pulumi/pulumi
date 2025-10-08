@@ -1,6 +1,1 @@
-{
-  "name": "transforms",
-  "peerDependencies": {
-    "@pulumi/pulumi": "latest"
-  }
-}
+{}

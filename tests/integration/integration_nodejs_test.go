@@ -55,6 +55,7 @@ func TestPrintfNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("printf", "nodejs"),
 		Dependencies:           []string{"@pulumi/pulumi"},
+		UseBun:                 true,
 		Quick:                  true,
 		ExtraRuntimeValidation: printfTestValidation,
 	})
@@ -79,6 +80,7 @@ func TestEngineEventPerf(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "ee_perf",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ReportStats:  benchmarkEnforcer,
 	})
@@ -91,6 +93,7 @@ func TestEngineEvents(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "single_resource",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure that we have a non-empty list of events.
@@ -119,6 +122,7 @@ func TestProjectMainNodejs(t *testing.T) {
 	test := integration.ProgramTestOptions{
 		Dir:          "project_main/nodejs",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			require.NotNil(t, stackInfo.Deployment)
@@ -145,7 +149,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			return
 		}
 
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("bun", "link", "@pulumi/pulumi")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		e.RunCommand("pulumi", "preview")
@@ -159,8 +163,8 @@ func TestProjectMainNodejs(t *testing.T) {
 		defer e.DeleteIfNotFailed()
 		e.ImportDirectory("project_main_parent")
 
-		// yarn link first
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		// bun link first
+		e.RunCommand("bun", "link", "@pulumi/pulumi")
 		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
 
@@ -180,6 +184,7 @@ func TestStackProjectName(t *testing.T) {
 
 		Dir:          "stack_project_name",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -198,7 +203,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
@@ -213,6 +218,7 @@ func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
@@ -248,6 +254,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(d, "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
@@ -287,6 +294,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(d, "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -327,7 +335,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
@@ -347,6 +355,7 @@ func TestStackOutputsDisplayed(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        false,
 		Verbose:      true,
 		Stdout:       stdout,
@@ -368,6 +377,7 @@ func TestStackOutputsSuppressed(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("stack_outputs", "nodejs"),
 		Dependencies:           []string{"@pulumi/pulumi"},
+		UseBun:                 true,
 		Quick:                  false,
 		Verbose:                true,
 		Stdout:                 stdout,
@@ -387,6 +397,7 @@ func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_parenting",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains resources parented correctly.  This should look like this:
@@ -438,6 +449,7 @@ func TestStackBadParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		Quick:         true,
 		ExpectFailure: true,
 	})
@@ -451,6 +463,7 @@ func TestStackDependencyGraph(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_dependencies",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
@@ -485,6 +498,7 @@ func TestConfigBasicNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_basic", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
@@ -515,6 +529,7 @@ func TestConfigMissingJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("config_missing", "nodejs"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -541,6 +556,7 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		Config: map[string]string{
 			"value": "it works",
@@ -557,6 +573,7 @@ func TestConfigSecretsWarnNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_secrets_warn", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		Config: map[string]string{
 			"plainstr1":  "1",
@@ -676,6 +693,7 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		Config:       map[string]string{},
 	})
@@ -688,6 +706,7 @@ func TestExplicitProvider(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "explicit_provider",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
@@ -744,6 +763,7 @@ func TestGetCreated(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "get_created",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -755,6 +775,7 @@ func TestProviderSecretConfig(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "provider_secret_config",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -764,6 +785,7 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("secret_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// The program exports three resources:
@@ -803,6 +825,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		SecretsProvider: "passphrase",
 		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
 		Secrets: map[string]string{
@@ -872,6 +895,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		SecretsProvider: "awskms://alias/" + awsKmsKeyAlias,
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
@@ -932,6 +956,7 @@ func TestLargeResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("large_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 	})
 }
 
@@ -942,6 +967,7 @@ func TestEnumOutputNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("enums", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
@@ -965,6 +991,7 @@ func TestConstructSlowNode(t *testing.T) {
 	opts = &integration.ProgramTestOptions{
 		Dir:            filepath.Join(testDir, "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
+		UseBun:         true,
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		NoParallel:     true,
@@ -1023,6 +1050,7 @@ func optsForConstructPlainNode(
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
+		UseBun:         true,
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1068,6 +1096,7 @@ func TestConstructMethodsNode(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, "nodejs"),
 				Dependencies:   []string{"@pulumi/pulumi"},
+				UseBun:         true,
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1127,6 +1156,7 @@ func TestConstructProviderNode(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, "nodejs"),
 				Dependencies:   []string{"@pulumi/pulumi"},
+				UseBun:         true,
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1142,6 +1172,7 @@ func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),
 		Dependencies:             []string{"@pulumi/pulumi"},
+		UseBun:                   true,
 		AllowEmptyPreviewChanges: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stack.Outputs)
@@ -1181,6 +1212,7 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir:          filepath.Join(dir, "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testcomponent", Path: filepath.Join(dir, componentDir)},
 		},
@@ -1214,6 +1246,7 @@ func TestNodejsStackTruncate(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          filepath.Join("nodejs", "omit-stacktrace", name),
 				Dependencies: []string{"@pulumi/pulumi"},
+				UseBun:       true,
 				Quick:        true,
 				// This test should fail because it raises an exception
 				ExpectFailure: true,
@@ -1250,6 +1283,7 @@ func TestCompilerOptionsNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "compiler_options"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1259,6 +1293,7 @@ func TestESMJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-js"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1268,6 +1303,7 @@ func TestESMJSMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-js-main"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1277,6 +1313,7 @@ func TestESMTS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1288,14 +1325,8 @@ func TestESMTSX(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of yarn
-	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
-	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1303,7 +1334,7 @@ func TestESMTSX(t *testing.T) {
 	// Validate the stack outputs
 	stdout, _ := e.RunCommand("pulumi", "stack", "export")
 	var stackExport map[string]any
-	err = json.Unmarshal([]byte(stdout), &stackExport)
+	err := json.Unmarshal([]byte(stdout), &stackExport)
 	require.NoError(t, err)
 	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
 	require.True(t, ok)
@@ -1326,14 +1357,8 @@ func TestESMTSAuto(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of yarn
-	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
-	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1341,7 +1366,7 @@ func TestESMTSAuto(t *testing.T) {
 	// Validate the stack outputs
 	stdout, _ := e.RunCommand("pulumi", "stack", "export")
 	var stackExport map[string]any
-	err = json.Unmarshal([]byte(stdout), &stackExport)
+	err := json.Unmarshal([]byte(stdout), &stackExport)
 	require.NoError(t, err)
 	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
 	require.True(t, ok)
@@ -1364,14 +1389,8 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of yarn
-	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
-	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1389,6 +1408,7 @@ func TestTSWithPackageExports(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "ts-with-package-exports"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1398,6 +1418,7 @@ func TestESMWithPackageExports(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-with-package-exports"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1419,6 +1440,7 @@ func TestTSTypeStripping(t *testing.T) {
 		NoParallel:   true,
 		Dir:          filepath.Join("nodejs", "ts-type-stripping"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1429,6 +1451,7 @@ func TestTSWithPackageJsonInParentDir(t *testing.T) {
 		Dir:             filepath.Join("nodejs", "ts-with-package-json-in-parent-dir"),
 		RelativeWorkDir: filepath.Join("myprogram"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		Quick:           true,
 	})
 }
@@ -1439,6 +1462,7 @@ func TestESMWithPackageJsonInParentDir(t *testing.T) {
 		Dir:             filepath.Join("nodejs", "esm-with-package-json-in-parent-dir"),
 		RelativeWorkDir: filepath.Join("myprogram"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		Quick:           true,
 	})
 }
@@ -1449,6 +1473,7 @@ func TestESMWithoutPackageJsonInParentDir(t *testing.T) {
 		Dir:             filepath.Join("nodejs", "esm-package-json-in-parent-dir-without-main"),
 		RelativeWorkDir: filepath.Join("myprogram"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		Quick:           true,
 	})
 }
@@ -1459,6 +1484,7 @@ func TestPackageJsonInParentDirWithoutMain(t *testing.T) {
 		Dir:             filepath.Join("nodejs", "package-json-in-parent-dir-without-main"),
 		RelativeWorkDir: filepath.Join("myprogram"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		Quick:           true,
 	})
 }
@@ -1468,6 +1494,7 @@ func TestESMTSNestedSrc(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-nested-src"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		Config: map[string]string{
 			"test": "hello world",
@@ -1486,6 +1513,7 @@ func TestESMTSDefaultExport(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-default-export"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Len(t, stack.Outputs, 1)
@@ -1501,6 +1529,7 @@ func TestESMTSSpecifierResolutionNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-specifier-resolution-node"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1510,6 +1539,7 @@ func TestESMTSCompiled(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-compiled"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		RunBuild:     true,
 		Quick:        true,
 	})
@@ -1520,6 +1550,7 @@ func TestMainOverridesPackageJSON(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "main-overrides-package-json"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stack.Outputs)
@@ -1792,14 +1823,8 @@ func TestTranspileOnly(t *testing.T) {
 
 			stackName := ptesting.RandomStackName()
 
-			// For this test we need to properly install the core SDK instead of yarn
-			// linkining, because yarn link breaks the typescript version detection, and
-			// causes us to use the vendored typescript 3.8.3, which does not support
-			// the `noCheck` option.
-			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-			require.NoError(t, err)
-			e.RunCommandWithRetry("yarn", "install")
-			e.RunCommand("yarn", "add", coreSDK)
+			e.RunCommand("bun", "link", "@pulumi/pulumi")
+			e.RunCommandWithRetry("bun", "install")
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
 			e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1814,6 +1839,7 @@ func TestCodePaths(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "codepaths"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1823,6 +1849,7 @@ func TestCodePathsTSC(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "codepaths-tsc"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		RunBuild:     true,
 	})
@@ -1833,6 +1860,7 @@ func TestCodePathsNested(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "codepaths-nested"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		RelativeWorkDir: "nested",
 		Quick:           true,
 	})
@@ -1843,6 +1871,7 @@ func TestCodePathsWorkspace(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "codepaths-workspaces"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		RelativeWorkDir: "infra",
 		Quick:           true,
 	})
@@ -1853,6 +1882,7 @@ func TestCodePathsWorkspaceTSC(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "codepaths-workspaces-tsc"),
 		Dependencies:    []string{"@pulumi/pulumi"},
+		UseBun:          true,
 		Quick:           true,
 		RunBuild:        true,
 		RelativeWorkDir: "infra",
@@ -1864,6 +1894,7 @@ func TestCodePathsNoDependencies(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "codepaths-no-dependencies"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -1880,8 +1911,8 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
 	e.RunCommand("pulumi", "stack", "select", "negative-timings")
@@ -1906,8 +1937,8 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
@@ -1935,8 +1966,8 @@ func TestTSConfigOption(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
@@ -1951,6 +1982,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
 			Dependencies: []string{"@pulumi/pulumi"},
+			UseBun:       true,
 			Env: []string{
 				"PULUMI_EXPERIMENTAL=1",
 				"PULUMI_SKIP_CHECKPOINTS=1",
@@ -1976,6 +2008,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
 			Dependencies: []string{"@pulumi/pulumi"},
+			UseBun:       true,
 			Env: []string{
 				"PULUMI_EXPERIMENTAL=0",
 				"PULUMI_SKIP_CHECKPOINTS=1",
@@ -2005,6 +2038,7 @@ func TestResourceRefsGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("resource_refs_get_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 	})
 }
@@ -2016,6 +2050,7 @@ func TestDeletedWithNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("deleted_with", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -2030,6 +2065,7 @@ func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-resource-type-name"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urnOut := stack.Outputs["urn"].(string)
 			urn := resource.URN(urnOut)
@@ -2046,6 +2082,7 @@ func TestErrorCreateDynamicNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("dynamic", "nodejs-error-create"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundError := false
@@ -2067,6 +2104,7 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-config"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Secrets: map[string]string{
 			"password":      "s3cret",
 			"colors:banana": "yellow",
@@ -2091,6 +2129,7 @@ func TestRegression12301Node(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "regression-12301"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		PostPrepareProject: func(project *engine.Projinfo) error {
 			// Move the bad JSON file up one directory
 			jsonPath := filepath.Join(project.Root, "regression-12301.json")
@@ -2113,6 +2152,7 @@ func TestPulumiConfig(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-pulumi-config"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Config: map[string]string{
 			"pulumi-nodejs:id": "testing123",
 		},
@@ -2143,6 +2183,7 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "undefined-stack-output"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, nil, stack.Outputs["nil"])
 			assert.Equal(t, []any{0.0, nil, nil}, stack.Outputs["list"])
@@ -2175,6 +2216,7 @@ func TestEnvironmentsBasicNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:            filepath.Join("environments_basic"),
 		Dependencies:   []string{"@pulumi/pulumi"},
+		UseBun:         true,
 		Quick:          true,
 		RequireService: true,
 		CreateEnvironments: []integration.Environment{{
@@ -2227,6 +2269,7 @@ func TestEnvironmentsMergeNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:            filepath.Join("environments_merge"),
 		Dependencies:   []string{"@pulumi/pulumi"},
+		UseBun:         true,
 		Quick:          true,
 		RequireService: true,
 		CreateEnvironments: []integration.Environment{
@@ -2295,6 +2338,7 @@ func TestNodeJSReservedIdentifierShadowing(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("dynamic", "nodejs-reserved-identifier-shadowing"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		ExpectFailure: false,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			noError := true
@@ -2317,6 +2361,7 @@ func TestNodeOOM(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("nodejs", "oom"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		ExpectFailure: true,
 		Stderr:        stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -2349,6 +2394,7 @@ func TestParameterizedNode(t *testing.T) {
 		DebugLogLevel: 10,
 		Dir:           filepath.Join("nodejs", "parameterized"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -2385,7 +2431,7 @@ func TestParameterizedNode(t *testing.T) {
 		},
 		PostPrepareProject: func(project *engine.Projinfo) error {
 			// Run the mocha tests
-			cmd := exec.Command("npx", "mocha", "--require", "ts-node/register", "*.spec.ts")
+			cmd := exec.Command("bun", "run", "mocha", "--require", "ts-node/register", "*.spec.ts")
 			cmd.Dir = project.Root
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, "failed to run mocha tests: %s", string(out))
@@ -2530,6 +2576,7 @@ func TestLogDebugNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("log_debug", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			var count int
@@ -2589,6 +2636,7 @@ func TestAutonaming(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:           "autonaming",
 				Dependencies:  []string{"@pulumi/pulumi"},
+				UseBun:        true,
 				Env:           env,
 				OrderedConfig: orderedConfig,
 				LocalProviders: []integration.LocalDependency{
@@ -2611,12 +2659,12 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("nodejs/sourcemap-in-test")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("bun", "install")
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("bun", "add", coreSDK)
 
-	_, stderr := e.RunCommandExpectError("yarn", "test")
+	_, stderr := e.RunCommandExpectError("bun", "run", "test")
 
 	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
 
@@ -2641,6 +2689,7 @@ func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		ExpectFailure: true,
 		Stderr:        stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -2655,6 +2704,7 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program-precompiled"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		UseBun:        true,
 		ExpectFailure: true,
 		Stderr:        stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -3011,7 +3061,7 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	stderr := &bytes.Buffer{}
 	err = pm.Install(context.Background(), dir, false /* production*/, stdout, stderr)
 	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	cmd := exec.Command("yarn", "link", "@pulumi/pulumi")
+	cmd := exec.Command("bun", "link", "@pulumi/pulumi")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
@@ -3124,6 +3174,7 @@ func TestNodejsOnBeforeExit(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "before-exit"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -3146,6 +3197,7 @@ func TestNodejsPromiseMessage(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "promise-message"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -3175,6 +3227,7 @@ func TestNodejsExitError(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "exit-error"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -3208,6 +3261,7 @@ func TestTsExecute(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "ts-execute"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseBun:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: testProviderPath},
 		},

@@ -111,6 +111,7 @@ func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, link
 
 	// We delete and regenerate package files for each run.
 	removeFile("yarn.lock")
+	removeFile("bun.lock")
 	removeFile("package.json")
 	removeFile("tsconfig.json")
 
@@ -149,15 +150,15 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 }
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
-	RunCommand(t, "npm_install", pwd, "npm", "install")
+	RunCommand(t, "bun_install", pwd, "bun", "install")
 	if linkLocal {
-		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+		RunCommand(t, "bun_link", pwd, "bun", "link", "@pulumi/pulumi")
 	}
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
 	}
-	RunCommandWithOptions(t, tscOptions, "tsc", pwd, filepath.Join(pwd, "node_modules", ".bin", "tsc"),
+	RunCommandWithOptions(t, tscOptions, "tsc", pwd, "bun", "run", "tsc",
 		"--noEmit", "--skipLibCheck", "true", "--skipDefaultLibCheck", "true")
 }
 

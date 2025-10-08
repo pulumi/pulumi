@@ -57,14 +57,7 @@
     "nodejs": {
       "compatibility": "kubernetes20",
       "dependencies": {
-        "@pulumi/pulumi": "^3.25.0",
-        "@types/glob": "^5.0.35",
-        "@types/node-fetch": "^2.1.4",
-        "@types/tmp": "^0.0.33",
-        "glob": "^7.1.2",
-        "node-fetch": "^2.3.0",
-        "shell-quote": "^1.6.1",
-        "tmp": "^0.0.33"
+        "@pulumi/pulumi": "^3.25.0"
       },
       "moduleToPackage": {
         "core/v1": "core/v1",

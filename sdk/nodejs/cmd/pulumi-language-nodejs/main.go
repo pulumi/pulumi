@@ -1782,29 +1782,29 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
 		// so we don't need this special case.
 
-		yarn, err := executable.FindExecutable("yarn")
+		bun, err := executable.FindExecutable("bun")
 		if err != nil {
-			return nil, fmt.Errorf("find yarn: %w", err)
+			return nil, fmt.Errorf("find bun: %w", err)
 		}
 
-		err = writeString("$ yarn install --frozen-lockfile\n")
+		err = writeString("$ bun install --frozen-lockfile\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
-		yarnInstallCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn install: %w", err)
+		bunInstallCmd := exec.Command(bun, "install", "--frozen-lockfile")
+		bunInstallCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(bunInstallCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("bun install: %w", err)
 		}
 
-		err = writeString("$ yarn run tsc\n")
+		err = writeString("$ bun run tsc\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
-		yarnTscCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		bunTscCmd := exec.Command(bun, "run", "tsc")
+		bunTscCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(bunTscCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("bun run tsc: %w", err)
 		}
 
 		// "tsc" doesn't copy in the "proto" and "vendor" directories.

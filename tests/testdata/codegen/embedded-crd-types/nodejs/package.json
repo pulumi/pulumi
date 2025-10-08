@@ -5,7 +5,7 @@
         "build": "tsc"
     },
     "dependencies": {
-        "@pulumi/kubernetes": "^3.0.0",
+        "@pulumi/kubernetes": "^4.0.0",
         "@pulumi/pulumi": "^3.142.0"
     },
     "devDependencies": {

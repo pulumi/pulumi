@@ -49,8 +49,9 @@ tests/testdata/codegen/*-pp/*/package.json
 tests/testdata/codegen/*-pp/*/go.sum
 tests/testdata/codegen/*-pp/*/tsconfig.json
 
-# By default, we don't check in yarn.lock files
+# By default, we don't check in yarn.lock or bun.lock files
 **/yarn.lock
+**/bun.lock
 
 # By default, we don't check in Pipfile.lock files
 **/Pipfile.lock
