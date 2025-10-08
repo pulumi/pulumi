@@ -93,7 +93,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"random", "4.3.1"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"kubernetes", "3.7.0"},
-		SchemaProvider{"kubernetes", "3.7.2"},
+		SchemaProvider{"kubernetes", "4.23.0"},
 		SchemaProvider{"eks", "0.37.1"},
 		SchemaProvider{"google-native", "0.18.2"},
 		SchemaProvider{"google-native", "0.27.0"},

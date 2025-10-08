@@ -6,7 +6,7 @@ const hostname = config.get("hostname") || "example.com";
 const nginxDemo = new kubernetes.core.v1.Namespace("nginx-demo", {});
 const app = new kubernetes.apps.v1.Deployment("app", {
     metadata: {
-        namespace: nginxDemo.metadata.apply(metadata => metadata?.name),
+        namespace: nginxDemo.metadata.apply(metadata => metadata.name),
     },
     spec: {
         selector: {
@@ -32,7 +32,7 @@ const app = new kubernetes.apps.v1.Deployment("app", {
 });
 const service = new kubernetes.core.v1.Service("service", {
     metadata: {
-        namespace: nginxDemo.metadata.apply(metadata => metadata?.name),
+        namespace: nginxDemo.metadata.apply(metadata => metadata.name),
         labels: {
             "app.kubernetes.io/name": "nginx-demo",
         },
@@ -51,7 +51,7 @@ const service = new kubernetes.core.v1.Service("service", {
 });
 const ingress = new kubernetes.networking.v1.Ingress("ingress", {
     metadata: {
-        namespace: nginxDemo.metadata.apply(metadata => metadata?.name),
+        namespace: nginxDemo.metadata.apply(metadata => metadata.name),
     },
     spec: {
         rules: [{
@@ -62,7 +62,7 @@ const ingress = new kubernetes.networking.v1.Ingress("ingress", {
                     pathType: "Prefix",
                     backend: {
                         service: {
-                            name: service.metadata.apply(metadata => metadata?.name),
+                            name: service.metadata.apply(metadata => metadata.name),
                             port: {
                                 number: 80,
                             },

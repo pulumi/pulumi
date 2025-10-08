@@ -373,7 +373,7 @@ const (
 	AwsSchema              SchemaVersion = "4.26.0"
 	AzureNativeSchema      SchemaVersion = "1.29.0"
 	AzureSchema            SchemaVersion = "4.18.0"
-	KubernetesSchema       SchemaVersion = "3.7.2"
+	KubernetesSchema       SchemaVersion = "4.23.0"
 	RandomSchema           SchemaVersion = "4.11.2"
 	EksSchema              SchemaVersion = "0.37.1"
 	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
