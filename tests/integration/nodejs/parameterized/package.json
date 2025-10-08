@@ -11,5 +11,6 @@
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
-    }
+    },
+    "trustedDependencies": ["@pulumi/pkg"]
 }
