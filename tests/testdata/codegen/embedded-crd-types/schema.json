@@ -80,7 +80,7 @@
         },
         "nodejs": {
             "dependencies": {
-                "@pulumi/kubernetes": "^3.0.0"
+                "@pulumi/kubernetes": "^4.0.0"
             },
             "devDependencies": {
                 "typescript": "^4.3.5"

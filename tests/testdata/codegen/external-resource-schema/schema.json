@@ -158,7 +158,7 @@
       "dependencies": {
         "@pulumi/random": "^4.2.0",
         "@pulumi/aws": "^4.19.0",
-        "@pulumi/kubernetes": "^3.7.0"
+        "@pulumi/kubernetes": "^4.23.0"
       }
     },
     "python": {}
