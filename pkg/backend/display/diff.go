@@ -88,7 +88,8 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 
 			var msg string
 
-			// When the event received is SummaryEvent we can safely use `resourcesErrored` as all resource events have finished at this point.
+			// When the event received is SummaryEvent we can safely use `resourcesErrored`
+			// as all resource events have finished at this point.
 			if event.Type != engine.SummaryEvent {
 				msg = RenderDiffEvent(event, 0, seen, opts)
 			} else {
@@ -106,7 +107,9 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	}
 }
 
-func RenderDiffEvent(event engine.Event, resourcesErrored int, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
+func RenderDiffEvent(event engine.Event, resourcesErrored int,
+	seen map[resource.URN]engine.StepEventMetadata, opts Options,
+) string {
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
@@ -239,7 +242,9 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int, diffStyleSummary bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
+	diffStyleSummary bool, opts Options,
+) string {
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
