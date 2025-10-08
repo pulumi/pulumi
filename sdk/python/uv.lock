@@ -671,7 +671,7 @@ dev = [
 requires-dist = [
     { name = "debugpy", specifier = "~=1.8.7" },
     { name = "dill", specifier = "~=0.4" },
-    { name = "grpcio", specifier = ">=1.75.1" },
+    { name = "grpcio", specifier = ">=1.75.1,<2" },
     { name = "pip", specifier = ">=24.3.1,<26" },
     { name = "protobuf", specifier = "~=5.29.5" },
     { name = "pyyaml", specifier = "~=6.0" },

@@ -1801,7 +1801,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
+		yarnTscCmd := exec.Command(yarn, "run", "tsc --sourceMap true")
 		yarnTscCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)

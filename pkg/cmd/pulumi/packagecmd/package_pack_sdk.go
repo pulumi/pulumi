@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -29,10 +28,9 @@ import (
 
 func newPackagePackSdkCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "pack-sdk <language> <path>",
-		Args:   cobra.ExactArgs(2),
-		Short:  "Pack a package SDK to a language specific artifact.",
-		Hidden: !env.Dev.Value(),
+		Use:   "pack-sdk <language> <path>",
+		Args:  cobra.ExactArgs(2),
+		Short: "Pack a package SDK to a language specific artifact.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
