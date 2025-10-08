@@ -1961,7 +1961,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	e.ImportDirectory("interrupt")
 	// Install the provider's dependencies
-	e.RunCommand("pulumi", "install", "-C", providerPath)
+	installPythonProviderDependencies(t, providerPath)
 	e.CWD = programPath
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")

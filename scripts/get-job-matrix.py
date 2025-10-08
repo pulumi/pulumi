@@ -142,7 +142,7 @@ ALL_VERSION_SET = {
     "nodejs": ["20.x", "22.x", "23.x", "24.x"],
     # When updating the minimum Python version here, also update `pyproject.toml`, including the
     # `mypy` and `ruff` sections.
-    "python": ["3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
+    "python": ["3.10.x", "3.11.x", "3.12.x", "3.13.x", "3.14.x"],
 }
 
 MINIMUM_SUPPORTED_VERSION_SET = {

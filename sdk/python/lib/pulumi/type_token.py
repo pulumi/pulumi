@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar, Callable, Optional
+from typing import TypeVar, Optional
+from collections.abc import Callable
 
 T = TypeVar("T", bound=type)
 
