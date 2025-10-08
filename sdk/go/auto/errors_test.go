@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
@@ -43,15 +44,12 @@ func TestConcurrentUpdateError(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "conflict_error")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	c := make(chan error)
@@ -81,10 +79,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 
 	if len(otherErrors) > 0 {
 		t.Logf("Concurrent updates incurred %d non-conflict errors, including:", len(otherErrors))
@@ -93,9 +88,8 @@ func TestConcurrentUpdateError(t *testing.T) {
 		}
 	}
 
-	if conflicts == 0 {
-		t.Errorf("Expected at least one conflict error from the %d concurrent updates, but got none", n)
-	}
+	// should have at least one conflict
+	assert.Greater(t, conflicts, 0)
 }
 
 func TestInlineConcurrentUpdateError(t *testing.T) {
@@ -112,15 +106,12 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	c := make(chan error)
@@ -145,10 +136,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 
 	// should have at least one conflict
 	assert.Greater(t, conflicts, 0)
@@ -166,15 +154,12 @@ func TestCompilationErrorGo(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "go")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -183,10 +168,7 @@ func TestCompilationErrorGo(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestSelectStack404Error(t *testing.T) {
@@ -200,10 +182,7 @@ func TestSelectStack404Error(t *testing.T) {
 	pDir := filepath.Join(".", "test", "testproj")
 	opts := []LocalWorkspaceOption{WorkDir(pDir)}
 	w, err := NewLocalWorkspace(ctx, opts...)
-	if err != nil {
-		t.Errorf("failed to initialize workspace, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize workspace")
 
 	// attempt to select stack that has not been created.
 	_, err = SelectStack(ctx, stackName, w)
@@ -220,24 +199,18 @@ func TestCreateStack409Error(t *testing.T) {
 	// initialize first stack
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// initialize workspace for dupe stack
 	opts := []LocalWorkspaceOption{WorkDir(pDir)}
 	w, err := NewLocalWorkspace(ctx, opts...)
-	if err != nil {
-		t.Errorf("failed to initialize workspace, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize workspace")
 
 	// attempt to create a dupe stack.
 	_, err = NewStack(ctx, stackName, w)
@@ -254,15 +227,12 @@ func TestCompilationErrorDotnet(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "dotnet")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -271,10 +241,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestCompilationErrorTypescript(t *testing.T) {
@@ -290,21 +257,15 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	cmd := exec.Command("bun", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
-	if err != nil {
-		t.Errorf("failed to install project dependencies")
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to install project dependencies")
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -313,10 +274,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 const runtimeErrProj = "runtime_error"
@@ -331,15 +289,12 @@ func TestRuntimeErrorGo(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "go")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -348,10 +303,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestRuntimeErrorInlineGo(t *testing.T) {
@@ -365,15 +317,12 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 	s, err := NewStackInlineSource(ctx, stackName, runtimeErrProj, func(ctx *pulumi.Context) error {
 		panic("great sadness")
 	})
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -382,10 +331,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestRuntimeErrorPython(t *testing.T) {
@@ -397,56 +343,36 @@ func TestRuntimeErrorPython(t *testing.T) {
 
 	// initialize
 	pDir, err := filepath.Abs(filepath.Join(".", "test", "errors", "runtime_error", "python"))
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
 		Root:       pDir,
 		Virtualenv: "venv",
 	})
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
 	err = tc.InstallDependencies(context.Background(), pDir, false, /*useLanguageVersionTools */
 		true /*showOutput*/, os.Stdout, os.Stderr)
-	if err != nil {
-		t.Errorf("failed to create a venv and install project dependencies: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to install project dependencies")
 
 	pySDK, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python"))
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
 	pyCmd, err := tc.ModuleCommand(context.Background(), "pip", "install", "-e", pySDK)
-	if err != nil {
-		t.Errorf("failed to install the local SDK: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to install the local SDK")
+
 	pyCmd.Dir = pDir
 	err = pyCmd.Run()
-	if err != nil {
-		t.Errorf("failed to link venv against in-source pulumi: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to link venv against in-source pulumi")
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -456,10 +382,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestRuntimeErrorJavascript(t *testing.T) {
@@ -475,21 +398,14 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	cmd := exec.Command("bun", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
-	if err != nil {
-		t.Errorf("failed to install project dependencies")
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to install project dependencies")
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
-
+	require.NoError(t, err, "failed to initialize stack")
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -498,10 +414,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestRuntimeErrorTypescript(t *testing.T) {
@@ -517,21 +430,15 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	cmd := exec.Command("bun", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
-	if err != nil {
-		t.Errorf("failed to install project dependencies")
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to install project dependencies")
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -540,10 +447,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestRuntimeErrorDotnet(t *testing.T) {
@@ -556,15 +460,12 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "dotnet")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	_, err = s.Up(ctx)
@@ -573,8 +474,5 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 	// -- pulumi destroy --
 
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "destroy failed")
 }
