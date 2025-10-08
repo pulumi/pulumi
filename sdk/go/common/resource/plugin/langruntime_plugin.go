@@ -889,28 +889,57 @@ func languageHandshake(
 }
 
 func (h *langhost) Link(
-	info ProgramInfo, localDependencies map[string]string,
-) error {
+	info ProgramInfo, localDependencies map[string]workspace.PackageDescriptor, loaderTarget string,
+) (string, error) {
 	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, localDependencies)
 	logging.V(7).Infof("%s executing", label)
 
 	minfo, err := info.Marshal()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
-		Info:              minfo,
-		LocalDependencies: localDependencies,
+	packages := []*pulumirpc.LinkRequest_LinkDependency{}
+	for path, dep := range localDependencies {
+		version := ""
+		if dep.Version != nil {
+			version = dep.Version.String()
+		}
+
+		var parameterization *pulumirpc.PackageParameterization
+		if dep.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    dep.Parameterization.Name,
+				Version: dep.Parameterization.Version.String(),
+				Value:   dep.Parameterization.Value,
+			}
+		}
+
+		packages = append(packages, &pulumirpc.LinkRequest_LinkDependency{
+			Path: path,
+			Package: &pulumirpc.PackageDependency{
+				Name:             dep.Name,
+				Version:          version,
+				Server:           dep.PluginDownloadURL,
+				Kind:             string(dep.Kind),
+				Parameterization: parameterization,
+			},
+		})
+	}
+
+	res, err := h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+		Info:         minfo,
+		Packages:     packages,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return rpcError
+		return "", rpcError
 	}
 
 	logging.V(7).Infof("%s success", label)
-	return nil
+	return res.ImportInstructions, nil
 }
 
 func (h *langhost) Cancel() error {

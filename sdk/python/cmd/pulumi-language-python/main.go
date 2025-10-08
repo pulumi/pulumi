@@ -68,6 +68,7 @@ import (
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -1699,8 +1700,114 @@ func removeReleaseCandidateSuffix(version string) string {
 func (host *pythonLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The Python language host does not support linking, so we return an empty response.
-	return &pulumirpc.LinkResponse{}, nil
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	instructions := "You can import the SDK in your Python code with:\n\n"
+
+	// Map  python package names to paths
+	packages := map[string]string{}
+	for _, dep := range req.Packages {
+		if dep.Package.Name == "pulumi" {
+			packages["pulumi"] = dep.Path
+			continue
+		}
+
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+
+		info, err := pkgRef.Language("python")
+		if err != nil {
+			return nil, err
+		}
+		pyInfo, ok := info.(python.PackageInfo)
+		var importName string
+		var packageName string
+		if ok && pyInfo.PackageName != "" {
+			importName = pyInfo.PackageName
+			packageName = pyInfo.PackageName
+		} else {
+			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
+		}
+
+		if packageName == "" {
+			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
+		}
+		packages[packageName] = dep.Path
+		instructions += fmt.Sprintf("  import %s as %s\n", packageName, importName)
+	}
+
+	if opts.Toolchain != toolchain.Pip {
+		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")
+		if _, err := os.Stat(pyprojectPath); os.IsNotExist(err) {
+			requirementsPath := filepath.Join(req.Info.ProgramDirectory, "requirements.txt")
+			if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+				return nil, fmt.Errorf("no pyproject.toml or requirements.txt found in %s", req.Info.ProgramDirectory)
+			}
+			// We're not using pip, but there's no pyproject.toml, and
+			// requirements.txt still exists. This means we haven't run `pulumi
+			// install` yet.
+			// See https://github.com/pulumi/pulumi/issues/19763
+			//
+			// Pretend we're using pip so that the package gets linked into
+			// requirements.txt and then later converted into dependencies in
+			// pyproject.toml for poetry or uv.
+			opts.Toolchain = toolchain.Pip
+		}
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := tc.LinkPackages(ctx, packages); err != nil {
+		return nil, fmt.Errorf("linking packages: %w", err)
+	}
+
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
 }
 
 func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
