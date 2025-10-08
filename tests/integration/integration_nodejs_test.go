@@ -1325,14 +1325,8 @@ func TestESMTSX(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of bun
-	// linking, because bun link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("bun", "install")
-	e.RunCommand("bun", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1340,7 +1334,7 @@ func TestESMTSX(t *testing.T) {
 	// Validate the stack outputs
 	stdout, _ := e.RunCommand("pulumi", "stack", "export")
 	var stackExport map[string]any
-	err = json.Unmarshal([]byte(stdout), &stackExport)
+	err := json.Unmarshal([]byte(stdout), &stackExport)
 	require.NoError(t, err)
 	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
 	require.True(t, ok)
@@ -1363,14 +1357,8 @@ func TestESMTSAuto(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of bun
-	// linking, because bun link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("bun", "install")
-	e.RunCommand("bun", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1378,7 +1366,7 @@ func TestESMTSAuto(t *testing.T) {
 	// Validate the stack outputs
 	stdout, _ := e.RunCommand("pulumi", "stack", "export")
 	var stackExport map[string]any
-	err = json.Unmarshal([]byte(stdout), &stackExport)
+	err := json.Unmarshal([]byte(stdout), &stackExport)
 	require.NoError(t, err)
 	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
 	require.True(t, ok)
@@ -1401,14 +1389,8 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of bun
-	// linking, because bun link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
+	e.RunCommand("bun", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("bun", "install")
-	e.RunCommand("bun", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1841,14 +1823,8 @@ func TestTranspileOnly(t *testing.T) {
 
 			stackName := ptesting.RandomStackName()
 
-			// For this test we need to properly install the core SDK instead of bun
-			// linking, because bun link breaks the typescript version detection, and
-			// causes us to use the vendored typescript 3.8.3, which does not support
-			// the `noCheck` option.
-			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-			require.NoError(t, err)
+			e.RunCommand("bun", "link", "@pulumi/pulumi")
 			e.RunCommandWithRetry("bun", "install")
-			e.RunCommand("bun", "add", coreSDK)
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
 			e.RunCommand("pulumi", "stack", "select", stackName)
@@ -2455,7 +2431,7 @@ func TestParameterizedNode(t *testing.T) {
 		},
 		PostPrepareProject: func(project *engine.Projinfo) error {
 			// Run the mocha tests
-			cmd := exec.Command("npx", "mocha", "--require", "ts-node/register", "*.spec.ts")
+			cmd := exec.Command("bun", "run", "mocha", "--require", "ts-node/register", "*.spec.ts")
 			cmd.Dir = project.Root
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, "failed to run mocha tests: %s", string(out))
