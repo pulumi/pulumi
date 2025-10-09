@@ -18,13 +18,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -127,4 +131,84 @@ resource "app" "scaleway:iam/application:Application" {}
 
 	require.Len(t, imp.importStatements, 1)
 	assert.Equal(t, `import * as scaleway from "@pulumiverse/scaleway";`, imp.importStatements[0])
+}
+
+func parseAndBindProgram(t *testing.T,
+	text string,
+	name string,
+	testdataPath string,
+	options ...pcl.BindOption,
+) (*pcl.Program, hcl.Diagnostics, error) {
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(text), name)
+	if err != nil {
+		t.Fatalf("could not read %v: %v", name, err)
+	}
+	if parser.Diagnostics.HasErrors() {
+		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
+	}
+
+	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	return pcl.BindProgram(parser.Files, options...)
+}
+
+func bindProgramWithParameterizedDependencies(t *testing.T) *pcl.Program {
+	// usually the base provider here would be `terraform-provider` as this
+	// a package descriptor for a dynamically parameterized provider schema.
+	// however, for testing purposes we can use `tfe` as it is available
+	// in the testdata directory as a parameterized schema.
+	source := `
+package "tfe" {
+  baseProviderName    = "tfe"
+  baseProviderVersion = "0.68.2"
+  parameterization {
+    version = "0.68.2"
+    name    = "tfe"
+    value   = "eyJyZW1vdGUiOnsidXJsIjoiaGFzaGljb3JwL3RmZSIsInZlcnNpb24iOiIwLjY4LjIifX0="
+  }
+}
+
+
+resource "test-organization" "tfe:index/organization:Organization" {
+  name  = "my-org-name"
+  email = "admin@company.com"
+}
+`
+
+	program, diags, err := parseAndBindProgram(t,
+		source,
+		"main.pp",
+		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
+
+	assert.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
+	assert.NotNil(t, program)
+
+	return program
+}
+
+func TestGeneratingPackageJSON_UsingZippedLocalDependency(t *testing.T) {
+	t.Parallel()
+
+	program := bindProgramWithParameterizedDependencies(t)
+	localDependencies := map[string]string{
+		"tfe": "sdk/tfe/tfe-0.68.2.tgz",
+	}
+
+	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
+	require.NoError(t, err)
+	assert.Contains(t, string(packageJSON), `"@pulumi/tfe": "sdk/tfe/tfe-0.68.2.tgz"`)
+}
+
+func TestGeneratingPackageJSON_UsingLocalSourceDependency(t *testing.T) {
+	t.Parallel()
+
+	program := bindProgramWithParameterizedDependencies(t)
+	localDependencies := map[string]string{
+		"tfe": "sdk/tfe",
+	}
+
+	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
+	require.NoError(t, err)
+	assert.Contains(t, string(packageJSON), `"@pulumi/tfe": "file:sdk/tfe"`)
 }
