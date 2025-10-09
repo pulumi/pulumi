@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateProgramVersionSelection(t *testing.T) {
@@ -80,9 +80,9 @@ resource "test-organization" "tfe:index/organization:Organization" {
 		"main.pp",
 		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
 
-	assert.NoError(t, err)
-	assert.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
-	assert.NotNil(t, program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
+	require.NotNil(t, program)
 
 	return program
 }
@@ -98,10 +98,10 @@ func TestGenerateProjectFileWhenUsingLocalNugetPackages(t *testing.T) {
 		"tfe": filepath.Join("sdks", "tfe", "Pulumi.Tfe.0.68.2.nupkg"),
 	}
 	csproj, err := generateProjectFile(program, localNugetDependencies)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	csprojText := string(csproj)
-	assert.Contains(t, csprojText, `<RestoreSources>sdks/tfe;$(RestoreSources)</RestoreSources>`)
-	assert.Contains(t, csprojText, `<PackageReference Include="Pulumi.Tfe" Version="0.68.2" />`)
+	require.Contains(t, csprojText, `<RestoreSources>sdks/tfe;$(RestoreSources)</RestoreSources>`)
+	require.Contains(t, csprojText, `<PackageReference Include="Pulumi.Tfe" Version="0.68.2" />`)
 }
 
 // Tests the generated .csproj file when using local dependencies
@@ -115,7 +115,7 @@ func TestGenerateProjectFileWhenUsingLocalSourcePackages(t *testing.T) {
 		"tfe": filepath.Join("sdks", "tfe"),
 	}
 	csproj, err := generateProjectFile(program, localNugetDependencies)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	csprojText := string(csproj)
-	assert.Contains(t, csprojText, `<ProjectReference Include="sdks/tfe/Pulumi.Tfe.csproj" />`)
+	require.Contains(t, csprojText, `<ProjectReference Include="sdks/tfe/Pulumi.Tfe.csproj" />`)
 }

@@ -180,9 +180,9 @@ resource "test-organization" "tfe:index/organization:Organization" {
 		"main.pp",
 		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
 
-	assert.NoError(t, err)
-	assert.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
-	assert.NotNil(t, program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
+	require.NotNil(t, program)
 
 	return program
 }
@@ -197,7 +197,7 @@ func TestGeneratingPackageJSON_UsingZippedLocalDependency(t *testing.T) {
 
 	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
 	require.NoError(t, err)
-	assert.Contains(t, string(packageJSON), `"@pulumi/tfe": "sdk/tfe/tfe-0.68.2.tgz"`)
+	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "sdk/tfe/tfe-0.68.2.tgz"`)
 }
 
 func TestGeneratingPackageJSON_UsingLocalSourceDependency(t *testing.T) {
@@ -210,5 +210,5 @@ func TestGeneratingPackageJSON_UsingLocalSourceDependency(t *testing.T) {
 
 	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
 	require.NoError(t, err)
-	assert.Contains(t, string(packageJSON), `"@pulumi/tfe": "file:sdk/tfe"`)
+	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "file:sdk/tfe"`)
 }

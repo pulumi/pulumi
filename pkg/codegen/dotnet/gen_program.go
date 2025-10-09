@@ -362,7 +362,6 @@ func generateProjectFile(program *pcl.Program, localDependencies map[string]stri
 				fmt.Fprintf(&csproj, packageTemplate, packageName, "*")
 			}
 		}
-
 	}
 
 	csproj.WriteString(`	</ItemGroup>
