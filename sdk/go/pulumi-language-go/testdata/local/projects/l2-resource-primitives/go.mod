@@ -7,6 +7,6 @@ require (
 	example.com/pulumi-primitive/sdk/go/v7 v7.0.0
 )
 
-replace example.com/pulumi-primitive/sdk/go/v7 => /tmp/TestLanguagelocal=true1926289778/001/projects/l2-resource-primitives/sdks/primitive-7.0.0
+replace example.com/pulumi-primitive/sdk/go/v7 => /ROOT/projects/l2-resource-primitives/sdks/primitive-7.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3

@@ -9,4 +9,4 @@ require (
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
 
-replace example.com/pulumi-ref-ref/sdk/go/v12 => /tmp/TestLanguagelocal=true2430159331/001/projects/l2-ref-ref/sdks/ref-ref-12.0.0
+replace example.com/pulumi-ref-ref/sdk/go/v12 => /ROOT/projects/l2-ref-ref/sdks/ref-ref-12.0.0

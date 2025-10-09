@@ -188,9 +188,9 @@ func TestLanguage(t *testing.T) {
 				Local:                local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
-						Path:        "go\\.mod",
-						Pattern:     rootDir + "/artifacts",
-						Replacement: "/ROOT/artifacts",
+						Path:        "(.+/)?go\\.mod",
+						Pattern:     rootDir + "/",
+						Replacement: "/ROOT/",
 					},
 				},
 				ProgramOverrides: programOverrides,
