@@ -1735,6 +1735,9 @@ describe("rpc", () => {
                 return { failures: undefined, ret: args };
             },
         },
+        automation_sxs: {
+            pwd: path.join(base, "080.automation_sxs"),
+        },
     };
 
     for (const casename of Object.keys(cases)) {
