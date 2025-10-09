@@ -66,8 +66,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         const resp: any = new langproto.RunResponse();
 
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const errorSet = new Set<Error>();
             const uncaughtHandler = newUncaughtHandler(errorSet);
             try {
