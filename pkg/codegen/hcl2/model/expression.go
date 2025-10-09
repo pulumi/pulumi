@@ -61,7 +61,7 @@ func identToken(token syntax.Token, ident string) syntax.Token {
 	return token
 }
 
-func exprHasLeadingTrivia(parens syntax.Parentheses, first interface{}) bool {
+func exprHasLeadingTrivia(parens syntax.Parentheses, first any) bool {
 	if parens.Any() {
 		return true
 	}
@@ -76,7 +76,7 @@ func exprHasLeadingTrivia(parens syntax.Parentheses, first interface{}) bool {
 	}
 }
 
-func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
+func exprHasTrailingTrivia(parens syntax.Parentheses, last any) bool {
 	if parens.Any() {
 		return true
 	}
@@ -91,7 +91,7 @@ func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
 	}
 }
 
-func getExprLeadingTrivia(parens syntax.Parentheses, first interface{}) syntax.TriviaList {
+func getExprLeadingTrivia(parens syntax.Parentheses, first any) syntax.TriviaList {
 	if parens.Any() {
 		return parens.GetLeadingTrivia()
 	}
@@ -104,7 +104,7 @@ func getExprLeadingTrivia(parens syntax.Parentheses, first interface{}) syntax.T
 	return nil
 }
 
-func setExprLeadingTrivia(parens syntax.Parentheses, first interface{}, trivia syntax.TriviaList) {
+func setExprLeadingTrivia(parens syntax.Parentheses, first any, trivia syntax.TriviaList) {
 	if parens.Any() {
 		parens.SetLeadingTrivia(trivia)
 		return
@@ -117,7 +117,7 @@ func setExprLeadingTrivia(parens syntax.Parentheses, first interface{}, trivia s
 	}
 }
 
-func getExprTrailingTrivia(parens syntax.Parentheses, last interface{}) syntax.TriviaList {
+func getExprTrailingTrivia(parens syntax.Parentheses, last any) syntax.TriviaList {
 	if parens.Any() {
 		return parens.GetTrailingTrivia()
 	}
@@ -130,7 +130,7 @@ func getExprTrailingTrivia(parens syntax.Parentheses, last interface{}) syntax.T
 	return nil
 }
 
-func setExprTrailingTrivia(parens syntax.Parentheses, last interface{}, trivia syntax.TriviaList) {
+func setExprTrailingTrivia(parens syntax.Parentheses, last any, trivia syntax.TriviaList) {
 	if parens.Any() {
 		parens.SetTrailingTrivia(trivia)
 		return

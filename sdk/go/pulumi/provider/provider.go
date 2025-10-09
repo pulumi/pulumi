@@ -34,7 +34,7 @@ func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	construct ConstructFunc,
 ) (*pulumirpc.ConstructResponse, error) {
 	return linkedConstruct(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, typ, name string,
-		inputs map[string]interface{}, options pulumi.ResourceOption,
+		inputs map[string]any, options pulumi.ResourceOption,
 	) (pulumi.URNInput, pulumi.Input, error) {
 		ci := ConstructInputs{ctx: pulumiCtx, inputs: inputs}
 		result, err := construct(pulumiCtx, typ, name, ci, options)
@@ -48,7 +48,7 @@ func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 // ConstructInputs represents the inputs associated with a call to Construct.
 type ConstructInputs struct {
 	ctx    *pulumi.Context
-	inputs map[string]interface{}
+	inputs map[string]any
 }
 
 // Map returns the inputs as a Map.
@@ -57,7 +57,7 @@ func (inputs ConstructInputs) Map() (pulumi.Map, error) {
 }
 
 // CopyTo sets the inputs on the given args struct.
-func (inputs ConstructInputs) CopyTo(args interface{}) error {
+func (inputs ConstructInputs) CopyTo(args any) error {
 	return linkedConstructInputsCopyTo(inputs.ctx, inputs.inputs, args)
 }
 
@@ -86,16 +86,16 @@ func Call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	call CallFunc,
 ) (*pulumirpc.CallResponse, error) {
 	return linkedCall(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, tok string,
-		args map[string]interface{},
-	) (pulumi.Input, []interface{}, error) {
+		args map[string]any,
+	) (pulumi.Input, []any, error) {
 		ca := CallArgs{ctx: pulumiCtx, args: args}
 		result, err := call(pulumiCtx, tok, ca)
 		if err != nil {
 			return nil, nil, err
 		}
-		var failures []interface{}
+		var failures []any
 		if len(result.Failures) > 0 {
-			failures = make([]interface{}, len(result.Failures))
+			failures = make([]any, len(result.Failures))
 			for i, v := range result.Failures {
 				failures[i] = linkedNewCallFailure(v.Property, v.Reason)
 			}
@@ -107,7 +107,7 @@ func Call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 // CallArgs represents the Call's arguments.
 type CallArgs struct {
 	ctx  *pulumi.Context
-	args map[string]interface{}
+	args map[string]any
 }
 
 // Map returns the args as a Map.
@@ -118,7 +118,7 @@ func (a CallArgs) Map() (pulumi.Map, error) {
 
 // CopyTo sets the args on the given args struct. If there is a `__self__` argument, it will be
 // returned, otherwise it will return nil.
-func (a CallArgs) CopyTo(args interface{}) (pulumi.Resource, error) {
+func (a CallArgs) CopyTo(args any) (pulumi.Resource, error) {
 	return linkedCallArgsCopyTo(a.ctx, a.args, args)
 }
 
@@ -143,7 +143,7 @@ type CallResult struct {
 }
 
 // NewCallResult creates a CallResult from the given result.
-func NewCallResult(result interface{}) (*CallResult, error) {
+func NewCallResult(result any) (*CallResult, error) {
 	ret, err := linkedNewCallResult(result)
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func NewSingletonCallResult[T any](result T) (*CallResult, error) {
 	return NewCallResult(&wrapper{result})
 }
 
-type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string]interface{},
+type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string]any,
 	options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error)
 
 // linkedConstruct is made available here from ../provider_linked.go via go:linkname.
@@ -171,29 +171,29 @@ func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engin
 	constructF constructFunc) (*pulumirpc.ConstructResponse, error)
 
 // linkedConstructInputsMap is made available here from ../provider_linked.go via go:linkname.
-func linkedConstructInputsMap(ctx *pulumi.Context, inputs map[string]interface{}) (pulumi.Map, error)
+func linkedConstructInputsMap(ctx *pulumi.Context, inputs map[string]any) (pulumi.Map, error)
 
 // linkedConstructInputsCopyTo is made available here from ../provider_linked.go via go:linkname.
-func linkedConstructInputsCopyTo(ctx *pulumi.Context, inputs map[string]interface{}, args interface{}) error
+func linkedConstructInputsCopyTo(ctx *pulumi.Context, inputs map[string]any, args any) error
 
 // linkedNewConstructResult is made available here from ../provider_linked.go via go:linkname.
 func linkedNewConstructResult(resource pulumi.ComponentResource) (pulumi.URNInput, pulumi.Input, error)
 
-type callFunc func(ctx *pulumi.Context, tok string, args map[string]interface{}) (pulumi.Input, []interface{}, error)
+type callFunc func(ctx *pulumi.Context, tok string, args map[string]any) (pulumi.Input, []any, error)
 
 // linkedCall is made available here from ../provider_linked.go via go:linkname.
 func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
 	callF callFunc) (*pulumirpc.CallResponse, error)
 
 // linkedCallArgsCopyTo is made available here from ../provider_linked.go via go:linkname.
-func linkedCallArgsCopyTo(ctx *pulumi.Context, source map[string]interface{},
-	args interface{}) (pulumi.Resource, error)
+func linkedCallArgsCopyTo(ctx *pulumi.Context, source map[string]any,
+	args any) (pulumi.Resource, error)
 
 // linkedCallArgsSelf is made available here from ../provider_linked.go via go:linkname.
-func linkedCallArgsSelf(ctx *pulumi.Context, source map[string]interface{}) (pulumi.Resource, error)
+func linkedCallArgsSelf(ctx *pulumi.Context, source map[string]any) (pulumi.Resource, error)
 
 // linkedNewCallResult is made available here from ../provider_linked.go via go:linkname.
-func linkedNewCallResult(result interface{}) (pulumi.Input, error)
+func linkedNewCallResult(result any) (pulumi.Input, error)
 
 // linkedNewCallFailure is made available here from ../provider_linked.go via go:linkname.
-func linkedNewCallFailure(property, reason string) interface{}
+func linkedNewCallFailure(property, reason string) any

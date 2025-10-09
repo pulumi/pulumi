@@ -49,7 +49,7 @@ func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	t.Parallel()
 	s := &schema.Package{
 		Name: "pulumiservice",
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"nodejs": NodePackageInfo{
 				PackageName: "@pulumi/bar",
 			},
@@ -125,6 +125,6 @@ resource "app" "scaleway:iam/application:Application" {}
 	g := generator{program: program, Formatter: &format.Formatter{Indent: "  "}}
 	imp := g.collectProgramImports(program)
 
-	assert.Equal(t, 1, len(imp.importStatements))
+	require.Len(t, imp.importStatements, 1)
 	assert.Equal(t, `import * as scaleway from "@pulumiverse/scaleway";`, imp.importStatements[0])
 }

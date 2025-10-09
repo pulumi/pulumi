@@ -486,11 +486,7 @@ def main(provider: Provider, args: list[str]) -> None:  # args not in use?
         await server.wait_for_termination()
 
     try:
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(serve())
-        finally:
-            loop.close()
+        asyncio.run(serve())
     except KeyboardInterrupt:
         pass
 

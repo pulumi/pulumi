@@ -157,7 +157,7 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 			o, set, _ := ctx.NewOutput()
 			go func() {
 				set(1)
-				o.ApplyT(func(x interface{}) interface{} { return x })
+				o.ApplyT(func(x any) any { return x })
 			}()
 			return nil
 		}, WithMocks("project", "stack", mocks))
@@ -249,11 +249,11 @@ func TestCollapseAliases(t *testing.T) {
 			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
 			require.NoError(t, err)
 			require.Len(t, urns, testCase.totalAliasUrns)
-			var items []interface{}
+			var items []any
 			for _, item := range urns {
 				items = append(items, item)
 			}
-			All(items...).ApplyT(func(urns interface{}) bool {
+			All(items...).ApplyT(func(urns any) bool {
 				assert.ElementsMatch(t, urns, testCase.results)
 				return true
 			})
@@ -359,14 +359,12 @@ func TestMergeProviders(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
-		i, tt := i, tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 
 			err := RunErr(func(ctx *Context) error {
 				providers := map[string]ProviderResource{}
 				for _, p := range tt.providers {
-					p := p // Move out of loop, for gosec
 					providers[p.t] = p.i(ctx, t)
 				}
 
@@ -481,7 +479,6 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

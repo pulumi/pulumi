@@ -433,7 +433,6 @@ func TestDeleteProtected(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			pA := NewProviderResource("a", "p1", "0")
@@ -577,8 +576,8 @@ func TestRenameStack(t *testing.T) {
 		return apitype.ResourceV3{
 			Type:         t,
 			URN:          resource.NewURN("test", "test", "", t, name),
-			Inputs:       map[string]interface{}{},
-			Outputs:      map[string]interface{}{},
+			Inputs:       map[string]any{},
+			Outputs:      map[string]any{},
 			Dependencies: deps,
 			Provider:     prov,
 		}
@@ -590,8 +589,8 @@ func TestRenameStack(t *testing.T) {
 			Type:         t,
 			URN:          resource.NewURN("test", "test", "", t, name),
 			ID:           resource.ID(id),
-			Inputs:       map[string]interface{}{},
-			Outputs:      map[string]interface{}{},
+			Inputs:       map[string]any{},
+			Outputs:      map[string]any{},
 			Dependencies: deps,
 		}
 	}

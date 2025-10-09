@@ -144,7 +144,7 @@ func TestRegisterResource(t *testing.T) {
 			switch args.TypeToken {
 			case "test:resource:type":
 				assert.Equal(t, "resA", args.Name)
-				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
 					"foo":  "oof",
 					"bar":  "rab",
 					"baz":  "zab",
@@ -156,7 +156,7 @@ func TestRegisterResource(t *testing.T) {
 				return "someID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
 			case "test:resource:complextype":
 				assert.Equal(t, "resB", args.Name)
-				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
 					"foo":  "oof",
 					"bar":  "rab",
 					"baz":  "zab",
@@ -239,7 +239,7 @@ func TestRegisterResource(t *testing.T) {
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res2}, deps)
-		assert.Equal(t, map[string]interface{}{"foo": "qux"}, outputs)
+		assert.Equal(t, map[string]any{"foo": "qux"}, outputs)
 
 		// Test raw access to property values:
 		var res3 testResource3
@@ -301,7 +301,7 @@ func TestReadResource(t *testing.T) {
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			assert.Equal(t, "test:resource:type", args.TypeToken)
 			assert.Equal(t, "resA", args.Name)
-			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "oof",
 			})))
 			assert.Equal(t, "", args.Provider)
@@ -365,11 +365,11 @@ func TestInvoke(t *testing.T) {
 	mocks := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			assert.Equal(t, "test:index:func", args.Token)
-			assert.True(t, args.Args.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.True(t, args.Args.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
 				"bang": "gnab",
 				"bar":  "rab",
 			})))
-			return resource.NewPropertyMapFromMap(map[string]interface{}{
+			return resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "oof",
 				"baz": "zab",
 			}), nil
@@ -388,7 +388,7 @@ func TestInvoke(t *testing.T) {
 		assert.Equal(t, "zab", result.Baz)
 
 		// Test map unmarshaling.
-		var result2 map[string]interface{}
+		var result2 map[string]any
 		err = ctx.Invoke("test:index:func", &invokeArgs{
 			Bang: "gnab",
 			Bar:  "rab",
@@ -714,7 +714,7 @@ func TestWaitOrphanedAllApply(t *testing.T) {
 		}, &res)
 		require.NoError(t, err)
 
-		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+		All(res.URN(), res.ID()).ApplyT(func(vs []any) int {
 			theURN, _ = vs[0].(URN)
 			theID, _ = vs[1].(ID)
 			return 0
@@ -749,7 +749,7 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 		Any(map[string]Output{
 			"urn": res.URN(),
 			"id":  res.ID(),
-		}).ApplyT(func(v interface{}) int {
+		}).ApplyT(func(v any) int {
 			m := v.(map[string]Output)
 			m["urn"].ApplyT(func(urn URN) int {
 				theURN = urn
@@ -788,7 +788,7 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 		}, &res)
 		require.NoError(t, err)
 
-		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+		All(res.URN(), res.ID()).ApplyT(func(vs []any) int {
 			theURN, _ = vs[0].(URN)
 			theID, _ = vs[1].(ID)
 			return 0
@@ -823,7 +823,7 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 		Any(map[string]Output{
 			"urn": res.URN(),
 			"id":  res.ID(),
-		}).ApplyT(func(v interface{}) int {
+		}).ApplyT(func(v any) int {
 			m := v.(map[string]Output)
 			m["urn"].ApplyT(func(urn URN) int {
 				theURN = urn

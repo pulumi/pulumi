@@ -143,9 +143,9 @@ const (
 
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
 type UpdateEvent struct {
-	Index  string                 `json:"index"`
-	Kind   UpdateEventKind        `json:"kind"`
-	Fields map[string]interface{} `json:"fields"`
+	Index  string          `json:"index"`
+	Kind   UpdateEventKind `json:"kind"`
+	Fields map[string]any  `json:"fields"`
 }
 
 // UpdateStatus is an enum describing the current state during the lifecycle of an update.
@@ -283,8 +283,8 @@ type PatchUpdateCheckpointDeltaRequest struct {
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
 // No longer sent from the CLI, but the type definition is still required for backwards compat with older clients.
 type AppendUpdateLogEntryRequest struct {
-	Kind   string                 `json:"kind"`
-	Fields map[string]interface{} `json:"fields"`
+	Kind   string         `json:"kind"`
+	Fields map[string]any `json:"fields"`
 }
 
 // StackRenameRequest is the shape of the request to change an existing stack's name.

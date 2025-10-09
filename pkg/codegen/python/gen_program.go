@@ -325,23 +325,23 @@ func GenerateProject(
 		}
 	}
 
-	var options map[string]interface{}
+	var options map[string]any
 	if _, ok := localDependencies["pulumi"]; ok {
-		options = map[string]interface{}{
+		options = map[string]any{
 			"virtualenv": "venv",
 		}
 	}
 
 	if typechecker != "" {
 		if options == nil {
-			options = map[string]interface{}{}
+			options = map[string]any{}
 		}
 		options["typechecker"] = typechecker
 	}
 
 	if toolchain != "" {
 		if options == nil {
-			options = map[string]interface{}{}
+			options = map[string]any{}
 		}
 		options["toolchain"] = toolchain
 	}
@@ -807,6 +807,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.ImportID != nil {
 		appendOption("import_", opts.ImportID)
 	}
+	if opts.HideDiffs != nil {
+		appendOption("hide_diffs", opts.HideDiffs)
+	}
 
 	return block, temps
 }
@@ -1231,7 +1234,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

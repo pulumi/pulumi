@@ -237,7 +237,7 @@ type RuntimeOptionValue struct {
 	DisplayName string
 }
 
-func (v RuntimeOptionValue) Value() interface{} {
+func (v RuntimeOptionValue) Value() any {
 	if v.PromptType == PromptTypeString {
 		return v.StringValue
 	}

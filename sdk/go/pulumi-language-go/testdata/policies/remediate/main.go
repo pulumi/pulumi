@@ -7,17 +7,17 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/policyx"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 
 	"github.com/blang/semver"
 )
 
 func main() {
-	if err := policyx.Main(func(host pulumix.Engine) (policyx.PolicyPack, error) {
+	if err := policyx.Main(func(pctx *pulumi.Context) (policyx.PolicyPack, error) {
 		version := semver.MustParse("3.0.0")
 		return policyx.NewPolicyPack(
-			"remediate", version, policyx.EnforcementLevelAdvisory, nil,
+			"remediate", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceRemediationPolicy("fixup", policyx.ResourceRemediationPolicyArgs{
 					Description: "Sets property to config",

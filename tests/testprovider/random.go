@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"strings"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -128,7 +129,7 @@ func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*r
 		return nil, err
 	}
 
-	outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	outputs := resource.NewPropertyMapFromMap(map[string]any{
 		"length": n,
 		"result": prefix + result,
 	})
@@ -151,10 +152,51 @@ func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*r
 }
 
 func (p *randomProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	// Just return back the input state.
+	// if this is an import (no state or properties) then create a random state from the ID
+	if (req.Properties == nil || len(req.Properties.Fields) == 0) && (req.Inputs == nil || len(req.Inputs.Fields) == 0) {
+		// Split the ID at : into prefix and result
+		split := strings.SplitN(req.Id, ":", 2)
+		var prefix, result string
+		if len(split) == 2 {
+			prefix = split[0]
+			result = split[1]
+		} else {
+			result = split[0]
+		}
+
+		outputs := resource.NewPropertyMapFromMap(map[string]any{
+			"prefix": prefix,
+			"length": len(result),
+			"result": result,
+		})
+
+		var err error
+		req.Properties, err = plugin.MarshalProperties(
+			outputs,
+			plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		inputs := resource.NewPropertyMapFromMap(map[string]any{
+			"length": len(result),
+			"prefix": prefix,
+		})
+		req.Inputs, err = plugin.MarshalProperties(
+			inputs,
+			plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Else just return back the input state.
 	return &rpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
+		Inputs:     req.Inputs,
 	}, nil
 }
 

@@ -94,7 +94,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	proj, err := workspace.LoadProject(pyaml)
 	require.NoError(t, err)
 
-	chdir(t, projectDir)
+	t.Chdir(projectDir)
 
 	tmpDir := t.TempDir()
 	ctx := context.Background()
@@ -1070,18 +1070,6 @@ func TestProjectFolderStructure(t *testing.T) {
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "testproj", "b.json"))
 }
 
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		require.Equal(t, cwd, restoredDir)
-	})
-}
-
 //nolint:paralleltest // mutates cwd
 func TestProjectNameMustMatch(t *testing.T) {
 	// Create a new project
@@ -1092,7 +1080,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 	proj, err := workspace.LoadProject(pyaml)
 	require.NoError(t, err)
 
-	chdir(t, projectDir)
+	t.Chdir(projectDir)
 
 	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
@@ -1172,7 +1160,6 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1695,8 +1682,6 @@ func TestCreateStack_WritesInitialState(t *testing.T) {
 	stack := "teststack"
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 

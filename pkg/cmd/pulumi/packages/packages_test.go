@@ -31,20 +31,20 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 	tests := []struct {
 		name           string
 		pkg            *schema.Package
-		options        map[string]interface{}
+		options        map[string]any
 		wantImportLine string
 	}{
 		{
 			name: "uses package info name when available",
 			pkg: &schema.Package{
 				Name: "aws-native",
-				Language: map[string]interface{}{
+				Language: map[string]any{
 					"nodejs": nodejs.NodePackageInfo{
 						PackageName: "@pulumi/aws-native-renamed",
 					},
 				},
 			},
-			options:        map[string]interface{}{},
+			options:        map[string]any{},
 			wantImportLine: "import * as awsNative from \"@pulumi/aws-native-renamed\";\n",
 		},
 		{
@@ -52,7 +52,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 			pkg: &schema.Package{
 				Name: "aws-native",
 			},
-			options:        map[string]interface{}{},
+			options:        map[string]any{},
 			wantImportLine: "import * as awsNative from \"@pulumi/aws-native\";\n",
 		},
 		{
@@ -60,7 +60,7 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 			pkg: &schema.Package{
 				Name: "aws-native",
 			},
-			options: map[string]interface{}{
+			options: map[string]any{
 				"typescript": false,
 			},
 			wantImportLine: "  const awsNative = require(\"@pulumi/aws-native\");\n",
@@ -68,7 +68,6 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -116,7 +115,6 @@ func TestSetSpecNamespace(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.pluginDownloadURL, func(t *testing.T) {
 			t.Parallel()
 

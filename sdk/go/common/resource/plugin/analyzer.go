@@ -158,10 +158,6 @@ type PolicySummary struct {
 	PolicyPackName string
 	// The version of the policy pack.
 	PolicyPackVersion string
-	// Names of policies in the policy pack that were disabled.
-	Disabled []string
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []PolicyNotApplicable
 	// The names of policies that passed (i.e. did not produce any violations).
 	Passed []string
 	// The names of policies that failed (i.e. produced violations).
@@ -228,7 +224,7 @@ type AnalyzerPolicyInfo struct {
 }
 
 // JSONSchema represents a JSON schema.
-type JSONSchema map[string]interface{}
+type JSONSchema map[string]any
 
 // AnalyzerPolicyConfigSchema provides metadata about a policy's configuration.
 type AnalyzerPolicyConfigSchema struct {
@@ -244,7 +240,7 @@ type AnalyzerPolicyConfig struct {
 	// Configured enforcement level for the policy.
 	EnforcementLevel apitype.EnforcementLevel
 	// Configured properties of the policy.
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 // AnalyzerPolicyComplianceFramework represents a compliance framework that a policy belongs to.

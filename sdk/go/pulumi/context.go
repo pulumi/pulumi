@@ -397,8 +397,12 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return ctx.newDependencyResource(URN(d))
 			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+			opts.HideDiffs = rpcReq.Options.HideDiff
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+			if rpcReq.Options.Import != "" {
+				opts.Import = ID(rpcReq.Options.Import)
+			}
 
 			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
 			// optionality that the wire protocol can
@@ -520,6 +524,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return nil, fmt.Errorf("marshaling dependsOn: %w", err)
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
+			rpcReq.Options.HideDiff = opts.HideDiffs
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
 			rpcRes.Options.Protect = &opts.Protect
 
@@ -544,6 +549,14 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
 			rpcRes.Options.RetainOnDelete = &opts.RetainOnDelete
 			rpcRes.Options.Version = opts.Version
+
+			if opts.Import != nil {
+				id, _, _, err := opts.Import.ToIDOutput().awaitID(ctx.ctx)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling import ID: %w", err)
+				}
+				rpcRes.Options.Import = string(id)
+			}
 
 			if opts.Hooks != nil {
 				mHooks, err := marshalResourceHooks(ctx.ctx, opts.Hooks)
@@ -702,7 +715,7 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
-func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) (err error) {
+func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOption) (err error) {
 	return ctx.InvokePackage(tok, args, result, "" /* packageRef */, opts...)
 }
 
@@ -710,7 +723,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) invokePackageRaw(
-	tok string, args interface{}, packageRef string, options invokeOptions,
+	tok string, args any, packageRef string, options invokeOptions,
 ) (resource.PropertyMap, error) {
 	if tok == "" {
 		return nil, errors.New("invoke token must not be empty")
@@ -815,7 +828,7 @@ func validInvokeResult(resultV reflect.Value) bool {
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) InvokePackage(
-	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+	tok string, args any, result any, packageRef string, opts ...InvokeOption,
 ) error {
 	resultV := reflect.ValueOf(result)
 	if !validInvokeResult(resultV) {
@@ -845,7 +858,7 @@ func (ctx *Context) InvokePackage(
 // InvokePackageRaw is similar to InvokePackage except that it doesn't error out if the result has secrets.
 // Insread, it returns a boolean indicating if the result has secrets.
 func (ctx *Context) InvokePackageRaw(
-	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+	tok string, args any, result any, packageRef string, opts ...InvokeOption,
 ) (isSecret bool, err error) {
 	resultV := reflect.ValueOf(result)
 	if !validInvokeResult(resultV) {
@@ -878,7 +891,7 @@ type InvokeOutputOptions struct {
 // used by generated SDK code for Output form invokes.
 // `output` is used to determine the output type to return.
 func (ctx *Context) InvokeOutput(
-	tok string, args interface{}, output Output, options InvokeOutputOptions,
+	tok string, args any, output Output, options InvokeOutputOptions,
 ) Output {
 	output = ctx.newOutput(reflect.TypeOf(output))
 
@@ -1177,7 +1190,7 @@ func (ctx *Context) CallPackageSingle(
 		return nil, err
 	}
 
-	intermediary = intermediary.ApplyT(func(r interface{}) (interface{}, error) {
+	intermediary = intermediary.ApplyT(func(r any) (any, error) {
 		zeroType := reflect.Zero(reflect.TypeOf(output.ElementType())).Interface()
 
 		// if the result is an object return the first element
@@ -1196,7 +1209,7 @@ func (ctx *Context) CallPackageSingle(
 			return zeroType, errors.New("result must be a map, but was a " + v.Kind().String())
 		}
 
-		asMap := v.Interface().(map[string]interface{})
+		asMap := v.Interface().(map[string]any)
 		if len(asMap) != 1 {
 			return zeroType, errors.New("result must have exactly one element")
 		}
@@ -1416,7 +1429,7 @@ func (ctx *Context) readPackageResource(
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
 	// This is a resource that already exists. Read its state from the engine.
-	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]any{
 		"urn": urn,
 	})
 
@@ -1755,6 +1768,7 @@ func (ctx *Context) registerResource(
 				ReplaceOnChanges:           inputs.replaceOnChanges,
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
+				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
@@ -1995,7 +2009,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 					aliasedChildType := string(resource.URN(urn).Type())
 					return inheritedChildAlias(
 						aliasedChildName, parent.PulumiResourceName(), aliasedChildType, project, stack, parentAlias)
-				}).ApplyT(func(urn interface{}) URN {
+				}).ApplyT(func(urn any) URN {
 					return urn.(URN)
 				}).(URNOutput)
 				aliasURNs = append(aliasURNs, inheritedAlias)
@@ -2227,6 +2241,7 @@ type resourceInputs struct {
 	replaceOnChanges        []string
 	retainOnDelete          *bool
 	deletedWith             string
+	hideDiffs               []string
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2493,6 +2508,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:           resOpts.ignoreChanges,
+		hideDiffs:               resOpts.hideDiffs,
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
@@ -2522,6 +2538,7 @@ type resourceOpts struct {
 	deleteBeforeReplace     *bool
 	importID                ID
 	ignoreChanges           []string
+	hideDiffs               []string
 	additionalSecretOutputs []string
 	replaceOnChanges        []string
 }
@@ -2593,6 +2610,7 @@ func (ctx *Context) getOpts(
 		deleteBeforeReplace:     opts.DeleteBeforeReplace,
 		importID:                importID,
 		ignoreChanges:           opts.IgnoreChanges,
+		hideDiffs:               opts.HideDiffs,
 		additionalSecretOutputs: opts.AdditionalSecretOutputs,
 		replaceOnChanges:        opts.ReplaceOnChanges,
 	}, nil
@@ -2797,7 +2815,7 @@ func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
 }
 
 // NewOutput creates a new output associated with this context.
-func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
+func (ctx *Context) NewOutput() (Output, func(any), func(error)) {
 	return newAnyOutput(&ctx.state.join)
 }
 

@@ -2158,8 +2158,10 @@ type LinkRequest struct {
 	// to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
 	// to be used instead of the published `@pulumi/aws` package.
 	LocalDependencies map[string]string `protobuf:"bytes,2,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The target of a codegen.LoaderServer to use for loading schemas.
+	LoaderTarget  string `protobuf:"bytes,3,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LinkRequest) Reset() {
@@ -2204,6 +2206,13 @@ func (x *LinkRequest) GetLocalDependencies() map[string]string {
 		return x.LocalDependencies
 	}
 	return nil
+}
+
+func (x *LinkRequest) GetLoaderTarget() string {
+	if x != nil {
+		return x.LoaderTarget
+	}
+	return ""
 }
 
 // `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
@@ -2486,10 +2495,11 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x11program_directory\x18\x03 \x01(\tH\x01R\x10programDirectory\x88\x01\x01B\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directory\"\x1b\n" +
-	"\x19LanguageHandshakeResponse\"\xdd\x01\n" +
+	"\x19LanguageHandshakeResponse\"\x82\x02\n" +
 	"\vLinkRequest\x12*\n" +
 	"\x04info\x18\x01 \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\x12\\\n" +
-	"\x12local_dependencies\x18\x02 \x03(\v2-.pulumirpc.LinkRequest.LocalDependenciesEntryR\x11localDependencies\x1aD\n" +
+	"\x12local_dependencies\x18\x02 \x03(\v2-.pulumirpc.LinkRequest.LocalDependenciesEntryR\x11localDependencies\x12#\n" +
+	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\x1aD\n" +
 	"\x16LocalDependenciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x0e\n" +

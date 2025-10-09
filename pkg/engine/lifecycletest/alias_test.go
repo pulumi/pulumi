@@ -148,7 +148,6 @@ func makeSpecAliasWithNoParent(name, typ, project, stack string, parent bool) *p
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
 	for _, r := range resources {
-		r := r
 		_, err := monitor.RegisterResource(r.t, r.name, true, deploytest.ResourceOptions{
 			Parent:              r.parent,
 			Dependencies:        r.dependencies,
@@ -718,7 +717,6 @@ func TestAliasesNodeJSBackCompat(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1458,7 +1456,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createA := func(monitor *deploytest.ResourceMonitor) {

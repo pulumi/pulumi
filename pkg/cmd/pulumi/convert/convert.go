@@ -151,7 +151,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 	}
 
 	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-	return
+	return program, diagnostics, err
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
@@ -481,14 +481,13 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return err
 		}
-		defer pctx.Close()
+		defer ctx.Close()
 
-		if err := newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
+		if err := newcmd.InstallDependencies(ctx, &proj.Runtime, main); err != nil {
 			return err
 		}
 	}
@@ -560,13 +559,14 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packages.GenSDK(
+		diags, err := packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
 			/*overlays*/ "",
 			/*local*/ true,
 		)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
@@ -592,18 +592,19 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not change to output directory: %w", err)
 		}
 
-		_, _, err = ws.ReadProject()
+		proj, _, err := ws.ReadProject()
 		if err != nil {
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Workspace: ws,
-			Language:  language,
-			Root:      "./",
-			Pkg:       pkgSchema,
-			Out:       sdkRelPath,
+			Writer:   os.Stdout,
+			Project:  proj,
+			Language: language,
+			Root:     "./",
+			Pkg:      pkgSchema,
+			Out:      sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
 			Install: !generateOnly,

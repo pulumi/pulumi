@@ -16,7 +16,6 @@ package diy
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -46,14 +45,7 @@ func getAwsCaller(t *testing.T) (context.Context, aws.Config) {
 
 //nolint:paralleltest // this test sets the global login state
 func TestAwsLogin(t *testing.T) {
-	err := os.Chdir("project")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := os.Chdir("..")
-		require.NoError(t, err)
-	})
-
-	t.Setenv("AWS_REGION", "us-west-2")
+	t.Chdir("project")
 
 	ctx, cfg := getAwsCaller(t)
 

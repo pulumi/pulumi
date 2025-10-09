@@ -37,7 +37,7 @@ func TestFieldMapper(t *testing.T) {
 	t.Parallel()
 
 	md := New(nil)
-	tree := map[string]interface{}{
+	tree := map[string]any{
 		"b":  true,
 		"s":  "hello",
 		"f":  float64(3.14159265359),
@@ -71,15 +71,15 @@ func TestFieldMapper(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, tree["ss"], *s.StringsP)
 
-	// Ensure interface{} conversions work:
+	// Ensure any conversions work:
 	var sif string
-	err = md.DecodeValue(map[string]interface{}{"x": interface{}("hello")},
+	err = md.DecodeValue(map[string]any{"x": any("hello")},
 		reflect.TypeOf(bag{}), "x", &sif, false)
 	require.NoError(t, err)
 	assert.Equal(t, "hello", sif)
 
 	var sifs []string
-	err = md.DecodeValue(map[string]interface{}{"arr": []interface{}{"a", "b", "c"}},
+	err = md.DecodeValue(map[string]any{"arr": []any{"a", "b", "c"}},
 		reflect.TypeOf(bag{}), "arr", &sifs, false)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, sifs)
@@ -104,11 +104,11 @@ func TestFieldMapper(t *testing.T) {
 }
 
 type bagtag struct {
-	String        string                 `pulumi:"s"`
-	StringSkip    string                 `pulumi:"sc,skip"`
-	StringOpt     string                 `pulumi:"so,optional"`
-	StringSkipOpt string                 `pulumi:"sco,skip,optional"`
-	MapOpt        map[string]interface{} `pulumi:"mo,optional"`
+	String        string         `pulumi:"s"`
+	StringSkip    string         `pulumi:"sc,skip"`
+	StringOpt     string         `pulumi:"so,optional"`
+	StringSkipOpt string         `pulumi:"sco,skip,optional"`
+	MapOpt        map[string]any `pulumi:"mo,optional"`
 }
 
 type AnInterface interface {
@@ -120,7 +120,7 @@ func TestMapperEncode(t *testing.T) {
 	bag := bagtag{
 		String:    "something",
 		StringOpt: "ohmv",
-		MapOpt: map[string]interface{}{
+		MapOpt: map[string]any{
 			"a": "something",
 			"b": nil,
 		},
@@ -128,7 +128,7 @@ func TestMapperEncode(t *testing.T) {
 
 	md := &mapper{}
 	var err error
-	var m map[string]interface{}
+	var m map[string]any
 
 	// Nils
 	m, err = md.Encode(nil)
@@ -145,7 +145,7 @@ func TestMapperEncode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "something", m["s"])
 	assert.Equal(t, "ohmv", m["so"])
-	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, m["mo"])
+	assert.Equal(t, map[string]any{"a": "something", "b": nil}, m["mo"])
 
 	// Pointers
 	m, err = md.encode(reflect.Zero(reflect.TypeOf(&bag)))
@@ -155,7 +155,7 @@ func TestMapperEncode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "something", m["s"])
 	assert.Equal(t, "ohmv", m["so"])
-	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, m["mo"])
+	assert.Equal(t, map[string]any{"a": "something", "b": nil}, m["mo"])
 }
 
 func TestMapperEncodeValue(t *testing.T) {
@@ -166,7 +166,7 @@ func TestMapperEncodeValue(t *testing.T) {
 		StringOpt: "ohmv",
 	}
 	slice := []string{"something"}
-	mapdata := map[string]interface{}{
+	mapdata := map[string]any{
 		"a": "something",
 		"b": nil,
 	}
@@ -216,7 +216,7 @@ func TestMapperEncodeValue(t *testing.T) {
 	assert.Nil(t, v)
 	v, err = md.encodeValue(reflect.ValueOf(slice))
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{"something"}, v)
+	assert.Equal(t, []any{"something"}, v)
 
 	// Maps
 	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(mapdata)))
@@ -224,12 +224,12 @@ func TestMapperEncodeValue(t *testing.T) {
 	assert.Nil(t, v)
 	v, err = md.encodeValue(reflect.ValueOf(mapdata))
 	require.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, v)
+	assert.Equal(t, map[string]any{"a": "something", "b": nil}, v)
 
 	// Structs
 	v, err = md.encodeValue(reflect.ValueOf(bag))
 	require.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{"s": "something", "so": "ohmv"}, v)
+	assert.Equal(t, map[string]any{"s": "something", "so": "ohmv"}, v)
 
 	// Interfaces
 	v, err = md.encodeValue(reflect.Zero(anyType))
@@ -248,12 +248,12 @@ func TestMapperDecode(t *testing.T) {
 
 	// First, test the fully populated case.
 	var b1 bagtag
-	err = md.Decode(map[string]interface{}{
+	err = md.Decode(map[string]any{
 		"s":   "something",
 		"sc":  "nothing",
 		"so":  "ohmy",
 		"sco": "ohmynada",
-		"mo": map[string]interface{}{
+		"mo": map[string]any{
 			"a": "something",
 			"b": nil,
 		},
@@ -263,11 +263,11 @@ func TestMapperDecode(t *testing.T) {
 	assert.Equal(t, "", b1.StringSkip)
 	assert.Equal(t, "ohmy", b1.StringOpt)
 	assert.Equal(t, "", b1.StringSkipOpt)
-	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, b1.MapOpt)
+	assert.Equal(t, map[string]any{"a": "something", "b": nil}, b1.MapOpt)
 
 	// Now let optional fields go missing.
 	var b2 bagtag
-	err = md.Decode(map[string]interface{}{
+	err = md.Decode(map[string]any{
 		"s":  "something",
 		"sc": "nothing",
 	}, &b2)
@@ -279,7 +279,7 @@ func TestMapperDecode(t *testing.T) {
 
 	// Try some error conditions; first, wrong type:
 	var b3 bagtag
-	err = md.Decode(map[string]interface{}{
+	err = md.Decode(map[string]any{
 		"s":  true,
 		"sc": "",
 	}, &b3)
@@ -289,7 +289,7 @@ func TestMapperDecode(t *testing.T) {
 
 	// Next, missing required field:
 	var b4 bagtag
-	err = md.Decode(map[string]interface{}{}, &b4)
+	err = md.Decode(map[string]any{}, &b4)
 	assert.EqualError(t, err, "1 failures decoding:\n"+
 		"\ts: Missing required field 's' on 'mapper.bagtag'")
 	assert.Equal(t, "", b4.String)
@@ -313,15 +313,15 @@ func TestNestedMapper(t *testing.T) {
 
 	// Test one level deep nesting (fields, arrays, pointers).
 	var b bog
-	err := md.Decode(map[string]interface{}{
-		"boggy":  map[string]interface{}{"num": float64(99)},
-		"boggyp": map[string]interface{}{"num": float64(180)},
-		"boggers": []map[string]interface{}{
+	err := md.Decode(map[string]any{
+		"boggy":  map[string]any{"num": float64(99)},
+		"boggyp": map[string]any{"num": float64(180)},
+		"boggers": []map[string]any{
 			{"num": float64(1)},
 			{"num": float64(2)},
 			{"num": float64(42)},
 		},
-		"boggersp": []map[string]interface{}{
+		"boggersp": []map[string]any{
 			{"num": float64(4)},
 			{"num": float64(8)},
 			{"num": float64(84)},
@@ -331,12 +331,12 @@ func TestNestedMapper(t *testing.T) {
 	assert.Equal(t, float64(99), b.Boggy.Num)
 	require.NotNil(t, b.BoggyP)
 	assert.Equal(t, float64(180), b.BoggyP.Num)
-	assert.Equal(t, 3, len(b.Boggers))
+	require.Len(t, b.Boggers, 3)
 	assert.Equal(t, float64(1), b.Boggers[0].Num)
 	assert.Equal(t, float64(2), b.Boggers[1].Num)
 	assert.Equal(t, float64(42), b.Boggers[2].Num)
 	require.NotNil(t, b.BoggersP)
-	assert.Equal(t, 3, len(*b.BoggersP))
+	require.Len(t, *b.BoggersP, 3)
 	require.NotNil(t, (*b.BoggersP)[0])
 	assert.Equal(t, float64(4), (*b.BoggersP)[0].Num)
 	require.NotNil(t, (*b.BoggersP)[1])
@@ -357,33 +357,33 @@ func TestMultiplyNestedMapper(t *testing.T) {
 
 	// Test multilevel nesting (maps, fields, arrays, pointers).
 	var ber boggerdybogger
-	err := md.Decode(map[string]interface{}{
-		"bogs": map[string]interface{}{
-			"a": map[string]interface{}{
-				"boggy":  map[string]interface{}{"num": float64(99)},
-				"boggyp": map[string]interface{}{"num": float64(180)},
-				"boggers": []map[string]interface{}{
+	err := md.Decode(map[string]any{
+		"bogs": map[string]any{
+			"a": map[string]any{
+				"boggy":  map[string]any{"num": float64(99)},
+				"boggyp": map[string]any{"num": float64(180)},
+				"boggers": []map[string]any{
 					{"num": float64(1)},
 					{"num": float64(2)},
 					{"num": float64(42)},
 				},
-				"boggersp": []map[string]interface{}{
+				"boggersp": []map[string]any{
 					{"num": float64(4)},
 					{"num": float64(8)},
 					{"num": float64(84)},
 				},
 			},
 		},
-		"bogsp": map[string]interface{}{
-			"z": map[string]interface{}{
-				"boggy":  map[string]interface{}{"num": float64(188)},
-				"boggyp": map[string]interface{}{"num": float64(360)},
-				"boggers": []map[string]interface{}{
+		"bogsp": map[string]any{
+			"z": map[string]any{
+				"boggy":  map[string]any{"num": float64(188)},
+				"boggyp": map[string]any{"num": float64(360)},
+				"boggers": []map[string]any{
 					{"num": float64(2)},
 					{"num": float64(4)},
 					{"num": float64(84)},
 				},
-				"boggersp": []map[string]interface{}{
+				"boggersp": []map[string]any{
 					{"num": float64(8)},
 					{"num": float64(16)},
 					{"num": float64(168)},
@@ -393,17 +393,17 @@ func TestMultiplyNestedMapper(t *testing.T) {
 	}, &ber)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(ber.Bogs))
+	require.Len(t, ber.Bogs, 1)
 	b := ber.Bogs["a"]
 	assert.Equal(t, float64(99), b.Boggy.Num)
 	require.NotNil(t, b.BoggyP)
 	assert.Equal(t, float64(180), b.BoggyP.Num)
-	assert.Equal(t, 3, len(b.Boggers))
+	require.Len(t, b.Boggers, 3)
 	assert.Equal(t, float64(1), b.Boggers[0].Num)
 	assert.Equal(t, float64(2), b.Boggers[1].Num)
 	assert.Equal(t, float64(42), b.Boggers[2].Num)
 	require.NotNil(t, b.BoggersP)
-	assert.Equal(t, 3, len(*b.BoggersP))
+	require.Len(t, *b.BoggersP, 3)
 	require.NotNil(t, (*b.BoggersP)[0])
 	assert.Equal(t, float64(4), (*b.BoggersP)[0].Num)
 	require.NotNil(t, (*b.BoggersP)[1])
@@ -412,18 +412,18 @@ func TestMultiplyNestedMapper(t *testing.T) {
 	assert.Equal(t, float64(84), (*b.BoggersP)[2].Num)
 
 	require.NotNil(t, ber.BogsP)
-	assert.Equal(t, 1, len(*ber.BogsP))
+	require.Len(t, *ber.BogsP, 1)
 	p := (*ber.BogsP)["z"]
 	require.NotNil(t, p)
 	assert.Equal(t, float64(188), p.Boggy.Num)
 	require.NotNil(t, p.BoggyP)
 	assert.Equal(t, float64(360), p.BoggyP.Num)
-	assert.Equal(t, 3, len(p.Boggers))
+	require.Len(t, p.Boggers, 3)
 	assert.Equal(t, float64(2), p.Boggers[0].Num)
 	assert.Equal(t, float64(4), p.Boggers[1].Num)
 	assert.Equal(t, float64(84), p.Boggers[2].Num)
 	require.NotNil(t, p.BoggersP)
-	assert.Equal(t, 3, len(*p.BoggersP))
+	require.Len(t, *p.BoggersP, 3)
 	require.NotNil(t, (*p.BoggersP)[0])
 	assert.Equal(t, float64(8), (*p.BoggersP)[0].Num)
 	require.NotNil(t, (*p.BoggersP)[1])
@@ -448,21 +448,21 @@ func TestMapMapper(t *testing.T) {
 
 	// Ensure we can decode both maps of structs and maps of pointers to structs.
 	var hm hasmap
-	err := md.Decode(map[string]interface{}{
-		"entries": map[string]interface{}{
-			"a": map[string]interface{}{"title": "first"},
-			"b": map[string]interface{}{"title": "second"},
+	err := md.Decode(map[string]any{
+		"entries": map[string]any{
+			"a": map[string]any{"title": "first"},
+			"b": map[string]any{"title": "second"},
 		},
-		"entriesp": map[string]interface{}{
-			"x": map[string]interface{}{"title": "firstp"},
-			"y": map[string]interface{}{"title": "secondp"},
+		"entriesp": map[string]any{
+			"x": map[string]any{"title": "firstp"},
+			"y": map[string]any{"title": "secondp"},
 		},
 	}, &hm)
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(hm.Entries))
+	require.Len(t, hm.Entries, 2)
 	assert.Equal(t, "first", hm.Entries["a"].Title)
 	assert.Equal(t, "second", hm.Entries["b"].Title)
-	assert.Equal(t, 2, len(hm.EntriesP))
+	require.Len(t, hm.EntriesP, 2)
 	require.NotNil(t, hm.EntriesP["x"])
 	require.NotNil(t, hm.EntriesP["y"])
 	assert.Equal(t, "firstp", hm.EntriesP["x"].Title)
@@ -498,12 +498,12 @@ func TestCustomMapper(t *testing.T) {
 	})
 
 	var w wrap
-	err := md.Decode(map[string]interface{}{
-		"c": map[string]interface{}{
+	err := md.Decode(map[string]any{
+		"c": map[string]any{
 			"x": float64(-99.2),
 			"y": float64(127.127),
 		},
-		"ci": map[string]interface{}{
+		"ci": map[string]any{
 			"x": float64(42.6),
 			"y": float64(247.9),
 		},
@@ -516,7 +516,7 @@ func TestCustomMapper(t *testing.T) {
 	assert.Equal(t, float64(247.9), w.CI.GetY())
 }
 
-func decodeCustomInterface(m Mapper, tree map[string]interface{}) (interface{}, error) {
+func decodeCustomInterface(m Mapper, tree map[string]any) (any, error) {
 	var s customStruct
 	if err := m.DecodeValue(tree, reflect.TypeOf(s), "x", &s.X, false); err != nil {
 		return nil, err
@@ -527,7 +527,7 @@ func decodeCustomInterface(m Mapper, tree map[string]interface{}) (interface{}, 
 	return customInterface(&s), nil
 }
 
-func decodeCustomStruct(m Mapper, tree map[string]interface{}) (interface{}, error) {
+func decodeCustomStruct(m Mapper, tree map[string]any) (any, error) {
 	var s customStruct
 	if err := m.DecodeValue(tree, reflect.TypeOf(s), "x", &s.X, false); err != nil {
 		return nil, err
@@ -610,18 +610,18 @@ func TestBasicUnmap(t *testing.T) {
 	}
 
 	// Unmap returns a JSON-like dictionary object representing the above structure.
-	for _, e := range []interface{}{o, &o} {
+	for _, e := range []any{o, &o} {
 		um, err := Unmap(e)
 		require.NoError(t, err)
 		require.NotNil(t, um)
 
 		// check outer:
 		require.NotNil(t, um["inners"])
-		arr := um["inners"].([]interface{})
+		arr := um["inners"].([]any)
 		assert.Equal(t, len(arr), 1)
 
 		// check outer.inner:
-		inn := arr[0].(map[string]interface{})
+		inn := arr[0].(map[string]any)
 		assert.Equal(t, inn["a"], "v1")
 		assert.Equal(t, inn["b"], "v2")
 		_, hasc := inn["c"]
@@ -633,7 +633,7 @@ func TestBasicUnmap(t *testing.T) {
 		require.NotNil(t, inn["g"])
 
 		// check outer.inner.inner:
-		inng := inn["g"].(map[string]interface{})
+		inng := inn["g"].(map[string]any)
 		assert.Equal(t, inng["a"], "i1v1")
 		assert.Equal(t, inng["b"], "i1v2")
 		_, hasgc := inng["c"]
@@ -648,9 +648,9 @@ func TestBasicUnmap(t *testing.T) {
 		assert.False(t, hasgh)
 
 		// check outer.inner.inners[0]:
-		innh := inn["h"].([]interface{})
+		innh := inn["h"].([]any)
 		assert.Equal(t, len(innh), 2)
-		innh0 := innh[0].(map[string]interface{})
+		innh0 := innh[0].(map[string]any)
 		assert.Equal(t, innh0["a"], "i2v1")
 		assert.Equal(t, innh0["b"], "i2v2")
 		_, hash0c := inng["c"]
@@ -665,7 +665,7 @@ func TestBasicUnmap(t *testing.T) {
 		assert.False(t, hash0h)
 
 		// check outer.inner.inners[1]:
-		innh1 := innh[1].(map[string]interface{})
+		innh1 := innh[1].(map[string]any)
 		assert.Equal(t, innh1["a"], "i3v1")
 		assert.Equal(t, innh1["b"], "i3v2")
 		_, hash1c := inng["c"]
@@ -688,7 +688,7 @@ func TestReproduceMapStringPointerTurnaroundIssue(t *testing.T) {
 		Args map[string]*string `pulumi:"args,optional"`
 	}
 
-	xToMap := func(build X) (map[string]interface{}, error) {
+	xToMap := func(build X) (map[string]any, error) {
 		m, err := New(nil).Encode(build)
 		if err != nil {
 			return nil, err
@@ -696,7 +696,7 @@ func TestReproduceMapStringPointerTurnaroundIssue(t *testing.T) {
 		return m, nil
 	}
 
-	xFromMap := func(pm map[string]interface{}) (X, error) {
+	xFromMap := func(pm map[string]any) (X, error) {
 		var build X
 		err := New(nil).Decode(pm, &build)
 		if err != nil {

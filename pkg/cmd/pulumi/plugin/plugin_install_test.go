@@ -329,9 +329,8 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
 }
 
+//nolint:paralleltest // uses t.Chdir
 func TestRegistryFallbackWithLocalPackages(t *testing.T) {
-	t.Parallel()
-
 	tmpDir := t.TempDir()
 	pulumiYaml := `name: test-project
 runtime: nodejs
@@ -341,14 +340,7 @@ packages:
 	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
 	require.NoError(t, err)
 
-	origDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(origDir)
-		require.NoError(t, err)
-	}()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	installCalled := false
 	defer func() {

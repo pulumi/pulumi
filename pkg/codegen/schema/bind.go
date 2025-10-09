@@ -72,7 +72,7 @@ func memberPath(section, token string, rest ...string) string {
 	return path
 }
 
-func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
+func errorf(path, message string, args ...any) *hcl.Diagnostic {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
@@ -82,7 +82,7 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 	}
 }
 
-func warningf(path, message string, args ...interface{}) *hcl.Diagnostic {
+func warningf(path, message string, args ...any) *hcl.Diagnostic {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
@@ -97,7 +97,7 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	var raw interface{}
+	var raw any
 	if err = json.Unmarshal(bytes, &raw); err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
 
-	language := make(map[string]interface{}, len(info.Language))
+	language := make(map[string]any, len(info.Language))
 	for name, v := range info.Language {
 		language[name] = json.RawMessage(v)
 	}
@@ -769,7 +769,7 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = append(diags, errorf(path, name+" is a reserved name, cannot name type"))
+			diags = append(diags, errorf(path, "%s", name+" is a reserved name, cannot name type"))
 			return nil, diags, errors.New("type name " + name + " is reserved")
 		}
 	}
@@ -1073,7 +1073,7 @@ func plainType(typ Type) Type {
 	}
 }
 
-func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}, hcl.Diagnostics) {
+func bindConstValue(path, kind string, value any, typ Type) (any, hcl.Diagnostics) {
 	if value == nil {
 		return nil, nil
 	}
@@ -1127,7 +1127,7 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 	}
 }
 
-func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, hcl.Diagnostics) {
+func bindDefaultValue(path string, value any, spec *DefaultSpec, typ Type) (*DefaultValue, hcl.Diagnostics) {
 	if value == nil && spec == nil {
 		return nil, nil
 	}
@@ -1174,7 +1174,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	var diags hcl.Diagnostics
 	for name := range properties {
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path+"/"+name, name+" is a reserved property name"))
+			diags = diags.Append(errorf(path+"/"+name, "%s", name+" is a reserved property name"))
 		}
 	}
 	if diags.HasErrors() {
@@ -1558,7 +1558,7 @@ func (t *types) bindResourceDef(
 		if len(parts) == 3 {
 			name := parts[2]
 			if isReservedKeyword(name) {
-				diags = diags.Append(errorf(path, name+" is a reserved name, cannot name resource"))
+				diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name resource"))
 			}
 		}
 
@@ -1599,12 +1599,12 @@ func (t *types) bindResourceDetails(
 	for _, property := range properties {
 		if isReservedComponentResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
-			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name"))
+			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name"))
 		}
 
 		if !spec.IsComponent && isReservedCustomResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
-			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name for resources"))
+			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name for resources"))
 		}
 	}
 
@@ -1677,7 +1677,7 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	for _, property := range decl.InputProperties {
 		if isReservedProviderPropertyName(property.Name) {
 			path := "#/provider/properties/" + property.Name
-			diags = diags.Append(errorf(path, property.Name+" is a reserved provider input property name"))
+			diags = diags.Append(errorf(path, "%s", property.Name+" is a reserved provider input property name"))
 		}
 		if diags.HasErrors() {
 			return diags, errors.New("invalid property names")
@@ -1754,7 +1754,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path, name+" is a reserved name, cannot name function"))
+			diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name function"))
 			return nil, diags, errors.New(name + " is a reserved name, cannot name function")
 		}
 	}
@@ -1876,7 +1876,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 			}
 
 			if isReservedKeyword(input.Name) {
-				diags = diags.Append(errorf(path+"/inputs/"+input.Name, input.Name+" is a reserved input name"))
+				diags = diags.Append(errorf(path+"/inputs/"+input.Name, "%s", input.Name+" is a reserved input name"))
 				return nil, diags, errors.New("input name " + input.Name + " is reserved")
 			}
 		}
@@ -1922,13 +1922,13 @@ func (t *types) finishFunctions(tokens []string, options ValidationOptions) ([]*
 }
 
 // makeLanguageMap converts a map[string]RawMessage as found on serializable
-// spec object into map[string]interface{} (using json.RawMessage for the
+// spec object into map[string]any (using json.RawMessage for the
 // values) for use in schema types. If the passed in map is empty (or nil), we
 // return a nil map instead of an empty map to save memory.
-func makeLanguageMap(raw map[string]RawMessage) map[string]interface{} {
-	var language map[string]interface{}
+func makeLanguageMap(raw map[string]RawMessage) map[string]any {
+	var language map[string]any
 	if len(raw) > 0 {
-		language = make(map[string]interface{})
+		language = make(map[string]any)
 		for name, raw := range raw {
 			language[name] = json.RawMessage(raw)
 		}

@@ -32,7 +32,7 @@ func Test_decodeValue(t *testing.T) {
 	cases := []struct {
 		repr     string
 		kind     string
-		expected interface{}
+		expected any
 	}{
 		// Negative cases
 		{repr: ""},
@@ -51,42 +51,41 @@ func Test_decodeValue(t *testing.T) {
 		{
 			repr:     "[]",
 			kind:     "json",
-			expected: []interface{}{},
+			expected: []any{},
 		},
 		{
 			repr:     "[\"foo\", \"bar\"]",
 			kind:     "json",
-			expected: []interface{}{"foo", "bar"},
+			expected: []any{"foo", "bar"},
 		},
 		{
 			repr:     "{}",
 			kind:     "json",
-			expected: map[string]interface{}{},
+			expected: map[string]any{},
 		},
 		{
 			repr:     `{"foo": "bar"}`,
 			kind:     "json",
-			expected: map[string]interface{}{"foo": "bar"},
+			expected: map[string]any{"foo": "bar"},
 		},
 		{
 			repr:     `  {"with": "whitespace"}  `,
 			kind:     "json",
-			expected: map[string]interface{}{"with": "whitespace"},
+			expected: map[string]any{"with": "whitespace"},
 		},
 		{
 			repr:     "- foo\n- bar",
 			kind:     "yaml",
-			expected: []interface{}{"foo", "bar"},
+			expected: []any{"foo", "bar"},
 		},
 		{
 			repr:     "foo: bar\nbaz: qux\n",
 			kind:     "yaml",
-			expected: map[string]interface{}{"foo": "bar", "baz": "qux"},
+			expected: map[string]any{"foo": "bar", "baz": "qux"},
 		},
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.repr, func(t *testing.T) {
 			t.Parallel()
 
@@ -117,7 +116,7 @@ func Test_PrintObject(t *testing.T) {
 	}{
 		{
 			"numbers",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"int":         1,
 				"float":       2.3,
 				"large_int":   1234567,
@@ -132,9 +131,9 @@ func Test_PrintObject(t *testing.T) {
 		},
 		{
 			"secret_noshow",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"secret": resource.NewProperty(&resource.Secret{Element: resource.NewProperty("secrets")}),
-				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nested_secret": resource.NewPropertyMapFromMap(map[string]any{
 					"super_secret": resource.NewProperty(&resource.Secret{
 						Element: resource.NewProperty("super_secret"),
 					}),
@@ -149,9 +148,9 @@ func Test_PrintObject(t *testing.T) {
 		},
 		{
 			"secrets_show",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"secret": resource.NewProperty(&resource.Secret{Element: resource.NewProperty("my_secret")}),
-				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nested_secret": resource.NewPropertyMapFromMap(map[string]any{
 					"super_secret": resource.NewProperty(&resource.Secret{
 						Element: resource.NewProperty("my_super_secret"),
 					}),
@@ -167,7 +166,6 @@ func Test_PrintObject(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 

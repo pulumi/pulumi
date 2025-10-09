@@ -65,7 +65,7 @@ func validateTokenTrivia(t *testing.T, token Token) {
 	validateTokenTrailingTrivia(t, token)
 }
 
-func validateTrivia(t *testing.T, tokens ...interface{}) {
+func validateTrivia(t *testing.T, tokens ...any) {
 	for _, te := range tokens {
 		switch te := te.(type) {
 		case Token:

@@ -43,7 +43,7 @@ type RuntimeOptionsLanguageHost struct {
 	tempDir string
 }
 
-func assertOptions(options map[string]interface{}) error {
+func assertOptions(options map[string]any) error {
 	if options["bool_option"] != true {
 		return fmt.Errorf("unexpected bool_option %v", options["bool_option"])
 	}
@@ -53,7 +53,7 @@ func assertOptions(options map[string]interface{}) error {
 	if options["string_option"] != "hello" {
 		return fmt.Errorf("unexpected string_option %v", options["string_option"])
 	}
-	if !reflect.DeepEqual(options["list_option"], []interface{}{"a", "b", "c"}) {
+	if !reflect.DeepEqual(options["list_option"], []any{"a", "b", "c"}) {
 		return fmt.Errorf("unexpected list_option %v", options["list_option"])
 	}
 	if len(options) != 4 {
@@ -98,11 +98,11 @@ func (h *RuntimeOptionsLanguageHost) GenerateProject(
 	if project.Name != "l1-empty" {
 		return nil, fmt.Errorf("unexpected project name %s", project.Name)
 	}
-	project.Runtime = workspace.NewProjectRuntimeInfo("mock", map[string]interface{}{
+	project.Runtime = workspace.NewProjectRuntimeInfo("mock", map[string]any{
 		"bool_option":   true,
 		"number_option": 42,
 		"string_option": "hello",
-		"list_option":   []interface{}{"a", "b", "c"},
+		"list_option":   []any{"a", "b", "c"},
 	})
 	projectYaml, err := yaml.Marshal(project)
 	if err != nil {

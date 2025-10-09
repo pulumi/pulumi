@@ -34,8 +34,8 @@ func NewRandom(ctx *pulumi.Context,
 	return &resource, nil
 }
 
-func (r *Random) RandomInvoke(ctx *pulumi.Context, args map[string]interface{}) (map[string]interface{}, error) {
-	var result map[string]interface{}
+func (r *Random) RandomInvoke(ctx *pulumi.Context, args map[string]any) (map[string]any, error) {
+	var result map[string]any
 	err := ctx.Invoke("testprovider:index:returnArgs", args, &result)
 	if err != nil {
 		return nil, err

@@ -352,7 +352,11 @@ func pulumiAPICall(ctx context.Context,
 		if err != nil {
 			return "", nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
 		}
-		err = decodeError(respBody, resp.StatusCode, opts)
+		reqID := ""
+		if resp.StatusCode >= 500 {
+			reqID = resp.Header.Get("X-Pulumi-Request-ID")
+		}
+		err = decodeError(respBody, resp.StatusCode, opts, reqID)
 		if resp.StatusCode == 403 {
 			err = backenderr.ForbiddenError{Err: err}
 		}
@@ -363,7 +367,7 @@ func pulumiAPICall(ctx context.Context,
 	return url, resp, nil
 }
 
-func decodeError(respBody []byte, statusCode int, opts httpCallOptions) error {
+func decodeError(respBody []byte, statusCode int, opts httpCallOptions, reqID string) error {
 	if opts.ErrorResponse != nil {
 		if err := json.Unmarshal(respBody, opts.ErrorResponse); err == nil {
 			return opts.ErrorResponse.(error)
@@ -375,13 +379,16 @@ func decodeError(respBody []byte, statusCode int, opts httpCallOptions) error {
 		errResp.Code = statusCode
 		errResp.Message = strings.TrimSpace(string(respBody))
 	}
+	if reqID != "" {
+		errResp.Message = fmt.Sprintf("%s (Request ID: %s)", errResp.Message, reqID)
+	}
 	return &errResp
 }
 
 // restClient is an abstraction for calling the Pulumi REST API.
 type restClient interface {
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-		respObj interface{}, tok accessToken, opts httpCallOptions) error
+		respObj any, tok accessToken, opts httpCallOptions) error
 }
 
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
@@ -394,7 +401,7 @@ type defaultRESTClient struct {
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-	respObj interface{}, tok accessToken, opts httpCallOptions,
+	respObj any, tok accessToken, opts httpCallOptions,
 ) error {
 	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
 		opentracing.Tag{Key: "method", Value: method},

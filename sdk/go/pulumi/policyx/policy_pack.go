@@ -15,7 +15,6 @@
 package policyx
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -63,17 +62,14 @@ type PolicyPack interface {
 	Name() string
 	// Version returns the version of the policy pack.
 	Version() semver.Version
-	// Handshake is called by the engine to establish a connection with the analyzer.
-	Handshake(context.Context, HandshakeRequest) (HandshakeResponse, error)
 	// Policies returns the list of policies in the policy pack.
 	Policies() []Policy
 }
 
 type policyPack struct {
-	name      string
-	version   semver.Version
-	handshake func(context.Context, HandshakeRequest) (HandshakeResponse, error)
-	policies  []Policy
+	name     string
+	version  semver.Version
+	policies []Policy
 }
 
 var policyPackNameRE = regexp.MustCompile(`^[a-zA-Z0-9-_.]{1,100}$`)
@@ -82,7 +78,6 @@ var policyPackNameRE = regexp.MustCompile(`^[a-zA-Z0-9-_.]{1,100}$`)
 // policies.
 func NewPolicyPack(
 	name string, version semver.Version, enforcementLevel EnforcementLevel,
-	handshake func(context.Context, HandshakeRequest) (HandshakeResponse, error),
 	policies []Policy,
 ) (PolicyPack, error) {
 	if name == "" || !policyPackNameRE.MatchString(name) {
@@ -111,26 +106,15 @@ func NewPolicyPack(
 	}
 
 	return &policyPack{
-		name:      name,
-		version:   version,
-		policies:  policies,
-		handshake: handshake,
+		name:     name,
+		version:  version,
+		policies: policies,
 	}, nil
 }
 
 func (p *policyPack) Name() string { return p.name }
 
 func (p *policyPack) Version() semver.Version { return p.version }
-
-func (p *policyPack) Handshake(
-	ctx context.Context,
-	req HandshakeRequest,
-) (HandshakeResponse, error) {
-	if p.handshake != nil {
-		return p.handshake(ctx, req)
-	}
-	return HandshakeResponse{}, nil
-}
 
 func (p *policyPack) Policies() []Policy {
 	return p.policies

@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -254,7 +255,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		// default secrets manager which differs from what the user has previously
 		// specified.
 		if l.FallbackToState {
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+			snap, err := s.Snapshot(ctx, backend_secrets.DefaultProvider)
 			if err != nil {
 				return nil, SecretsManagerUnchanged, err
 			}

@@ -106,7 +106,7 @@ func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) 
 // marshalAnalyzerPolicyConfig converts the type plugin.AnalyzerPolicyConfig to structure the data
 // in a format the way the API service is expecting.
 func marshalAnalyzerPolicyConfig(c plugin.AnalyzerPolicyConfig) (*json.RawMessage, error) {
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	for k, v := range c.Properties {
 		m[k] = v
 	}

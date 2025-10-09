@@ -44,8 +44,8 @@ var ErrHostIsClosed = errors.New("plugin host is shutting down")
 var UseGrpcPluginsByDefault = false
 
 type (
-	LoadPluginFunc         func(opts interface{}) (interface{}, error)
-	LoadPluginWithHostFunc func(opts interface{}, host plugin.Host) (interface{}, error)
+	LoadPluginFunc         func(opts any) (any, error)
+	LoadPluginWithHostFunc func(opts any, host plugin.Host) (any, error)
 )
 
 type (
@@ -89,7 +89,7 @@ func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProv
 		kind:    apitype.ResourcePlugin,
 		name:    string(pkg),
 		version: version,
-		load:    func(_ interface{}) (interface{}, error) { return load() },
+		load:    func(_ any) (any, error) { return load() },
 		useGRPC: UseGrpcPluginsByDefault,
 	}
 	for _, o := range opts {
@@ -105,7 +105,7 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 		kind:         apitype.ResourcePlugin,
 		name:         string(pkg),
 		version:      version,
-		loadWithHost: func(_ interface{}, host plugin.Host) (interface{}, error) { return load(host) },
+		loadWithHost: func(_ any, host plugin.Host) (any, error) { return load(host) },
 		useGRPC:      UseGrpcPluginsByDefault,
 	}
 	for _, o := range opts {
@@ -118,7 +118,7 @@ func NewAnalyzerLoader(name string, load LoadAnalyzerFunc, opts ...PluginOption)
 	p := &PluginLoader{
 		kind: apitype.AnalyzerPlugin,
 		name: name,
-		load: func(optsI interface{}) (interface{}, error) {
+		load: func(optsI any) (any, error) {
 			opts, _ := optsI.(*plugin.PolicyAnalyzerOptions)
 			return load(opts)
 		},
@@ -133,7 +133,7 @@ func NewAnalyzerLoaderWithHost(name string, load LoadAnalyzerWithHostFunc, opts 
 	p := &PluginLoader{
 		kind: apitype.AnalyzerPlugin,
 		name: name,
-		loadWithHost: func(optsI interface{}, host plugin.Host) (interface{}, error) {
+		loadWithHost: func(optsI any, host plugin.Host) (any, error) {
 			opts, _ := optsI.(*plugin.PolicyAnalyzerOptions)
 			return load(opts, host)
 		},
@@ -151,12 +151,13 @@ func (nopCloserT) Close() error { return nil }
 var nopCloser io.Closer = nopCloserT(0)
 
 type grpcWrapper struct {
-	stop chan bool
+	stop   chan bool
+	handle rpcutil.ServeHandle
 }
 
 func (w *grpcWrapper) Close() error {
-	go func() { w.stop <- true }()
-	return nil
+	w.stop <- true
+	return <-w.handle.Done
 }
 
 func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
@@ -172,6 +173,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
 	}
+	wrapper.handle = handle
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("127.0.0.1:%v", handle.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -195,6 +197,7 @@ type hostEngine struct {
 
 	address string
 	stop    chan bool
+	handle  rpcutil.ServeHandle
 }
 
 func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
@@ -250,7 +253,7 @@ type pluginHost struct {
 
 	providers []plugin.Provider
 	analyzers []plugin.Analyzer
-	plugins   map[interface{}]io.Closer
+	plugins   map[any]io.Closer
 	closed    bool
 	m         sync.Mutex
 }
@@ -288,6 +291,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		panic(fmt.Errorf("could not start engine service: %w", err))
 	}
 	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
+	engine.handle = handle
 
 	return &pluginHost{
 		pluginLoaders:   pluginLoaders,
@@ -295,7 +299,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		sink:            sink,
 		statusSink:      statusSink,
 		engine:          engine,
-		plugins:         map[interface{}]io.Closer{},
+		plugins:         map[any]io.Closer{},
 	}
 }
 
@@ -306,16 +310,16 @@ func (host *pluginHost) isClosed() bool {
 }
 
 func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *semver.Version,
-	opts interface{},
-) (interface{}, error) {
+	opts any,
+) (any, error) {
 	var best *PluginLoader
 	for _, l := range host.pluginLoaders {
-		if l.kind != kind || l.name != name {
+		if l.kind != kind || (l.name != name && l.name != "*") {
 			continue
 		}
 
 		if version != nil {
-			if l.version.EQ(*version) {
+			if l.name == "*" || l.version.EQ(*version) {
 				best = l
 				break
 			}
@@ -329,7 +333,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 
 	load := best.load
 	if load == nil {
-		load = func(opts interface{}) (interface{}, error) {
+		load = func(opts any) (any, error) {
 			return best.loadWithHost(opts, host)
 		}
 	}
@@ -426,11 +430,12 @@ func (host *pluginHost) Close() error {
 	var err error
 	for _, closer := range host.plugins {
 		if pErr := closer.Close(); pErr != nil {
-			err = pErr
+			err = errors.Join(err, pErr)
 		}
 	}
 
-	go func() { host.engine.stop <- true }()
+	host.engine.stop <- true
+	err = <-host.engine.handle.Done
 	host.closed = true
 	return err
 }

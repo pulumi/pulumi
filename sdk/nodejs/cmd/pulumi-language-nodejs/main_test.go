@@ -609,7 +609,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(resp.Dependencies))
+		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
@@ -666,7 +666,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(resp.Dependencies))
+		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
@@ -679,12 +679,12 @@ func TestParseOptions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, npm.AutoPackageManager, opts.packagemanager)
 
-	_, err = parseOptions(map[string]interface{}{
+	_, err = parseOptions(map[string]any{
 		"typescript": 123,
 	})
 	require.ErrorContains(t, err, "typescript option must be a boolean")
 
-	_, err = parseOptions(map[string]interface{}{
+	_, err = parseOptions(map[string]any{
 		"packagemanager": "poetry",
 	})
 	require.ErrorContains(t, err, "packagemanager option must be one of")
@@ -699,7 +699,7 @@ func TestParseOptions(t *testing.T) {
 		{"pnpm", npm.PnpmPackageManager},
 		{"bun", npm.BunPackageManager},
 	} {
-		opts, err = parseOptions(map[string]interface{}{
+		opts, err = parseOptions(map[string]any{
 			"packagemanager": tt.input,
 		})
 		require.NoError(t, err)

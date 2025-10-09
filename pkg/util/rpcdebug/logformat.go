@@ -26,5 +26,5 @@ type debugInterceptorLogEntry struct {
 	Request  json.RawMessage `json:"request,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
 	Errors   []string        `json:"errors,omitempty"`
-	Metadata interface{}     `json:"metadata,omitempty"`
+	Metadata any             `json:"metadata,omitempty"`
 }

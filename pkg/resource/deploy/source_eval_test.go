@@ -208,6 +208,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					SourcePosition:          "",
 					StackTrace:              nil,
 					IgnoreChanges:           nil,
+					HideDiff:                nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
 					ViewOf:                  "",
@@ -344,6 +345,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
+				HideDiff:                nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
 				StackTrace:              nil,
@@ -370,6 +372,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
+				HideDiff:                nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
@@ -398,6 +401,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				HideDiff:                nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -427,6 +431,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
+				HideDiff:                nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
 				StackTrace:              nil,
@@ -451,6 +456,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				Aliases:                 nil,
 				ID:                      "",
 				CustomTimeouts:          nil,
+				HideDiff:                nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
@@ -525,6 +531,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
+				HideDiff:                nil,
 				StackTrace:              nil,
 				IgnoreChanges:           nil,
 				ReplaceOnChanges:        nil,
@@ -582,6 +589,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
+				HideDiff:                nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				SourcePosition:          "",
@@ -607,6 +615,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				AdditionalSecretOutputs: nil,
 				Aliases:                 nil,
 				ID:                      "",
+				HideDiff:                nil,
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
@@ -633,6 +642,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				AdditionalSecretOutputs: nil,
 				Aliases:                 nil,
 				ID:                      "",
+				HideDiff:                nil,
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
@@ -658,6 +668,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				DeleteBeforeReplace:     nil,
 				IgnoreChanges:           nil,
 				AdditionalSecretOutputs: nil,
+				HideDiff:                nil,
 				Aliases:                 nil,
 				ID:                      "",
 				CustomTimeouts:          nil,
@@ -682,6 +693,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				InitErrors:              []string{},
 				PropertyDependencies:    nil,
 				DeleteBeforeReplace:     nil,
+				HideDiff:                nil,
 				IgnoreChanges:           nil,
 				AdditionalSecretOutputs: nil,
 				Aliases:                 nil,
@@ -769,6 +781,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ImportID:                "",
 				RetainOnDelete:          false,
 				DeletedWith:             "",
+				HideDiff:                nil,
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
@@ -895,6 +908,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 				RetainOnDelete:          false,
 				DeletedWith:             "",
 				Created:                 nil,
+				HideDiff:                nil,
 				Modified:                nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
@@ -1021,6 +1035,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					DeletedWith:             "",
 					Created:                 nil,
 					Modified:                nil,
+					HideDiff:                nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
 					IgnoreChanges:           nil,
@@ -1062,6 +1077,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					Modified:                nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
+					HideDiff:                nil,
 					IgnoreChanges:           nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
@@ -1106,7 +1122,6 @@ func TestDisableDefaultProviders(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range cases {
-		tt := tt
 		var name []string
 		if tt.disableDefault {
 			name = append(name, "disableDefault")
@@ -1249,6 +1264,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							Created:                 nil,
 							Modified:                nil,
 							SourcePosition:          "",
+							HideDiff:                nil,
 							StackTrace:              nil,
 							IgnoreChanges:           nil,
 							ReplaceOnChanges:        nil,
@@ -1288,6 +1304,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							Modified:                nil,
 							SourcePosition:          "",
 							StackTrace:              nil,
+							HideDiff:                nil,
 							IgnoreChanges:           nil,
 							ReplaceOnChanges:        nil,
 							RefreshBeforeUpdate:     false,
@@ -1456,7 +1473,6 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1845,7 +1861,6 @@ func TestRequestFromNodeJS(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := requestFromNodeJS(tt.ctx)
@@ -1920,7 +1935,6 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := transformAliasForNodeJSCompat(tt.input)
@@ -2001,6 +2015,10 @@ func TestEvalSource(t *testing.T) {
 								decrypterCalled = true
 								return "", errors.New("expected fail")
 							},
+							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
+								decrypterCalled = true
+								return nil, errors.New("expected fail")
+							},
 						},
 					},
 				},
@@ -2035,6 +2053,15 @@ func TestEvalSource(t *testing.T) {
 									return "", nil
 								}
 								return "", errors.New("expected fail")
+							},
+							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
+								decrypterCalled = true
+								if called == 0 {
+									// Will cause the next invocation to fail.
+									called++
+									return []string{}, nil
+								}
+								return nil, errors.New("expected fail")
 							},
 						},
 					},
@@ -2198,7 +2225,6 @@ func TestParseSourcePosition(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			s := &sourcePositions{
@@ -2728,7 +2754,7 @@ func TestCall(t *testing.T) {
 							"test": resource.NewProperty("test-value"),
 						},
 						req.Args)
-					require.Equal(t, 1, len(req.Options.ArgDependencies))
+					require.Len(t, req.Options.ArgDependencies, 1)
 					assert.ElementsMatch(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",
@@ -2919,7 +2945,7 @@ func TestCall(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t,
-			map[string]interface{}{
+			map[string]any{
 				"result": float64(100),
 			}, res.Return.AsMap())
 		assert.Equal(t,
@@ -3702,7 +3728,6 @@ func TestDowngradeOutputValues(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := downgradeOutputValues(tt.input)

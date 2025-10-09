@@ -21,6 +21,7 @@ class Component extends pulumi.ComponentResource {
     }
 
     protected async initialize(args: pulumi.Inputs) {
+        super.initialize(args);
         const provider = this.getProvider("testcomponent::");
         if (!(provider instanceof Provider)) {
             throw new Error("provider is not an instance of Provider");

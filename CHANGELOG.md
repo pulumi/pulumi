@@ -1,5 +1,137 @@
 # Changelog
 
+## 3.201.0 (2025-10-06)
+
+
+### Features
+
+- [sdkgen/go] Support non-object return types in functions
+  [#20646](https://github.com/pulumi/pulumi/pull/20646)
+
+
+### Bug Fixes
+
+- [backend/service] Fix the --insecure flag in `pulumi login`
+
+## 3.200.0 (2025-10-03)
+
+
+### Features
+
+- [cli] Look for .cmd and .ps1 extensions as well on Windows when looking for executables
+  [#20637](https://github.com/pulumi/pulumi/pull/20637)
+
+- [sdk/go] Add a new resource option: `HideDiffs`
+  [#20631](https://github.com/pulumi/pulumi/pull/20631)
+
+- [sdk/nodejs] Add a new resource option: `hideDiffs`
+  [#20631](https://github.com/pulumi/pulumi/pull/20631)
+
+- [sdkgen/python] Support non-object return types in functions
+  [#20624](https://github.com/pulumi/pulumi/pull/20624)
+
+
+### Bug Fixes
+
+- [build] Use ruff to auto fix lints in python
+  [#20644](https://github.com/pulumi/pulumi/pull/20644)
+
+- [sdk/nodejs] Make new arguments to `initialize` optional
+  [#20650](https://github.com/pulumi/pulumi/pull/20650)
+
+- [sdkgen/nodejs] Generate a .gitignore file inside local SDKs
+  [#20643](https://github.com/pulumi/pulumi/pull/20643)
+
+- [cli/state] Treat providers that are marked as parents in a move as providers still instead of as regular resources
+  [#20639](https://github.com/pulumi/pulumi/pull/20639)
+
+- [cli/state] Exclude root stack correctly when moving resources and when --include-parents is passed
+
+## 3.199.0 (2025-10-01)
+
+
+### Features
+
+- [cli/about] Add `pulumi about env` to help
+  [#20633](https://github.com/pulumi/pulumi/pull/20633)
+
+- [cli/{about,new}] Add environment variables to override template repository settings. The new PULUMI_TEMPLATE_GIT_REPOSITORY, PULUMI_TEMPLATE_BRANCH, PULUMI_POLICY_TEMPLATE_GIT_REPOSITORY, and PULUMI_POLICY_TEMPLATE_BRANCH environment variables allow runtime customization of template sources
+  [#20615](https://github.com/pulumi/pulumi/pull/20615)
+
+- [cli/{install,package}] Add support for package references in plugins
+  [#20524](https://github.com/pulumi/pulumi/pull/20524)
+
+- [sdk/nodejs] Pass options, name, and type to ComponentResources initialize methods
+  [#20618](https://github.com/pulumi/pulumi/pull/20618)
+
+- [cli/policy] Send vcs metadata when publishing policy packs
+  [#20528](https://github.com/pulumi/pulumi/pull/20528)
+
+
+### Bug Fixes
+
+- [cli/display] Always send diag events to stderr in the diff display
+  [#20632](https://github.com/pulumi/pulumi/pull/20632)
+
+- [components] Stop including auth info in plugin name
+  [#20620](https://github.com/pulumi/pulumi/pull/20620)
+
+- [engine] Support the import option in resource transforms
+  [#20586](https://github.com/pulumi/pulumi/pull/20586)
+
+- [programgen] Fix panic in parseProxyApply when encoutering warning diagnostics
+  [#20583](https://github.com/pulumi/pulumi/pull/20583)
+
+- [sdk/nodejs] Don't attempt to serialise function values for resource inputs/outputs
+  [#20621](https://github.com/pulumi/pulumi/pull/20621)
+
+## 3.198.0 (2025-09-26)
+
+
+### Features
+
+- [engine] Expand snapshot integrity check for resources
+  [#20519](https://github.com/pulumi/pulumi/pull/20519)
+
+- [sdk/go] Refactor Go policy SDK to have access to a pulumi Context object
+  [#20570](https://github.com/pulumi/pulumi/pull/20570)
+
+- [sdk/python] Allow registered resources to be retrieved from the mock monitor for test assertions
+  [#20540](https://github.com/pulumi/pulumi/pull/20540)
+
+
+### Bug Fixes
+
+- [engine] Fix snapshot integrity error with `run-program --refresh`, when a provider has a dependency that isn't being created
+  [#20541](https://github.com/pulumi/pulumi/pull/20541)
+
+- [engine] Remove unneeded data from policy summary events
+  [#20589](https://github.com/pulumi/pulumi/pull/20589)
+
+- [sdk] Fix plugin killing during cancellation
+  [#20543](https://github.com/pulumi/pulumi/pull/20543)
+
+- [sdk/go] Fix [Unm/M]arshalProperties to return nil when given nil
+  [#20544](https://github.com/pulumi/pulumi/pull/20544)
+
+
+### Miscellaneous
+
+- [protobuf] Add loader_target to LanguageRuntime.LinkRequest
+  [#20552](https://github.com/pulumi/pulumi/pull/20552)
+
+- [cli/package] Move InstallPackage from cmd/packagecmd to cmd/packages
+  [#20550](https://github.com/pulumi/pulumi/pull/20550)
+
+- [cli/package] Move stdout/stderr IO out of GenSDK and LinkPackage
+  [#20546](https://github.com/pulumi/pulumi/pull/20546)
+
+- [sdk] Move PluginSpec.Install to pkg/workspace.InstallPluginContent
+  [#20537](https://github.com/pulumi/pulumi/pull/20537)
+
+- [sdk/yaml] Bump pulumi-yaml to 1.23.2
+  [#20588](https://github.com/pulumi/pulumi/pull/20588)
+
 ## 3.197.0 (2025-09-17)
 
 

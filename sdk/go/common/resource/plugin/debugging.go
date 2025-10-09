@@ -41,5 +41,5 @@ type DebugContext interface {
 
 type DebuggingInfo struct {
 	// Config is the debug configuration (language-specific, see Debug Adapter Protocol)
-	Config map[string]interface{}
+	Config map[string]any
 }

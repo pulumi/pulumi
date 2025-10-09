@@ -17,7 +17,6 @@ package deploy
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"runtime/debug"
 
 	"github.com/go-test/deep"
@@ -272,7 +271,16 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	}
 
 	if len(snap.PendingOperations) != len(expected.PendingOperations) {
-		return errors.New("actual and expected pending operations differ")
+		var snapPendingOps string
+		for _, op := range snap.PendingOperations {
+			snapPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+		}
+		var expectedPendingOps string
+		for _, op := range expected.PendingOperations {
+			expectedPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+		}
+		return fmt.Errorf("actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.PendingOperations), snapPendingOps, len(expected.PendingOperations), expectedPendingOps)
 	}
 
 	pendingOpsMap := make(map[resource.URN][]resource.Operation)
@@ -281,15 +289,30 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
 	}
 	for _, jop := range snap.PendingOperations {
+		diffStr := ""
 		found := false
 		for _, mop := range pendingOpsMap[jop.Resource.URN] {
-			if reflect.DeepEqual(jop, mop) {
+			if diff := deep.Equal(jop, mop); diff != nil {
+				if jop.Resource.URN == mop.Resource.URN {
+					diffStr += fmt.Sprintf("%s\n", diff)
+				}
+			} else {
 				found = true
 				break
 			}
 		}
 		if !found {
-			return fmt.Errorf("actual and expected pending operations differ, %v not found in expected", jop)
+			var pendingOps string
+			for _, op := range snap.PendingOperations {
+				pendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+			}
+			var expectedPendingOps string
+			for _, op := range expected.PendingOperations {
+				expectedPendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+			}
+			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jop.Type, jop.Resource, pendingOps, expectedPendingOps, diffStr)
 		}
 	}
 
@@ -309,12 +332,51 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	resourcesMap := make(map[resource.URN][]*resource.State)
 
 	for _, mr := range expected.Resources {
+		if len(mr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range mr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			mr.PropertyDependencies = newPropDeps
+		}
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
+		if len(mr.Outputs) == 0 {
+			mr.Outputs = make(resource.PropertyMap)
+		}
+		if len(mr.Inputs) == 0 {
+			mr.Inputs = make(resource.PropertyMap)
+		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
 
 	for _, jr := range snap.Resources {
+		if len(jr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range jr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			jr.PropertyDependencies = newPropDeps
+		}
+
 		found := false
 		var diffStr string
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
+		if len(jr.Outputs) == 0 {
+			jr.Outputs = make(resource.PropertyMap)
+		}
+		if len(jr.Inputs) == 0 {
+			jr.Inputs = make(resource.PropertyMap)
+		}
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
@@ -720,7 +782,7 @@ const (
 // integrity errors are raised by Snapshot.VerifyIntegrity when a problem is
 // detected with a snapshot (e.g. missing or out-of-order dependencies, or
 // unparseable data).
-func SnapshotIntegrityErrorf(format string, args ...interface{}) error {
+func SnapshotIntegrityErrorf(format string, args ...any) error {
 	return &SnapshotIntegrityError{
 		Err:   fmt.Errorf(format, args...),
 		Op:    SnapshotIntegrityWrite,

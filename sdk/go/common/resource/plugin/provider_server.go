@@ -51,6 +51,7 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: keepOutputValues,
+		PropagateNil:     true,
 	}
 }
 
@@ -60,6 +61,7 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 		KeepUnknowns:  true,
 		KeepSecrets:   p.keepSecrets,
 		KeepResources: p.keepResources,
+		PropagateNil:  true,
 	}
 }
 
@@ -363,7 +365,7 @@ func (p *providerServer) Configure(ctx context.Context,
 				return nil, err
 			}
 
-			var value interface{}
+			var value any
 			if err = json.Unmarshal([]byte(v), &value); err != nil {
 				// If we couldn't unmarshal a JSON value, just pass the raw string through.
 				value = v

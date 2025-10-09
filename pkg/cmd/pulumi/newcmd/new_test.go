@@ -51,7 +51,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		interactive:       false,
@@ -71,7 +71,7 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		interactive:       false,
@@ -94,7 +94,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
@@ -120,7 +120,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	uniqueProjectName := filepath.Base(tempdir)
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
@@ -145,7 +145,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	// the project name and the project name in the stack name must match
 	uniqueProjectName := filepath.Base(tempdir)
@@ -172,7 +172,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	args := newArgs{
@@ -199,7 +199,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	args := newArgs{
@@ -223,7 +223,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
@@ -256,7 +256,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 		assert.Nil(t, name)
@@ -291,7 +291,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
@@ -331,7 +331,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
@@ -370,7 +370,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	prompt := func(yes bool, valueType string, defaultValue string, secret bool,
@@ -408,7 +408,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
@@ -443,7 +443,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
@@ -486,7 +486,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		args := newArgs{
 			chooseTemplate:    ChooseTemplate,
@@ -503,7 +503,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		// A template that will never exist.
 		template := "this-is-not-the-template-youre-looking-for"
@@ -521,7 +521,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		// A template that will never exist remotely.
 		template := "this-is-not-the-template-youre-looking-for"
@@ -625,7 +625,6 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("project=%q/stackRef=%q", tt.projectName, tt.stackRef), func(t *testing.T) {
 			t.Parallel()
 			err := compareStackProjectName(b, tt.stackRef, tt.projectName)
@@ -695,7 +694,6 @@ func TestProjectExists(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName, false /* generateOnly */, display.Options{})
@@ -724,10 +722,9 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tempdir := tempProjectDir(t)
-			chdir(t, tempdir)
+			t.Chdir(tempdir)
 
 			args := newArgs{
 				generateOnly:      true,
@@ -813,14 +810,13 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		name := tt.argument
 		if name == "" {
 			name = tt.prompted
 		}
 		t.Run(name, func(t *testing.T) {
 			tempdir := tempProjectDir(t)
-			chdir(t, tempdir)
+			t.Chdir(tempdir)
 			uniqueProjectName := filepath.Base(tempdir) + "test"
 
 			chooseTemplateMock := func(templates []cmdTemplates.Template, opts display.Options,
@@ -835,7 +831,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
-			) (map[string]interface{}, error) {
+			) (map[string]any, error) {
 				return nil, nil
 			}
 
@@ -859,7 +855,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			require.NoError(t, err)
 			tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
 			assert.True(t, has)
-			tagsObject, ok := tagsValue.Value.(map[string]interface{})
+			tagsObject, ok := tagsValue.Value.(map[string]any)
 			assert.True(t, ok)
 			assert.Equal(t, tt.expected, tagsObject[apitype.ProjectTemplateTag])
 		})
@@ -869,12 +865,12 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
-	) (map[string]interface{}, error) {
-		return map[string]interface{}{"someOption": "someValue"}, nil
+	) (map[string]any, error) {
+		return map[string]any{"someOption": "someValue"}, nil
 	}
 
 	args := newArgs{
@@ -894,7 +890,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 
 	require.NoError(t, err)
 	proj := loadProject(t, tempdir)
-	require.Equal(t, 1, len(proj.Runtime.Options()))
+	require.Len(t, proj.Runtime.Options(), 1)
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 
@@ -957,7 +953,8 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -1032,7 +1029,7 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -1139,7 +1136,7 @@ func TestPulumiNewOrgTemplate(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -1207,7 +1204,7 @@ resources:
 			return mockBackend, nil
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},

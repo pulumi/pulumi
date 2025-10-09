@@ -168,7 +168,7 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			be, err := backend.DefaultLoginManager.Login(
-				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, displayOptions.Color)
+				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
 			if err != nil {
 				return fmt.Errorf("problem logging in: %w", err)
 			}

@@ -350,7 +350,9 @@ func newConfigEnvInitCrypter() (evalCrypter, error) {
 	if _, err := rand.Read(key); err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
 	}
-	return &configEnvInitCrypter{crypter: config.NewSymmetricCrypter(key)}, nil
+	crypter := config.NewSymmetricCrypter(key)
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
+	return &configEnvInitCrypter{crypter: cachedCrypter}, nil
 }
 
 func (c configEnvInitCrypter) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {

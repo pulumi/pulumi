@@ -17,11 +17,11 @@ package policyx
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -32,26 +32,26 @@ import (
 )
 
 // Main starts the analyzer server with the provided policy pack factory function.
-func Main(policyPack func(pulumix.Engine) (PolicyPack, error)) error {
+func Main(policyPack func(*pulumi.Context) (PolicyPack, error)) error {
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
 			analyzer := &analyzerServer{
 				policyPackFactory: policyPack,
 			}
 			pulumirpc.RegisterAnalyzerServer(srv, analyzer)
 			return nil
 		},
-	}, nil)
+	})
 	if err != nil {
 		return fmt.Errorf("fatal: %v", err)
 	}
 
 	// The analyzer protocol requires that we now write out the port we have chosen to listen on.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// Finally, wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		return fmt.Errorf("fatal: %v", err)
 	}
 
@@ -61,35 +61,18 @@ func Main(policyPack func(pulumix.Engine) (PolicyPack, error)) error {
 type analyzerServer struct {
 	pulumirpc.UnimplementedAnalyzerServer
 
-	policyPackFactory func(pulumix.Engine) (PolicyPack, error)
+	policyPackFactory func(*pulumi.Context) (PolicyPack, error)
 	policyPack        PolicyPack
 
-	config map[string]PolicyConfig
+	config    map[string]PolicyConfig
+	handshake *pulumirpc.AnalyzerHandshakeRequest
 }
 
 func (srv *analyzerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.AnalyzerHandshakeRequest,
 ) (*pulumirpc.AnalyzerHandshakeResponse, error) {
-	engine, err := pulumix.NewEngine(req.GetEngineAddress())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create engine: %w", err)
-	}
-
-	srv.policyPack, err = srv.policyPackFactory(engine)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create policy pack: %w", err)
-	}
-
-	_, err = srv.policyPack.Handshake(ctx, HandshakeRequest{
-		Engine:           engine,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-	})
-	if err != nil {
-		return nil, err
-	}
-
+	srv.handshake = req
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
 }
 
@@ -137,6 +120,47 @@ func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pu
 	}, nil
 }
 
+func (srv *analyzerServer) ConfigureStack(ctx context.Context,
+	req *pulumirpc.AnalyzerStackConfigureRequest) (
+	*pulumirpc.AnalyzerStackConfigureResponse, error,
+) {
+	if srv.handshake == nil {
+		return nil, errors.New("analyzer has not had handshake called")
+	}
+
+	root := ""
+	if srv.handshake.RootDirectory != nil {
+		root = *srv.handshake.RootDirectory
+	}
+
+	info := pulumi.RunInfo{
+		Stack:        req.Stack,
+		Project:      req.Project,
+		Organization: req.Organization,
+
+		RootDirectory: root,
+
+		MonitorAddr: "",
+		EngineAddr:  srv.handshake.EngineAddress,
+
+		Config:           req.Config,
+		ConfigSecretKeys: req.ConfigSecretKeys,
+		DryRun:           req.DryRun,
+		Parallel:         1,
+	}
+	pctx, err := pulumi.NewContext(context.Background(), info)
+	if err != nil {
+		return nil, fmt.Errorf("creating context: %w", err)
+	}
+
+	srv.policyPack, err = srv.policyPackFactory(pctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create policy pack: %w", err)
+	}
+
+	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
+}
+
 func (srv *analyzerServer) Configure(ctx context.Context, req *pulumirpc.ConfigureAnalyzerRequest) (*pbempty.Empty,
 	error,
 ) {
@@ -146,8 +170,8 @@ func (srv *analyzerServer) Configure(ctx context.Context, req *pulumirpc.Configu
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal properties for policy %q: %w", k, err)
 		}
-		// Unmarshal the properties into an map[string]interface{}
-		var props map[string]interface{}
+		// Unmarshal the properties into an map[string]any
+		var props map[string]any
 		if err := json.Unmarshal(data, &props); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", k, err)
 		}

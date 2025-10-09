@@ -15,7 +15,12 @@
 package executable
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplitGoPathShouldReturnExpected(t *testing.T) {
@@ -49,4 +54,48 @@ func TestSplitGoPathShouldReturnExpected(t *testing.T) {
 			t.Errorf("expected path length to be %d, got %d", test.expected, len(paths))
 		}
 	}
+}
+
+func TestFindExecutableShouldLookForExeAndCmdOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("skipping Windows-specific test")
+	}
+
+	tempDir := t.TempDir()
+
+	exePath := filepath.Join(tempDir, "mockprogram.exe")
+	cmdPath := filepath.Join(tempDir, "mockprogram.cmd")
+	ps1Path := filepath.Join(tempDir, "mockprogram.ps1")
+
+	//nolint:gosec // We want to write an executable file for testing purposes, it's not used anywhere.
+	err := os.WriteFile(exePath, []byte("echo This is a mock .exe file"), 0o755)
+	require.NoError(t, err)
+
+	//nolint:gosec // We want to write an executable file for testing purposes, it's not used anywhere.
+	err = os.WriteFile(cmdPath, []byte("echo This is a mock .cmd file"), 0o755)
+	require.NoError(t, err)
+
+	//nolint:gosec // We want to write an executable file for testing purposes, it's not used anywhere.
+	err = os.WriteFile(ps1Path, []byte("echo This is a mock .ps1 file"), 0o755)
+	require.NoError(t, err)
+
+	t.Setenv("PATH", tempDir+";"+os.Getenv("PATH"))
+
+	foundPath, err := FindExecutable("mockprogram")
+	require.NoError(t, err)
+	require.Equal(t, exePath, foundPath)
+
+	err = os.Remove(exePath)
+	require.NoError(t, err, "failed to remove mock .exe file")
+
+	foundPath, err = FindExecutable("mockprogram")
+	require.NoError(t, err)
+	require.Equal(t, cmdPath, foundPath)
+
+	err = os.Remove(cmdPath)
+	require.NoError(t, err, "failed to remove mock .cmd file")
+
+	foundPath, err = FindExecutable("mockprogram")
+	require.NoError(t, err)
+	require.Equal(t, ps1Path, foundPath)
 }

@@ -97,11 +97,11 @@ func (k *Key) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (k Key) MarshalYAML() (interface{}, error) {
+func (k Key) MarshalYAML() (any, error) {
 	return k.String(), nil
 }
 
-func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (k *Key) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err != nil {
 		return fmt.Errorf("could not unmarshal key: %w", err)

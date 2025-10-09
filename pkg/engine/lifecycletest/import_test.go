@@ -49,8 +49,7 @@ func TestImportOption(t *testing.T) {
 
 	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
 	// resource inputs.
-	expectedInputs := resource.PropertyMap{}
-	expectedState := resource.PropertyMap{}
+	var expectedInputs, expectedState resource.PropertyMap
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -345,7 +344,7 @@ func TestImportOption(t *testing.T) {
 
 	// Now have the program import the resource. We should see an import-replace and a read-discard.
 	readID, importID = "", readID
-	expectedInputs, expectedState = resource.PropertyMap{}, resource.PropertyMap{}
+	expectedInputs, expectedState = nil, nil
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {

@@ -88,7 +88,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws2, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -98,7 +98,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, azure, opts.Provider,
@@ -109,7 +109,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -120,7 +120,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws1, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -130,7 +130,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1), Providers(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -141,7 +141,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1, aws2), Providers(aws1, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -156,7 +156,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(ProviderMap(m1), ProviderMap(m2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Nil(t, opts.Provider,
 			"Providers should not upgrade to Provider")
@@ -166,7 +166,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -177,7 +177,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws2, aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -312,7 +312,6 @@ func TestResourceOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -380,7 +379,6 @@ func TestInvokeOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -578,8 +576,8 @@ func TestNewResourceInput(t *testing.T) {
 
 	resourceOutput := resourceInput.ToResourceOutput()
 
-	channel := make(chan interface{})
-	resourceOutput.ApplyT(func(res interface{}) interface{} {
+	channel := make(chan any)
+	resourceOutput.ApplyT(func(res any) any {
 		channel <- res
 		return res
 	})
@@ -656,7 +654,6 @@ func TestUninitializedParentResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1144,7 +1141,6 @@ func TestNewResourceOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1208,7 +1204,6 @@ func TestNewInvokeOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

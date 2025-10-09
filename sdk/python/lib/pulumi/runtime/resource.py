@@ -18,11 +18,11 @@ import traceback
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     NamedTuple,
     Optional,
     Union,
 )
+from collections.abc import Callable
 from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
@@ -1065,6 +1065,7 @@ def register_resource(
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
                 hooks=hooks,
+                hideDiffs=opts.hide_diffs,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

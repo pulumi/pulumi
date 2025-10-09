@@ -223,7 +223,7 @@ func TestRemoveWithForce(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -309,7 +309,7 @@ func TestNewStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -422,7 +422,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -516,7 +516,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -610,7 +610,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -688,7 +688,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -719,7 +719,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -797,7 +797,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -828,7 +828,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -916,7 +916,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	res, err := s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -1082,7 +1082,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 				t.FailNow()
 			}
 
-			assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+			require.Len(t, res.Outputs, 3, "expected two plain outputs")
 			assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 			assert.False(t, res.Outputs["exp_static"].Secret)
 			assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -2412,7 +2412,7 @@ func TestStructuredOutput(t *testing.T) {
 	}
 	wg.Wait()
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -2559,14 +2559,14 @@ func TestSupportsStackOutputs(t *testing.T) {
 	}
 
 	assertOutputs := func(t *testing.T, outputs OutputMap) {
-		assert.Equal(t, 4, len(outputs), "expected four outputs")
+		require.Len(t, outputs, 4, "expected four outputs")
 		assert.Equal(t, "foo", outputs["exp_static"].Value)
 		assert.False(t, outputs["exp_static"].Secret)
 		assert.Equal(t, "abc", outputs["exp_cfg"].Value)
 		assert.False(t, outputs["exp_cfg"].Secret)
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
-		assert.Equal(t, map[string]interface{}{
+		assert.Equal(t, map[string]any{
 			"is_a_secret":  "iamsecret",
 			"not_a_secret": "foo",
 		}, outputs["nested_obj"].Value)
@@ -2579,7 +2579,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 0, len(initialOutputs))
+	assert.Empty(t, initialOutputs)
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -2617,7 +2617,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 0, len(outputsAfterDestroy))
+	assert.Empty(t, outputsAfterDestroy)
 }
 
 func TestShallowClone(t *testing.T) {
@@ -2648,7 +2648,6 @@ func TestShallowClone(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2668,7 +2667,7 @@ func TestShallowClone(t *testing.T) {
 			hashes, err := r.Storer.Shallow()
 			require.NoError(t, err)
 
-			assert.Equal(t, 1, len(hashes))
+			require.Len(t, hashes, 1)
 		})
 	}
 }
@@ -3007,7 +3006,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 		c.RequireSecretFloat64("plainfloat11")
 		c.TrySecretFloat64("plainfloat12")
 
-		var obj interface{}
+		var obj any
 		config.GetObject(ctx, "plainobjj1", &obj)
 		config.RequireObject(ctx, "plainobj2", &obj)
 		config.TryObject(ctx, "plainobj3", &obj)

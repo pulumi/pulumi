@@ -39,6 +39,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes6 := false
 	foundRes7 := false
 	foundRes8 := false
+	foundRes9 := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -66,7 +67,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			length := res.Inputs["length"]
 			require.NotNil(t, length)
 			// length should be secret
-			secret, ok := length.(map[string]interface{})
+			secret, ok := length.(map[string]any)
 			assert.True(t, ok, "length should be a secret")
 			assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
 			assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("result"))
@@ -108,6 +109,10 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 		if res.URN.Name() == "res8" {
 			foundRes8 = true
 		}
+		if res.URN.Name() == "res9" {
+			foundRes9 = true
+			assert.Equal(t, resource.ID("stackDefault:test-id"), res.ImportID)
+		}
 	}
 	assert.True(t, foundRes1)
 	assert.True(t, foundRes2Child)
@@ -117,4 +122,5 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	assert.True(t, foundRes6)
 	assert.True(t, foundRes7)
 	assert.True(t, foundRes8)
+	assert.True(t, foundRes9)
 }

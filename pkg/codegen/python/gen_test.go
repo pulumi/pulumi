@@ -56,7 +56,6 @@ func TestRelPathToRelImport(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pathTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -357,7 +356,6 @@ func TestCalculateDeps(t *testing.T) {
 	}}
 
 	for i, tc := range cases {
-		tc := tc
 		name := fmt.Sprintf("CalculateDeps #%d", i+1)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()
@@ -378,7 +376,7 @@ func TestPythonRequiresSuccessful(t *testing.T) {
 	t.Parallel()
 	expected := "3.1"
 	pkg := schema.Package{
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"python": PackageInfo{
 				PythonRequires: expected,
 			},
@@ -398,7 +396,7 @@ func TestPythonRequiresNotProvided(t *testing.T) {
 	t.Parallel()
 	expected := defaultMinPythonVersion
 	pkg := schema.Package{
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"python": PackageInfo{
 				// Don't set PythonRequires
 			},

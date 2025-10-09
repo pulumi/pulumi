@@ -102,7 +102,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-builtin-try":      "Temporarily disabled until pr #18915 is submitted",
 	"l1-builtin-can":      "Temporarily disabled until pr #18916 is submitted",
-	"l2-invoke-scalar":    "not implemented yet: #19388",
 	"l3-component-simple": "https://github.com/pulumi/pulumi/issues/19067",
 }
 
@@ -157,8 +156,6 @@ func TestLanguage(t *testing.T) {
 	}
 
 	for _, config := range configs {
-		config := config
-
 		t.Run(config.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -221,8 +218,6 @@ func TestLanguage(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, tt := range tests.Tests {
-				tt := tt
-
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 

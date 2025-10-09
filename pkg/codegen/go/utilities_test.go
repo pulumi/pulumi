@@ -40,7 +40,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -66,7 +65,6 @@ func Test_makeValidIdentifier(t *testing.T) {
 		{"8", "_8"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 			if got := makeValidIdentifier(tt.input); got != tt.expected {

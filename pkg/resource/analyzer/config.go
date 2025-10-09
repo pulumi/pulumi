@@ -45,9 +45,9 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 		}
 
 		var enforcementLevel apitype.EnforcementLevel
-		var properties map[string]interface{}
+		var properties map[string]any
 
-		props := make(map[string]interface{})
+		props := make(map[string]any)
 		if err := json.Unmarshal(*v, &props); err != nil {
 			return nil, err
 		}
@@ -82,13 +82,13 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 		return nil, nil
 	}
 
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 	if err := json.Unmarshal(b, &config); err != nil {
 		return nil, err
 	}
 	for k, v := range config {
 		var enforcementLevel apitype.EnforcementLevel
-		var properties map[string]interface{}
+		var properties map[string]any
 		switch val := v.(type) {
 		case string:
 			el := apitype.EnforcementLevel(val)
@@ -96,7 +96,7 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 				return nil, fmt.Errorf("parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
 			}
 			enforcementLevel = el
-		case map[string]interface{}:
+		case map[string]any:
 			el, err := extractEnforcementLevel(val)
 			if err != nil {
 				return nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
@@ -124,7 +124,7 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 
 // extractEnforcementLevel looks for "enforcementLevel" in the map, and if so, validates that it is a valid value, and
 // if so, deletes it from the map and returns it.
-func extractEnforcementLevel(props map[string]interface{}) (apitype.EnforcementLevel, error) {
+func extractEnforcementLevel(props map[string]any) (apitype.EnforcementLevel, error) {
 	contract.Assertf(props != nil, "props != nil")
 
 	var enforcementLevel apitype.EnforcementLevel
@@ -154,12 +154,12 @@ func validatePolicyPackConfig(
 		if policy.ConfigSchema == nil {
 			continue
 		}
-		var props map[string]interface{}
+		var props map[string]any
 		if c, ok := config[policy.Name]; ok {
 			props = c.Properties
 		}
 		if props == nil {
-			props = make(map[string]interface{})
+			props = make(map[string]any)
 		}
 		validationErrors, err := validatePolicyConfig(*policy.ConfigSchema, props)
 		if err != nil {
@@ -173,7 +173,7 @@ func validatePolicyPackConfig(
 }
 
 // validatePolicyConfig validates an individual policy's configuration.
-func validatePolicyConfig(schema plugin.AnalyzerPolicyConfigSchema, config map[string]interface{}) ([]string, error) {
+func validatePolicyConfig(schema plugin.AnalyzerPolicyConfigSchema, config map[string]any) ([]string, error) {
 	var errors []string
 	schemaLoader := gojsonschema.NewGoLoader(convertSchema(schema))
 	documentLoader := gojsonschema.NewGoLoader(config)
@@ -243,14 +243,14 @@ func createConfigWithDefaults(policies []plugin.AnalyzerPolicyInfo) map[string]p
 
 	// Prepare the resulting config with all defaults from the policy metadata.
 	for _, policy := range policies {
-		var props map[string]interface{}
+		var props map[string]any
 
 		// Set default values from the schema.
 		if policy.ConfigSchema != nil {
 			for k, v := range policy.ConfigSchema.Properties {
 				if val, ok := v["default"]; ok {
 					if props == nil {
-						props = make(map[string]interface{})
+						props = make(map[string]any)
 					}
 					props[k] = val
 				}
@@ -314,7 +314,7 @@ func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
 	// Apply policy level config.
 	for policy, givenConfig := range configToApply {
 		var enforcementLevel apitype.EnforcementLevel
-		var properties map[string]interface{}
+		var properties map[string]any
 
 		if resultConfig, hasResultConfig := result[policy]; hasResultConfig {
 			enforcementLevel = resultConfig.EnforcementLevel
@@ -325,7 +325,7 @@ func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
 			enforcementLevel = givenConfig.EnforcementLevel
 		}
 		if len(givenConfig.Properties) > 0 && properties == nil {
-			properties = make(map[string]interface{})
+			properties = make(map[string]any)
 		}
 		for k, v := range givenConfig.Properties {
 			properties[k] = v

@@ -27,7 +27,7 @@ import (
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
 // in ObjectProperty values) and integers (which access elements of ArrayProperty values).
-type PropertyPath []interface{}
+type PropertyPath []any
 
 // ParsePropertyPath parses a property path into a PropertyPath value.
 //
@@ -67,7 +67,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 	// pathElement := { '.' } [a-zA-Z_$][a-zA-Z0-9_$]
 	// pathIndex := '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']'
 	// path := { pathElement | pathIndex }
-	var elements []interface{}
+	var elements []any
 	if len(path) > 0 && path[0] == '.' {
 		return nil, errors.New("expected property path to start with a name or index")
 	}
@@ -86,7 +86,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 			}
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
-			var pathElement interface{}
+			var pathElement any
 			if len(path) > 1 && path[1] == '"' {
 				var propertyKey []byte
 				var i int
@@ -605,4 +605,46 @@ func (p PropertyPath) String() string {
 		}
 	}
 	return buf.String()
+}
+
+func (p PropertyPath) MarshalText() ([]byte, error) {
+	return []byte(p.String()), nil
+}
+
+func (p *PropertyPath) UnmarshalText(b []byte) error {
+	path, err := ParsePropertyPath(string(b))
+	if err != nil {
+		*p = nil
+		return err
+	}
+	*p = path
+	return nil
+}
+
+func (p PropertyPath) GoString() string {
+	var buffer strings.Builder
+	buffer.WriteString("resource.PropertyPath{")
+	if len(p) == 0 {
+		buffer.WriteString("}")
+		return buffer.String()
+	}
+
+	format := func(a any) {
+		switch a := a.(type) {
+		case int:
+			buffer.WriteString(strconv.Itoa(a))
+		case string:
+			buffer.WriteString(strconv.Quote(a))
+		default:
+			buffer.WriteString(fmt.Sprintf("INVALID %[1]T (%[1]q)", a))
+		}
+	}
+
+	for _, e := range p[:len(p)-1] {
+		format(e)
+		buffer.WriteRune(',')
+	}
+	format(p[len(p)-1])
+	buffer.WriteRune('}')
+	return buffer.String()
 }

@@ -61,12 +61,12 @@ var Importer schema.Language = importer(0)
 type importer int
 
 // ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.
-func (importer) ImportDefaultSpec(raw json.RawMessage) (interface{}, error) {
+func (importer) ImportDefaultSpec(raw json.RawMessage) (any, error) {
 	return raw, nil
 }
 
 // ImportPropertySpec decodes language-specific metadata associated with a Property.
-func (importer) ImportPropertySpec(raw json.RawMessage) (interface{}, error) {
+func (importer) ImportPropertySpec(raw json.RawMessage) (any, error) {
 	var info CSharpPropertyInfo
 	if err := json.Unmarshal([]byte(raw), &info); err != nil {
 		return nil, err
@@ -75,12 +75,12 @@ func (importer) ImportPropertySpec(raw json.RawMessage) (interface{}, error) {
 }
 
 // ImportObjectTypeSpec decodes language-specific metadata associated with a ObjectType.
-func (importer) ImportObjectTypeSpec(raw json.RawMessage) (interface{}, error) {
+func (importer) ImportObjectTypeSpec(raw json.RawMessage) (any, error) {
 	return raw, nil
 }
 
 // ImportResourceSpec decodes language-specific metadata associated with a Resource.
-func (importer) ImportResourceSpec(raw json.RawMessage) (interface{}, error) {
+func (importer) ImportResourceSpec(raw json.RawMessage) (any, error) {
 	var info CSharpResourceInfo
 	if err := json.Unmarshal([]byte(raw), &info); err != nil {
 		return nil, err
@@ -89,12 +89,12 @@ func (importer) ImportResourceSpec(raw json.RawMessage) (interface{}, error) {
 }
 
 // ImportFunctionSpec decodes language-specific metadata associated with a Function.
-func (importer) ImportFunctionSpec(raw json.RawMessage) (interface{}, error) {
+func (importer) ImportFunctionSpec(raw json.RawMessage) (any, error) {
 	return raw, nil
 }
 
 // ImportPackageSpec decodes language-specific metadata associated with a Package.
-func (importer) ImportPackageSpec(raw json.RawMessage) (interface{}, error) {
+func (importer) ImportPackageSpec(raw json.RawMessage) (any, error) {
 	var info CSharpPackageInfo
 	if err := json.Unmarshal([]byte(raw), &info); err != nil {
 		return nil, err

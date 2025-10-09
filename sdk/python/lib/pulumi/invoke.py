@@ -14,12 +14,12 @@
 import copy
 from typing import (
     Any,
-    Callable,
     Optional,
     TYPE_CHECKING,
     Union,
     cast,
 )
+from collections.abc import Callable
 from collections.abc import Awaitable, Sequence
 
 if TYPE_CHECKING:

@@ -51,7 +51,6 @@ func TestSanitizeArchivePath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 			_, err := sanitizeArchivePath(tt.dir, tt.fileName)
@@ -114,7 +113,6 @@ func TestIsZipArchiveURL(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 			result := isZIPTemplateURL(tt.templateURL)

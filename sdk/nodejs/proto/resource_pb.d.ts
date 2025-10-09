@@ -272,6 +272,10 @@ export class RegisterResourceRequest extends jspb.Message {
     clearHooks(): void;
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): RegisterResourceRequest;
+    clearHidediffsList(): void;
+    getHidediffsList(): Array<string>;
+    setHidediffsList(value: Array<string>): RegisterResourceRequest;
+    addHidediffs(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -324,6 +328,7 @@ export namespace RegisterResourceRequest {
         supportsresultreporting: boolean,
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        hidediffsList: Array<string>,
     }
 
 
@@ -727,6 +732,12 @@ export class TransformResourceOptions extends jspb.Message {
     clearHooks(): void;
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): TransformResourceOptions;
+    getImport(): string;
+    setImport(value: string): TransformResourceOptions;
+    clearHideDiffList(): void;
+    getHideDiffList(): Array<string>;
+    setHideDiffList(value: Array<string>): TransformResourceOptions;
+    addHideDiff(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
@@ -758,6 +769,8 @@ export namespace TransformResourceOptions {
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        pb_import: string,
+        hideDiffList: Array<string>,
     }
 }
 

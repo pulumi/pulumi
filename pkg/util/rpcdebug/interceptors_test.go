@@ -48,7 +48,7 @@ func TestClientInterceptorCatchesErrors(t *testing.T) {
 	var inner grpc.UnaryInvoker = func(
 		ctx context.Context,
 		method string,
-		req, reply interface{},
+		req, reply any,
 		cc *grpc.ClientConn,
 		opts ...grpc.CallOption,
 	) error {

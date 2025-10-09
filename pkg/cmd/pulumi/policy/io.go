@@ -57,7 +57,6 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 		Runtime: projRuntime,
 	}, Root: root}
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
-		ctx,
 		projinfo,
 		nil,
 		cmdutil.Diag(),

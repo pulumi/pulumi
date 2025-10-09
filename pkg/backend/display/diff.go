@@ -77,10 +77,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 
 			out := stdout
 			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
-				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-					out = stderr
-				}
+				out = stderr
 			}
 
 			msg := RenderDiffEvent(event, seen, opts)
@@ -146,7 +143,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
-	if payload.Severity == diag.Debug && !opts.Debug {
+	if opts.SuppressDiagEventsInDiff ||
+		payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
@@ -178,7 +176,7 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	if detailed {
 		var b bytes.Buffer
 		PrintObjectDiff(&b, *diff, nil,
-			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets)
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
@@ -395,9 +393,9 @@ func renderDiff(
 	if metadata.Op != deploy.OpSame {
 		if metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
-			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
+			if diff, hidden := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
 				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
-					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
+					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden)
 			} else {
 				PrintObject(
 					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/

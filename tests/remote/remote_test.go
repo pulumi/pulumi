@@ -84,9 +84,7 @@ func TestInvalidRemoteFlags(t *testing.T) {
 	}
 
 	for _, command := range commands {
-		command := command
 		for name, tc := range tests {
-			tc := tc
 			t.Run(command+"_"+name, func(t *testing.T) {
 				t.Parallel()
 

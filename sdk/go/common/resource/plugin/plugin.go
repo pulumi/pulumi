@@ -310,7 +310,7 @@ func newPlugin[T any](
 					sawPolicyModuleNotFoundErr = true
 				}
 
-				var log func(*diag.Diag, ...interface{})
+				var log func(*diag.Diag, ...any)
 				if plug.unstructuredOutput != nil {
 					log = ctx.Diag.Debugf
 				} else if streamID == outStreamID {

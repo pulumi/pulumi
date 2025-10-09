@@ -45,7 +45,9 @@ lint:: ensure
 
 lint_fix:: ensure
 	make format
-	make lint
+	uv run -m mypy ./lib/pulumi
+	uv run -m ruff check --fix
+	uv run -m pyright
 
 format:: ensure
 	uv run -m ruff format

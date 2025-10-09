@@ -58,8 +58,8 @@ func init() {
 						"float":       2.17,
 						"integer":     -12,
 						"string":      "Goodbye",
-						"numberArray": []interface{}{0, 1},
-						"booleanMap": map[string]interface{}{
+						"numberArray": []any{0, 1},
+						"booleanMap": map[string]any{
 							"my key": false,
 							"my.key": true,
 							"my-key": false,
@@ -77,8 +77,8 @@ func init() {
 							"float":     2.17,
 							"integer":   -12,
 							"string":    "Goodbye",
-							"boolArray": []interface{}{false, true},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{false, true},
+							"stringMap": map[string]any{
 								"my key": "one",
 								"my.key": "two",
 								"my-key": "three",
@@ -98,8 +98,8 @@ func init() {
 								"float":     -2.17,
 								"integer":   123,
 								"string":    "Goodbye",
-								"boolArray": []interface{}{},
-								"stringMap": map[string]interface{}{
+								"boolArray": []any{},
+								"stringMap": map[string]any{
 									"my key": "one",
 									"my.key": "two",
 									"my-key": "three",
@@ -112,8 +112,8 @@ func init() {
 							"float":     4.5,
 							"integer":   1024,
 							"string":    "Hello",
-							"boolArray": []interface{}{},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{},
+							"stringMap": map[string]any{
 								"my key": "one",
 								"my.key": "two",
 								"my-key": "three",
@@ -133,8 +133,8 @@ func init() {
 								"float":     2.17,
 								"integer":   -12,
 								"string":    "Goodbye",
-								"boolArray": []interface{}{false, true},
-								"stringMap": map[string]interface{}{
+								"boolArray": []any{false, true},
+								"stringMap": map[string]any{
 									"my key": "one",
 									"my.key": "two",
 									"my-key": "three",
@@ -147,8 +147,8 @@ func init() {
 							"float":     4.5,
 							"integer":   1024,
 							"string":    "Hello",
-							"boolArray": []interface{}{true, false},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{true, false},
+							"stringMap": map[string]any{
 								"my key": "one",
 								"my.key": "two",
 								"my-key": "three",
@@ -163,8 +163,8 @@ func init() {
 								"float":     2.17,
 								"integer":   -12,
 								"string":    "Goodbye",
-								"boolArray": []interface{}{false, true},
-								"stringMap": map[string]interface{}{
+								"boolArray": []any{false, true},
+								"stringMap": map[string]any{
 									"my key": "one",
 									"my.key": "two",
 									"my-key": "three",
@@ -177,8 +177,8 @@ func init() {
 							"float":     4.5,
 							"integer":   1024,
 							"string":    "Hello",
-							"boolArray": []interface{}{true, false},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{true, false},
+							"stringMap": map[string]any{
 								"my key": "one",
 								"my.key": "two",
 								"my-key": "three",

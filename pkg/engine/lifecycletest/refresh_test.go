@@ -380,7 +380,6 @@ func TestRefreshWithDelete(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, parallelFactor := range []int32{1, 4} {
-		parallelFactor := parallelFactor
 		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
 			t.Parallel()
 
@@ -1080,7 +1079,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
 	assert.ErrorContains(t, err, "BAIL: canceled")
-	assert.Equal(t, 1, len(refreshed))
+	require.Len(t, refreshed, 1)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
@@ -1237,7 +1236,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, old)
-	assert.Equal(t, 0, len(snap.Resources))
+	assert.Empty(t, snap.Resources)
 }
 
 // Test that we can run a simple refresh by executing the program for it.
@@ -2570,4 +2569,64 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	// Should have a new ID from calling create again
 	require.Len(t, snap.Resources, 2)
 	assert.NotEqual(t, firstID, snap.Resources[1].ID)
+}
+
+func TestRefreshDeleteParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{},
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	snap, err = lt.TestOp(Refresh).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
 }

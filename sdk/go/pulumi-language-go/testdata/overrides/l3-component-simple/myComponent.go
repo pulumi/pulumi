@@ -48,7 +48,7 @@ func NewMyComponent(
 	if err != nil {
 		return nil, err
 	}
-	componentResource.Output = res.Value.ApplyT(func(v interface{}) interface{} {
+	componentResource.Output = res.Value.ApplyT(func(v any) any {
 		return v
 	}).(pulumi.AnyOutput)
 	return &componentResource, nil

@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -1651,6 +1652,7 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var combinedManager engine.SnapshotManager
 	var snapshotManager *backend.SnapshotManager
+	var journal *backend.SnapshotJournaler
 	var validationErrs []error
 	journalPersister := &backend.ValidatingPersister{
 		ErrorFunc: func(err error) {
@@ -1662,8 +1664,15 @@ func (b *cloudBackend) runEngineAction(
 	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		journal := backend.NewSnapshotJournaler(journalPersister, op.SecretsManager, u.Target.Snapshot)
-		journalManager := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot)
+		journal, err = backend.NewSnapshotJournaler(
+			ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
+		journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+		if err != nil {
+			validationErrs = append(validationErrs, err)
+		}
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 		combinedManager = &engine.CombinedManager{
 			Managers: []engine.SnapshotManager{journalManager, snapshotManager},
@@ -1686,6 +1695,11 @@ func (b *cloudBackend) runEngineAction(
 			err = errors.Join(err, combinedManager.Close())
 			snapshotManagerClosed = true
 			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
+			if journal != nil {
+				for _, e := range journal.Errors() {
+					err = errors.Join(err, e)
+				}
+			}
 			if err != nil {
 				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
 					Error: fmt.Sprintf("snapshot mismatch: %s", err),
@@ -2001,7 +2015,7 @@ const (
 
 type displayEvent struct {
 	Kind    DisplayEventType
-	Payload interface{}
+	Payload any
 }
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
@@ -2023,7 +2037,7 @@ func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, up
 	for {
 		// Query for the latest update results, including log entries so we can provide active status updates.
 		_, results, err := retry.Until(context.Background(), retry.Acceptor{
-			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 				return b.tryNextUpdate(ctx, update, continuationToken, try, nextRetryTime)
 			},
 		})
@@ -2092,7 +2106,7 @@ func displayEvents(action string, events <-chan displayEvent, done chan<- bool, 
 // false returned in the first return value.  If a non-nil error is returned, this operation should fail.
 func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateIdentifier, continuationToken *string,
 	try int, nextRetryTime time.Duration,
-) (bool, interface{}, error) {
+) (bool, any, error) {
 	// If there is no error, we're done.
 	results, err := b.client.GetUpdateEvents(ctx, update, continuationToken)
 	if err == nil {

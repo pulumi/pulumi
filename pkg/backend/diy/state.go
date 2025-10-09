@@ -225,7 +225,7 @@ func (b *diyBackend) saveCheckpoint(
 			Delay:    &delay,
 			MaxDelay: &maxDelay,
 			Backoff:  &backoff,
-			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 				// And now write out the new snapshot file, overwriting that location.
 				err := b.bucket.WriteAll(ctx, file, byts, nil)
 				if err != nil {

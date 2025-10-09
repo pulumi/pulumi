@@ -118,9 +118,9 @@ func getYarnCommands(t *testing.T, pwd string) []string {
 		t.Errorf("Got error determining valid commands: %s", err)
 	}
 	dec := json.NewDecoder(bytes.NewReader(out))
-	parsed := []map[string]interface{}{}
+	parsed := []map[string]any{}
 	for {
-		var m map[string]interface{}
+		var m map[string]any
 		if err := dec.Decode(&m); err != nil {
 			if err == io.EOF {
 				break
@@ -131,18 +131,18 @@ func getYarnCommands(t *testing.T, pwd string) []string {
 	}
 	var cmds []string
 
-	addProvidedCmds := func(c map[string]interface{}) {
+	addProvidedCmds := func(c map[string]any) {
 		// If this fails, we want the test to fail. We don't want to accidentally skip tests.
-		data := c["data"].(map[string]interface{})
+		data := c["data"].(map[string]any)
 		if data["type"] == "possibleCommands" {
 			return
 		}
-		for _, cmd := range data["items"].([]interface{}) {
+		for _, cmd := range data["items"].([]any) {
 			cmds = append(cmds, cmd.(string))
 		}
 	}
 
-	addBinaryCmds := func(c map[string]interface{}) {
+	addBinaryCmds := func(c map[string]any) {
 		data := c["data"].(string)
 		if !strings.HasPrefix(data, "Commands available from binary scripts:") {
 			return
@@ -242,7 +242,6 @@ func Test_isStringType(t *testing.T) {
 		}, false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if got := isStringType(tt.input); got != tt.expected {

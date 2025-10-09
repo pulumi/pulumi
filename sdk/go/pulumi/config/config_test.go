@@ -209,7 +209,7 @@ func TestSecretConfig(t *testing.T) {
 	errChan := make(chan error)
 	result := make(chan string)
 
-	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s1, s2, s3).ApplyT(func(v []any) ([]any, error) {
 		for _, val := range v {
 			if val == "a string value" {
 				result <- val.(string)
@@ -244,7 +244,7 @@ func TestSecretConfig(t *testing.T) {
 	s6, err := cfg.GetSecretObject("obj", &testStruct6)
 	require.NoError(t, err)
 
-	pulumi.All(s4, s5, s6).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s4, s5, s6).ApplyT(func(v []any) ([]any, error) {
 		for _, val := range v {
 			ts := val.(*TestStruct)
 			if reflect.DeepEqual(expectedTestStruct, *ts) {
@@ -275,7 +275,7 @@ func TestSecretConfig(t *testing.T) {
 	errChan = make(chan error)
 	resultBool := make(chan bool)
 
-	pulumi.All(s7, s8, s9).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s7, s8, s9).ApplyT(func(v []any) ([]any, error) {
 		for _, val := range v {
 			if val == true {
 				resultBool <- val.(bool)
@@ -305,7 +305,7 @@ func TestSecretConfig(t *testing.T) {
 	errChan = make(chan error)
 	resultInt := make(chan int)
 
-	pulumi.All(s10, s11, s12).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s10, s11, s12).ApplyT(func(v []any) ([]any, error) {
 		for _, val := range v {
 			if val == 42 {
 				resultInt <- val.(int)

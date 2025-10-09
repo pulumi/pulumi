@@ -26,9 +26,9 @@ import (
 
 // This specifically tests the synced examples from pulumi/yaml with
 // testing/test/testdata/transpiled_examples, as it requires a different SDK path in Check
+//
+//nolint:paralleltest // uses t.Chdir
 func TestGenerateProgram(t *testing.T) {
-	t.Parallel()
-
 	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
 	require.NoError(t, err)
 

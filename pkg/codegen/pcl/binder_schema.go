@@ -337,7 +337,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	return nil
 }
 
-func buildEnumValue(v interface{}) cty.Value {
+func buildEnumValue(v any) cty.Value {
 	switch v := v.(type) {
 	case string:
 		return cty.StringVal(v)
@@ -683,20 +683,20 @@ func GenEnum(
 	return nil
 }
 
-func enumMemberValues(t *model.EnumType) []interface{} {
+func enumMemberValues(t *model.EnumType) []any {
 	srcBase, ok := GetSchemaForType(t)
 	if !ok {
 		return nil
 	}
 	src := srcBase.(*schema.EnumType)
-	members := make([]interface{}, len(src.Elements))
+	members := make([]any, len(src.Elements))
 	for i, el := range src.Elements {
 		members[i] = el.Value
 	}
 	return members
 }
 
-func listToString(l []interface{}) string {
+func listToString(l []any) string {
 	vals := ""
 	for i, v := range l {
 		if i == 0 {

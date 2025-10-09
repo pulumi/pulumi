@@ -277,7 +277,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 	}
 
 	assarc, err := plugin.MarshalArchive(&resource.Archive{
-		Assets: map[string]interface{}{
+		Assets: map[string]any{
 			"string": &resource.Asset{
 				Text: "file contents",
 			},

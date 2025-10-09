@@ -1,5 +1,6 @@
 <{%reset%}>  pulumi:pulumi:Stack: (same)
-<{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    first : <{%reset%}><{%reset%}>"step 1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    second: <{%reset%}><{%reset%}>"step 0"<{%reset%}><{%reset%}>

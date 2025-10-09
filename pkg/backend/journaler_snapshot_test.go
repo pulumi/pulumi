@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,8 +35,14 @@ func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotM
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, baseSnap.SecretsManager, baseSnap)
-	return engine.NewJournalSnapshotManager(journal, baseSnap), sp
+
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, baseSnap.SecretsManager, secretsProvider, baseSnap)
+	require.NoError(t, err)
+	snap, err := engine.NewJournalSnapshotManager(journal, baseSnap, baseSnap.SecretsManager)
+	require.NoError(t, err)
+	return snap, sp
 }
 
 func TestIdenticalSamesJournaling(t *testing.T) {
@@ -96,7 +103,7 @@ func TestSamesWithEmptyArraysInInputsJournaling(t *testing.T) {
 	t.Parallel()
 
 	// Model reading from state file
-	state := map[string]interface{}{"defaults": []interface{}{}}
+	state := map[string]any{"defaults": []any{}}
 	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter)
 	require.NoError(t, err)
 
@@ -947,8 +954,12 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	require.Empty(t, sp.SavedSnapshots)
 
 	// The step here is not important.
-	step := deploy.NewSameStep(nil, nil, resourceA, resourceA.Copy())
-	err := manager.RegisterResourceOutputs(step)
+	resACopy := resourceA.Copy()
+	step := deploy.NewSameStep(nil, nil, resourceA, resACopy)
+	mutation, err := manager.BeginMutation(step)
+	require.NoError(t, err)
+	require.NoError(t, mutation.End(step, true))
+	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
 
 	// The RegisterResourceOutputs should not have caused a snapshot to be written.
@@ -957,17 +968,21 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
 	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
-	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
+	step = deploy.NewSameStep(nil, nil, resACopy, resourceA2)
+	mutation, err = manager.BeginMutation(step)
+	require.NoError(t, err)
+	require.NoError(t, mutation.End(step, true))
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
 
 	// The new outputs should have been saved.
-	require.Len(t, sp.SavedSnapshots, 1)
+	require.Len(t, sp.SavedSnapshots, 2)
 
 	// It should be identical to what has already been written.
 	lastSnap := sp.LastSnap()
 	require.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
+	assert.Equal(t, resourceA2.Outputs, lastSnap.Resources[0].Outputs)
 }
 
 func TestRecordingSameFailureJournaling(t *testing.T) {
@@ -1003,10 +1018,15 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := engine.NewJournalSnapshotManager(journal, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
 
-	err := sm.Close()
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	require.NoError(t, err)
+
+	err = sm.Close()
 
 	assert.ErrorContains(t, err, "failed to verify snapshot")
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
@@ -1021,10 +1041,15 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := engine.NewJournalSnapshotManager(journal, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
 
-	err := sm.Close()
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	require.NoError(t, err)
+
+	err = sm.Close()
 
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
@@ -1041,10 +1066,14 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := engine.NewJournalSnapshotManager(journal, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	require.NoError(t, err)
 
-	err := sm.Close()
+	err = sm.Close()
 
 	require.NoError(t, err)
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
@@ -1061,10 +1090,14 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	journal := NewSnapshotJournaler(sp, snap.SecretsManager, snap)
-	sm := engine.NewJournalSnapshotManager(journal, snap)
+	secretsProvider := stack.Base64SecretsProvider{}
+	journal, err := NewSnapshotJournaler(
+		context.Background(), sp, snap.SecretsManager, secretsProvider, snap)
+	require.NoError(t, err)
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	require.NoError(t, err)
 
-	err := sm.Close()
+	err = sm.Close()
 
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)

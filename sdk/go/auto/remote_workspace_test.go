@@ -153,7 +153,6 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 	}
 
 	for name, tc := range tests {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -245,7 +244,7 @@ func testRemoteStackGitSource(
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -336,7 +335,6 @@ func TestIsFullyQualifiedStackName(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

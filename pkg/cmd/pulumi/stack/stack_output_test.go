@@ -99,7 +99,6 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -168,12 +167,12 @@ func TestStackOutputCmd_json(t *testing.T) {
 		args []string
 
 		// Expected parsed JSON output.
-		want interface{}
+		want any
 	}{
 		{
 			desc:    "default",
 			outputs: outputsWithSecret,
-			want: map[string]interface{}{
+			want: map[string]any{
 				"bucketName": "mybucket-1234",
 				"password":   "[secret]",
 			},
@@ -182,7 +181,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			desc:        "show-secrets",
 			outputs:     outputsWithSecret,
 			showSecrets: true,
-			want: map[string]interface{}{
+			want: map[string]any{
 				"bucketName": "mybucket-1234",
 				"password":   "hunter2",
 			},
@@ -211,7 +210,6 @@ func TestStackOutputCmd_json(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -243,7 +241,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
 			stdout := stdoutBuff.Bytes()
-			var got interface{}
+			var got any
 			require.NoError(t, json.Unmarshal(stdout, &got),
 				"output is not valid JSON:\n%s", stdout)
 
@@ -333,7 +331,6 @@ func TestStackOutputCmd_shell(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -402,7 +399,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 
 	tests := []struct {
 		desc     string
-		give     interface{}
+		give     any
 		wantBash string
 		wantPwsh string
 	}{
@@ -445,7 +442,6 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

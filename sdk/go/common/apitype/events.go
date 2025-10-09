@@ -14,6 +14,8 @@
 
 package apitype
 
+import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
 // breaking changes.
@@ -47,7 +49,7 @@ type DiagnosticEvent struct {
 
 // StartDebuggingEvent is emitted to start a debugging session.
 type StartDebuggingEvent struct {
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config map[string]any `json:"config,omitempty"`
 }
 
 // PolicyEvent is emitted whenever there is Policy violation.
@@ -66,22 +68,14 @@ type PolicyEvent struct {
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.
 type PolicyRemediationEvent struct {
-	ResourceURN          string                 `json:"resourceUrn,omitempty"`
-	Color                string                 `json:"color"`
-	PolicyName           string                 `json:"policyName"`
-	PolicyPackName       string                 `json:"policyPackName"`
-	PolicyPackVersion    string                 `json:"policyPackVersion"`
-	PolicyPackVersionTag string                 `json:"policyPackVersionTag"`
-	Before               map[string]interface{} `json:"before,omitempty"`
-	After                map[string]interface{} `json:"after,omitempty"`
-}
-
-// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
-type PolicyNotApplicable struct {
-	// The name of the policy that was not applicable.
-	PolicyName string `json:"policyName"`
-	// An optional reason why the policy was not applicable.
-	Reason string `json:"reason,omitempty"`
+	ResourceURN          string         `json:"resourceUrn,omitempty"`
+	Color                string         `json:"color"`
+	PolicyName           string         `json:"policyName"`
+	PolicyPackName       string         `json:"policyPackName"`
+	PolicyPackVersion    string         `json:"policyPackVersion"`
+	PolicyPackVersionTag string         `json:"policyPackVersionTag"`
+	Before               map[string]any `json:"before,omitempty"`
+	After                map[string]any `json:"after,omitempty"`
 }
 
 // PolicyAnalyzeSummaryEvent is emitted after a call to Analyze on an analyzer, summarizing the results.
@@ -94,10 +88,6 @@ type PolicyAnalyzeSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of resource policies that failed (i.e. produced violations).
@@ -114,10 +104,6 @@ type PolicyRemediateSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of resource policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
-	// Not applicable resource policies in the policy pack.
-	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
 	// The names of resource policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of resource policies that failed (i.e. produced violations).
@@ -132,10 +118,6 @@ type PolicyAnalyzeStackSummaryEvent struct {
 	PolicyPackVersion string `json:"policyPackVersion"`
 	// The version tag of the policy pack.
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
-	// Names of stack policies in the policy pack that were disabled.
-	Disabled []string `json:"disabled,omitempty"`
-	// Not applicable stack policies in the policy pack.
-	NotApplicable []PolicyNotApplicable `json:"notApplicable,omitempty"`
 	// The names of stack policies that passed (i.e. did not produce any violations).
 	Passed []string `json:"passed,omitempty"`
 	// The names of stack policies that failed (i.e. produced violations).
@@ -251,13 +233,15 @@ type StepEventStateMetadata struct {
 	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
 	// filtered out, and large assets have been replaced by hashes as applicable.
-	Inputs map[string]interface{} `json:"inputs"`
+	Inputs map[string]any `json:"inputs"`
 	// Outputs contains the resource's complete output state (as returned by the resource provider).
-	Outputs map[string]interface{} `json:"outputs"`
+	Outputs map[string]any `json:"outputs"`
 	// Provider is the resource's provider reference
 	Provider string `json:"provider"`
 	// InitErrors is the set of errors encountered in the process of initializing resource.
 	InitErrors []string `json:"initErrors,omitempty"`
+	// HideDiffs is the set of property paths where diffs are not displayed.
+	HideDiffs []resource.PropertyPath `json:"hideDiffs,omitempty"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.

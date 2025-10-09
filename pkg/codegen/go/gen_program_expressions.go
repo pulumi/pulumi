@@ -1055,7 +1055,7 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
-	model.Expression, []interface{},
+	model.Expression, []any,
 ) {
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
@@ -1068,7 +1068,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
 	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
-	temps := slice.Prealloc[interface{}](bufferSize)
+	temps := slice.Prealloc[any](bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
 	}
@@ -1094,7 +1094,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	return expr, temps
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,

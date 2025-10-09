@@ -59,7 +59,7 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
 
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
-	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
+	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
 
 type promptForAIProjectURLFunc func(ctx context.Context,
 	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
@@ -361,7 +361,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			ctx,
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -423,7 +422,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			ctx,
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -572,10 +570,7 @@ func NewNewCmd() *cobra.Command {
 		// Show default help.
 		defaultHelp(cmd, args)
 
-		// You'd think you could use cmd.Context() here but cobra doesn't set context on the cmd even though
-		// the parent help command has it. If https://github.com/spf13/cobra/issues/2240 gets fixed we can
-		// change back to cmd.Context() here.
-		templates, closer, err := getTemplates(context.Background())
+		templates, closer, err := getTemplates(cmd.Context())
 		contract.IgnoreClose(closer)
 		if err != nil {
 			logging.Warningf("could not list templates: %v", err)
@@ -703,7 +698,7 @@ func validateProjectNameInternal(ctx context.Context, b backend.Backend,
 
 func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
 	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
 	if err != nil {
@@ -711,7 +706,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	}
 	defer lang.Close()
 
-	options := make(map[string]interface{}, len(info.Options()))
+	options := make(map[string]any, len(info.Options()))
 	for k, v := range info.Options() {
 		options[k] = v
 	}
@@ -747,7 +742,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 				// Pick one among the choices
 				choices := make([]string, 0, len(optionPrompt.Choices))
 				// Map choice display string to the actual value
-				choiceMap := make(map[string]interface{}, len(optionPrompt.Choices))
+				choiceMap := make(map[string]any, len(optionPrompt.Choices))
 				for _, choice := range optionPrompt.Choices {
 					displayName := choice.DisplayName
 					if displayName == "" {

@@ -120,7 +120,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginSpec
 
 	plugins, err := workspace.GetPluginsFromDir(dir)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(plugins))
+	require.Len(t, plugins, 1)
 	assert.Equal(t, plugin.Name, plugins[0].Name)
 	assert.Equal(t, plugin.Kind, plugins[0].Kind)
 	assert.Equal(t, *plugin.Version, *plugins[0].Version)
@@ -316,5 +316,5 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	plugins, err := workspace.GetPluginsFromDir(dir)
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(plugins))
+	assert.Empty(t, plugins)
 }

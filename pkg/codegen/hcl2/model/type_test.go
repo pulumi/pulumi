@@ -33,7 +33,7 @@ func testTraverse(t *testing.T, receiver Traversable, traverser hcl.Traverser, e
 	if expectDiags {
 		assert.Greater(t, len(diags), 0)
 	} else {
-		assert.Equal(t, 0, len(diags))
+		assert.Empty(t, diags)
 	}
 }
 

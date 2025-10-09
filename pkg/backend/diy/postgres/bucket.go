@@ -144,7 +144,7 @@ type postgresBucketDriver struct {
 }
 
 // As implements driver.Bucket.As.
-func (d *postgresBucketDriver) As(i interface{}) bool {
+func (d *postgresBucketDriver) As(i any) bool {
 	p, ok := i.(**Bucket)
 	if !ok {
 		return false
@@ -154,7 +154,7 @@ func (d *postgresBucketDriver) As(i interface{}) bool {
 }
 
 // ErrorAs implements driver.Bucket.ErrorAs.
-func (d *postgresBucketDriver) ErrorAs(err error, i interface{}) bool {
+func (d *postgresBucketDriver) ErrorAs(err error, i any) bool {
 	return false
 }
 
@@ -195,7 +195,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 	// The SQL query to list blob keys
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := "SELECT key FROM " + d.bucket.tableName //nolint:gosec
-	args := []interface{}{}
+	args := []any{}
 
 	// Add conditions to filter by prefix
 	if opts.Prefix != "" {
@@ -459,7 +459,7 @@ func (r *postgresReader) Attributes() *driver.ReaderAttributes {
 }
 
 // As implements driver.Reader.As.
-func (r *postgresReader) As(i interface{}) bool {
+func (r *postgresReader) As(i any) bool {
 	return false
 }
 
@@ -499,6 +499,6 @@ func (w *postgresWriter) Close() error {
 }
 
 // As implements driver.Writer.As.
-func (w *postgresWriter) As(i interface{}) bool {
+func (w *postgresWriter) As(i any) bool {
 	return false
 }

@@ -34,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
@@ -245,7 +246,7 @@ func parseImportFile(
 
 	// TODO: When Go 1.21 is released, switch to errors.Join.
 	var errs error
-	pusherrf := func(format string, args ...interface{}) {
+	pusherrf := func(format string, args ...any) {
 		errs = multierror.Append(errs, fmt.Errorf(format, args...))
 	}
 
@@ -495,7 +496,7 @@ func getCurrentDeploymentForStack(
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
 	if err != nil {
 		return nil, stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 	}
@@ -966,7 +967,7 @@ func NewImportCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 

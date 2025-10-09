@@ -76,6 +76,10 @@ const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema
 	// when not using features that require v4.
 	DeploymentSchemaVersionCurrent = 3
+
+	// DeploymentSchemaVersionLatest is the latest version of the `Deployment` schema, when
+	// using features that require v4.
+	DeploymentSchemaVersionLatest = 4
 )
 
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
@@ -241,11 +245,11 @@ type ResourceV1 struct {
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Defaults contains the default values supplied by the provider (DEPRECATED, see #637).
-	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"`
+	Defaults map[string]any `json:"defaults,omitempty" yaml:"defaults,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
@@ -283,9 +287,9 @@ type ResourceV2 struct {
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
@@ -322,9 +326,9 @@ type ResourceV3 struct {
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
@@ -368,6 +372,8 @@ type ResourceV3 struct {
 	StackTrace []StackFrameV1 `json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	// HideDiff is a list of properties to hide the diff for.
+	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.

@@ -445,7 +445,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" {
+	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" {
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -495,6 +495,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "ignoreChanges":
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
+			case "hideDiffs":
+				t = model.NewListType(ResourcePropertyType) // Property paths
+				resourceOptions.HideDiffs = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
@@ -572,7 +575,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						}),
 					}
 					diags := condExpr.Typecheck(false)
-					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
+					checkDiagnostics := len(diags) == 0
+					if b.options.skipResourceTypecheck {
+						checkDiagnostics = !diags.HasErrors()
+					}
+					contract.Assertf(checkDiagnostics, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
 				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
@@ -593,7 +600,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Value: model.VariableReference(resourceVar),
 					}
 					diags := rangeExpr.Typecheck(false)
-					contract.Assertf(len(diags) == 0, "failed to typecheck range expression: %v", diags)
+					checkDiagnostics := len(diags) == 0
+					if b.options.skipResourceTypecheck {
+						checkDiagnostics = !diags.HasErrors()
+					}
+					contract.Assertf(checkDiagnostics, "failed to typecheck range expression: %v", diags)
 
 					rangeValue = model.IntType
 

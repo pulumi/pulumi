@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package ints
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -71,11 +72,11 @@ func TestDynamicPython(t *testing.T) {
 
 				// Regression testing the workaround for https://github.com/pulumi/pulumi/issues/8265
 				// Ensure the __provider input and output was marked secret
-				assertIsSecret := func(v interface{}) {
+				assertIsSecret := func(v any) {
 					switch v := v.(type) {
 					case string:
 						assert.Fail(t, "__provider was not a secret")
-					case map[string]interface{}:
+					case map[string]any:
 						assert.Equal(t, resource.SecretSig, v[resource.SigKey])
 					}
 				}
@@ -132,7 +133,6 @@ func TestConstructPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -187,7 +187,7 @@ func optsForConstructPython(
 						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						secretPropValue, ok := res.Outputs["secret"].(map[string]any)
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
 						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
@@ -329,6 +329,8 @@ func TestAutomaticVenvCreationPoetry(t *testing.T) {
 
 	e.ImportDirectory(filepath.Join("python", "poetry"))
 
+	updateCoreSDKinPyproject(t, e.RootPath)
+
 	// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
 	subdir := filepath.Join(e.RootPath, "subdir")
 	err := os.Mkdir(subdir, 0o755)
@@ -355,6 +357,8 @@ func TestPoetryInstallParentDirectory(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry-parent"))
+	updateCoreSDKinPyproject(t, e.RootPath)
+
 	// Run from the subdir with the Pulumi.yaml file
 	e.CWD = filepath.Join(e.RootPath, "subfolder")
 
@@ -376,6 +380,7 @@ func TestPoetryInstallWithMain(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry-main"))
+	updateCoreSDKinPyproject(t, e.RootPath)
 
 	e.RunCommand("pulumi", "install")
 
@@ -395,6 +400,7 @@ func TestPoetryInstallWithMainAndParent(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry-main-and-parent"))
+	updateCoreSDKinPyproject(t, filepath.Join(e.RootPath, "src"))
 
 	e.RunCommand("pulumi", "install")
 
@@ -448,7 +454,6 @@ func TestUv(t *testing.T) {
 			},
 		},
 	} {
-		test := test
 		// On windows, when running in parallel, we can run into issues when Uv tries
 		// to write the same cache file concurrently. This is the same issue we see
 		// for Poetry https://github.com/pulumi/pulumi/pull/17337
@@ -617,7 +622,7 @@ func TestNewPythonUsesPip(t *testing.T) {
 
 	require.Contains(t, stdout, "pulumi install")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
@@ -636,7 +641,7 @@ func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 
 	require.Contains(t, stdout, "pulumi install")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
@@ -664,7 +669,7 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 		"--stack", "test",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain": "poetry",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
@@ -688,7 +693,7 @@ func TestNewPythonChooseUv(t *testing.T) {
 		"--description", "A python test using uv as toolchain",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain": "uv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
@@ -721,7 +726,7 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 		"--runtime-options", "toolchain=pip,virtualenv=mytestenv",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "mytestenv",
 	}
@@ -769,7 +774,7 @@ build-backend = "poetry.core.masonry.api"
 package-mode = false
 [tool.poetry.dependencies]
 pulumi = ">=3.0.0,<4.0.0"
-python = "^3.9"
+python = "^3.10"
 `, string(b))
 }
 
@@ -802,4 +807,34 @@ func TestUvWindowsError(t *testing.T) {
 	case <-time.After(3 * time.Minute):
 		t.Fatal("Timed out waiting for TestUvWindowsError")
 	}
+}
+
+// updateCoreSDKinPyproject builds a wheel of the core SDK and replaces the
+// placeholder in `pyproject.toml` with it.
+// This helps with running tests on Windows, where the core SDK might be on a
+// different drive from the test project. Poetry requires relative paths for
+// path dependencies, but relative paths between different drives don't exist.
+func updateCoreSDKinPyproject(t *testing.T, root string) {
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+	buildCmd := exec.Command("uv", "build", coreSDK, "--wheel", "-o", root)
+	startTime := time.Now()
+	out, err := buildCmd.CombinedOutput()
+	duration := time.Since(startTime)
+	t.Logf("%s took %s", buildCmd.String(), duration)
+	require.NoError(t, err, "%s failed with err: %s, output: %s", err, out)
+	pattern := filepath.Join(root, "pulumi*.whl")
+	matches, err := filepath.Glob(pattern)
+	require.NoError(t, err)
+	require.Len(t, matches, 1, "Expected exactly one pulumi wheel file, found: %v", matches)
+	wheelPath := matches[0]
+	wheelPath, err = filepath.Rel(root, wheelPath)
+	require.NoError(t, err)
+	pyprojectPath := filepath.Join(root, "pyproject.toml")
+	content, err := os.ReadFile(pyprojectPath)
+	require.NoError(t, err)
+	updatedContent := strings.ReplaceAll(string(content), "PULUMI_CORE_SDK_PATH_PLACEHOLDER", wheelPath)
+	t.Logf("Updated %s:\n%s", pyprojectPath, updatedContent)
+	err = os.WriteFile(pyprojectPath, []byte(updatedContent), 0o600)
+	require.NoError(t, err)
 }
