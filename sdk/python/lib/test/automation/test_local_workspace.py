@@ -517,6 +517,44 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(all_config["python_test:secret-key"].value, "-value")
         ws.remove_stack(stack_name)
 
+    def test_set_all_config_json(self):
+        project_name = "python_config_json_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        # Set config using JSON format
+        config_json = json.dumps({
+            f"{project_name}:plainKey": {
+                "value": "plainValue",
+                "secret": False,
+            },
+            f"{project_name}:secretKey": {
+                "value": "secretValue",
+                "secret": True,
+            },
+            f"{project_name}:numberKey": {
+                "value": "42",
+                "secret": False,
+            },
+        })
+
+        stack.set_all_config_json(config_json)
+
+        # Verify the config was set correctly
+        all_config = stack.get_all_config()
+
+        self.assertEqual(all_config[f"{project_name}:plainKey"].value, "plainValue")
+        self.assertFalse(all_config[f"{project_name}:plainKey"].secret)
+
+        self.assertTrue(all_config[f"{project_name}:secretKey"].secret)
+
+        self.assertEqual(all_config[f"{project_name}:numberKey"].value, "42")
+        self.assertFalse(all_config[f"{project_name}:numberKey"].secret)
+
+        ws.remove_stack(stack_name)
+
     # This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
     # config from the file. This means we can't remove the stack at the end of the test.
     # We should also not include secrets in this config, because the secret encryption is only valid within

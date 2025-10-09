@@ -75,6 +75,10 @@ type Workspace interface {
 	// SetAllConfigWithOptions sets all values in the provided config map for the specified stack name
 	// using the optional ConfigOptions.
 	SetAllConfigWithOptions(context.Context, string, ConfigMap, *ConfigOptions) error
+	// SetAllConfigJson sets all config values from a JSON string for the specified stack name.
+	// The JSON string should be in the format produced by "pulumi config --json".
+	// ConfigOptions can be provided to specify a config file.
+	SetAllConfigJson(context.Context, string, string, *ConfigOptions) error
 	// RemoveConfig removes the specified key-value pair on the provided stack name.
 	RemoveConfig(context.Context, string, string) error
 	// RemoveConfigWithOptions removes the specified key-value pair on the provided stack name

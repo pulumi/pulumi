@@ -360,6 +360,10 @@ class LocalWorkspace(Workspace):
 
         self._run_pulumi_cmd_sync(args)
 
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        args = ["config", "set-all", "--stack", stack_name, "--json", config_json]
+        self._run_pulumi_cmd_sync(args)
+
     def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
         args = ["config", "rm", key, "--stack", stack_name]
         if path:

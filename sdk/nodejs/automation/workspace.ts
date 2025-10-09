@@ -203,6 +203,17 @@ export interface Workspace {
     setAllConfig(stackName: string, config: ConfigMap, path?: boolean): Promise<void>;
 
     /**
+     * Sets all config values from a JSON string for the specified stack name.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    setAllConfigJson(stackName: string, configJson: string): Promise<void>;
+
+    /**
      * Removes the specified key-value pair on the provided stack name.
      *
      * @param stackName

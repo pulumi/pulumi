@@ -2166,6 +2166,72 @@ func TestConfigAllWithOptions(t *testing.T) {
 		"{\"subKey3\":\"value17\"}", cfgYAML["testproj:key11"].Value, "keys other than subKey3 have been removed")
 }
 
+func TestSetAllConfigJson(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	// Set config using JSON format
+	configJSON := `{
+		"testproj:plainKey": {
+			"value": "plainValue",
+			"secret": false
+		},
+		"testproj:secretKey": {
+			"value": "secretValue",
+			"secret": true
+		},
+		"testproj:numberKey": {
+			"value": "42",
+			"secret": false
+		}
+	}`
+
+	err = s.SetAllConfigJson(ctx, configJSON, nil)
+	if err != nil {
+		t.Errorf("failed to set config from JSON: %v", err)
+		t.FailNow()
+	}
+
+	// Verify the config was set correctly
+	allConfig, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Errorf("failed to get all config: %v", err)
+		t.FailNow()
+	}
+
+	// Check plain key
+	plainKey, ok := allConfig["testproj:plainKey"]
+	assert.True(t, ok, "plainKey should exist")
+	assert.Equal(t, "plainValue", plainKey.Value, "plainKey should have correct value")
+	assert.False(t, plainKey.Secret, "plainKey should not be secret")
+
+	// Check secret key
+	secretKey, ok := allConfig["testproj:secretKey"]
+	assert.True(t, ok, "secretKey should exist")
+	assert.True(t, secretKey.Secret, "secretKey should be secret")
+
+	// Check number key
+	numberKey, ok := allConfig["testproj:numberKey"]
+	assert.True(t, ok, "numberKey should exist")
+	assert.Equal(t, "42", numberKey.Value, "numberKey should have correct value")
+	assert.False(t, numberKey.Secret, "numberKey should not be secret")
+}
+
 // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
 // config from the file. This means we can't remove the stack at the end of the test.
 // We should also not include secrets in this config, because the secret encryption is only valid within
