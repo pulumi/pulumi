@@ -16,6 +16,7 @@
     <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>2 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

@@ -2,8 +2,8 @@
 
 
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test running 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test::test::pkgA:m:typA::resA" cannot be deleted
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test::test::pkgA:m:typA::resA" cannot be deleted
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test::test::pkgA:m:typA::resB" cannot be deleted
@@ -26,6 +26,7 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
+    <{%fg 1%}>3 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
