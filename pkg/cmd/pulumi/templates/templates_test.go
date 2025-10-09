@@ -24,6 +24,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -52,7 +53,10 @@ func TestFilterOnName(t *testing.T) {
 		TemplateURL:     "example.com/source1/name1",
 	}
 
-	testFilterOnName := func(t *testing.T, mapStore env.MapStore) {
+	testFilterOnName := func(t *testing.T, disableRegistryResolve bool) {
+		mapStore := env.MapStore{
+			"PULUMI_DISABLE_REGISTRY_RESOLVE": strconv.FormatBool(disableRegistryResolve),
+		}
 		ctx := testContext(t)
 
 		source := newImpl(ctx, "name1",
@@ -65,12 +69,15 @@ func TestFilterOnName(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, template, 1)
 		assert.Equal(t, "name1", template[0].Name())
-		assert.Equal(t, "", template[0].Description())
-		assert.Equal(t, "", template[0].ProjectDescription())
+		if disableRegistryResolve {
+			assert.Equal(t, "", template[0].Description())
+		} else {
+			assert.Equal(t, "[Private Registry]", template[0].Description())
+		}
 		assert.Nil(t, template[0].Error())
 	}
 
-	t.Run("org-backed-templates", func(t *testing.T) {
+	t.Run("org-backed-templates - disable registry resolve = true", func(t *testing.T) {
 		mockBackend := &backend.MockBackend{
 			SupportsTemplatesF: func() bool { return true },
 			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -109,12 +116,10 @@ func TestFilterOnName(t *testing.T) {
 				return mockBackend, nil
 			},
 		})
-		testFilterOnName(t, env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "true",
-		})
+		testFilterOnName(t, true)
 	})
 
-	t.Run("org-backed-templates", func(t *testing.T) {
+	t.Run("org-backed-templates - disable registry resolve = false", func(t *testing.T) {
 		listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			assert.Nil(t, name)
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
@@ -155,9 +160,7 @@ func TestFilterOnName(t *testing.T) {
 				return mockBackend, nil
 			},
 		})
-		testFilterOnName(t, env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-		})
+		testFilterOnName(t, false)
 	})
 }
 
@@ -737,9 +740,9 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	require.Len(t, templates, 2)
 
 	assert.Equal(t, "target", templates[0].Name())
-	assert.Equal(t, "This is from GH", templates[0].ProjectDescription())
+	assert.Equal(t, "[Private Registry] This is from GH", templates[0].Description())
 	assert.Equal(t, "target", templates[1].Name())
-	assert.Equal(t, "This is from the registry", templates[1].ProjectDescription())
+	assert.Equal(t, "[Private Registry] This is from the registry", templates[1].Description())
 }
 
 func templateRepository(repo workspace.TemplateRepository, err error) getWorkspaceTemplateFunc {
@@ -919,7 +922,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 				require.Len(t, templates, 1)
 				assert.Equal(t, tc.expectedName, templates[0].Name())
 				if tc.description != "" {
-					assert.Equal(t, tc.description, templates[0].ProjectDescription())
+					assert.Equal(t, "[Private Registry] "+tc.description, templates[0].Description())
 				}
 			} else {
 				require.Error(t, err)

@@ -119,12 +119,12 @@ func (s *Source) Close() error {
 	return errors.Join(errs...)
 }
 
+// A template entry to show in the chooser.
 type Template interface {
 	Name() string
 	Description() string
-	DisplayDescription() string
-	ProjectDescription() string
 	Error() error
+	// Download the template and return an instantiable [workspace.Template] for this template.
 	Download(ctx context.Context) (workspace.Template, error)
 }
 
