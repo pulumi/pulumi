@@ -1,0 +1,7 @@
+name: l1-config-types
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -181,10 +182,10 @@ func TestLanguage(t *testing.T) {
 				rootDir := t.TempDir()
 
 				snapshotDir := "./testdata/" + config.snapshotDir
-				// Don't snapshot all the local tests, they're similar enough to the non-local ones and we're
-				// still testing correctness.
 				if local {
-					snapshotDir = ""
+					snapshotDir += "/local"
+				} else {
+					snapshotDir += "/published"
 				}
 
 				var languageInfo string
@@ -226,6 +227,11 @@ func TestLanguage(t *testing.T) {
 				for _, tt := range tests.Tests {
 					t.Run(tt, func(t *testing.T) {
 						t.Parallel()
+
+						// We can skip the l1- local tests without any SDK there's nothing new being tested here.
+						if local && strings.HasPrefix(tt, "l1-") {
+							t.Skip("Skipping l1- tests in local mode")
+						}
 
 						if expected, ok := expectedFailures[tt]; ok {
 							t.Skipf("Skipping known failure: %s", expected)

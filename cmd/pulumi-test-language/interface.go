@@ -788,71 +788,71 @@ func (eng *languageTestServer) RunLanguageTest(
 		return hasDependency(packages[j], packages[i].Name)
 	})
 
-	for _, pkg := range packages {
-		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
-		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
-		// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
-		// reused.
-		response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
-			lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
-			lock.Lock()
-			defer lock.Unlock()
+	// We only generate sdks if running in non-local mode
+	if !token.Local {
+		for _, pkg := range packages {
+			sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
+			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+			// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
+			// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
+			// reused.
+			response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+				lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
+				lock.Lock()
+				defer lock.Unlock()
 
-			sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
-			if ok {
-				// If the directory already exists then we know we already created the artifact.
-				// Just use it
-				localDependencies[pkg.Name] = sdkArtifact
-				return nil, nil
-			}
-
-			err = os.MkdirAll(sdkTempDir, 0o755)
-			if err != nil {
-				return nil, fmt.Errorf("create temp sdks dir: %w", err)
-			}
-
-			schemaBytes, err := pkg.MarshalJSON()
-			if err != nil {
-				return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
-			}
-
-			diags, err := languageClient.GeneratePackage(
-				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, token.Local)
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
-			}
-			// TODO: Might be good to test warning diagnostics here
-			if diags.HasErrors() {
-				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
-			}
-
-			snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-			if token.SnapshotDirectory != "" {
-				sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+				sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
+				if ok {
+					// If the directory already exists then we know we already created the artifact.
+					// Just use it
+					localDependencies[pkg.Name] = sdkArtifact
+					return nil, nil
 				}
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-				// If we made a snapshot edit we can clean it up now
-				if sdkSnapshotDir != sdkTempDir {
-					err := os.RemoveAll(sdkSnapshotDir)
+
+				err = os.MkdirAll(sdkTempDir, 0o755)
+				if err != nil {
+					return nil, fmt.Errorf("create temp sdks dir: %w", err)
+				}
+
+				schemaBytes, err := pkg.MarshalJSON()
+				if err != nil {
+					return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
+				}
+
+				diags, err := languageClient.GeneratePackage(
+					sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
+				}
+				// TODO: Might be good to test warning diagnostics here
+				if diags.HasErrors() {
+					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
+				}
+
+				snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
+				if token.SnapshotDirectory != "" {
+					sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
 					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
+						return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+					}
+					validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+					// If we made a snapshot edit we can clean it up now
+					if sdkSnapshotDir != sdkTempDir {
+						err := os.RemoveAll(sdkSnapshotDir)
+						if err != nil {
+							return nil, fmt.Errorf("remove snapshot dir: %w", err)
+						}
+					}
+					if err != nil {
+						return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
+					}
+					if len(validations) > 0 {
+						return makeTestResponse(
+							fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
+								pkg.Name, strings.Join(validations, "\n"))), nil
 					}
 				}
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
-				}
-				if len(validations) > 0 {
-					return makeTestResponse(
-						fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
-							pkg.Name, strings.Join(validations, "\n"))), nil
-				}
-			}
 
-			// If not local we need to pack the SDK
-			if !token.Local {
 				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 				// any intermediate build files don't end up getting captured in the snapshot folder.
 				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
@@ -886,22 +886,12 @@ func (eng *languageTestServer) RunLanguageTest(
 								pkg.Name, strings.Join(validations, "\n"))), nil
 					}
 				}
-			} else {
-				// Else we are using local SDKs, so just point to the directory. We copy to the artifacts
-				// directory still so that relative paths behave the same.
-				destDir := filepath.Join(artifactsDir, sdkName)
-				err = os.CopyFS(destDir, os.DirFS(sdkTempDir))
-				if err != nil {
-					return nil, fmt.Errorf("copy local SDK for %s: %w", pkg.Name, err)
-				}
-				localDependencies[pkg.Name] = destDir
-				eng.artifactMap.Store(sdkTempDir, destDir)
-			}
 
-			return nil, nil
-		}()
-		if response != nil || err != nil {
-			return response, err
+				return nil, nil
+			}()
+			if response != nil || err != nil {
+				return response, err
+			}
 		}
 	}
 
@@ -1019,6 +1009,30 @@ func (eng *languageTestServer) RunLanguageTest(
 		if i == 0 || !test.RunsShareSource {
 			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 			var diagnostics hcl.Diagnostics
+
+			// If we're running in local mode we need to generate the packages first before calling GenerateProject
+			if token.Local {
+				for _, pkg := range packages {
+					sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
+					sdkTargetDir := filepath.Join(projectDir, "sdks", sdkName)
+
+					schemaBytes, err := pkg.MarshalJSON()
+					if err != nil {
+						return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
+					}
+
+					diags, err := languageClient.GeneratePackage(
+						sdkTargetDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
+					}
+					// TODO: Might be good to test warning diagnostics here
+					if diags.HasErrors() {
+						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
+					}
+					localDependencies[pkg.Name] = sdkTargetDir
+				}
+			}
 
 			// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
 			// GenerateProject to generate a program for testing.
