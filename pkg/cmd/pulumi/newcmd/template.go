@@ -78,7 +78,7 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 	nameToTemplateMap := make(map[string]cmdTemplates.Template)
 	for _, template := range templates {
 		// Create the option string that combines the name, padding, and description.
-		desc := template.DisplayDescription()
+		desc := template.Description()
 		// If template is broken, indicate it in the description.
 		if template.Error() != nil {
 			desc = BrokenTemplateDescription
