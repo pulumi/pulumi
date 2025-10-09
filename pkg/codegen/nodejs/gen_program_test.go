@@ -209,6 +209,6 @@ func TestGeneratingPackageJSON_UsingLocalSourceDependency(t *testing.T) {
 	}
 
 	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
-	require.NoError(t, err)
+	require.NoError(t, err, "unexpected error generating package.json")
 	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "file:sdk/tfe"`)
 }
