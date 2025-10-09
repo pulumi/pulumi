@@ -95,12 +95,12 @@ func TestGenerateProjectFileWhenUsingLocalNugetPackages(t *testing.T) {
 	program := bindProgramWithParameterizedDependencies(t)
 	// local dependencies that uses local nuget packages as used by conformance tests
 	localNugetDependencies := map[string]string{
-		"tfe": "sdks/tfe/Pulumi.Tfe.0.68.2.nupkg",
+		"tfe": "sdk/tfe/Pulumi.Tfe.0.68.2.nupkg",
 	}
 	csproj, err := generateProjectFile(program, localNugetDependencies)
 	require.NoError(t, err)
 	csprojText := string(csproj)
-	require.Contains(t, csprojText, `<RestoreSources>sdks/tfe;$(RestoreSources)</RestoreSources>`)
+	require.Contains(t, csprojText, `<RestoreSources>sdk/tfe;$(RestoreSources)</RestoreSources>`)
 	require.Contains(t, csprojText, `<PackageReference Include="Pulumi.Tfe" Version="0.68.2" />`)
 }
 
@@ -117,5 +117,5 @@ func TestGenerateProjectFileWhenUsingLocalSourcePackages(t *testing.T) {
 	csproj, err := generateProjectFile(program, localNugetDependencies)
 	require.NoError(t, err)
 	csprojText := string(csproj)
-	require.Contains(t, csprojText, `<ProjectReference Include="sdks/tfe/Pulumi.Tfe.csproj" />`)
+	require.Contains(t, csprojText, `<ProjectReference Include="sdk/tfe/Pulumi.Tfe.csproj" />`)
 }
