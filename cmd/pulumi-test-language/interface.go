@@ -456,18 +456,19 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	if req.LanguagePluginTarget == "" {
 		return nil, errors.New("language plugin target must be specified")
 	}
+	if req.SnapshotDirectory == "" {
+		return nil, errors.New("snapshot directory must be specified")
+	}
 	if req.TemporaryDirectory == "" {
 		return nil, errors.New("temporary directory must be specified")
 	}
 
-	if req.SnapshotDirectory != "" {
-		err := os.MkdirAll(req.SnapshotDirectory, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create snapshot directory %s: %w", req.SnapshotDirectory, err)
-		}
+	err := os.MkdirAll(req.SnapshotDirectory, 0o755)
+	if err != nil {
+		return nil, fmt.Errorf("create snapshot directory %s: %w", req.SnapshotDirectory, err)
 	}
 
-	err := os.RemoveAll(req.TemporaryDirectory)
+	err = os.RemoveAll(req.TemporaryDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("remove temporary directory %s: %w", req.TemporaryDirectory, err)
 	}
@@ -830,27 +831,25 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 
 				snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-				if token.SnapshotDirectory != "" {
-					sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+				sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+				if err != nil {
+					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+				}
+				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+				// If we made a snapshot edit we can clean it up now
+				if sdkSnapshotDir != sdkTempDir {
+					err := os.RemoveAll(sdkSnapshotDir)
 					if err != nil {
-						return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+						return nil, fmt.Errorf("remove snapshot dir: %w", err)
 					}
-					validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-					// If we made a snapshot edit we can clean it up now
-					if sdkSnapshotDir != sdkTempDir {
-						err := os.RemoveAll(sdkSnapshotDir)
-						if err != nil {
-							return nil, fmt.Errorf("remove snapshot dir: %w", err)
-						}
-					}
-					if err != nil {
-						return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
-					}
-					if len(validations) > 0 {
-						return makeTestResponse(
-							fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
-								pkg.Name, strings.Join(validations, "\n"))), nil
-					}
+				}
+				if err != nil {
+					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
+				}
+				if len(validations) > 0 {
+					return makeTestResponse(
+						fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
+							pkg.Name, strings.Join(validations, "\n"))), nil
 				}
 
 				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
@@ -862,29 +861,27 @@ func (eng *languageTestServer) RunLanguageTest(
 				localDependencies[pkg.Name] = sdkArtifact
 				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
-				if token.SnapshotDirectory != "" {
-					// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-					// Again we need to make a snapshot edit for this.
-					sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
+				// Again we need to make a snapshot edit for this.
+				sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
+				if err != nil {
+					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+				}
+				validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
+				// If we made a snapshot edit we can clean it up now
+				if sdkSnapshotDir != sdkTempDir {
+					err := os.RemoveAll(sdkSnapshotDir)
 					if err != nil {
-						return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
+						return nil, fmt.Errorf("remove snapshot dir: %w", err)
 					}
-					validations, err := compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-					// If we made a snapshot edit we can clean it up now
-					if sdkSnapshotDir != sdkTempDir {
-						err := os.RemoveAll(sdkSnapshotDir)
-						if err != nil {
-							return nil, fmt.Errorf("remove snapshot dir: %w", err)
-						}
-					}
-					if err != nil {
-						return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
-					}
-					if len(validations) > 0 {
-						return makeTestResponse(
-							fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
-								pkg.Name, strings.Join(validations, "\n"))), nil
-					}
+				}
+				if err != nil {
+					return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
+				}
+				if len(validations) > 0 {
+					return makeTestResponse(
+						fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
+							pkg.Name, strings.Join(validations, "\n"))), nil
 				}
 
 				return nil, nil
@@ -1058,28 +1055,26 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
 
-				if token.SnapshotDirectory != "" {
-					snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-					if len(test.Runs) > 1 && !test.RunsShareSource {
-						snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
-					}
-					projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+				if len(test.Runs) > 1 && !test.RunsShareSource {
+					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+				}
+				projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+				if err != nil {
+					return nil, fmt.Errorf("program snapshot creation: %w", err)
+				}
+				validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+				if err != nil {
+					return nil, fmt.Errorf("program snapshot validation: %w", err)
+				}
+				if len(validations) > 0 {
+					return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
+				}
+				// If we made a snapshot edit we can clean it up now
+				if projectDirSnapshot != projectDir {
+					err = os.RemoveAll(projectDirSnapshot)
 					if err != nil {
-						return nil, fmt.Errorf("program snapshot creation: %w", err)
-					}
-					validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
-					if err != nil {
-						return nil, fmt.Errorf("program snapshot validation: %w", err)
-					}
-					if len(validations) > 0 {
-						return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-					}
-					// If we made a snapshot edit we can clean it up now
-					if projectDirSnapshot != projectDir {
-						err = os.RemoveAll(projectDirSnapshot)
-						if err != nil {
-							return nil, fmt.Errorf("remove snapshot dir: %w", err)
-						}
+						return nil, fmt.Errorf("remove snapshot dir: %w", err)
 					}
 				}
 			}
