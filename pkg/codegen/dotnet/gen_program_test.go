@@ -95,7 +95,7 @@ func TestGenerateProjectFileWhenUsingLocalNugetPackages(t *testing.T) {
 	program := bindProgramWithParameterizedDependencies(t)
 	// local dependencies that uses local nuget packages as used by conformance tests
 	localNugetDependencies := map[string]string{
-		"tfe": filepath.Join("sdks", "tfe", "Pulumi.Tfe.0.68.2.nupkg"),
+		"tfe": "sdks/tfe/Pulumi.Tfe.0.68.2.nupkg",
 	}
 	csproj, err := generateProjectFile(program, localNugetDependencies)
 	require.NoError(t, err)
@@ -112,7 +112,7 @@ func TestGenerateProjectFileWhenUsingLocalSourcePackages(t *testing.T) {
 	program := bindProgramWithParameterizedDependencies(t)
 	// local dependencies that uses local nuget packages as used by conformance tests
 	localNugetDependencies := map[string]string{
-		"tfe": filepath.Join("sdks", "tfe"),
+		"tfe": "sdk/tfe",
 	}
 	csproj, err := generateProjectFile(program, localNugetDependencies)
 	require.NoError(t, err)
