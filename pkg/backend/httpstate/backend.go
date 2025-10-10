@@ -57,6 +57,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1694,7 +1695,9 @@ func (b *cloudBackend) runEngineAction(
 			err := errors.Join(validationErrs...)
 			err = errors.Join(err, combinedManager.Close())
 			snapshotManagerClosed = true
-			err = errors.Join(err, snapshotManager.Snap().AssertEqual(journalPersister.Snap))
+			deployment, _, _, derr := snapshotManager.Deployment()
+			err = errors.Join(err, derr)
+			err = errors.Join(err, snapshot.AssertEqual(deployment, journalPersister.Snap))
 			if journal != nil {
 				for _, e := range journal.Errors() {
 					err = errors.Join(err, e)

@@ -762,7 +762,7 @@ func (b *diyBackend) CreateStack(
 		return nil, &backenderr.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, nil)
+	_, err = b.saveStack(ctx, diyStackRef, nil, 0, nil)
 	if err != nil {
 		return nil, err
 	}
