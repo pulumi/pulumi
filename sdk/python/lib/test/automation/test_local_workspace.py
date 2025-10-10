@@ -525,20 +525,22 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = Stack.create(stack_name, ws)
 
         # Set config using JSON format
-        config_json = json.dumps({
-            f"{project_name}:plainKey": {
-                "value": "plainValue",
-                "secret": False,
-            },
-            f"{project_name}:secretKey": {
-                "value": "secretValue",
-                "secret": True,
-            },
-            f"{project_name}:numberKey": {
-                "value": "42",
-                "secret": False,
-            },
-        })
+        config_json = json.dumps(
+            {
+                f"{project_name}:plainKey": {
+                    "value": "plainValue",
+                    "secret": False,
+                },
+                f"{project_name}:secretKey": {
+                    "value": "secretValue",
+                    "secret": True,
+                },
+                f"{project_name}:numberKey": {
+                    "value": "42",
+                    "secret": False,
+                },
+            }
+        )
 
         stack.set_all_config_json(config_json)
 
