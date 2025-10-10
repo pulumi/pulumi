@@ -71,6 +71,15 @@ func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.
 	return exec.CommandContext(ctx, pnpm.executable, args...)
 }
 
+func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageSpecifier string) error {
+	cmd := exec.CommandContext(ctx, "pnpm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing pnpm command %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
+}
+
 func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, pnpm.executable, "pack", "--use-stderr")

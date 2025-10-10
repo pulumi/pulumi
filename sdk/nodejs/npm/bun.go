@@ -74,6 +74,15 @@ func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cm
 	return exec.CommandContext(ctx, bun.executable, args...)
 }
 
+func (bun *bunManager) Link(ctx context.Context, dir, packageSpecifier string) error {
+	cmd := exec.CommandContext(ctx, "bun", "pm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing bun command %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
+}
+
 type packageDotJSON struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`

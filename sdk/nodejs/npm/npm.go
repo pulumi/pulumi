@@ -73,6 +73,15 @@ func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.C
 	return exec.CommandContext(ctx, node.executable, args...)
 }
 
+func (node *npmManager) Link(ctx context.Context, dir, packageSpecifier string) error {
+	cmd := exec.CommandContext(ctx, "npm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
+}
+
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error")

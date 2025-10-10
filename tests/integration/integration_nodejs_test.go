@@ -2399,7 +2399,7 @@ func TestParameterizedNode(t *testing.T) {
 func TestPackageAddNode(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 
-	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+	for _, packageManager := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(packageManager, func(t *testing.T) {
 			var err error
 			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
