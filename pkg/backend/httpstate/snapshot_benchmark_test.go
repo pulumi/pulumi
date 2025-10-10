@@ -675,8 +675,8 @@ func (s *benchmarkServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *benchmarkServer) Save(snapshot *deploy.Snapshot) error {
-	return s.p.Save(snapshot)
+func (s *benchmarkServer) Save(deployment *apitype.DeploymentV3, version int, features []string) error {
+	return s.p.Save(deployment, version, features)
 }
 
 func (s *benchmarkServer) Append(ctx context.Context, entry apitype.JournalEntry) error {

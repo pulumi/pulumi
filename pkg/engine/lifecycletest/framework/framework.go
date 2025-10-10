@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -366,12 +367,17 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	serializedSnap, _, _, err := stack.SerializeDeploymentWithMetadata(context.TODO(), snap, true)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
+	}
+
 	errs = append(errs, journaler.Errors()...)
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
-	errs = append(errs, snap.AssertEqual(persister.Snap))
+	errs = append(errs, snapshot.AssertEqual(serializedSnap, persister.Snap))
 
-	journalErr := journalPersister.Snap.AssertEqual(snap)
+	journalErr := snapshot.AssertEqual(serializedSnap, journalPersister.Snap)
 	errs = append(errs, journalErr)
 
 	if journalErr != nil {
