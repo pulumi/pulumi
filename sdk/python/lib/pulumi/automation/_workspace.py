@@ -306,6 +306,16 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        """
+        Sets all config values from a JSON string for the specified stack name.
+        The JSON string should be in the format produced by "pulumi config --json".
+
+        :param stack_name: The name of the stack.
+        :param config_json: A JSON string containing the configuration values to set.
+        """
+
+    @abstractmethod
     def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
         """
         Removes the specified key-value pair on the provided stack name.

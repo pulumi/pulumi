@@ -487,6 +487,47 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
+    it(`setAllConfigJson`, async () => {
+        const projectName = "config_json_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+
+        // Set config using JSON format
+        const configJson = JSON.stringify({
+            [`${projectName}:plainKey`]: {
+                value: "plainValue",
+                secret: false,
+            },
+            [`${projectName}:secretKey`]: {
+                value: "secretValue",
+                secret: true,
+            },
+            [`${projectName}:numberKey`]: {
+                value: "42",
+                secret: false,
+            },
+        });
+
+        await stack.setAllConfigJson(configJson);
+
+        // Verify the config was set correctly
+        const allConfig = await stack.getAllConfig();
+
+        assert.strictEqual(allConfig[`${projectName}:plainKey`].value, "plainValue");
+        assert.strictEqual(allConfig[`${projectName}:plainKey`].secret, false);
+
+        assert.strictEqual(allConfig[`${projectName}:secretKey`].secret, true);
+
+        assert.strictEqual(allConfig[`${projectName}:numberKey`].value, "42");
+        assert.strictEqual(allConfig[`${projectName}:numberKey`].secret, false);
+
+        await ws.removeStack(stackName);
+    });
     // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
     // config from the file. This means we can't remove the stack at the end of the test.
     // We should also not include secrets in this config, because the secret encryption is only valid within

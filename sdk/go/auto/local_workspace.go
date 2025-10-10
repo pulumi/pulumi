@@ -323,6 +323,26 @@ func (l *LocalWorkspace) SetAllConfigWithOptions(
 	return nil
 }
 
+// SetAllConfigJson sets all config values from a JSON string for the specified stack name.
+// The JSON string should be in the format produced by "pulumi config --json".
+// LocalWorkspace writes the config to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
+func (l *LocalWorkspace) SetAllConfigJson(
+	ctx context.Context, stackName string, configJson string, opts *ConfigOptions,
+) error {
+	args := []string{"config", "set-all", "--stack", stackName, "--json", configJson}
+	if opts != nil {
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to set config from JSON: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 // RemoveConfig removes the specified key-value pair on the provided stack name.
 // It will remove any matching values in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RemoveConfig(ctx context.Context, stackName string, key string) error {
