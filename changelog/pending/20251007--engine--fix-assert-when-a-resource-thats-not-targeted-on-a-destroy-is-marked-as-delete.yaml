@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix assert when a resource that's not targeted on a destroy is marked as Delete

@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.202.0 (2025-10-10)
+
+
+### Features
+
+- [auto] Add SetAllConfigJson method to automation APIs
+  [#20709](https://github.com/pulumi/pulumi/pull/20709)
+
+- [cli/config] Add `--json` input support to `pulumi config set-all`
+  [#19427](https://github.com/pulumi/pulumi/pull/19427)
+
+- [cli/display] Add error summary at the end of Resource changes
+  [#20658](https://github.com/pulumi/pulumi/pull/20658)
+
+- [components/{go,nodejs}] Send component inputs to be saved in state. This brings NodeJS and Go inline with Python behaviour
+  [#20357](https://github.com/pulumi/pulumi/pull/20357)
+
+- [sdk/python] Add support for Python 3.14
+  [#20433](https://github.com/pulumi/pulumi/pull/20433)
+
+- [sdk/python] Add the `hide_diffs` resource option
+  [#20655](https://github.com/pulumi/pulumi/pull/20655)
+
+
+### Bug Fixes
+
+- [engine] Fix assert when a resource that's not targeted on a destroy is marked as Delete
+  [#20684](https://github.com/pulumi/pulumi/pull/20684)
+
+- [sdk/nodejs] Allow compiled local SDKs to be parameterized
+  [#20685](https://github.com/pulumi/pulumi/pull/20685)
+
+- [sdk/nodejs] Handle RangeErrors from util.inspect stringifying error objects
+  [#20705](https://github.com/pulumi/pulumi/pull/20705)
+
 ## 3.201.0 (2025-10-06)
 
 
