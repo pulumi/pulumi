@@ -1,0 +1,3 @@
+import something
+
+something.a

@@ -1,0 +1,7 @@
+name: typecheck-with-local-sdk
+description: A Python project with the typechecker option and a local SDK
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy

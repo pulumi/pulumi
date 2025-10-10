@@ -1,0 +1,13 @@
+[project]
+name = "typecheck-with-local-sdk"
+version = "0.1.0"
+description = "A Python project with the typechecker option and a local SDK"
+requires-python = ">=3.10"
+dependencies = [
+    "mypy>=1.18.2",
+    "pulumi>=3.201.0",
+    "something",
+]
+
+[tool.uv.sources]
+something = { path = "sdks/something" }
