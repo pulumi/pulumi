@@ -232,7 +232,7 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	if wt, err := repo.Worktree(); err == nil {
 		repoRelPath, err := filepath.Rel(wt.Filesystem.Root(), projPath)
 		if err == nil && filepath.IsLocal(repoRelPath) {
-			tags[apitype.VCSRepositoryRootTag] = repoRelPath
+			tags[apitype.VCSRepositoryRootTag] = filepath.ToSlash(repoRelPath)
 		}
 	}
 
