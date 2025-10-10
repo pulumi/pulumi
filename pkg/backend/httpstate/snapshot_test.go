@@ -200,11 +200,15 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister := initPersister()
 
-	err := persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
-	})
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resource.URN("urn-1")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -216,14 +220,17 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 2: no delta, no v4: v4 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -241,11 +248,17 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	delta = true
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -257,12 +270,15 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, no v4: second request delta: v3 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resource.URN("urn-1")},
+				{URN: resource.URN("urn-2")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -277,14 +293,18 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -299,15 +319,19 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, no v4: second request delta: v4 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+				{URN: resource.URN("urn-2")},
 			},
-			{URN: resource.URN("urn-2")},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -328,11 +352,16 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -344,14 +373,17 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 2: no delta, v4: v4 deployment sent as v4.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -369,11 +401,16 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	delta = true
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -385,12 +422,19 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, v4: second request delta: v3 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+				{
+					URN: resource.URN("urn-2"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -405,14 +449,18 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -427,15 +475,17 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, v4: second request delta: v4 deployment sent as v4.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-			{URN: resource.URN("urn-2")},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -602,11 +652,16 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 1: the first request sends indented data verbatim to establish a good baseline state for further diffs.
 
-	err := persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
-	})
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	req1 := lastRequestAsVerbatim()
@@ -624,12 +679,19 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	// Req 2: then it switches to sending deltas as text diffs together with SHA-256 checksum of the expected
 	// resulting text representation of state.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+				{
+					URN: resource.URN("urn-2"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	req2 := lastRequestAsDelta()
@@ -647,11 +709,16 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 3: and continues using the diff protocol.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
-	})
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	req3 := lastRequestAsDelta()
@@ -668,14 +735,17 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 4: then use a v4 deployment schema feature.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
-	})
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(deploymentV3, version, features)
 	require.NoError(t, err)
 
 	req4 := lastRequestAsDelta()

@@ -17,7 +17,7 @@ package diy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // diySnapshotPersister is a simple SnapshotManager implementation that persists snapshots
@@ -31,8 +31,8 @@ type diySnapshotPersister struct {
 	backend *diyBackend
 }
 
-func (sp *diySnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot)
+func (sp *diySnapshotPersister) Save(snapshot *apitype.DeploymentV3, version int, features []string) error {
+	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot, version, features)
 	return err
 }
 
