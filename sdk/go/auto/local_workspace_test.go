@@ -2175,10 +2175,7 @@ func TestSetAllConfigJson(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to initialize stack")
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
@@ -2202,17 +2199,11 @@ func TestSetAllConfigJson(t *testing.T) {
 	}`
 
 	err = s.SetAllConfigJson(ctx, configJSON, nil)
-	if err != nil {
-		t.Errorf("failed to set config from JSON: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to set config from JSON")
 
 	// Verify the config was set correctly
 	allConfig, err := s.GetAllConfig(ctx)
-	if err != nil {
-		t.Errorf("failed to get all config: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "failed to get all config")
 
 	// Check plain key
 	plainKey, ok := allConfig["testproj:plainKey"]
@@ -2224,6 +2215,12 @@ func TestSetAllConfigJson(t *testing.T) {
 	secretKey, ok := allConfig["testproj:secretKey"]
 	assert.True(t, ok, "secretKey should exist")
 	assert.True(t, secretKey.Secret, "secretKey should be secret")
+
+	// Verify secret value by getting config with ShowSecrets
+	allConfigWithSecrets, err := s.GetAllConfigWithOptions(ctx, &GetAllConfigOptions{ShowSecrets: true})
+	require.NoError(t, err, "failed to get all config with secrets")
+	secretKeyValue := allConfigWithSecrets["testproj:secretKey"]
+	assert.Equal(t, "secretValue", secretKeyValue.Value, "secretKey should have correct decrypted value")
 
 	// Check number key
 	numberKey, ok := allConfig["testproj:numberKey"]

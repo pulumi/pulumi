@@ -727,7 +727,7 @@ export class LocalWorkspace implements Workspace {
      * Sets all config values from a JSON string for the specified stack name.
      * The JSON string should be in the format produced by "pulumi config --json".
      * Will write the config to the matching `Pulumi.<stack>.yaml` file in
-     * `Workspace.WorkDir()`.
+     * `Workspace.workDir`.
      *
      * @param stackName
      *  The stack to operate on
