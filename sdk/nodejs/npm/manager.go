@@ -45,6 +45,8 @@ const (
 type PackageManager interface {
 	// Install will install dependencies with the given package manager.
 	Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error
+	// Link blergh
+	Link(ctx context.Context, dir, packageSpecifier string) error
 	Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error)
 	// Name is the name of the binary executable used to invoke this package manager.
 	// e.g. yarn or npm
