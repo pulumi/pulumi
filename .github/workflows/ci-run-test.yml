@@ -242,7 +242,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.2
+          bun-version: 1.2.23
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build

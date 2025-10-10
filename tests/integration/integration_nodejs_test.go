@@ -2395,12 +2395,14 @@ func TestParameterizedNode(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment
 func TestPackageAddNode(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
+	t.Parallel()
 
-	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+	for _, packageManager := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(packageManager, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+
 			var err error
 			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
 			require.NoError(t, err)
@@ -2430,6 +2432,13 @@ func TestPackageAddNode(t *testing.T) {
 			b, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
 			require.NoError(t, err)
 			require.Equal(t, "node_modules/\nbin/\n", string(b))
+
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "login", "--local")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--skip-preview")
+			e.RunCommand("pulumi", "destroy", "--skip-preview")
 		})
 	}
 }
@@ -2812,7 +2821,7 @@ func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
 	e.CWD = filepath.Join(e.RootPath, "nodejs")
 	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
 	require.Contains(t, stdout,
-		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
+		"You can import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
 
 	// Make sure the SDK was generated in the expected directory
 	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
@@ -2944,6 +2953,11 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
 
+					cmd := exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+
 					if runtime != "yaml" {
 						cmd := exec.Command("pulumi", "install")
 						cmd.Dir = info.Root
@@ -2951,10 +2965,6 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					}
 
-					cmd := exec.Command("pulumi", "package", "add", providerPath)
-					cmd.Dir = info.Root
-					out, err := cmd.CombinedOutput()
-					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
@@ -3077,7 +3087,6 @@ func TestNodePackageAddTSC(t *testing.T) {
 			e.CWD = provider
 			installNodejsProviderDependencies(t, provider)
 			e.CWD = program
-			e.RunCommand("pulumi", "install")
 			// `bin` has a fake `tsc` executable that exits with an error code. If we
 			// execute this instead of the tsc that ships with the package, the
 			// installation will fail.
@@ -3085,6 +3094,7 @@ func TestNodePackageAddTSC(t *testing.T) {
 			e.SetEnvVars(fmt.Sprintf("PATH=%s:%s", bin, path))
 
 			e.RunCommand("pulumi", "package", "add", provider)
+			e.RunCommand("pulumi", "install")
 
 			stackName := ptesting.RandomStackName()
 			e.RunCommand("pulumi", "login", "--local")

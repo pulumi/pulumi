@@ -87,6 +87,19 @@ func (yarn *yarnClassic) runCmd(command *exec.Cmd, stderr io.Writer) error {
 	return err
 }
 
+func (yarn *yarnClassic) Link(ctx context.Context, dir, packageName, path string) error {
+	// Yarn doesn't have a `pkg` command. Currently, however, we only support Yarn Classic, for which the
+	// recommended install method is through `npm`. Consequently, we can use `npm pkg set` for Yarn as well, since
+	// this will only modify the package.json file and not actually perform any dependency management.
+	packageSpecifier := getLinkPackageProperty(packageName, path)
+	cmd := exec.CommandContext(ctx, "npm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing yarn command %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
+}
+
 // Pack runs `yarn pack` in the given directory, packaging the Node.js app located
 // there into a tarball an returning it as `[]byte`. `stdout` is ignored for this command,
 // as it does not produce useful data.

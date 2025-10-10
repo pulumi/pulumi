@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 )
 
 type bunManager struct {
@@ -72,6 +73,46 @@ func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cm
 
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, bun.executable, args...)
+}
+
+func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) error {
+	packageSpecifier := getLinkPackageProperty(packageName, path)
+	cmd := exec.CommandContext(ctx, "bun", "pm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing bun command %s: %w, output: %s", cmd.String(), err, out)
+	}
+
+	// Local SDKs have a postInstall script that needs to run. By default bun does not run these scripts. We have to
+	// add the package to the `trustedDependencies` setting to allow this.
+	// https://bun.com/docs/install/lifecycle
+	cmd = exec.CommandContext(ctx, "bun", "pm", "pkg", "get", "trustedDependencies")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	}
+	out = bytes.TrimSpace(out)
+	var dependencies []string
+	if len(out) > 0 && string(out) != "undefined" {
+		if err := json.Unmarshal(out, &dependencies); err != nil {
+			dependencies = []string{}
+		}
+	}
+	if !slices.Contains(dependencies, packageName) {
+		dependencies = append(dependencies, packageName)
+	}
+	jsonData, err := json.Marshal(dependencies)
+	if err != nil {
+		return fmt.Errorf("error marshaling dependencies to JSON: %w", err)
+	}
+	//nolint:gosec // json data is escaped
+	cmd = exec.CommandContext(ctx, "bun", "pm", "pkg", "set", "--json", "trustedDependencies="+string(jsonData))
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
 }
 
 type packageDotJSON struct {

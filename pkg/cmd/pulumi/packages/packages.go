@@ -32,9 +32,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -242,8 +240,6 @@ type LinkPackageContext struct {
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackage(ctx *LinkPackageContext) error {
 	switch ctx.Language {
-	case "nodejs":
-		return linkNodeJsPackage(ctx)
 	case "go":
 		return linkGoPackage(ctx)
 	case "dotnet":
@@ -255,129 +251,6 @@ func LinkPackage(ctx *LinkPackageContext) error {
 	default:
 		return linkPackage(ctx)
 	}
-}
-
-func getNodeJSPkgName(pkg *schema.Package) string {
-	if info, ok := pkg.Language["nodejs"].(nodejs.NodePackageInfo); ok && info.PackageName != "" {
-		return info.PackageName
-	}
-
-	if pkg.Namespace != "" {
-		return "@" + pkg.Namespace + "/" + pkg.Name
-	}
-	return "@pulumi/" + pkg.Name
-}
-
-// linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
-func linkNodeJsPackage(ctx *LinkPackageContext) error {
-	fmt.Fprintf(ctx.Writer, "Successfully generated a Nodejs SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
-	if err != nil {
-		return err
-	}
-
-	// Depending on whether we want to install the linked package, we have to pick one of two paths:
-	//
-	// * For cases where we do want to install linked SDKs (where ctx.Install is true), we can use the typical `npm add`,
-	//   `pnpm add` commands, etc. These will take care of both modifying the package.json file and installing the SDK
-	//   into node_modules.
-	// * For cases where we do not want to install linked SDKs (where ctx.Install is false), we only want to modify the
-	//   package.json file. In this case, we can use the `pkg set` commands that many package managers support.
-	var addCmd *exec.Cmd
-	options := ctx.Project.RuntimeInfo().Options()
-
-	if ctx.Install {
-		// Installing -- use the `add` commands.
-
-		packageName := getNodeJSPkgName(ctx.Pkg)
-		packageSpecifier := fmt.Sprintf("%s@file:%s", packageName, relOut)
-		if packagemanager, ok := options["packagemanager"]; ok {
-			if pm, ok := packagemanager.(string); ok {
-				switch pm {
-				case "bun":
-					addCmd = exec.Command(pm, "add", packageSpecifier, "--trust")
-				case "npm":
-					fallthrough
-				case "yarn":
-					addCmd = exec.Command(pm, "add", packageSpecifier)
-				case "pnpm":
-					// pnpm does not run postinstall scripts by default. We need
-					// to run the generated postinstall script for the SDK to
-					// compile it, See `genPostInstallScript`.
-					addCmd = exec.Command(pm, "add", packageSpecifier, "--allow-build="+packageName)
-				default:
-					return fmt.Errorf("unsupported package manager: %s", pm)
-				}
-			} else {
-				return fmt.Errorf("package manager option must be a string: %v", packagemanager)
-			}
-		} else {
-			// Assume npm if no packagemanager is specified
-			addCmd = exec.Command("npm", "add", packageSpecifier)
-		}
-	} else {
-		// Not installing -- use the `pkg set` commands.
-
-		// `pkg set` lets us directly modify the package.json file. Since we want to set an entry in the `dependencies`
-		// section, we'll pass it a string of the form "dependencies.<packageName>=file:<path-to-package>".
-		packageSpecifier := fmt.Sprintf("dependencies.%s=file:%s", getNodeJSPkgName(ctx.Pkg), relOut)
-		if packagemanager, ok := options["packagemanager"]; ok {
-			if pm, ok := packagemanager.(string); ok {
-				switch pm {
-				case "bun":
-					addCmd = exec.Command(pm, "pm", "pkg", "set", packageSpecifier)
-				case "npm":
-					fallthrough
-				case "pnpm":
-					addCmd = exec.Command(pm, "pkg", "set", packageSpecifier)
-				case "yarn":
-					// Yarn doesn't have a `pkg` command. Currently, however, we only support Yarn Classic, for which the
-					// recommended install method is through `npm`. Consequently, we can use `npm pkg set` for Yarn as well, since
-					// this will only modify the package.json file and not actually perform any dependency management.
-					addCmd = exec.Command("npm", "pkg", "set", packageSpecifier)
-				default:
-					return fmt.Errorf("unsupported package manager: %s", pm)
-				}
-			} else {
-				return fmt.Errorf("package manager option must be a string: %v", packagemanager)
-			}
-		} else {
-			// Assume npm if no packagemanager is specified
-			addCmd = exec.Command("npm", "pkg", "set", packageSpecifier)
-		}
-	}
-
-	addCmd.Stdout = os.Stdout
-	addCmd.Stderr = os.Stderr
-	err = addCmd.Run()
-	if err != nil {
-		return fmt.Errorf("error executing node package manager command %s: %w", addCmd.String(), err)
-	}
-
-	return printNodeJsImportInstructions(os.Stdout, ctx.Pkg, options)
-}
-
-// printNodeJsImportInstructions prints instructions for importing the NodeJS SDK to the specified writer.
-func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map[string]any) error {
-	importName := cgstrings.Camel(pkg.Name)
-
-	useTypescript := true
-	if typescript, ok := options["typescript"]; ok {
-		if val, ok := typescript.(bool); ok {
-			useTypescript = val
-		}
-	}
-	if useTypescript {
-		fmt.Fprintln(w, "You can then import the SDK in your TypeScript code with:")
-		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  import * as %s from \"%s\";\n", importName, getNodeJSPkgName(pkg))
-	} else {
-		fmt.Fprintln(w, "You can then import the SDK in your Javascript code with:")
-		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  const %s = require(\"%s\");\n", importName, getNodeJSPkgName(pkg))
-	}
-	fmt.Fprintln(w)
-	return nil
 }
 
 // linkPackage links a locally generated SDK into a project using `Language.Link`.

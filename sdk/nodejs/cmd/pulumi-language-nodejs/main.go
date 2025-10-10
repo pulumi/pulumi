@@ -73,7 +73,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1969,10 +1971,99 @@ func (o *oomSniffer) Scan(r io.Reader) {
 func (host *nodeLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The NodeJS language host does not support linking, so we return an empty response.
-	return &pulumirpc.LinkResponse{}, nil
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	pm, err := npm.ResolvePackageManager(opts.packagemanager, req.Info.ProgramDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	instructions := "You can import the SDK in your JavaScript code with:\n\n"
+	if opts.typescript {
+		instructions = "You can import the SDK in your TypeScript code with:\n\n"
+	}
+
+	for _, dep := range req.Packages {
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+		packageName, err := getNodeJSPkgName(pkgRef)
+		if err != nil {
+			return nil, err
+		}
+		if err := pm.Link(ctx, req.Info.ProgramDirectory, packageName, dep.Path); err != nil {
+			return nil, err
+		}
+
+		importName := cgstrings.Camel(pkgRef.Name())
+		if opts.typescript {
+			instructions += fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName)
+		} else {
+			instructions += fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName)
+		}
+	}
+
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
 }
 
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func getNodeJSPkgName(pkgRef schema.PackageReference) (string, error) {
+	info, err := pkgRef.Language("nodejs")
+	if err != nil {
+		return "", err
+	}
+
+	if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+		return info.PackageName, nil
+	}
+
+	if pkgRef.Namespace() != "" {
+		return "@" + pkgRef.Namespace() + "/" + pkgRef.Name(), nil
+	}
+	return "@pulumi/" + pkgRef.Name(), nil
 }
