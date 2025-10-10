@@ -1007,7 +1007,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	if typechecker != "" {
 		typecheckerArgs := []string{"-m", typechecker}
-		if typechecker == "mypy" {
+		switch typechecker {
+		case "mypy":
 			virtualenvPath, err := tc.VirtualEnvPath(ctx)
 			if err != nil {
 				return nil, err
@@ -1016,9 +1017,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			if err != nil {
 				return nil, err
 			}
-			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath, "--exclude", "sdks",
+				req.Info.ProgramDirectory)
+		case "pyright":
+			about, err := tc.About(ctx)
+			if err != nil {
+				return nil, err
+			}
+			typecheckerArgs = append(typecheckerArgs, "--pythonpath", about.Executable)
 		}
-		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
 		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
 		if err != nil {
 			return nil, err
@@ -1803,6 +1810,60 @@ func (host *pythonLanguageHost) Link(
 	}
 	if err := tc.LinkPackages(ctx, packages); err != nil {
 		return nil, fmt.Errorf("linking packages: %w", err)
+	}
+
+	// When using Pyright as a typechecker, we need to create/update pyrightconfig.json
+	// to exlude the `sdks` folder.
+	if opts.Typechecker == toolchain.TypeCheckerPyright {
+		pyrightConfigPath := filepath.Join(req.Info.ProgramDirectory, "pyrightconfig.json")
+		var config map[string]any
+		// Look for an existing pyrightconfig.json
+		if _, err := os.Stat(pyrightConfigPath); err == nil {
+			configData, err := os.ReadFile(pyrightConfigPath)
+			if err != nil {
+				return nil, fmt.Errorf("reading pyrightconfig.json: %w", err)
+			}
+			if err := json.Unmarshal(configData, &config); err != nil {
+				return nil, fmt.Errorf("parsing pyrightconfig.json: %w", err)
+			}
+		} else {
+			config = make(map[string]any)
+		}
+
+		excludes := []string{
+			// The defaults values that are used if `exclude` is not set
+			// https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+			"**/node_modules",
+			"**/__pycache__",
+			"**/.*",
+			// Exclude the sdks folder
+			"sdks",
+		}
+		// When setting the `exclude` option, pyright does not auto-exclude the venv anymore, add it explicitly
+		if opts.Virtualenv != "" {
+			excludes = append(excludes, opts.Virtualenv)
+		}
+
+		var currentExcludes []string
+		if existing, ok := config["exclude"]; ok {
+			if excludeSlice, ok := existing.([]string); ok {
+				currentExcludes = excludeSlice
+			}
+		}
+		for _, item := range excludes {
+			if !slices.Contains(currentExcludes, item) {
+				currentExcludes = append(currentExcludes, item)
+			}
+		}
+		config["exclude"] = currentExcludes
+
+		updatedData, err := json.MarshalIndent(config, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("serializing pyrightconfig.json: %w", err)
+		}
+		if err := os.WriteFile(pyrightConfigPath, updatedData, 0o644); err != nil { //nolint:gosec
+			return nil, fmt.Errorf("writing pyrightconfig.json: %w", err)
+		}
 	}
 
 	return &pulumirpc.LinkResponse{
