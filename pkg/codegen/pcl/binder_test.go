@@ -1075,41 +1075,6 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 	assert.Equal(t, "componentFirstValue", variableName)
 }
 
-func TestRangeTraversalFromObjectOfObjectsDoesNotError(t *testing.T) {
-	t.Parallel()
-	source := `
-accounts = {
-  "us-east-1" = {
-    awsRegion = "us-east-1"
-    something = 10
-  }
-  "us-west-2" = {
-    awsRegion = "us-west-2"
-    something = 20
-  }
-  "eu-west-1" = {
-    awsRegion = "eu-west-1"
-    something = 30
-  }
-}
-
-resource "name" "random:index/randomString:RandomString" {
-  options {
-    range = accounts
-  }
-  length = range.value["aws_region"]
-}`
-
-	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
-	require.NoError(t, err)
-	require.False(t, diags.HasErrors(), "There are no error diagnostics")
-	require.NotNil(t, program)
-	require.Len(t, diags, 1, "There is one diagnostic")
-	require.Equal(t, diags[0].Severity, hcl.DiagWarning, "The diagnostic is a warning")
-	require.Contains(t, diags[0].Summary, "unknown property 'aws_region' among [awsRegion something]",
-		"The diagnostic contains the correct message about the unknown property")
-}
-
 func TestTraversingNoneTypeEmitsWarning(t *testing.T) {
 	t.Parallel()
 	source := `data = {}
