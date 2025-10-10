@@ -21,8 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -35,12 +34,14 @@ type cloudSnapshotPersister struct {
 	deploymentDiffState *deploymentDiffState
 }
 
-func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
+func (persister *cloudSnapshotPersister) Save(
+	deploymentV3 *apitype.DeploymentV3, version int, features []string,
+) error {
 	ctx := persister.context
 
 	// Diff capability can be nil because of feature flagging.
 	if persister.deploymentDiffState == nil {
-		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snapshot, nil /*opts*/)
+		untypedDeployment, err := deploymentV3.ToUntypedDeployment(version, features)
 		if err != nil {
 			return fmt.Errorf("serializing deployment: %w", err)
 		}
@@ -50,11 +51,6 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 		// Continue with how deployments were saved before diff.
 		return persister.backend.client.PatchUpdateCheckpoint(
 			persister.context, persister.update, untypedDeployment, persister.tokenSource)
-	}
-
-	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(ctx, snapshot, false /*showSecrets*/)
-	if err != nil {
-		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	version, features = persister.backend.downgradeDeploymentVersionIfNeeded(ctx, version, features)
