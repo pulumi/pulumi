@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: components/go,nodejs
-  description: Send component inputs to be saved in state. This brings NodeJS and Go inline with Python behaviour

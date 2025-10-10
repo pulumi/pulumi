@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Handle RangeErrors from util.inspect stringifying error objects
