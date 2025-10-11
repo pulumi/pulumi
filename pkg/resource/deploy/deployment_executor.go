@@ -490,6 +490,9 @@ func (ex *deploymentExecutor) performPostSteps(
 		// Then schedule the deletions
 		deleteChains := ex.stepGen.ScheduleDeletes(deleteSteps)
 
+		dg := ex.deployment.depGraph
+		deleteGraph := graph.NewDependencyGraph(ex.stepGen.toDelete)
+
 		// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 		// in parallel, but each list must execute completes before the next list can safely begin
 		// executing.
@@ -512,8 +515,14 @@ func (ex *deploymentExecutor) performPostSteps(
 					continue
 				}
 				for _, r := range []*resource.State{step.Res(), step.Old()} {
-					if r != nil && ex.deployment.depGraph.Contains(r) {
-						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
+					if r != nil && dg.Contains(r) {
+						deps := dg.TransitiveDependenciesOf(r)
+						erroredDeps = erroredDeps.Union(deps)
+					} else if r != nil && deleteGraph.Contains(r) {
+						// For destroyV2, we might have resources in the delete graph that
+						// aren't in the main dep graph. This happens if there is a previous
+						// same step for the resource.
+						deps := deleteGraph.TransitiveDependenciesOf(r)
 						erroredDeps = erroredDeps.Union(deps)
 					}
 				}

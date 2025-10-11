@@ -974,3 +974,60 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	// Everything should be deleted from state
 	require.Len(t, snap.Resources, 0)
 }
+
+func TestDestroyV2ProtectedWithProviderDependencys(t *testing.T) {
+	t.Parallel()
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "prov",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
+				ID:       "0",
+				Protect:  true,
+			},
+		},
+	}
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		protect := true
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Protect:  &protect,
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+	p := &lt.TestPlan{
+		Options: opts,
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
+	require.ErrorContains(t, err, "BAIL: step executor errored: step application failed: resource"+
+		" \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted")
+	require.NotContains(t, err.Error(), "validation error")
+}
