@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet,nodejs
+  description: Propagate local dependencies for parameterized packages during convert down to GenerateProject
