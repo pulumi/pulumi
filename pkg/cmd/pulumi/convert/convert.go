@@ -597,14 +597,39 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
+		version := pkgSchema.Version
+		if pkgSchema.Parameterization != nil {
+			version = &pkgSchema.Parameterization.BaseProvider.Version
+		}
+		name := pkgSchema.Name
+		if pkgSchema.Parameterization != nil {
+			name = pkgSchema.Parameterization.BaseProvider.Name
+		}
+		pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version,
+			pkgSchema.PluginDownloadURL, nil)
+		if err != nil {
+			return err
+		}
+		var parameterization *workspace.Parameterization
+		if pkgSchema.Parameterization != nil {
+			parameterization = &workspace.Parameterization{
+				Name:    pkgSchema.Name,
+				Version: *pkgSchema.Version,
+				Value:   pkgSchema.Parameterization.Parameter,
+			}
+		}
+		packageDescriptor := workspace.NewPackageDescriptor(pluginSpec, parameterization)
+
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Writer:   os.Stdout,
-			Project:  proj,
-			Language: language,
-			Root:     "./",
-			Pkg:      pkgSchema,
-			Out:      sdkRelPath,
+			Writer:            os.Stdout,
+			Project:           proj,
+			Language:          language,
+			Root:              "./",
+			Pkg:               pkgSchema,
+			PluginContext:     pctx,
+			PackageDescriptor: packageDescriptor,
+			Out:               sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
 			Install: !generateOnly,

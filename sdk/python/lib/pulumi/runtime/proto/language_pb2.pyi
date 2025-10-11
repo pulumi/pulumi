@@ -1189,24 +1189,26 @@ class LinkRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing.final
-    class LocalDependenciesEntry(google.protobuf.message.Message):
+    class LinkDependency(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.str
+        PACKAGE_FIELD_NUMBER: builtins.int
+        PATH_FIELD_NUMBER: builtins.int
+        path: builtins.str
+        @property
+        def package(self) -> pulumi.plugin_pb2.PackageDependency: ...
         def __init__(
             self,
             *,
-            key: builtins.str = ...,
-            value: builtins.str = ...,
+            package: pulumi.plugin_pb2.PackageDependency | None = ...,
+            path: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["package", b"package", "path", b"path"]) -> None: ...
 
     INFO_FIELD_NUMBER: builtins.int
-    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    PACKAGES_FIELD_NUMBER: builtins.int
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
     @property
@@ -1214,23 +1216,21 @@ class LinkRequest(google.protobuf.message.Message):
         """The program to use."""
 
     @property
-    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """Local dependencies that the program should reference explicitly, instead of e.g. using the language's
-        package system. This is a map of package names to local paths of language-specific artifacts that
-        should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
-        to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
-        to be used instead of the published `@pulumi/aws` package.
+    def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___LinkRequest.LinkDependency]:
+        """Local dependencies that should be linked into the program or plugin's language specific project files.
+        Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
+        Python wheel or a tar.gz for Node.js, or a source directory.
         """
 
     def __init__(
         self,
         *,
         info: global___ProgramInfo | None = ...,
-        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         loader_target: builtins.str = ...,
+        packages: collections.abc.Iterable[global___LinkRequest.LinkDependency] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["info", b"info", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info", "loader_target", b"loader_target", "packages", b"packages"]) -> None: ...
 
 global___LinkRequest = LinkRequest
 
@@ -1240,8 +1240,17 @@ class LinkResponse(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    IMPORT_INSTRUCTIONS_FIELD_NUMBER: builtins.int
+    import_instructions: builtins.str
+    """The instructions on how to use a linked package in a program or plugin. These instructions are meant
+    to be displayed to the user. For example when linking a local Python dependency, this might return
+    `import my_namespace_mypkg as mypkg`.
+    """
     def __init__(
         self,
+        *,
+        import_instructions: builtins.str = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["import_instructions", b"import_instructions"]) -> None: ...
 
 global___LinkResponse = LinkResponse

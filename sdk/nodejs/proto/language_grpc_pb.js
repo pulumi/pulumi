@@ -568,7 +568,10 @@ pack: {
     responseSerialize: serialize_pulumirpc_PackResponse,
     responseDeserialize: deserialize_pulumirpc_PackResponse,
   },
-  // `Link` links a local dependency into a project.
+  // `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+// as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+// user on how to use the linked package in the project.
 link: {
     path: '/pulumirpc.LanguageRuntime/Link',
     requestStream: false,

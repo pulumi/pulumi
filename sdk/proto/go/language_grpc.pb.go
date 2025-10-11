@@ -131,7 +131,10 @@ type LanguageRuntimeClient interface {
 	// [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
 	// to standardise e.g. provider publishing workflows.
 	Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error)
-	// `Link` links a local dependency into a project.
+	// `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+	// as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+	// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+	// user on how to use the linked package in the project.
 	Link(ctx context.Context, in *LinkRequest, opts ...grpc.CallOption) (*LinkResponse, error)
 	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
 	// Operations aborted in this way will return an error.
@@ -404,7 +407,10 @@ type LanguageRuntimeServer interface {
 	// [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
 	// to standardise e.g. provider publishing workflows.
 	Pack(context.Context, *PackRequest) (*PackResponse, error)
-	// `Link` links a local dependency into a project.
+	// `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+	// as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+	// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+	// user on how to use the linked package in the project.
 	Link(context.Context, *LinkRequest) (*LinkResponse, error)
 	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
 	// Operations aborted in this way will return an error.

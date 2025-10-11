@@ -511,7 +511,6 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	var coreArtifact string
 	if req.CoreSdkDirectory != "" {
-		// Build the core SDK, use a slightly odd version so we can test dependencies later.
 		coreArtifact, err = languageClient.Pack(
 			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 		if err != nil {
@@ -1332,7 +1331,17 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
-			err := languageClient.Link(policyInfo, localDependencies)
+
+			// Link the core SDK into the policy pack
+			linkDeps := []workspace.LinkablePackageDescriptor{{
+				Path: token.CoreArtifact,
+				Descriptor: workspace.PackageDescriptor{
+					PluginSpec: workspace.PluginSpec{
+						Name: "pulumi",
+					},
+				},
+			}}
+			_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 			}

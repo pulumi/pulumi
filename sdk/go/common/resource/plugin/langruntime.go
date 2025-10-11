@@ -170,7 +170,7 @@ type LanguageRuntime interface {
 	Pack(packageDirectory string, destinationDirectory string) (string, error)
 
 	// Link links a set of local dependencies into the given program directory.
-	Link(info ProgramInfo, localDependencies map[string]string) error
+	Link(info ProgramInfo, localDependencies []workspace.LinkablePackageDescriptor, loaderTarget string) (string, error)
 
 	// Cancel signals the language runtime to gracefully shut down and abort any ongoing operations.
 	// Operations aborted in this way will return an error.

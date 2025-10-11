@@ -923,11 +923,12 @@ export class LinkRequest extends jspb.Message {
     clearInfo(): void;
     getInfo(): ProgramInfo | undefined;
     setInfo(value?: ProgramInfo): LinkRequest;
-
-    getLocalDependenciesMap(): jspb.Map<string, string>;
-    clearLocalDependenciesMap(): void;
     getLoaderTarget(): string;
     setLoaderTarget(value: string): LinkRequest;
+    clearPackagesList(): void;
+    getPackagesList(): Array<LinkRequest.LinkDependency>;
+    setPackagesList(value: Array<LinkRequest.LinkDependency>): LinkRequest;
+    addPackages(value?: LinkRequest.LinkDependency, index?: number): LinkRequest.LinkDependency;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkRequest.AsObject;
@@ -942,13 +943,42 @@ export class LinkRequest extends jspb.Message {
 export namespace LinkRequest {
     export type AsObject = {
         info?: ProgramInfo.AsObject,
-
-        localDependenciesMap: Array<[string, string]>,
         loaderTarget: string,
+        packagesList: Array<LinkRequest.LinkDependency.AsObject>,
     }
+
+
+    export class LinkDependency extends jspb.Message { 
+
+        hasPackage(): boolean;
+        clearPackage(): void;
+        getPackage(): pulumi_plugin_pb.PackageDependency | undefined;
+        setPackage(value?: pulumi_plugin_pb.PackageDependency): LinkDependency;
+        getPath(): string;
+        setPath(value: string): LinkDependency;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): LinkDependency.AsObject;
+        static toObject(includeInstance: boolean, msg: LinkDependency): LinkDependency.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: LinkDependency, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): LinkDependency;
+        static deserializeBinaryFromReader(message: LinkDependency, reader: jspb.BinaryReader): LinkDependency;
+    }
+
+    export namespace LinkDependency {
+        export type AsObject = {
+            pb_package?: pulumi_plugin_pb.PackageDependency.AsObject,
+            path: string,
+        }
+    }
+
 }
 
 export class LinkResponse extends jspb.Message { 
+    getImportInstructions(): string;
+    setImportInstructions(value: string): LinkResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkResponse.AsObject;
@@ -962,5 +992,6 @@ export class LinkResponse extends jspb.Message {
 
 export namespace LinkResponse {
     export type AsObject = {
+        importInstructions: string,
     }
 }
