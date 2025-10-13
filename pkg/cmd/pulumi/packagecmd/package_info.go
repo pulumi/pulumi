@@ -15,8 +15,10 @@
 package packagecmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -37,6 +39,7 @@ import (
 func newPackageInfoCmd() *cobra.Command {
 	var module string
 	var resource string
+	var function string
 	cmd := &cobra.Command{
 		Use:   "info <provider|schema|path> [provider-parameter...]",
 		Args:  cmdutil.MinimumNArgs(1),
@@ -61,6 +64,10 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				contract.IgnoreError(pctx.Close())
 			}()
 
+			if function != "" && resource != "" {
+				return errors.New("only one of --function or --resource can be specified")
+			}
+
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			pkg, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()))
@@ -74,17 +81,20 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 
 			stdout := cmd.OutOrStdout()
 
-			if module == "" && resource == "" {
-				return showProviderInfo(spec, args, stdout)
-			} else if resource == "" {
+			if function != "" {
+				return showFunctionInfo(spec, module, function, stdout)
+			} else if resource != "" {
+				return showResourceInfo(spec, module, resource, stdout)
+			} else if module != "" {
 				return showModuleInfo(spec, module, stdout)
 			}
-			return showResourceInfo(spec, module, resource, stdout)
+			return showProviderInfo(spec, args, stdout)
 		},
 	}
 
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
+	cmd.Flags().StringVarP(&function, "function", "f", "", "Function name")
 
 	return cmd
 }
@@ -93,13 +103,27 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 	contract.Requiref(len(args) > 0, "args", "should be non-empty")
 
 	modules := make(map[string]struct{})
-	for res := range spec.Resources {
-		split := strings.Split(res, ":")
+	keys := slices.Concat(
+		slices.Collect(maps.Keys(spec.Resources)),
+		slices.Collect(maps.Keys(spec.Functions)),
+	)
+	for _, key := range keys {
+		split := strings.Split(key, ":")
 		if len(split) < 2 {
 			continue
 		}
 		moduleSplit := strings.Split(split[1], "/")
 		modules[moduleSplit[0]] = struct{}{}
+	}
+
+	if len(spec.Functions) == 1 {
+		for name := range spec.Functions {
+			nameSplit := strings.Split(name, ":")
+			if len(nameSplit) < 3 {
+				return fmt.Errorf("invalid function name %q", name)
+			}
+			return showFunctionInfo(spec, "", nameSplit[2], stdout)
+		}
 	}
 
 	if len(spec.Resources) == 1 {
@@ -122,7 +146,7 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
 	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
 	fmt.Fprintf(stdout, bold("Total resources")+" %d\n", len(spec.Resources))
-
+	fmt.Fprintf(stdout, bold("Total functions")+" %d\n", len(spec.Functions))
 	fmt.Fprintf(stdout, bold("Total modules")+": %d\n", len(modules))
 
 	fmt.Fprintln(stdout)
@@ -163,10 +187,10 @@ func summaryFromDescription(description string) string {
 	return strings.TrimSpace(summary)
 }
 
-func simplifyModuleName(resourceName string) (string, error) {
-	split := strings.Split(resourceName, ":")
+func simplifyModuleName(typ string, name string) (string, error) {
+	split := strings.Split(name, ":")
 	if len(split) < 3 {
-		return "", fmt.Errorf("invalid resource name %q", resourceName)
+		return "", fmt.Errorf("invalid %s name %q", typ, name)
 	}
 	moduleSplit := strings.Split(split[1], "/")
 	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
@@ -180,7 +204,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 
 	resources := make(map[string]schema.ResourceSpec)
 	for res, spec := range spec.Resources {
-		simplifiedName, err := simplifyModuleName(res)
+		simplifiedName, err := simplifyModuleName("resource", res)
 		if err != nil {
 			return err
 		}
@@ -194,15 +218,40 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 		}
 		resources[split[2]] = spec
 	}
+	functions := make(map[string]schema.FunctionSpec)
+	for fun, spec := range spec.Functions {
+		simplifiedName, err := simplifyModuleName("function", fun)
+		if err != nil {
+			return err
+		}
+		fullModuleName := strings.Split(fun, ":")[1]
+		split := strings.Split(simplifiedName, ":")
+		if len(split) < 3 {
+			return fmt.Errorf("invalid function name %q", fun)
+		}
+		if fullModuleName != moduleName && split[1] != moduleName {
+			continue
+		}
+		functions[split[2]] = spec
+	}
 
-	if len(resources) == 0 {
+	if len(resources) == 0 && len(functions) == 0 {
 		return fmt.Errorf("module %q not found", moduleName)
 	}
+
 	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
 
 	fmt.Fprintln(stdout)
 	for _, name := range maputil.SortedKeys(resources) {
 		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
+	}
+	fmt.Fprintln(stdout)
+
+	fmt.Fprintf(stdout, bold("Functions")+": %d\n", len(functions))
+
+	fmt.Fprintln(stdout)
+	for _, name := range maputil.SortedKeys(functions) {
+		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(functions[name].Description))
 	}
 	return nil
 }
@@ -215,6 +264,124 @@ func underline(s string) string {
 	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
 }
 
+func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string, stdout io.Writer) error {
+	var fun schema.FunctionSpec
+	var specFunName string
+	if moduleName != "" {
+		fullFunctionName := fmt.Sprintf("%s:%s:%s", spec.Name, moduleName, functionName)
+		var ok bool
+		fun, ok = spec.Functions[fullFunctionName]
+		specFunName = fullFunctionName
+		if !ok {
+			for name, f := range spec.Functions {
+				simplifiedName, err := simplifyModuleName("function", name)
+				if err != nil {
+					return err
+				}
+
+				if fullFunctionName == simplifiedName {
+					fun = f
+					ok = true
+					specFunName = name
+					break
+				}
+			}
+		}
+		if !ok {
+			return fmt.Errorf("function %q not found", fullFunctionName)
+		}
+	} else {
+		found := false
+		for name, f := range spec.Functions {
+			split := strings.Split(name, ":")
+			if len(split) < 3 {
+				return fmt.Errorf("invalid function name %q", name)
+			}
+			resName := split[2]
+			if resName == functionName {
+				if found {
+					return fmt.Errorf("ambiguous resource name %q, please use --module <module> to disambiguate", functionName)
+				}
+				fun = f
+				found = true
+				specFunName = name
+			}
+		}
+		if !found {
+			return fmt.Errorf("function %q not found", functionName)
+		}
+	}
+
+	fmt.Fprintf(stdout, bold("Function")+": %s\n", specFunName)
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(fun.Description))
+
+	fmt.Fprintln(stdout)
+	fmt.Fprintln(stdout, bold("Inputs")+":")
+	hasRequired := false
+	for _, name := range maputil.SortedKeys(fun.Inputs.Properties) {
+		prop := fun.Inputs.Properties[name]
+		requiredStr := ""
+		if slices.Contains(fun.Inputs.Required, name) {
+			hasRequired = true
+			requiredStr = "*"
+		}
+		typ, err := getType(spec, prop.TypeSpec)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
+			bold(name), underline(typ), underline(requiredStr),
+			summaryFromDescription(prop.Description))
+	}
+	if hasRequired {
+		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
+	}
+
+	var returnType *schema.ReturnTypeSpec
+	if fun.ReturnType != nil {
+		returnType = fun.ReturnType
+	} else if fun.Outputs != nil {
+		returnType = &schema.ReturnTypeSpec{
+			ObjectTypeSpec: fun.Outputs,
+		}
+	}
+	if returnType != nil {
+		fmt.Fprintln(stdout)
+		fmt.Fprint(stdout, bold("Outputs")+":")
+		if returnType.ObjectTypeSpec != nil {
+			fmt.Fprintln(stdout)
+			obj := returnType.ObjectTypeSpec
+			hasPresent := false
+			for _, name := range maputil.SortedKeys(obj.Properties) {
+				prop := obj.Properties[name]
+				presentStr := ""
+				if slices.Contains(obj.Required, name) {
+					hasPresent = true
+					presentStr = "*"
+				}
+				typ, err := getType(spec, prop.TypeSpec)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
+					bold(name), underline(typ), underline(presentStr),
+					summaryFromDescription(prop.Description))
+			}
+			if hasPresent {
+				fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
+			}
+		} else if returnType.TypeSpec != nil {
+			typ, err := getType(spec, *returnType.TypeSpec)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, " %s\n", underline(typ))
+		}
+	}
+
+	return nil
+}
+
 func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string, stdout io.Writer) error {
 	var res schema.ResourceSpec
 	var specResName string
@@ -225,7 +392,7 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 		specResName = fullResourceName
 		if !ok {
 			for name, r := range spec.Resources {
-				simplifiedName, err := simplifyModuleName(name)
+				simplifiedName, err := simplifyModuleName("resource", name)
 				if err != nil {
 					return err
 				}
@@ -347,7 +514,7 @@ func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
 					return fmt.Sprintf("enum(%s){%s}",
 						typeSpec.Type, formatEnumValues(typeSpec.Enum)), nil
 				}
-				simplifiedName, err := simplifyModuleName(ref)
+				simplifiedName, err := simplifyModuleName("type", ref)
 				if err != nil {
 					return "", err
 				}
