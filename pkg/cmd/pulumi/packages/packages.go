@@ -115,28 +115,10 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
-	version := pkg.Version
-	if pkg.Parameterization != nil {
-		version = &pkg.Parameterization.BaseProvider.Version
-	}
-	name := pkg.Name
-	if pkg.Parameterization != nil {
-		name = pkg.Parameterization.BaseProvider.Name
-	}
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Base(), name, apitype.ResourcePlugin, version,
-		pkg.PluginDownloadURL, nil)
+	packageDescriptor, err := pkg.Descriptor(pctx.Base())
 	if err != nil {
 		return nil, nil, diags, err
 	}
-	var parameterization *workspace.Parameterization
-	if pkg.Parameterization != nil {
-		parameterization = &workspace.Parameterization{
-			Name:    pkg.Name,
-			Version: *pkg.Version,
-			Value:   pkg.Parameterization.Parameter,
-		}
-	}
-	packageDescriptor := workspace.NewPackageDescriptor(pluginSpec, parameterization)
 
 	// Link the package to the project
 	if err := LinkPackage(&LinkPackageContext{
