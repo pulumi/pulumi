@@ -303,7 +303,6 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 	fmt.Fprintln(stdout)
 
 	fmt.Fprintln(stdout, bold("Outputs")+":")
-	fmt.Fprintln(stdout, "(All input properties are implicitly available as output properties)")
 	hasPresent := false
 	for _, name := range maputil.SortedKeys(res.Properties) {
 		// Skip input properties, as they are already shown above.
