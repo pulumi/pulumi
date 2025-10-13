@@ -174,6 +174,8 @@ type registryTemplate struct {
 	source   *Source
 }
 
+var _ Template = registryTemplate{}
+
 func (r registryTemplate) Name() string {
 	switch r.t.Source {
 	case "github", "gitlab":
@@ -185,26 +187,12 @@ func (r registryTemplate) Name() string {
 }
 
 func (r registryTemplate) Description() string {
-	if r.t.Description == nil {
-		return ""
-	}
-	return *r.t.Description
-}
-
-func (r registryTemplate) DisplayDescription() string {
 	var parts []string
 	parts = append(parts, "[Private Registry]")
 	if r.t.Description != nil {
 		parts = append(parts, *r.t.Description)
 	}
 	return strings.Join(parts, " ")
-}
-
-func (r registryTemplate) ProjectDescription() string {
-	if r.t.Description == nil {
-		return ""
-	}
-	return *r.t.Description
 }
 
 func (r registryTemplate) Error() error { return nil }
@@ -369,11 +357,11 @@ type orgTemplate struct {
 	backend backend.Backend
 }
 
-func (t orgTemplate) Name() string               { return t.t.Name }
-func (t orgTemplate) Description() string        { return "" }
-func (t orgTemplate) DisplayDescription() string { return t.t.Description }
-func (t orgTemplate) ProjectDescription() string { return t.t.Description }
-func (t orgTemplate) Error() error               { return nil }
+var _ Template = (*orgTemplate)(nil)
+
+func (t orgTemplate) Name() string        { return t.t.Name }
+func (t orgTemplate) Description() string { return t.t.Description }
+func (t orgTemplate) Error() error        { return nil }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {
