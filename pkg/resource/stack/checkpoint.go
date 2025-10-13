@@ -101,8 +101,8 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 	stack tokens.QName, deployment *apitype.UntypedDeployment,
 ) (*apitype.VersionedCheckpoint, error) {
 	chk := struct {
-		Stack  tokens.QName
-		Latest json.RawMessage
+		Stack  tokens.QName    `json:"stack,omitempty"`
+		Latest json.RawMessage `json:"latest,omitempty"`
 	}{
 		Stack:  stack,
 		Latest: deployment.Deployment,

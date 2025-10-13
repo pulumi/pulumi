@@ -1912,3 +1912,44 @@ func TestListStackNames(t *testing.T) {
 	// This ensures we're not fetching metadata unnecessarily
 	assert.IsType(t, []backend.StackReference{}, stackRefs)
 }
+
+// regression test for https://github.com/pulumi/pulumi/issues/20726
+//
+//nolint:paralleltest // mutates global state
+func TestJSONCasing(t *testing.T) {
+	stateDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	// make up a stack
+	deployment := apitype.UntypedDeployment{
+		Version: 3,
+		Deployment: json.RawMessage(`{
+			"resources": [
+				{
+					"urn": "urn:pulumi:stack::proj::type::name1",
+					"type": "type"
+				}
+			]
+		}`),
+	}
+
+	err = b.ImportDeployment(ctx, s, &deployment)
+	require.NoError(t, err)
+
+	// Check the JSON file uses the correct casing
+	stackFile := path.Join(stateDir, ".pulumi", "stacks", "testproj", "stack.json")
+	data, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"latest"`)
+	assert.NotContains(t, string(data), `"Latest"`)
+	assert.Contains(t, string(data), `"stack"`)
+	assert.NotContains(t, string(data), `"Stack"`)
+}
