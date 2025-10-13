@@ -90,6 +90,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 }
 
 func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer) error {
+	contract.Requiref(len(args) > 0, "args", "should be non-empty")
+
 	modules := make(map[string]struct{})
 	for res := range spec.Resources {
 		split := strings.Split(res, ":")
@@ -128,33 +130,19 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
 
 	fmt.Fprintln(stdout)
-	if len(args) > 1 {
-		moduleString := ""
-		if len(modules) > 1 {
-			moduleString = "--module <module> "
-			fmt.Fprintf(
-				stdout,
-				"Use 'pulumi package info %s%s' to list resources in a module\n",
-				moduleString, strings.Join(args, " "))
-		}
+	strArgs := strings.Join(args, " ")
+	moduleString := ""
+	if len(modules) > 1 {
+		moduleString = "--module <module>"
 		fmt.Fprintf(
 			stdout,
-			"Use 'pulumi package info %s--resource <resource> %s' for detailed resource info\n",
-			moduleString, strings.Join(args, " "))
-	} else {
-		moduleString := ""
-		if len(modules) > 1 {
-			moduleString = " --module <module>"
-			fmt.Fprintf(
-				stdout,
-				"Use 'pulumi package info %s%s' to list resources in a module\n",
-				strings.Join(args, " "), moduleString)
-		}
-		fmt.Fprintf(
-			stdout,
-			"Use 'pulumi package info %s --resource <resource> %s' for detailed resource info\n",
-			strings.Join(args, " "), moduleString)
+			"Use 'pulumi package info %s %s' to list resources in a module\n",
+			strArgs, moduleString)
 	}
+	fmt.Fprintf(
+		stdout,
+		"Use 'pulumi package info %s %s --resource <resource>' for detailed resource info\n",
+		strArgs, moduleString)
 	return nil
 }
 
