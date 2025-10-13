@@ -86,6 +86,15 @@ another paragraph`,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: "this is another test resource",
 				},
+				InputProperties: map[string]schema.PropertySpec{
+					"propA": {
+						Description: "this is propA",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+				RequiredInputs: []string{"propA"},
 			},
 			"test:another/Test:Test": {},
 		},
@@ -196,8 +205,7 @@ func TestResourceInfo(t *testing.T) {
 \x1b[1mDescription\x1b[0m: test resource description
 
 \x1b[1mInputs\x1b[0m:
- - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
-Inputs marked with '*' are required
+ - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): this is a string property
 
 \x1b[1mOutputs\x1b[0m:
  - \x1b[1marrayProp\x1b[0m (\x1b[4m[]TestType\x1b[0m\x1b[4m\x1b[0m): this is an array property
@@ -205,5 +213,21 @@ Inputs marked with '*' are required
  - \x1b[1mmapProp\x1b[0m (\x1b[4mmap[string]string\x1b[0m\x1b[4m\x1b[0m): this is a map property
  - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
 Outputs marked with '*' are always present
+`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+
+	cmd.SetArgs([]string{"--module", "index", "--resource", "Test2", schemaPath})
+	output.Reset()
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test2
+\x1b[1mDescription\x1b[0m: this is another test resource
+
+\x1b[1mInputs\x1b[0m:
+ - \x1b[1mpropA\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is propA
+Inputs marked with '*' are required
+
+\x1b[1mOutputs\x1b[0m:
 `, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }

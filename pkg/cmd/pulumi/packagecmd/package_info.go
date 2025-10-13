@@ -284,7 +284,7 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 	for _, name := range maputil.SortedKeys(res.InputProperties) {
 		prop := res.InputProperties[name]
 		requiredStr := ""
-		if !slices.Contains(res.RequiredInputs, name) {
+		if slices.Contains(res.RequiredInputs, name) {
 			hasRequired = true
 			requiredStr = "*"
 		}
