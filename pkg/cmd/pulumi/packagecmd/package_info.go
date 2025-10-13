@@ -305,10 +305,6 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 	fmt.Fprintln(stdout, bold("Outputs")+":")
 	hasPresent := false
 	for _, name := range maputil.SortedKeys(res.Properties) {
-		// Skip input properties, as they are already shown above.
-		if _, ok := res.InputProperties[name]; ok {
-			continue
-		}
 		prop := res.Properties[name]
 		presentStr := ""
 		if slices.Contains(res.Required, name) {

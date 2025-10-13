@@ -203,5 +203,7 @@ Inputs marked with '*' are required
  - \x1b[1marrayProp\x1b[0m (\x1b[4m[]TestType\x1b[0m\x1b[4m\x1b[0m): this is an array property
  - \x1b[1menumProp\x1b[0m (\x1b[4menum(string){EnumValue1, value2}\x1b[0m\x1b[4m\x1b[0m): this is an enum property
  - \x1b[1mmapProp\x1b[0m (\x1b[4mmap[string]string\x1b[0m\x1b[4m\x1b[0m): this is a map property
+ - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
+Outputs marked with '*' are always present
 `, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
