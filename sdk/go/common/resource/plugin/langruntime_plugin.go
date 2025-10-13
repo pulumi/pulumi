@@ -889,28 +889,57 @@ func languageHandshake(
 }
 
 func (h *langhost) Link(
-	info ProgramInfo, localDependencies map[string]string,
-) error {
-	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, localDependencies)
+	info ProgramInfo, deps []workspace.LinkablePackageDescriptor, loaderTarget string,
+) (string, error) {
+	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, deps)
 	logging.V(7).Infof("%s executing", label)
 
 	minfo, err := info.Marshal()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
-		Info:              minfo,
-		LocalDependencies: localDependencies,
+	packages := []*pulumirpc.LinkRequest_LinkDependency{}
+	for _, dep := range deps {
+		version := ""
+		if dep.Descriptor.Version != nil {
+			version = dep.Descriptor.Version.String()
+		}
+
+		var parameterization *pulumirpc.PackageParameterization
+		if dep.Descriptor.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    dep.Descriptor.Parameterization.Name,
+				Version: dep.Descriptor.Parameterization.Version.String(),
+				Value:   dep.Descriptor.Parameterization.Value,
+			}
+		}
+
+		packages = append(packages, &pulumirpc.LinkRequest_LinkDependency{
+			Path: dep.Path,
+			Package: &pulumirpc.PackageDependency{
+				Name:             dep.Descriptor.Name,
+				Version:          version,
+				Server:           dep.Descriptor.PluginDownloadURL,
+				Kind:             string(dep.Descriptor.Kind),
+				Parameterization: parameterization,
+			},
+		})
+	}
+
+	res, err := h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+		Info:         minfo,
+		Packages:     packages,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return rpcError
+		return "", rpcError
 	}
 
 	logging.V(7).Infof("%s success", label)
-	return nil
+	return res.ImportInstructions, nil
 }
 
 func (h *langhost) Cancel() error {

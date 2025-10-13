@@ -190,8 +190,8 @@ func (p *languageRuntime) Pack(string, string) (string, error) {
 	return "", errors.New("Pack is not supported")
 }
 
-func (p *languageRuntime) Link(plugin.ProgramInfo, map[string]string) error {
-	return errors.New("Link is not supported")
+func (p *languageRuntime) Link(plugin.ProgramInfo, []workspace.LinkablePackageDescriptor, string) (string, error) {
+	return "", errors.New("Link is not supported")
 }
 
 func (p *languageRuntime) Cancel() error {
