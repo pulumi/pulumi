@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto
-  description: Add SetAllConfigJson method to automation APIs
