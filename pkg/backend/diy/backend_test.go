@@ -1914,9 +1914,9 @@ func TestListStackNames(t *testing.T) {
 }
 
 // regression test for https://github.com/pulumi/pulumi/issues/20726
-//
-//nolint:paralleltest // mutates global state
 func TestJSONCasing(t *testing.T) {
+	t.Parallel()
+
 	stateDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
