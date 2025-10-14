@@ -433,7 +433,7 @@ type RegisterResourceRequest struct {
 	RetainOnDelete             *bool                                                    `protobuf:"varint,25,opt,name=retainOnDelete,proto3,oneof" json:"retainOnDelete,omitempty"`                                                                               // if true the engine will not call the resource providers delete method for this resource.
 	Aliases                    []*Alias                                                 `protobuf:"bytes,26,rep,name=aliases,proto3" json:"aliases,omitempty"`                                                                                                    // a list of additional aliases that should be considered the same.
 	DeletedWith                string                                                   `protobuf:"bytes,27,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`                                                                                            // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
-	ReplaceWith                string                                                   `protobuf:"bytes,38,opt,name=replaceWith,proto3" json:"replaceWith,omitempty"`                                                                                            // if set the engine will replace this resource when the specified resource is replaced.
+	ReplaceWith                []string                                                 `protobuf:"bytes,38,rep,name=replaceWith,proto3" json:"replaceWith,omitempty"`                                                                                            // if set the engine will replace this resource when the specified resource is replaced.
 	// Indicates that alias specs are specified correctly according to the spec.
 	// Older versions of the Node.js SDK did not send alias specs correctly.
 	// If this is not set to true and the engine detects the request is from the
@@ -681,11 +681,11 @@ func (x *RegisterResourceRequest) GetDeletedWith() string {
 	return ""
 }
 
-func (x *RegisterResourceRequest) GetReplaceWith() string {
+func (x *RegisterResourceRequest) GetReplaceWith() []string {
 	if x != nil {
 		return x.ReplaceWith
 	}
-	return ""
+	return nil
 }
 
 func (x *RegisterResourceRequest) GetAliasSpecs() bool {
@@ -1167,7 +1167,7 @@ type TransformResourceOptions struct {
 	Hooks                   *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,16,opt,name=hooks,proto3" json:"hooks,omitempty"`
 	Import                  string                                        `protobuf:"bytes,17,opt,name=import,proto3" json:"import,omitempty"`
 	HideDiff                []string                                      `protobuf:"bytes,18,rep,name=hide_diff,json=hideDiff,proto3" json:"hide_diff,omitempty"`
-	ReplaceWith             string                                        `protobuf:"bytes,19,opt,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`
+	ReplaceWith             []string                                      `protobuf:"bytes,19,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -1328,11 +1328,11 @@ func (x *TransformResourceOptions) GetHideDiff() []string {
 	return nil
 }
 
-func (x *TransformResourceOptions) GetReplaceWith() string {
+func (x *TransformResourceOptions) GetReplaceWith() []string {
 	if x != nil {
 		return x.ReplaceWith
 	}
-	return ""
+	return nil
 }
 
 type TransformRequest struct {
@@ -2399,7 +2399,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0eretainOnDelete\x18\x19 \x01(\bH\x01R\x0eretainOnDelete\x88\x01\x01\x12*\n" +
 	"\aaliases\x18\x1a \x03(\v2\x10.pulumirpc.AliasR\aaliases\x12 \n" +
 	"\vdeletedWith\x18\x1b \x01(\tR\vdeletedWith\x12 \n" +
-	"\vreplaceWith\x18& \x01(\tR\vreplaceWith\x12\x1e\n" +
+	"\vreplaceWith\x18& \x03(\tR\vreplaceWith\x12\x1e\n" +
 	"\n" +
 	"aliasSpecs\x18\x1c \x01(\bR\n" +
 	"aliasSpecs\x12A\n" +
@@ -2526,7 +2526,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05hooks\x18\x10 \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingR\x05hooks\x12\x16\n" +
 	"\x06import\x18\x11 \x01(\tR\x06import\x12\x1b\n" +
 	"\thide_diff\x18\x12 \x03(\tR\bhideDiff\x12!\n" +
-	"\freplace_with\x18\x13 \x01(\tR\vreplaceWith\x1a<\n" +
+	"\freplace_with\x18\x13 \x03(\tR\vreplaceWith\x1a<\n" +
 	"\x0eProvidersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
