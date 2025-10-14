@@ -142,6 +142,12 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 				Delete: t.GetDelete(),
 			}
 		}
+		if len(req.GetReplaceWith()) > 0 {
+			ro.ReplaceWith = make([]Resource, len(req.GetReplaceWith()))
+			for i, urn := range req.GetReplaceWith() {
+				ro.ReplaceWith[i] = pulumiCtx.newDependencyResource(URN(urn))
+			}
+		}
 		if urn := req.DeletedWith; urn != "" {
 			ro.DeletedWith = pulumiCtx.newDependencyResource(URN(urn))
 		}

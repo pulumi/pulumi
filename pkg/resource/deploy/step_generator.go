@@ -285,6 +285,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          event.SourcePosition(),
@@ -705,6 +706,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		ImportID:                goal.ID,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             goal.DeletedWith,
+		ReplaceWith:             goal.ReplaceWith,
 		Created:                 createdAt,
 		Modified:                modifiedAt,
 		SourcePosition:          goal.SourcePosition,
@@ -993,6 +995,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					ImportID:                "",
 					RetainOnDelete:          new.RetainOnDelete,
 					DeletedWith:             goal.DeletedWith,
+					ReplaceWith:             goal.ReplaceWith,
 					Created:                 new.Created,
 					Modified:                new.Modified,
 					SourcePosition:          goal.SourcePosition,
@@ -1531,6 +1534,11 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 							case resource.ResourceDeletedWith:
 								message = fmt.Sprintf(
 									"deleted with dependency %s of untargeted resource %s has no old state",
+									dep.URN, urn,
+								)
+							case resource.ResourceReplaceWith:
+								message = fmt.Sprintf(
+									"replace with dependency %s of untargeted resource %s has no old state",
 									dep.URN, urn,
 								)
 							}
