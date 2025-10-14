@@ -9696,7 +9696,7 @@ proto.pulumirpc.DeleteRequest.prototype.clearOldViewsList = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ConstructRequest.repeatedFields_ = [15,16,14,18,22,23];
+proto.pulumirpc.ConstructRequest.repeatedFields_ = [15,16,14,18,22,23,28];
 
 
 
@@ -9755,7 +9755,8 @@ replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? und
 retainondelete: (f = jspb.Message.getBooleanField(msg, 24)) == null ? undefined : f,
 acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
 resourceHooks: (f = msg.getResourceHooks()) && proto.pulumirpc.ConstructRequest.ResourceHooksBinding.toObject(includeInstance, f),
-stackTraceHandle: jspb.Message.getFieldWithDefault(msg, 27, "")
+stackTraceHandle: jspb.Message.getFieldWithDefault(msg, 27, ""),
+replacewithList: (f = jspb.Message.getRepeatedField(msg, 28)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -9908,6 +9909,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 27:
       var value = /** @type {string} */ (reader.readString());
       msg.setStackTraceHandle(value);
+      break;
+    case 28:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplacewith(value);
       break;
     default:
       reader.skipField();
@@ -10118,6 +10123,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f.length > 0) {
     writer.writeString(
       27,
+      f
+    );
+  }
+  f = message.getReplacewithList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      28,
       f
     );
   }
@@ -11594,6 +11606,43 @@ proto.pulumirpc.ConstructRequest.prototype.getStackTraceHandle = function() {
  */
 proto.pulumirpc.ConstructRequest.prototype.setStackTraceHandle = function(value) {
   return jspb.Message.setProto3StringField(this, 27, value);
+};
+
+
+/**
+ * repeated string replaceWith = 28;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getReplacewithList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 28));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setReplacewithList = function(value) {
+  return jspb.Message.setField(this, 28, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.addReplacewith = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 28, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.clearReplacewithList = function() {
+  return this.setReplacewithList([]);
 };
 
 

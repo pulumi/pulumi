@@ -496,6 +496,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
+			ReplaceWith:             nil,
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
@@ -1047,6 +1048,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "aliasSpecs":
 		hasSupport = true
 	case "deletedWith":
+		hasSupport = true
+	case "replaceWith":
 		hasSupport = true
 	case "transforms":
 		hasSupport = true
@@ -2177,6 +2180,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		PluginDownloadUrl:       req.GetPluginDownloadURL(),
 		RetainOnDelete:          req.RetainOnDelete,
 		DeletedWith:             req.GetDeletedWith(),
+		ReplaceWith:             req.GetReplaceWith(),
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
 		PluginChecksums:         req.GetPluginChecksums(),
@@ -2444,6 +2448,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	replaceOnChanges := opts.ReplaceOnChanges
 	retainOnDelete := opts.RetainOnDelete
+	replaceWith := make([]resource.URN, len(opts.GetReplaceWith()))
+	for _, v := range opts.GetReplaceWith() {
+		replaceWith = append(replaceWith, resource.URN(v))
+	}
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
@@ -2502,10 +2510,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, replaceWith=%v, resourceHooks=%v, "+
 			"hideDiffs=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks,
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, replaceWith, resourceHooks,
 		hiddenDiffs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
@@ -2533,6 +2541,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Providers:               providerRefs,
 			AdditionalSecretOutputs: additionalSecretOutputs,
 			DeletedWith:             deletedWith,
+			ReplaceWith:             replaceWith,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
 			RetainOnDelete:          retainOnDelete,
@@ -2664,6 +2673,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			ReplaceOnChanges:        replaceOnChanges,
 			RetainOnDelete:          retainOnDelete,
 			DeletedWith:             deletedWith,
+			ReplaceWith:             replaceWith,
 			HideDiff:                hiddenDiffs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
@@ -2763,6 +2773,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// • replaceOnChanges
 	// • retainOnDelete
 	// • deletedWith
+	// • replaceWith
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
 	if !custom {
@@ -2789,6 +2800,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		})
 		rm.checkComponentOption(result.State.URN, "deletedWith", func() bool {
 			return deletedWith != ""
+		})
+		rm.checkComponentOption(result.State.URN, "replaceWith", func() bool {
+			return len(result.State.ReplaceWith) > 0
 		})
 	}
 

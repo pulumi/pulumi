@@ -831,6 +831,11 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.AfterDelete] = binding.GetAfterDelete()
 	}
 
+	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
+	for i, urn := range req.GetReplaceWith() {
+		replaceWith[i] = resource.URN(urn)
+	}
+
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
@@ -839,6 +844,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		PropertyDependencies: propertyDependencies,
 		ResourceHooks:        hooks,
 		DeletedWith:          resource.URN(req.DeletedWith),
+		ReplaceWith:          replaceWith,
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{

@@ -474,6 +474,8 @@ type ResourceV3 struct {
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	// ReplaceWith is a list of resources whose replaces will also trigger this resource's replace.
+	ReplaceWith []resource.URN `json:"replaceWith,omitempty" yaml:"replaceWith,omitempty"`
 	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
 	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.

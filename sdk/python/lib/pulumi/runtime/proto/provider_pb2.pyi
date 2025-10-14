@@ -1751,6 +1751,7 @@ class ConstructRequest(google.protobuf.message.Message):
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     RESOURCE_HOOKS_FIELD_NUMBER: builtins.int
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
+    REPLACEWITH_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
@@ -1865,6 +1866,10 @@ class ConstructRequest(google.protobuf.message.Message):
 
     @property
     def resource_hooks(self) -> global___ConstructRequest.ResourceHooksBinding: ...
+    @property
+    def replaceWith(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """The URN of resources whose replaces will trigger this resource's replace."""
+
     def __init__(
         self,
         *,
@@ -1895,9 +1900,10 @@ class ConstructRequest(google.protobuf.message.Message):
         accepts_output_values: builtins.bool = ...,
         resource_hooks: global___ConstructRequest.ResourceHooksBinding | None = ...,
         stack_trace_handle: builtins.str = ...,
+        replaceWith: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "inputs", b"inputs", "protect", b"protect", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "replaceWith", b"replaceWith", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace"]) -> typing.Literal["deleteBeforeReplace"] | None: ...
     @typing.overload

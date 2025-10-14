@@ -72,7 +72,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 				if includeChildren && dependentSet[dep.URN] {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith, resource.ResourceReplaceWith:
 				if dependentSet[dep.URN] {
 					return true
 				}
@@ -142,7 +142,7 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 				if len(dependentSet[dep.URN]) > 0 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith, resource.ResourceReplaceWith:
 				if len(dependentSet[dep.URN]) == 1 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
@@ -199,7 +199,7 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 // depends directly. This includes the resource's provider, parent, any
 // resources in the `Dependencies` list, any resources in the
 // `PropertyDependencies` map, and any resource referenced by the `DeletedWith`
-// field.
+// or `ReplaceWith` fields.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resource.State] {
 	set := mapset.NewSet[*resource.State]()
 

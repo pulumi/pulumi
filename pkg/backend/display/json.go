@@ -106,6 +106,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		ImportID:                s.ImportID,
 		RetainOnDelete:          s.RetainOnDelete,
 		DeletedWith:             s.DeletedWith,
+		ReplaceWith:             s.ReplaceWith,
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,

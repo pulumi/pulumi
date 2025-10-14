@@ -102,6 +102,11 @@ func stateReurnOperation(
 						dep.URN = newURN
 					}
 					existingResource.DeletedWith = dep.URN
+				case resource.ResourceReplaceWith:
+					if dep.URN == oldURN {
+						dep.URN = newURN
+					}
+					existingResource.ReplaceWith = append(existingResource.ReplaceWith, dep.URN)
 				}
 			}
 

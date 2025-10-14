@@ -161,6 +161,12 @@ func (snap *Snapshot) Prune() []PruneResult {
 						state.DeletedWith = ""
 						removedDeps = append(removedDeps, dep)
 					}
+				case resource.ResourceReplaceWith:
+					if newReplaceWithURN, has := seen[dep.URN]; has {
+						state.ReplaceWith = append(state.ReplaceWith, newReplaceWithURN)
+					} else {
+						removedDeps = append(removedDeps, dep)
+					}
 				}
 			}
 
@@ -620,7 +626,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			// For each resource, we'll ensure that all its dependencies are declared
 			// before it in the snapshot. In this case, "dependencies" includes the
 			// Dependencies field, as well as the resource's Parent (if it has one),
-			// any PropertyDependencies, and the DeletedWith field.
+			// any PropertyDependencies, and the DeletedWith and ReplaceWith fields.
 			//
 			// If a dependency is missing, we'll return an error. In such cases, we'll
 			// walk through the remaining resources in the snapshot to see if the
@@ -696,6 +702,22 @@ func (snap *Snapshot) VerifyIntegrity() error {
 
 						return snapshot.SnapshotIntegrityErrorf(
 							"resource %s is specified as being deleted with %s, which is missing",
+							urn, dep.URN,
+						)
+					}
+				case resource.ResourceReplaceWith:
+					if _, has := urns[dep.URN]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep.URN {
+								return SnapshotIntegrityErrorf(
+									"resource %s is specified as being replaced with %s, which comes after it",
+									urn, dep.URN,
+								)
+							}
+						}
+
+						return SnapshotIntegrityErrorf(
+							"resource %s is specified as being replaced with %s, which is missing",
 							urn, dep.URN,
 						)
 					}
