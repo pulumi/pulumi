@@ -153,7 +153,7 @@ func TestPackageInfo(t *testing.T) {
 \x1b[1mModules\x1b[0m: another, index
 
 Use 'pulumi package info %[1]s --module <module>' to list resources in a module
-Use 'pulumi package info %[1]s --resource <resource>  --module <module>' for detailed resource info
+Use 'pulumi package info %[1]s --module <module> --resource <resource>' for detailed resource info
 `, schemaPath), strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
 
