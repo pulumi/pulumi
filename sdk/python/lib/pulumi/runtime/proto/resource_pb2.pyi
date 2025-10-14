@@ -436,8 +436,6 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     """if true the engine will not call the resource providers delete method for this resource."""
     deletedWith: builtins.str
     """if set the engine will not call the resource providers delete method for this resource when specified resource is deleted."""
-    replaceWith: builtins.str
-    """if set the engine will replace this resource when the specified resource is replaced."""
     aliasSpecs: builtins.bool
     """Indicates that alias specs are specified correctly according to the spec.
     Older versions of the Node.js SDK did not send alias specs correctly.
@@ -498,6 +496,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """a list of additional aliases that should be considered the same."""
 
     @property
+    def replaceWith(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """if set the engine will replace this resource when the specified resource is replaced."""
+
+    @property
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the register."""
 
@@ -546,7 +548,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         retainOnDelete: builtins.bool | None = ...,
         aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
         deletedWith: builtins.str = ...,
-        replaceWith: builtins.str = ...,
+        replaceWith: collections.abc.Iterable[builtins.str] | None = ...,
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         stackTrace: pulumi.source_pb2.StackTrace | None = ...,
@@ -944,7 +946,6 @@ class TransformResourceOptions(google.protobuf.message.Message):
     retain_on_delete: builtins.bool
     deleted_with: builtins.str
     delete_before_replace: builtins.bool
-    replace_with: builtins.str
     @property
     def depends_on(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     @property
@@ -965,6 +966,8 @@ class TransformResourceOptions(google.protobuf.message.Message):
     def hooks(self) -> global___RegisterResourceRequest.ResourceHooksBinding: ...
     @property
     def hide_diff(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def replace_with(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     def __init__(
         self,
         *,
@@ -985,7 +988,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
         plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
         hide_diff: collections.abc.Iterable[builtins.str] | None = ...,
-        replace_with: builtins.str = ...,
+        replace_with: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "hooks", b"hooks", "protect", b"protect", "retain_on_delete", b"retain_on_delete"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "hide_diff", b"hide_diff", "hooks", b"hooks", "ignore_changes", b"ignore_changes", "import", b"import", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "replace_with", b"replace_with", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
