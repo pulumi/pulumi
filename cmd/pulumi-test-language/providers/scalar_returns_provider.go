@@ -257,10 +257,17 @@ func (p *ScalarReturnsProvider) Invoke(
 			}, nil
 		}
 
-		// Single value returns of maps need to return the map directly, not nested under a "results" key.
+		result := resource.NewProperty(resource.PropertyMap{
+			"value": resource.NewProperty(value.StringValue() + " world"),
+		})
+
+		if value.StringValue() == "secret" {
+			result = resource.MakeSecret(result)
+		}
+
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"value": resource.NewProperty(value.StringValue() + " world"),
+				"result": result,
 			},
 		}, nil
 	}

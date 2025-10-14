@@ -60,6 +60,9 @@ func init() {
 					AssertPropertyMapMember(l, outputs, "map", resource.NewProperty(resource.PropertyMap{
 						"value": resource.NewProperty("hello world"),
 					}))
+					AssertPropertyMapMember(l, outputs, "secretMap", resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+						"value": resource.NewProperty("secret world"),
+					})))
 				},
 			},
 		},

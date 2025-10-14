@@ -10,3 +10,6 @@ export const array = scalar_returns.invokeArrayOutput({
 export const map = scalar_returns.invokeMapOutput({
     value: "hello",
 });
+export const secretMap = scalar_returns.invokeMapOutput({
+    value: "secret",
+});

@@ -6,7 +6,7 @@ import * as utilities from "./utilities";
 
 export function invokeMap(args: InvokeMapArgs, opts?: pulumi.InvokeOptions): Promise<{[key: string]: string}> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
-    return pulumi.runtime.invoke("scalar-returns:index:invokeMap", {
+    return pulumi.runtime.invokeSingle("scalar-returns:index:invokeMap", {
         "value": args.value,
     }, opts);
 }
@@ -16,7 +16,7 @@ export interface InvokeMapArgs {
 }
 export function invokeMapOutput(args: InvokeMapOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<{[key: string]: string}> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
-    return pulumi.runtime.invokeOutput("scalar-returns:index:invokeMap", {
+    return pulumi.runtime.invokeSingleOutput("scalar-returns:index:invokeMap", {
         "value": args.value,
     }, opts);
 }

@@ -1,7 +1,0 @@
-name: l2-engine-update-options
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: mypy
-    virtualenv: venv

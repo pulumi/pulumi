@@ -9,3 +9,7 @@ output "array" {
 output "map" {
     value = invoke("scalar-returns:index:invokeMap", {value="hello"})
 }
+
+output "secretMap" {
+    value = invoke("scalar-returns:index:invokeMap", {value="secret"})
+}

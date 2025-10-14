@@ -27,10 +27,9 @@ def invoke_secret(value: Optional[_builtins.str] = None,
     __args__ = dict()
     __args__['value'] = value
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('scalar-returns:index:invokeSecret', __args__, opts=opts).value
+    __ret__ = pulumi.runtime.invoke_single('scalar-returns:index:invokeSecret', __args__, opts=opts).value
 
-    return float(
-        list(__ret__.values())[0])
+    return __ret__
 def invoke_secret_output(value: Optional[pulumi.Input[_builtins.str]] = None,
                          opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[float]:
     """
@@ -39,6 +38,5 @@ def invoke_secret_output(value: Optional[pulumi.Input[_builtins.str]] = None,
     __args__ = dict()
     __args__['value'] = value
     opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke_output('scalar-returns:index:invokeSecret', __args__, opts=opts)
-    return __ret__.apply(lambda __response__: float(
-        list(__response__.values())[0]))
+    __ret__ = pulumi.runtime.invoke_output_single('scalar-returns:index:invokeSecret', __args__, opts=opts)
+    return __ret__
