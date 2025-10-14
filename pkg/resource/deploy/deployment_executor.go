@@ -910,6 +910,10 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
 				}
+			case resource.ResourceReplaceWith:
+				if !referenceable[dep.URN] {
+					new.ReplaceWith = nil
+				}
 			}
 		}
 

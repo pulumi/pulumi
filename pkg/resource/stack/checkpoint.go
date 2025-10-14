@@ -206,6 +206,7 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",

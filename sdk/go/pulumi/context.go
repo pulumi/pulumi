@@ -67,6 +67,7 @@ type contextState struct {
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
 	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
+	supportsReplaceWith      bool         // true if replaceWith supported by pulumi
 	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
 	supportsTransforms       bool         // true if remote transforms are supported by pulumi
 	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
@@ -160,6 +161,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsReplaceWith, err := supportsFeature("replaceWith")
+	if err != nil {
+		return nil, err
+	}
+
 	supportsAliasSpecs, err := supportsFeature("aliasSpecs")
 	if err != nil {
 		return nil, err
@@ -195,6 +201,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		keepResources:            keepResources,
 		keepOutputValues:         keepOutputValues,
 		supportsDeletedWith:      supportsDeletedWith,
+		supportsReplaceWith:      supportsReplaceWith,
 		supportsAliasSpecs:       supportsAliasSpecs,
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
@@ -1348,6 +1355,10 @@ func (ctx *Context) readPackageResource(
 		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
+	if options.ReplaceWith != nil && !ctx.state.supportsReplaceWith {
+		return errors.New("the Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI")
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -1768,6 +1779,7 @@ func (ctx *Context) registerResource(
 				ReplaceOnChanges:           inputs.replaceOnChanges,
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
+				ReplaceWith:                inputs.replaceWith,
 				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
@@ -2242,6 +2254,7 @@ type resourceInputs struct {
 	retainOnDelete          *bool
 	deletedWith             string
 	hideDiffs               []string
+	replaceWith             []string
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2486,6 +2499,17 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		return nil, fmt.Errorf("mapping aliases: %w", err)
 	}
 
+	var replaceWithURNs []string
+	if opts.ReplaceWith != nil {
+		for _, r := range opts.ReplaceWith {
+			urn, _, _, err := r.URN().awaitURN(context.Background())
+			if err != nil {
+				return nil, fmt.Errorf("error waiting for ReplaceWith URN to resolve: %w", err)
+			}
+			replaceWithURNs = append(replaceWithURNs, string(urn))
+		}
+	}
+
 	var deletedWithURN URN
 	if opts.DeletedWith != nil {
 		urn, _, _, err := opts.DeletedWith.URN().awaitURN(context.Background())
@@ -2516,6 +2540,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
 		deletedWith:             string(deletedWithURN),
+		replaceWith:             replaceWithURNs,
 	}, nil
 }
 
