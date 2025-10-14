@@ -1649,7 +1649,7 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// We only need a snapshot manager if we're doing an update.
-	var combinedManager engine.SnapshotManager
+	var combinedManager *engine.CombinedManager
 	var snapshotManager *backend.SnapshotManager
 	var validationErrs []error
 	if kind != apitype.PreviewUpdate && !dryRun {
@@ -1674,6 +1674,7 @@ func (b *cloudBackend) runEngineAction(
 			}
 			err := errors.Join(validationErrs...)
 			err = errors.Join(err, combinedManager.Close())
+			err = errors.Join(err, errors.Join(combinedManager.Errors()...))
 			snapshotManagerClosed = true
 			if err != nil {
 				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
