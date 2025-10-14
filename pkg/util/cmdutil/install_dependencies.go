@@ -16,8 +16,11 @@ package cmdutil
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -27,6 +30,15 @@ import (
 // complete. Standard output and error are streamed to os.Stdout and os.Stderr, respectively, and any errors encountered
 // during the installation or streaming of its output are returned.
 func InstallDependencies(lang plugin.LanguageRuntime, req plugin.InstallDependenciesRequest) error {
+	root_dir := req.Info.RootDirectory()
+	fmt.Printf("Installing dependencies for project in '%s'...\n", root_dir)
+	baseDir := filepath.Base(root_dir)
+	if strings.ToLower(baseDir) == "pulumi" {
+		return fmt.Errorf("the directory '%s' is named 'pulumi', which is not allowed. "+
+			"Please rename the directory to something else to avoid collision with standard libraries. "+
+			"Please run `pulumi destroy` to remove the current incompleted stack.", baseDir)
+	}
+
 	stdout, stderr, done, err := lang.InstallDependencies(req)
 	if err != nil {
 		return err
