@@ -1656,7 +1656,8 @@ func (b *cloudBackend) runEngineAction(
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
 		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 		combinedManager = &engine.CombinedManager{
-			Managers: []engine.SnapshotManager{snapshotManager},
+			Managers:          []engine.SnapshotManager{snapshotManager},
+			CollectErrorsOnly: []bool{false, true},
 		}
 	}
 
