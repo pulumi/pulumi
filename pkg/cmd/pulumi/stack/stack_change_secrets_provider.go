@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -85,7 +86,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		stdout = os.Stdout
 	}
 	if cmd.secretsProvider == nil {
-		cmd.secretsProvider = stack.DefaultSecretsProvider
+		cmd.secretsProvider = backend_secrets.DefaultProvider
 	}
 
 	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.

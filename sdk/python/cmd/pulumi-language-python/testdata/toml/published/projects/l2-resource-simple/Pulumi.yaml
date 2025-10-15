@@ -1,0 +1,7 @@
+name: l2-resource-simple
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

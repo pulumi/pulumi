@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/blang/semver"
 	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1554,7 +1555,7 @@ func TestPackageAddWithPublisherSetPython(t *testing.T) {
 	e.CWD = filepath.Join(e.RootPath, "python")
 	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
 	require.Contains(t, stdout,
-		"You can then import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
+		"You can import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
 
 	// Make sure the SDK was generated in the expected directory
 	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "my_namespace_mypkg"))
@@ -2063,6 +2064,16 @@ func TestPythonComponentProviderRun(t *testing.T) {
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installPythonProviderDependencies(t, providerPath)
+					if runtime == "python" {
+						// Link the current version of the SDK into the project
+						coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+						require.NoError(t, err)
+						f, err := os.OpenFile(filepath.Join(info.Root, "requirements.txt"), os.O_WRONLY|os.O_APPEND, 0o644)
+						require.NoError(t, err)
+						_, err = fmt.Fprintln(f, coreSDK)
+						require.NoError(t, err)
+						f.Close()
+					}
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					out, err := cmd.CombinedOutput()
@@ -2444,6 +2455,17 @@ func TestPythonComponentProviderResourceReference(t *testing.T) {
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installPythonProviderDependencies(t, providerPath)
+					if runtime == "python" {
+						// Link the current version of the SDK into the project
+						coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+						require.NoError(t, err)
+						coreSDK = strings.ReplaceAll(coreSDK, `\`, `\\`)
+						f, err := os.OpenFile(filepath.Join(info.Root, "requirements.txt"), os.O_WRONLY|os.O_APPEND, 0o644)
+						require.NoError(t, err)
+						_, err = fmt.Fprintln(f, coreSDK)
+						require.NoError(t, err)
+						f.Close()
+					}
 					cmd = exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
@@ -2483,22 +2505,22 @@ func TestPythonComponentProviderInComponentProvider(t *testing.T) {
 			// which is used within `provider`, which in turn is used by the
 			// program.
 			providerNestedPath := filepath.Join(info.Root, "..", "provider-nested")
-			cmd := exec.Command("pulumi", "install")
-			cmd.Dir = providerNestedPath
-			out, err := cmd.CombinedOutput()
-			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerNestedPath, out, err)
+			installPythonProviderDependencies(t, providerNestedPath)
 
+			// For `provider` we need to generate `provider-nested`'s SDK and
+			// link it into the plugin.
 			providerPath := filepath.Join(info.Root, "..", "provider")
-			cmd = exec.Command("pulumi", "install")
+			installPythonProviderDependencies(t, providerPath)
+			cmd := exec.Command("pulumi", "package", "add", providerNestedPath)
 			cmd.Dir = providerPath
-			out, err = cmd.CombinedOutput()
-			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerPath, out, err)
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "`%s` in %s failed err: %s, out: %s", cmd.String(), cmd.Dir, out, err)
 
 			// Install the dependencies for the program
 			cmd = exec.Command("pulumi", "install")
 			cmd.Dir = info.Root
 			out, err = cmd.CombinedOutput()
-			require.NoError(t, err, "`pulumi install` for %s failed err: %s, out: %s", providerPath, out, err)
+			require.NoError(t, err, "`%s` in %s failed err: %s, out: %s", cmd.String(), cmd.Dir, out, err)
 
 			return nil
 		},
@@ -2549,6 +2571,18 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOrganization(t *testing.T) {
+	cmd := exec.Command("python", "-c",
+		"import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
+	output, err := cmd.Output()
+	require.NoError(t, err)
+	versionString := strings.TrimSpace(string(output))
+	version := semver.MustParse(versionString)
+	if version.GTE(semver.MustParse("3.14.0")) {
+		// The test requires an old SDK, but that version does
+		// not work on 3.14 because of an older grpcio version
+		t.Skip("Skipping test for Python version >= 3.14")
+	}
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("python", "organization"),
 		Dependencies: []string{

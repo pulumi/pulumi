@@ -896,6 +896,15 @@ func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
 	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
+// LinkablePackageDescriptor contains the information necessary to link an SDK for a package specified by a
+// PackageDescriptor into a project.
+type LinkablePackageDescriptor struct {
+	// Path to the package, either a binary artifact like a Python wheel, or a source directory.
+	Path string
+	// The descriptor for the package
+	Descriptor PackageDescriptor
+}
+
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
 // that must be applied to that plugin in order to produce the package.
 type PackageDescriptor struct {

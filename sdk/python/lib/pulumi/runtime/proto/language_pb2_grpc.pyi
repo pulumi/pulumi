@@ -182,7 +182,11 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.LinkRequest,
         pulumi.language_pb2.LinkResponse,
     ]
-    """`Link` links a local dependency into a project."""
+    """`Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+    as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+    `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+    user on how to use the linked package in the project.
+    """
 
     Cancel: grpc.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
@@ -339,7 +343,11 @@ class LanguageRuntimeAsyncStub:
         pulumi.language_pb2.LinkRequest,
         pulumi.language_pb2.LinkResponse,
     ]
-    """`Link` links a local dependency into a project."""
+    """`Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+    as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+    `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+    user on how to use the linked package in the project.
+    """
 
     Cancel: grpc.aio.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
@@ -526,7 +534,11 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         request: pulumi.language_pb2.LinkRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.language_pb2.LinkResponse, collections.abc.Awaitable[pulumi.language_pb2.LinkResponse]]:
-        """`Link` links a local dependency into a project."""
+        """`Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+        as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+        `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+        user on how to use the linked package in the project.
+        """
 
     
     def Cancel(

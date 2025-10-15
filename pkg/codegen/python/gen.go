@@ -2002,7 +2002,13 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			}
 
 			if rets == nil {
-				fmt.Fprintf(w, "\n        list(%[1]s.values())[0]", getter)
+				// If this is a map type we can return it directly, else we need to fetch the single value out the
+				// returned map.
+				if _, ok := returnType.(*schema.MapType); ok {
+					fmt.Fprintf(w, "\n        %[1]s", getter)
+				} else {
+					fmt.Fprintf(w, "\n        list(%[1]s.values())[0]", getter)
+				}
 			} else {
 				for i, ret := range rets {
 					if i > 0 {

@@ -34,12 +34,12 @@ setuptools    # comment here
 	spaces-before  ==   1.2.3
 `
 	r := strings.NewReader(b)
-	deps, err := dependenciesFromRequirementsTxt(r)
+	deps, err := dependenciesFromRequirementsTxt(r, ".")
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{
+	require.Equal(t, map[string]any{
 		"pulumi":        ">=3.0.0,<4.0.0",
 		"requests":      ">1",
-		"python":        "^3.9",
+		"python":        "^3.10",
 		"setuptools":    "*",
 		"spaces-before": "1.2.3",
 	}, deps)
@@ -51,7 +51,7 @@ func TestGeneratePyProjectTOML(t *testing.T) {
 	dir := t.TempDir()
 	p, err := newPoetry(dir)
 	require.NoError(t, err)
-	deps := map[string]string{
+	deps := map[string]any{
 		"pulumi":        ">=3.0.0,<4.0.0",
 		"requests":      ">1",
 		"setuptools":    "*",

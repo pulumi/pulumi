@@ -1529,8 +1529,15 @@ func (host *goLanguageHost) Link(
 		return nil, fmt.Errorf("parse go.mod: %w", err)
 	}
 
-	core, ok := req.LocalDependencies["pulumi"]
-	if !ok {
+	// Find the path to the core SDK
+	core := ""
+	for _, dep := range req.Packages {
+		if dep.Package.Name == "pulumi" {
+			core = dep.Path
+			break
+		}
+	}
+	if core == "" {
 		// TODO: support other local dependencies.
 		return nil, status.Errorf(codes.InvalidArgument, "no local dependency for 'pulumi' found")
 	}

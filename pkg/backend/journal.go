@@ -270,6 +270,21 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 		}
 		referenceable[resources[i].URN] = true
 	}
+
+	undangleParentResources(referenceable, resources)
+}
+
+func undangleParentResources(undeleted map[resource.URN]bool, resources []apitype.ResourceV3) {
+	availableParents := map[resource.URN]resource.URN{}
+	for i, r := range resources {
+		if _, ok := undeleted[r.Parent]; !ok {
+			// Since existing must obey a topological sort, we have already addressed
+			// p.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
+			// exists, we set r.Parent as r.Parent.Parent.
+			resources[i].Parent = availableParents[r.Parent]
+		}
+		availableParents[r.URN] = r.Parent
+	}
 }
 
 func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []string) {

@@ -1147,6 +1147,17 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Sets all config values from a JSON string for the stack in the associated workspace.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     *
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    async setAllConfigJson(configJson: string): Promise<void> {
+        return this.workspace.setAllConfigJson(this.name, configJson);
+    }
+
+    /**
      * Removes the specified config key from the stack in the associated workspace.
      *
      * @param key

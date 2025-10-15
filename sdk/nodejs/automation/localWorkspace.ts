@@ -724,6 +724,22 @@ export class LocalWorkspace implements Workspace {
     }
 
     /**
+     * Sets all config values from a JSON string for the specified stack name.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     * Will write the config to the matching `Pulumi.<stack>.yaml` file in
+     * `Workspace.workDir`.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    async setAllConfigJson(stackName: string, configJson: string): Promise<void> {
+        const args = ["config", "set-all", "--stack", stackName, "--json", configJson];
+        await this.runPulumiCmd(args);
+    }
+
+    /**
      * Removes the specified key-value pair on the provided stack name. Will
      * remove any matching values in the `Pulumi.<stack>.yaml` file in
      * `Workspace.WorkDir()`.

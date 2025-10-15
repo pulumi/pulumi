@@ -139,6 +139,13 @@ from the parameters, as in:
 			// Build and add the package spec to the project
 			pluginSplit := strings.Split(pluginSource, "@")
 			source := pluginSplit[0]
+
+			if ext := filepath.Ext(source); ext == ".yaml" || ext == ".yml" || ext == ".json" {
+				// We don't add file based schemas to the project's packages, since there is no actual underlying
+				// provider for them.
+				return nil
+			}
+
 			version := ""
 			if pkg.Version != nil {
 				version = pkg.Version.String()

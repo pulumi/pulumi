@@ -1243,6 +1243,12 @@ func (s *Stack) SetAllConfigWithOptions(ctx context.Context, config ConfigMap, o
 	return s.Workspace().SetAllConfigWithOptions(ctx, s.Name(), config, opts)
 }
 
+// SetAllConfigJson sets all config values from a JSON string.
+// The JSON string should be in the format produced by "pulumi config --json".
+func (s *Stack) SetAllConfigJson(ctx context.Context, configJson string, opts *ConfigOptions) error {
+	return s.Workspace().SetAllConfigJson(ctx, s.Name(), configJson, opts)
+}
+
 // RemoveConfig removes the specified config key-value pair.
 func (s *Stack) RemoveConfig(ctx context.Context, key string) error {
 	return s.Workspace().RemoveConfig(ctx, s.Name(), key)

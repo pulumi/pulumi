@@ -1830,10 +1830,17 @@ func (ctx *Context) RegisterResource(
 	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
+// It is recommended to use RegisterComponentResourceV2 instead which records component inputs to state.
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption,
 ) error {
 	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, "" /* packageRef */, opts...)
+}
+
+func (ctx *Context) RegisterComponentResourceV2(
+	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(

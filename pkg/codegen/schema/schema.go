@@ -16,6 +16,7 @@ package schema
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -25,7 +26,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"gopkg.in/yaml.v3"
 )
@@ -959,6 +962,31 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 
 func (pkg *Package) Reference() PackageReference {
 	return packageDefRef{pkg: pkg}
+}
+
+func (pkg *Package) Descriptor(ctx context.Context) (workspace.PackageDescriptor, error) {
+	version := pkg.Version
+	if pkg.Parameterization != nil {
+		version = &pkg.Parameterization.BaseProvider.Version
+	}
+	name := pkg.Name
+	if pkg.Parameterization != nil {
+		name = pkg.Parameterization.BaseProvider.Name
+	}
+	pluginSpec, err := workspace.NewPluginSpec(ctx, name, apitype.ResourcePlugin, version,
+		pkg.PluginDownloadURL, nil)
+	if err != nil {
+		return workspace.PackageDescriptor{}, err
+	}
+	var parameterization *workspace.Parameterization
+	if pkg.Parameterization != nil {
+		parameterization = &workspace.Parameterization{
+			Name:    pkg.Name,
+			Version: *pkg.Version,
+			Value:   pkg.Parameterization.Parameter,
+		}
+	}
+	return workspace.NewPackageDescriptor(pluginSpec, parameterization), nil
 }
 
 func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {

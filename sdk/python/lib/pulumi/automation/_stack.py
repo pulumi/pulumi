@@ -23,9 +23,9 @@ from datetime import datetime
 from typing import (
     Any,
     Optional,
-    Callable,
     TypedDict,
 )
+from collections.abc import Callable
 from collections.abc import Mapping
 import grpc
 from semver import VersionInfo
@@ -1205,6 +1205,15 @@ class Stack:
         :param path: The keys contain a path to a property in a map or list to set.
         """
         self.workspace.set_all_config(self.name, config, path=path)
+
+    def set_all_config_json(self, config_json: str) -> None:
+        """
+        Sets all config values from a JSON string for the Stack in the associated Workspace.
+        The JSON string should be in the format produced by "pulumi config --json".
+
+        :param config_json: A JSON string containing the configuration values to set.
+        """
+        self.workspace.set_all_config_json(self.name, config_json)
 
     def remove_config(self, key: str, *, path: bool = False) -> None:
         """

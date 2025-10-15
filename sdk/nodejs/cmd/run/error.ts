@@ -24,8 +24,14 @@ import * as util from "util";
  */
 export function defaultErrorMessage(err: any): string {
     if (err?.stack) {
-        // colorize stack trace if exists
-        return util.inspect(err, { colors: true });
+        // colorize stack trace if exists, but fallback to just the message if inspect fails. See
+        // https://github.com/pulumi/pulumi/issues/20567 where this can cause RangeErrors due to large strings
+        // when colors is true.
+        try {
+            return util.inspect(err, { colors: true });
+        } catch {
+            return util.inspect(err);
+        }
     }
     if (err?.message) {
         return err.message;
