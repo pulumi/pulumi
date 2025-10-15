@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -84,7 +85,7 @@ func GenerateHCL2Definition(
 	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
 	// provider reference and looking up that provider resource in the current program snapshot. From there, we can build
 	// a package descriptor and load the package and its schema.
-	providerRef, err := providers.ParseReference(state.Provider)
+	providerRef, err := sdkproviders.ParseReference(state.Provider)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse resource provider reference: %w", err)
 	}
@@ -101,7 +102,7 @@ func GenerateHCL2Definition(
 	}
 
 	packageName := state.Type.Package()
-	if providers.IsProviderType(state.Type) {
+	if sdkproviders.IsProviderType(state.Type) {
 		// When the type is a provider type, the type triple is in the form
 		// pulumi:providers:pkg instead of pkg:mod:type, so use the token "name"
 		// position as the package instead.
@@ -158,7 +159,7 @@ func GenerateHCL2Definition(
 	// definition.
 	var r *schema.Resource
 	ok := true
-	if providers.IsProviderType(state.Type) {
+	if sdkproviders.IsProviderType(state.Type) {
 		r, err = pkg.Provider()
 	} else {
 		r, ok, err = pkg.Resources().Get(string(state.Type))
@@ -268,11 +269,11 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		resourceOptions = appendResourceOption(resourceOptions, "parent", newVariableReference(name))
 	}
 	if state.Provider != "" {
-		ref, err := providers.ParseReference(state.Provider)
+		ref, err := sdkproviders.ParseReference(state.Provider)
 		if err != nil {
 			return nil, fmt.Errorf("invalid provider reference %v: %w", state.Provider, err)
 		}
-		if !providers.IsDefaultProvider(ref.URN()) {
+		if !sdkproviders.IsDefaultProvider(ref.URN()) {
 			name, ok := names[ref.URN()]
 			if !ok {
 				return nil, fmt.Errorf("no name for provider %v", state.Provider)
