@@ -59,7 +59,9 @@ func (c *CombinedManager) RebuiltBaseState() error {
 
 func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	var errs []error
-	mutations := &CombinedMutation{}
+	mutations := &CombinedMutation{
+		manager: c,
+	}
 	for i, m := range c.Managers {
 		mutation, err := m.BeginMutation(step)
 		if err != nil {
@@ -70,6 +72,9 @@ func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, err
 			}
 		} else {
 			mutations.Mutations = append(mutations.Mutations, mutation)
+			if len(c.CollectErrorsOnly) > i {
+				mutations.CollectErrorsOnly = append(mutations.CollectErrorsOnly, c.CollectErrorsOnly[i])
+			}
 		}
 	}
 
@@ -111,15 +116,16 @@ func (c *CombinedManager) Errors() []error {
 }
 
 type CombinedMutation struct {
-	Mutations []SnapshotMutation
-	manager   *CombinedManager
+	Mutations         []SnapshotMutation
+	CollectErrorsOnly []bool
+	manager           *CombinedManager
 }
 
 func (c *CombinedMutation) End(step deploy.Step, success bool) error {
 	errs := make([]error, 0, len(c.Mutations))
 	for i, m := range c.Mutations {
 		err := m.End(step, success)
-		if len(c.manager.CollectErrorsOnly) > i && c.manager.CollectErrorsOnly[i] {
+		if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
 			c.manager.errors = append(c.manager.errors, err)
 		} else {
 			errs = append(errs, err)
