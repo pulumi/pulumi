@@ -24,14 +24,20 @@ var _ = SnapshotManager((*CombinedManager)(nil))
 
 // CombinedManager combines multiple SnapshotManagers into one, it simply forwards on each call to every manager.
 type CombinedManager struct {
-	Managers []SnapshotManager
+	Managers          []SnapshotManager
+	CollectErrorsOnly []bool
+	errors            []error
 }
 
 func (c *CombinedManager) Write(base *deploy.Snapshot) error {
 	var errs []error
-	for _, m := range c.Managers {
+	for i, m := range c.Managers {
 		if err := m.Write(base); err != nil {
-			errs = append(errs, err)
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.errors = append(c.errors, err)
+			} else {
+				errs = append(errs, err)
+			}
 		}
 	}
 	return errors.Join(errs...)
@@ -39,9 +45,13 @@ func (c *CombinedManager) Write(base *deploy.Snapshot) error {
 
 func (c *CombinedManager) RebuiltBaseState() error {
 	var errs []error
-	for _, m := range c.Managers {
+	for i, m := range c.Managers {
 		if err := m.RebuiltBaseState(); err != nil {
-			errs = append(errs, err)
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.errors = append(c.errors, err)
+			} else {
+				errs = append(errs, err)
+			}
 		}
 	}
 	return errors.Join(errs...)
@@ -49,13 +59,22 @@ func (c *CombinedManager) RebuiltBaseState() error {
 
 func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	var errs []error
-	mutations := &CombinedMutation{}
-	for _, m := range c.Managers {
+	mutations := &CombinedMutation{
+		manager: c,
+	}
+	for i, m := range c.Managers {
 		mutation, err := m.BeginMutation(step)
 		if err != nil {
-			errs = append(errs, err)
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.errors = append(c.errors, err)
+			} else {
+				errs = append(errs, err)
+			}
 		} else {
 			mutations.Mutations = append(mutations.Mutations, mutation)
+			if len(c.CollectErrorsOnly) > i {
+				mutations.CollectErrorsOnly = append(mutations.CollectErrorsOnly, c.CollectErrorsOnly[i])
+			}
 		}
 	}
 
@@ -64,28 +83,53 @@ func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, err
 
 func (c *CombinedManager) RegisterResourceOutputs(step deploy.Step) error {
 	errs := make([]error, 0, len(c.Managers))
-	for _, m := range c.Managers {
-		errs = append(errs, m.RegisterResourceOutputs(step))
+	for i, m := range c.Managers {
+		err := m.RegisterResourceOutputs(step)
+		if err != nil {
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.errors = append(c.errors, err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
 	}
 	return errors.Join(errs...)
 }
 
 func (c *CombinedManager) Close() error {
 	errs := make([]error, 0, len(c.Managers))
-	for _, m := range c.Managers {
-		errs = append(errs, m.Close())
+	for i, m := range c.Managers {
+		err := m.Close()
+		if err != nil {
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.errors = append(c.errors, err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
 	}
 	return errors.Join(errs...)
 }
 
+func (c *CombinedManager) Errors() []error {
+	return c.errors
+}
+
 type CombinedMutation struct {
-	Mutations []SnapshotMutation
+	Mutations         []SnapshotMutation
+	CollectErrorsOnly []bool
+	manager           *CombinedManager
 }
 
 func (c *CombinedMutation) End(step deploy.Step, success bool) error {
 	errs := make([]error, 0, len(c.Mutations))
-	for _, m := range c.Mutations {
-		errs = append(errs, m.End(step, success))
+	for i, m := range c.Mutations {
+		err := m.End(step, success)
+		if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+			c.manager.errors = append(c.manager.errors, err)
+		} else {
+			errs = append(errs, err)
+		}
 	}
 	return errors.Join(errs...)
 }
