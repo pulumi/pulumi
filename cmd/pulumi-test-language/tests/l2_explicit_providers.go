@@ -19,7 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
@@ -52,7 +52,7 @@ func init() {
 					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:component")
 					require.Equal(l, "explicit", provider.URN.Name(), "expected explicit provider resource")
 
-					providerRef, err := deployProviders.NewReference(provider.URN, provider.ID)
+					providerRef, err := sdkproviders.NewReference(provider.URN, provider.ID)
 					require.NoError(l, err, "expected no error creating provider reference")
 
 					// The list-providers component should register a custom resource using the explicit provider, which was sent
