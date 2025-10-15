@@ -250,6 +250,127 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
+func generateProjectFile(program *pcl.Program, localDependencies map[string]string) ([]byte, error) {
+	// Build a .csproj based on the packages used by program.
+	// Using the current LTS of .NET which is 8.0 as of now.
+	var csproj bytes.Buffer
+	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+`)
+
+	// find all the local dependency folders and add them as restore sources.
+	// restore sources are folders that contain nuget packages with (.nupkg files)
+	folders := mapset.NewSet[string]()
+	for _, dep := range localDependencies {
+		isLocalNugetPackage := strings.HasSuffix(dep, ".nupkg")
+		if isLocalNugetPackage {
+			folders.Add(path.Dir(dep))
+		}
+	}
+
+	restoreSources := folders.ToSlice()
+	sort.Strings(restoreSources)
+
+	if len(restoreSources) > 0 {
+		csproj.WriteString(`	<PropertyGroup>
+		<RestoreSources>`)
+		csproj.WriteString(strings.Join(restoreSources, ";"))
+		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
+	</PropertyGroup>
+`)
+	}
+
+	csproj.WriteString("	<ItemGroup>\n")
+
+	// Add local package references
+	pkgs := maputil.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		isLocalNugetPackage := strings.HasSuffix(localDependencies[pkg], ".nupkg")
+		if !isLocalNugetPackage {
+			// only local nuget packages are referenced via a PackageReference
+			// if the local dependency is a source code package, it will be referenced
+			// via a ProjectReference instead
+			continue
+		}
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
+			csproj.WriteString(fmt.Sprintf(
+				"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
+				packageName, version))
+		} else {
+			return nil, fmt.Errorf("could not extract package name and version from %s", nugetFilePath)
+		}
+	}
+
+	if _, hasLocalPulumiReference := localDependencies[pulumiPackage]; !hasLocalPulumiReference {
+		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
+	}
+
+	// For each package add a PackageReference line
+	packages, err := program.CollectNestedPackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range packages {
+		if p.Name == pulumiPackage {
+			continue
+		}
+
+		_, isLocal := localDependencies[p.Name]
+		isLocalNugetPackage := isLocal && strings.HasSuffix(localDependencies[p.Name], ".nupkg")
+		isLocalProjectReference := isLocal && !isLocalNugetPackage
+		if isLocalNugetPackage {
+			// skip local nuget package dependencies since we added them above
+			continue
+		}
+
+		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
+		projectReferenceTemplate := "		<ProjectReference Include=\"%s\" />\n"
+
+		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+			return nil, err
+		}
+
+		rootNamespace := "Pulumi"
+		if p.Namespace != "" {
+			rootNamespace = namespaceName(nil, p.Namespace)
+		}
+
+		packageName := rootNamespace + "." + namespaceName(map[string]string{}, p.Name)
+		if langInfo, found := p.Language["csharp"]; found {
+			csharpInfo, ok := langInfo.(CSharpPackageInfo)
+			if ok {
+				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+			}
+		}
+
+		if isLocalProjectReference {
+			// local project reference
+			packageDir := localDependencies[p.Name]
+			projectPath := path.Join(packageDir, packageName+".csproj")
+			fmt.Fprintf(&csproj, projectReferenceTemplate, projectPath)
+		} else {
+			if p.Version != nil {
+				fmt.Fprintf(&csproj, packageTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&csproj, packageTemplate, packageName, "*")
+			}
+		}
+	}
+
+	csproj.WriteString(`	</ItemGroup>
+
+</Project>`)
+
+	return csproj.Bytes(), nil
+}
+
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
@@ -284,99 +405,11 @@ func GenerateProject(
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
-	// Build a .csproj based on the packages used by program.
-	// Using the current LTS of .NET which is 8.0 as of now.
-	var csproj bytes.Buffer
-	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net8.0</TargetFramework>
-		<Nullable>enable</Nullable>
-	</PropertyGroup>
-`)
-
-	// Find all the local dependency folders
-	folders := mapset.NewSet[string]()
-	for _, dep := range localDependencies {
-		folders.Add(path.Dir(dep))
-	}
-
-	restoreSources := folders.ToSlice()
-	sort.Strings(restoreSources)
-
-	if len(restoreSources) > 0 {
-		csproj.WriteString(`	<PropertyGroup>
-		<RestoreSources>`)
-		csproj.WriteString(strings.Join(restoreSources, ";"))
-		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
-	</PropertyGroup>
-`)
-	}
-
-	csproj.WriteString("	<ItemGroup>\n")
-
-	// Add local package references
-	pkgs := maputil.SortedKeys(localDependencies)
-	for _, pkg := range pkgs {
-		nugetFilePath := localDependencies[pkg]
-		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
-			csproj.WriteString(fmt.Sprintf(
-				"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
-				packageName, version))
-		} else {
-			return fmt.Errorf("could not extract package name and version from %s", nugetFilePath)
-		}
-	}
-
-	if _, hasLocalPulumiReference := localDependencies[pulumiPackage]; !hasLocalPulumiReference {
-		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
-	}
-
-	// For each package add a PackageReference line
-	packages, err := program.CollectNestedPackageSnapshots()
+	csproj, err := generateProjectFile(program, localDependencies)
 	if err != nil {
 		return err
 	}
-	for _, p := range packages {
-		if _, isLocal := localDependencies[p.Name]; isLocal {
-			continue
-		}
-
-		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
-
-		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-			return err
-		}
-		if p.Name == pulumiPackage {
-			continue
-		}
-
-		rootNamespace := "Pulumi"
-		if p.Namespace != "" {
-			rootNamespace = namespaceName(nil, p.Namespace)
-		}
-
-		packageName := rootNamespace + "." + namespaceName(map[string]string{}, p.Name)
-		if langInfo, found := p.Language["csharp"]; found {
-			csharpInfo, ok := langInfo.(CSharpPackageInfo)
-			if ok {
-				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
-				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
-			}
-		}
-		if p.Version != nil {
-			fmt.Fprintf(&csproj, packageTemplate, packageName, p.Version.String())
-		} else {
-			fmt.Fprintf(&csproj, packageTemplate, packageName, "*")
-		}
-	}
-
-	csproj.WriteString(`	</ItemGroup>
-
-</Project>`)
-
-	files[project.Name.String()+".csproj"] = csproj.Bytes()
+	files[project.Name.String()+".csproj"] = csproj
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(dotnetGitIgnore)
