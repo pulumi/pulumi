@@ -22,7 +22,6 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 			"\n" +
 			"This command creates a request to open a protected environment. The request must be\n" +
 			"approved before the environment can be accessed.\n",
-		Hidden:       true,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
