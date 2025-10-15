@@ -113,6 +113,7 @@ type AnalyzeDiagnostic struct {
 	Message           string
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
+	Severity          apitype.PolicySeverity
 }
 
 // AnalyzeResponse is the response from the Analyze method, containing violations.

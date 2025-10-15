@@ -1,0 +1,19 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}>    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  always-fails-advisory-unspecified<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory: low]  always-fails-advisory-low<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory: medium]  always-fails-advisory-medium<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory: high]  always-fails-advisory-high<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory: critical]  always-fails-advisory-critical<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 1%}>[mandatory]  always-fails-unspecified<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 1%}>[mandatory: low]  always-fails-low<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 1%}>[mandatory: medium]  always-fails-medium<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 1%}>[mandatory: high]  always-fails-high<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 1%}>[mandatory: critical]  always-fails-critical<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>       <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    analyzerA  1.0.0
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

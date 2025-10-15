@@ -213,9 +213,14 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 		c = colors.SpecError
 	}
 
+	var severity string
+	if payload.Severity != apitype.PolicySeverityUnspecified {
+		severity = fmt.Sprintf(": %s", payload.Severity)
+	}
+
 	// Print the individual policy's name and target resource type/name.
-	policyLine := fmt.Sprintf("%s[%s]  %s%s  (%s: %s)",
-		c, payload.EnforcementLevel, payload.PolicyName, colors.Reset,
+	policyLine := fmt.Sprintf("%s[%s%s]  %s%s  (%s: %s)",
+		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
 		payload.ResourceURN.Type(), payload.ResourceURN.Name())
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.

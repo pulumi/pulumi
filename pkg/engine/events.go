@@ -201,6 +201,7 @@ type PolicyViolationEventPayload struct {
 	PolicyPackVersion string
 	EnforcementLevel  apitype.EnforcementLevel
 	Prefix            string
+	Severity          apitype.PolicySeverity
 }
 
 // PolicyRemediationEventPayload is the payload for an event with type `policy-remediation`.
@@ -661,6 +662,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Prefix:            logging.FilterString(prefix.String()),
+		Severity:          d.Severity,
 	}))
 }
 

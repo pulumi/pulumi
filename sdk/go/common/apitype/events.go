@@ -64,6 +64,9 @@ type PolicyEvent struct {
 
 	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
 	EnforcementLevel string `json:"enforcementLevel"`
+	// Severity is one of "low", "medium", "high", or "critical".
+	// An empty string is omitted and represents an unspecified severity.
+	Severity string `json:"severity,omitempty"`
 }
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.

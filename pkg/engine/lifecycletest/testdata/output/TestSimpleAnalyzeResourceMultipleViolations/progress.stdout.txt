@@ -1,0 +1,31 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+<{%fg 5%}>Loading policy packs...<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Policies:<{%reset%}>
+    ❌ <{%fg 5%}>analyzerA@v1.0.0<{%reset%}>
+        - <{%fg 1%}>[mandatory: critical]  always-fails-critical<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 1%}>[mandatory: high]  always-fails-high<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 1%}>[mandatory: medium]  always-fails-medium<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 1%}>[mandatory: low]  always-fails-low<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 1%}>[mandatory]  always-fails-unspecified<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 3%}>[advisory: critical]  always-fails-advisory-critical<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 3%}>[advisory: high]  always-fails-advisory-high<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 3%}>[advisory: medium]  always-fails-advisory-medium<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 3%}>[advisory: low]  always-fails-advisory-low<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+        - <{%fg 3%}>[advisory]  always-fails-advisory-unspecified<{%reset%}>  (pkgA:m:typA: resA)
+          <{%reset%}>a policy failed<{%reset%}>
+
