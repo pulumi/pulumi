@@ -257,27 +257,10 @@ func runConvert(
 			}
 			projectJSON := string(projectBytes)
 
-			packageBlockDescriptors, diags, err := getPackagesToGenerateSdks(sourceDirectory)
-			if err != nil {
-				return diags, fmt.Errorf("error extracting pcl: %w", err)
-			}
-
-			localDependencies := map[string]string{}
-
-			// for each parameterized package, add its source path to the local dependencies
-			for _, pkg := range packageBlockDescriptors {
-				if pkg.Parameterization == nil {
-					// skip non-parameterized packages
-					continue
-				}
-
-				pkgName := pkg.Parameterization.Name
-				localDependencies[pkgName] = filepath.Join("sdks", pkgName)
-			}
-
+			var diags hcl.Diagnostics
 			ds, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), localDependencies)
+				strict, grpcServer.Addr(), nil /*localDependencies*/)
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
@@ -307,6 +290,12 @@ func runConvert(
 				})
 			if err != nil {
 				return nil, fmt.Errorf("copying files from source directory: %w", err)
+			}
+
+			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
+			diags = append(diags, ds...)
+			if err != nil {
+				return diags, fmt.Errorf("error parsing pcl: %w", err)
 			}
 
 			err = generateAndLinkSdksForPackages(
