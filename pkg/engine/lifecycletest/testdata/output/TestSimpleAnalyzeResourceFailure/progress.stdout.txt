@@ -8,6 +8,6 @@
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Policies:<{%reset%}>
     ❌ <{%fg 5%}>analyzerA@v<{%reset%}>
-        - <{%fg 1%}>[mandatory]  always-fails<{%reset%}>  (pkgA:m:typA: resA)
+        - <{%fg 1%}>[mandatory: high]  always-fails<{%reset%}>  (pkgA:m:typA: resA)
           <{%reset%}>a policy failed<{%reset%}>
 

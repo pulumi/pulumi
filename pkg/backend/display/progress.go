@@ -16,10 +16,12 @@ package display
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -972,18 +974,19 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 		}
 
-		// Next up, display all violations. Sort policy events by: policy pack name, policy pack version,
-		// enforcement level, policy name, and finally the URN of the resource.
-		sort.SliceStable(info.ViolationEvents, func(i, j int) bool {
-			eventI, eventJ := info.ViolationEvents[i], info.ViolationEvents[j]
-			if enfLevelCmp := strings.Compare(
-				string(eventI.EnforcementLevel), string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
-				return enfLevelCmp < 0
+		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
+		// and finally the URN of the resource.
+		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
+				return d
 			}
-			if policyNameCmp := strings.Compare(eventI.PolicyName, eventJ.PolicyName); policyNameCmp != 0 {
-				return policyNameCmp < 0
+			if d := cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)); d != 0 {
+				return d
 			}
-			return strings.Compare(string(eventI.ResourceURN), string(eventJ.ResourceURN)) < 0
+			if d := cmp.Compare(a.PolicyName, b.PolicyName); d != 0 {
+				return d
+			}
+			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
 		for _, policyEvent := range info.ViolationEvents {
 			// Print the individual policy event.
@@ -1765,4 +1768,36 @@ func sortResourceRows(rows []ResourceRow) {
 
 		return a.Res.URN < b.Res.URN
 	})
+}
+
+func enforcementRank(el apitype.EnforcementLevel) int {
+	switch el {
+	case apitype.Remediate:
+		return 0
+	case apitype.Mandatory:
+		return 1
+	case apitype.Advisory:
+		return 2
+	case apitype.Disabled:
+		return 3
+	default:
+		return 99 // unknowns last
+	}
+}
+
+func severityRank(s apitype.PolicySeverity) int {
+	switch s {
+	case apitype.PolicySeverityCritical:
+		return 0
+	case apitype.PolicySeverityHigh:
+		return 1
+	case apitype.PolicySeverityMedium:
+		return 2
+	case apitype.PolicySeverityLow:
+		return 3
+	case apitype.PolicySeverityUnspecified:
+		return 4
+	default:
+		return 99 // unknowns last
+	}
 }

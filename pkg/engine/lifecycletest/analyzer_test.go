@@ -153,6 +153,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 						Message:          "a policy failed",
 						EnforcementLevel: apitype.Mandatory,
 						URN:              r.URN,
+						Severity:         apitype.PolicySeverityHigh,
 					}}}, nil
 				},
 			}, nil
@@ -201,6 +202,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		assert.Equal(t, "analyzerA", violationPayload.PolicyPackName)
 		assert.Contains(t, violationPayload.Message, "a policy failed")
 		assert.Equal(t, apitype.Mandatory, violationPayload.EnforcementLevel)
+		assert.Equal(t, apitype.PolicySeverityHigh, violationPayload.Severity)
 
 		require.Len(t, summaryEvents, 2)
 
@@ -745,4 +747,131 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	assert.ErrorContains(t, err, "BAIL: canceled")
 	assert.True(t, gracefulShutdown)
+}
+
+func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			policies := []plugin.AnalyzerPolicyInfo{
+				{
+					Name:             "always-fails-advisory-unspecified",
+					Description:      "a policy that always fails unspecified",
+					EnforcementLevel: apitype.Advisory,
+				},
+				{
+					Name:             "always-fails-advisory-low",
+					Description:      "a policy that always fails low",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityLow,
+				},
+				{
+					Name:             "always-fails-advisory-medium",
+					Description:      "a policy that always fails medium",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityMedium,
+				},
+				{
+					Name:             "always-fails-advisory-high",
+					Description:      "a policy that always fails high",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityHigh,
+				},
+				{
+					Name:             "always-fails-advisory-critical",
+					Description:      "a policy that always fails critical",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityCritical,
+				},
+				{
+					Name:             "always-fails-unspecified",
+					Description:      "a policy that always fails unspecified",
+					EnforcementLevel: apitype.Mandatory,
+				},
+				{
+					Name:             "always-fails-low",
+					Description:      "a policy that always fails low",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityLow,
+				},
+				{
+					Name:             "always-fails-medium",
+					Description:      "a policy that always fails medium",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityMedium,
+				},
+				{
+					Name:             "always-fails-high",
+					Description:      "a policy that always fails high",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityHigh,
+				},
+				{
+					Name:             "always-fails-critical",
+					Description:      "a policy that always fails critical",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityCritical,
+				},
+			}
+			return &deploytest.Analyzer{
+				Info: plugin.AnalyzerInfo{
+					Name:     "analyzerA",
+					Version:  "1.0.0",
+					Policies: policies,
+				},
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type != "pkgA:m:typA" {
+						return plugin.AnalyzeResponse{
+							NotApplicable: []plugin.PolicyNotApplicable{
+								{PolicyName: "always-fails", Reason: "not the right resource type"},
+							},
+						}, nil
+					}
+
+					var diagnostics []plugin.AnalyzeDiagnostic
+					for _, p := range policies {
+						diagnostics = append(diagnostics, plugin.AnalyzeDiagnostic{
+							PolicyName:        p.Name,
+							PolicyPackName:    "analyzerA",
+							PolicyPackVersion: "1.0.0",
+							Description:       p.Description,
+							Message:           "a policy failed",
+							EnforcementLevel:  p.EnforcementLevel,
+							Severity:          p.Severity,
+							URN:               r.URN,
+						})
+					}
+
+					return plugin.AnalyzeResponse{Diagnostics: diagnostics}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.Error(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "1.0.0", nil)},
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Error(t, err)
+
+	// Test data contains golden files for expected sorted output.
 }
