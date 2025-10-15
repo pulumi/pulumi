@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -585,12 +586,12 @@ func TestStepGenerator(t *testing.T) {
 	t.Run("isTargetedForUpdate (no target dependents)", func(t *testing.T) {
 		t.Parallel()
 
-		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
-		apRef, err := providers.NewReference(apUrn, "0")
+		apUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgA"), "a")
+		apRef, err := sdkproviders.NewReference(apUrn, "0")
 		require.NoError(t, err)
 
-		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
-		bpRef, err := providers.NewReference(bpUrn, "1")
+		bpUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgB"), "b")
+		bpRef, err := sdkproviders.NewReference(bpUrn, "1")
 		require.NoError(t, err)
 
 		// Arrange.
@@ -709,12 +710,12 @@ func TestStepGenerator(t *testing.T) {
 		t.Parallel()
 
 		// Arrange.
-		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
-		apRef, err := providers.NewReference(apUrn, "0")
+		apUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgA"), "a")
+		apRef, err := sdkproviders.NewReference(apUrn, "0")
 		require.NoError(t, err)
 
-		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
-		bpRef, err := providers.NewReference(bpUrn, "1")
+		bpUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgB"), "b")
+		bpRef, err := sdkproviders.NewReference(bpUrn, "1")
 		require.NoError(t, err)
 
 		sg := &stepGenerator{

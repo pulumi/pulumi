@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -130,7 +131,7 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 
 	ref, allDeps := res.GetAllDependencies()
 	if ref != "" {
-		providerRef, err := providers.ParseReference(ref)
+		providerRef, err := sdkproviders.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
 		providerURN := providerRef.URN()
 		if sg.targetsActual.Contains(providerURN) {
@@ -158,7 +159,7 @@ func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
 
 	ref, allDeps := res.GetAllDependencies()
 	if ref != "" {
-		providerRef, err := providers.ParseReference(ref)
+		providerRef, err := sdkproviders.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
 		providerURN := providerRef.URN()
 		if sg.excludesActual.Contains(providerURN) {
@@ -436,7 +437,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 		}
 
 		if provider != "" {
-			prov, err := providers.ParseReference(provider)
+			prov, err := sdkproviders.ParseReference(provider)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"could not parse provider reference %s for %s: %w",
@@ -716,7 +717,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
 	}.Make()
-	if providers.IsProviderType(goal.Type) {
+	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
 			sg.providers[aliasURN] = new
@@ -730,7 +731,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil &&
 		sg.refresh &&
 		goal.Custom &&
-		!providers.IsProviderType(goal.Type) {
+		!sdkproviders.IsProviderType(goal.Type) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go func() {
@@ -800,7 +801,7 @@ func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, erro
 	}
 
 	if provider != "" {
-		prov, err := providers.ParseReference(provider)
+		prov, err := sdkproviders.ParseReference(provider)
 		if err != nil {
 			return false, fmt.Errorf(
 				"could not parse provider reference %s for %s: %w",
@@ -835,8 +836,8 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		if err != nil {
 			return nil, false, err
 		}
-		if goal.Custom && !providers.IsProviderType(goal.Type) ||
-			providers.IsProviderType(goal.Type) && hasSkippedDeps {
+		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) ||
+			sdkproviders.IsProviderType(goal.Type) && hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
 				sg.sames[urn] = true
@@ -866,7 +867,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		}
 
 		if provider != "" {
-			prov, err := providers.ParseReference(provider)
+			prov, err := sdkproviders.ParseReference(provider)
 			if err != nil {
 				return nil, false, fmt.Errorf(
 					"could not parse provider reference %s for %s: %w",
@@ -891,7 +892,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 		// Otherwise we've got our dependencies, if this is a custom non-provider resource we can either same
 		// it or skip create it (we don't want to actually do real resource creates and updates in destroy).
-		if goal.Custom && !providers.IsProviderType(goal.Type) {
+		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) {
 			// Custom resources that aren't in state just have to be skipped creates.
 			if old == nil {
 				sg.skippedCreates[urn] = true
@@ -1113,7 +1114,8 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		}
 	}
 
-	isImplicitlyTargetedResource := providers.IsProviderType(urn.Type()) || urn.QualifiedType() == resource.RootStackType
+	isImplicitlyTargetedResource := sdkproviders.IsProviderType(urn.Type()) ||
+		urn.QualifiedType() == resource.RootStackType
 
 	// Internally managed resources are under Pulumi's control and changes or creations should be invisible to
 	// the user, we also implicitly target providers (both default and explicit, see
@@ -1408,7 +1410,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 			// We need to check that we have the provider for this resource.
 			if old.Provider != "" {
-				ref, err := providers.ParseReference(old.Provider)
+				ref, err := sdkproviders.ParseReference(old.Provider)
 				if err != nil {
 					return nil, false, err
 				}
@@ -2506,11 +2508,11 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return true, nil
 	}
 
-	oldRef, err := providers.ParseReference(old.Provider)
+	oldRef, err := sdkproviders.ParseReference(old.Provider)
 	if err != nil {
 		return false, err
 	}
-	newRef, err := providers.ParseReference(new.Provider)
+	newRef, err := sdkproviders.ParseReference(new.Provider)
 	if err != nil {
 		return false, err
 	}
@@ -2724,17 +2726,17 @@ func (sg *stepGenerator) loadResourceProvider(
 
 	// If this resource is a provider resource, use the deployment's provider registry for its CRUD operations.
 	// Otherwise, resolve the the resource's provider reference.
-	if providers.IsProviderType(typ) {
+	if sdkproviders.IsProviderType(typ) {
 		return sg.deployment.providers, nil
 	}
 
 	contract.Assertf(provider != "", "must have a provider for custom resource %v", urn)
-	ref, refErr := providers.ParseReference(provider)
+	ref, refErr := sdkproviders.ParseReference(provider)
 	if refErr != nil {
 		return nil, sg.bailDiag(diag.GetBadProviderError(urn), provider, urn, refErr)
 	}
-	if providers.IsDenyDefaultsProvider(ref) {
-		pkg := providers.GetDeniedDefaultProviderPkg(ref)
+	if sdkproviders.IsDenyDefaultsProvider(ref) {
+		pkg := sdkproviders.GetDeniedDefaultProviderPkg(ref)
 		return nil, sg.bailDiag(diag.GetDefaultProviderDenied(urn), pkg, urn)
 	}
 	p, ok := sg.deployment.GetProvider(ref)
@@ -2751,7 +2753,7 @@ func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) 
 
 	// All callers of this method are on paths that have previously validated that the provider
 	// reference can be parsed correctly and has a provider resource in the map.
-	ref, err := providers.ParseReference(provider)
+	ref, err := sdkproviders.ParseReference(provider)
 	contract.AssertNoErrorf(err, "failed to parse provider reference")
 	result := sg.providers[ref.URN()]
 	contract.Assertf(result != nil, "provider missing from step generator providers map")
@@ -2898,7 +2900,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// If the resource's provider is in the replace set, we must replace this resource.
 		if r.Provider != "" {
-			ref, err := providers.ParseReference(r.Provider)
+			ref, err := sdkproviders.ParseReference(r.Provider)
 			if err != nil {
 				return false, nil, err
 			}
@@ -2933,7 +2935,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		}
 
 		// We're going to have to call diff on this resources provider so ensure that we have it created
-		if !providers.IsProviderType(r.Type) {
+		if !sdkproviders.IsProviderType(r.Type) {
 			err := sg.deployment.EnsureProvider(r.Provider)
 			if err != nil {
 				return false, nil, fmt.Errorf("could not load provider for resource %v: %w", r.URN, err)
@@ -3050,8 +3052,8 @@ func (sg *stepGenerator) AnalyzeResources() error {
 			// See https://github.com/pulumi/pulumi/issues/19879 for a case of this.
 			var providerResource *resource.State
 			if v.Provider != "" {
-				var ref providers.Reference
-				ref, err = providers.ParseReference(v.Provider)
+				var ref sdkproviders.Reference
+				ref, err = sdkproviders.ParseReference(v.Provider)
 				contract.AssertNoErrorf(err, "failed to parse provider reference")
 				var has bool
 				providerResource, has = sg.providers[ref.URN()]
