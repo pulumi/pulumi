@@ -1989,8 +1989,30 @@ func (host *nodeLanguageHost) Link(
 		return nil, err
 	}
 
+	// Detect whether this is a typescript project, either run through our builtin ts-node, meaning the typescript
+	// runtime option is true, or if there is a tsconfig.json
+	isTypeScript := opts.typescript || opts.tsconfigpath != ""
+	if !isTypeScript {
+		if _, err := fsutil.Searchup(req.Info.ProgramDirectory, "tsconfig.json"); err == nil {
+			isTypeScript = true
+		}
+	}
+	// We'll use module syntax (import, export) it is a typescript project, or package.json["type"] is set to "module".
+	usesModuleSyntax := isTypeScript
+	if !usesModuleSyntax {
+		if p, err := fsutil.Searchup(req.Info.ProgramDirectory, "package.json"); err == nil {
+			if data, err := readPackageJSON(p); err == nil {
+				if typ, ok := data["type"]; ok {
+					if typeS, ok := typ.(string); ok && typeS == "module" {
+						usesModuleSyntax = true
+					}
+				}
+			}
+		}
+	}
+
 	instructions := "You can import the SDK in your JavaScript code with:\n\n"
-	if opts.typescript {
+	if isTypeScript {
 		instructions = "You can import the SDK in your TypeScript code with:\n\n"
 	}
 
@@ -2036,7 +2058,7 @@ func (host *nodeLanguageHost) Link(
 		}
 
 		importName := cgstrings.Camel(pkgRef.Name())
-		if opts.typescript {
+		if usesModuleSyntax {
 			instructions += fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName)
 		} else {
 			instructions += fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName)
