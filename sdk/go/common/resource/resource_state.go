@@ -15,6 +15,7 @@
 package resource
 
 import (
+	"slices"
 	"sync"
 	"time"
 
@@ -69,6 +70,17 @@ type State struct {
 	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type.
 }
 
+func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
+	if m == nil {
+		return nil
+	}
+	result := make(M, len(m))
+	for k, v := range m {
+		result[k] = slices.Clone(v)
+	}
+	return result
+}
+
 // Copy creates a deep copy of the resource state, except without copying the lock.
 func (s *State) Copy() *State {
 	return &State{
@@ -83,13 +95,13 @@ func (s *State) Copy() *State {
 		Protect:                 s.Protect,
 		Taint:                   s.Taint,
 		External:                s.External,
-		Dependencies:            s.Dependencies,
-		InitErrors:              s.InitErrors,
+		Dependencies:            slices.Clone(s.Dependencies),
+		InitErrors:              slices.Clone(s.InitErrors),
 		Provider:                s.Provider,
-		PropertyDependencies:    s.PropertyDependencies,
+		PropertyDependencies:    cloneMapOfSlices(s.PropertyDependencies),
 		PendingReplacement:      s.PendingReplacement,
-		AdditionalSecretOutputs: s.AdditionalSecretOutputs,
-		Aliases:                 s.Aliases,
+		AdditionalSecretOutputs: slices.Clone(s.AdditionalSecretOutputs),
+		Aliases:                 slices.Clone(s.Aliases),
 		CustomTimeouts:          s.CustomTimeouts,
 		ImportID:                s.ImportID,
 		RetainOnDelete:          s.RetainOnDelete,
@@ -97,13 +109,13 @@ func (s *State) Copy() *State {
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
-		StackTrace:              s.StackTrace,
-		IgnoreChanges:           s.IgnoreChanges,
-		ReplaceOnChanges:        s.ReplaceOnChanges,
-		HideDiff:                s.HideDiff,
+		StackTrace:              slices.Clone(s.StackTrace),
+		IgnoreChanges:           slices.Clone(s.IgnoreChanges),
+		ReplaceOnChanges:        slices.Clone(s.ReplaceOnChanges),
+		HideDiff:                slices.Clone(s.HideDiff),
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
-		ResourceHooks:           s.ResourceHooks,
+		ResourceHooks:           cloneMapOfSlices(s.ResourceHooks),
 	}
 }
 
