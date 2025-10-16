@@ -1066,7 +1066,7 @@ func TestImportStep(t *testing.T) {
 					},
 				}
 				status, _, err := s.Apply()
-				assert.ErrorContains(t, err, "does not exist")
+				assert.ErrorContains(t, err, "resource 'some-id' does not exist")
 				assert.Equal(t, resource.StatusOK, status)
 			})
 			t.Run("provider does not support importing resources", func(t *testing.T) {

@@ -1623,7 +1623,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			}
 		}
 		if read.Outputs == nil {
-			return rst, nil, fmt.Errorf("resource '%v' does not exist", s.new.ID)
+			resourceID := s.new.ID
+			if resourceID == "" {
+				resourceID = s.new.ImportID
+			}
+			return rst, nil, fmt.Errorf("resource '%v' does not exist", resourceID)
 		}
 		if read.Inputs == nil {
 			return resource.StatusOK, nil,
