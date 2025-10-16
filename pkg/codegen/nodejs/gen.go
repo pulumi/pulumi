@@ -2581,7 +2581,7 @@ const deps = Object.keys(packageJSON.dependencies ?? []).concat(Object.keys(pack
 const types = deps.filter(d => d.startsWith("@types/")).map(d => d.slice("@types/".length)).join(",");
 const typesFlag = types.length > 0 ? " --types " + types : "";
 try {
-  execSync("tsc"+typesFlag);
+  execSync("tsc"+typesFlag, { cwd: path.join(__dirname, "..") });
 } catch (error) {
   console.error("Failed to run 'tsc'", {
     stdout: error.stdout.toString(),
