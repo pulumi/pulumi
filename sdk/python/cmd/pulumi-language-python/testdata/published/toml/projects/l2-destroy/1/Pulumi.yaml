@@ -1,7 +1,0 @@
-name: l2-destroy
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv

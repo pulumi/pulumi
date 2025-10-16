@@ -1,7 +1,0 @@
-name: policy-stack-config
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv

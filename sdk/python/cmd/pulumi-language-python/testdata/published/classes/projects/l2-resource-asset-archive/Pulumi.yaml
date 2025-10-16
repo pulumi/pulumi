@@ -1,8 +1,0 @@
-name: l2-resource-asset-archive
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv
-main: subdir
