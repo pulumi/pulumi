@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -887,8 +888,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					old.Outputs = expected.Outputs
 
 					// Discard timestamps for refresh test.
-					new.Modified = nil
-					old.Modified = nil
+					new.Modified = time.Time{}
+					old.Modified = time.Time{}
 
 					assert.Equal(t, old, new)
 				}

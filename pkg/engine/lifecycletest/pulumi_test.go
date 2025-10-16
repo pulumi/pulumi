@@ -3678,7 +3678,7 @@ func TestTimestampTracking(t *testing.T) {
 		assert.Equal(t, resource.Created, resource.Modified,
 			"created time != modified time: %v", resource.URN)
 
-		creationTimes[resource.URN] = *resource.Created
+		creationTimes[resource.URN] = resource.Created
 	}
 
 	// Run a refresh -- created and updated should be unchanged.
@@ -3688,7 +3688,7 @@ func TestTimestampTracking(t *testing.T) {
 	for _, resource := range snap.Resources {
 		require.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
 		require.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
-		assert.Equal(t, *resource.Created, creationTimes[resource.URN],
+		assert.Equal(t, resource.Created, creationTimes[resource.URN],
 			"created time changed: %v", resource.URN)
 		assert.Equal(t, resource.Created, resource.Modified,
 			"modified time changed: %v", resource.URN)
@@ -3702,7 +3702,7 @@ func TestTimestampTracking(t *testing.T) {
 	for _, resource := range snap.Resources {
 		require.NotNil(t, resource.Created, resource.URN, "missing created time: %v", resource.URN)
 		require.NotNil(t, resource.Modified, resource.URN, "missing modified time: %v", resource.URN)
-		assert.Equal(t, creationTimes[resource.URN], *resource.Created,
+		assert.Equal(t, creationTimes[resource.URN], resource.Created,
 			"created time changed: %v", resource.URN)
 
 		//exhaustive:ignore
@@ -3710,15 +3710,15 @@ func TestTimestampTracking(t *testing.T) {
 		case "pkgA:m:typA":
 			tz, _ := resource.Modified.Zone()
 			assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
-			assert.NotEqual(t, creationTimes[resource.URN], *resource.Modified,
+			assert.NotEqual(t, creationTimes[resource.URN], resource.Modified,
 				"modified time did not update: %v", resource.URN)
-			assert.Greater(t, *resource.Modified, *resource.Created,
+			assert.Greater(t, resource.Modified, resource.Created,
 				"modified time is too old: %v", resource.URN)
 		case "pulumi:providers:pkgA", "pulumi:pulumi:Stack":
 			tz, _ := resource.Modified.Zone()
 			assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
-			require.NotNil(t, *resource.Created, "missing created time: %v", resource.URN)
-			require.NotNil(t, *resource.Modified, "missing modified time: %v", resource.URN)
+			require.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+			require.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
 		default:
 			require.FailNow(t, "unrecognized resource type", resource.Type)
 		}

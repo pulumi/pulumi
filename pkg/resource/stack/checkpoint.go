@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -206,8 +207,8 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
+		Created:                 time.Now().UTC(),
+		Modified:                time.Now().UTC(),
 		SourcePosition:          "",
 		StackTrace:              nil,
 		IgnoreChanges:           nil,

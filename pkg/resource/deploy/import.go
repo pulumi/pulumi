@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -244,8 +245,8 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
+		Created:                 time.Now().UTC(),
+		Modified:                time.Now().UTC(),
 		SourcePosition:          "",
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
@@ -384,8 +385,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ImportID:                "",
 			RetainOnDelete:          false,
 			DeletedWith:             "",
-			Created:                 nil,
-			Modified:                nil,
+			Created:                 time.Now().UTC(),
+			Modified:                time.Now().UTC(),
 			SourcePosition:          "",
 			StackTrace:              nil,
 			IgnoreChanges:           nil,
@@ -513,8 +514,8 @@ func (i *importer) importResources(ctx context.Context) error {
 			ImportID:                imp.ID,
 			RetainOnDelete:          false,
 			DeletedWith:             "",
-			Created:                 nil,
-			Modified:                nil,
+			Created:                 time.Now().UTC(),
+			Modified:                time.Now().UTC(),
 			SourcePosition:          "",
 			StackTrace:              nil,
 			IgnoreChanges:           nil,

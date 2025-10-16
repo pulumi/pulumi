@@ -363,9 +363,9 @@ type ResourceV3 struct {
 	// if specified resource is being deleted as well.
 	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
 	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
-	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
+	Created time.Time `json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
-	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
+	Modified time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 	// StackTrace records the stack at the time this resource was registered
