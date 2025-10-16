@@ -388,7 +388,10 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
 		// The snapshot might edit the URN so don't check against that
 		c.URN = inSnapshot.URN
-		assert.Equal(t, c, inSnapshot)
+		sres, err := stack.SerializeResource(
+			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
+		require.NoError(t, err)
+		assert.Equal(t, sres, inSnapshot)
 
 		err = manager.Close()
 		require.NoError(t, err)
@@ -415,7 +418,10 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 	inSnapshot := sp.SavedSnapshots[0].Resources[0]
-	assert.Equal(t, sourceUpdated, inSnapshot)
+	sres, err := stack.SerializeResource(
+		t.Context(), sourceUpdated, b64.NewBase64SecretsManager().Encrypter(), false)
+	require.NoError(t, err)
+	assert.Equal(t, sres, inSnapshot)
 
 	// Set up a second provider and change the resource's provider reference.
 	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
@@ -474,7 +480,10 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
-		assert.Equal(t, c, inSnapshot)
+		sres, err := stack.SerializeResource(
+			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
+		require.NoError(t, err)
+		assert.Equal(t, sres, inSnapshot)
 
 		err = manager.Close()
 		require.NoError(t, err)
@@ -681,7 +690,7 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	require.Len(t, deployment.Resources, 0)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeCreating, deployment.PendingOperations[0].Type)
+	assert.Equal(t, apitype.OperationTypeCreating, deployment.PendingOperations[0].Type)
 
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
@@ -710,7 +719,7 @@ func TestRecordingCreateFailure(t *testing.T) {
 	require.Len(t, deployment.Resources, 0)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeCreating, deployment.PendingOperations[0].Type)
+	assert.Equal(t, apitype.OperationTypeCreating, deployment.PendingOperations[0].Type)
 
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
@@ -744,8 +753,8 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeUpdating, deployment.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), deployment.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, apitype.OperationTypeUpdating, deployment.PendingOperations[0].Type)
+	assert.Equal(t, "new", deployment.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
@@ -756,7 +765,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("new"), deployment.Resources[0].Inputs["key"])
+	assert.Equal(t, "new", deployment.Resources[0].Inputs["key"])
 }
 
 func TestRecordingUpdateFailure(t *testing.T) {
@@ -781,8 +790,8 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeUpdating, deployment.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), deployment.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, apitype.OperationTypeUpdating, deployment.PendingOperations[0].Type)
+	assert.Equal(t, "new", deployment.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
@@ -793,7 +802,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), deployment.Resources[0].Inputs["key"])
+	assert.Equal(t, "old", deployment.Resources[0].Inputs["key"])
 }
 
 func TestRecordingDeleteSuccess(t *testing.T) {
@@ -813,7 +822,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeDeleting, deployment.PendingOperations[0].Type)
+	assert.Equal(t, apitype.OperationTypeDeleting, deployment.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
@@ -841,7 +850,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeDeleting, deployment.PendingOperations[0].Type)
+	assert.Equal(t, apitype.OperationTypeDeleting, deployment.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
@@ -871,7 +880,7 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	require.Len(t, deployment.Resources, 0)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeReading, deployment.PendingOperations[0].Type)
+	assert.Equal(t, apitype.OperationTypeReading, deployment.PendingOperations[0].Type)
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
 
@@ -910,10 +919,10 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeReading, deployment.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), deployment.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, apitype.OperationTypeReading, deployment.PendingOperations[0].Type)
+	assert.Equal(t, "new", deployment.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), deployment.Resources[0].Inputs["key"])
+	assert.Equal(t, "old", deployment.Resources[0].Inputs["key"])
 	err = mutation.End(step, true /* successful */)
 	require.NoError(t, err)
 
@@ -922,7 +931,7 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("new"), deployment.Resources[0].Inputs["key"])
+	assert.Equal(t, "new", deployment.Resources[0].Inputs["key"])
 }
 
 func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
@@ -943,7 +952,7 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	require.Len(t, deployment.Resources, 0)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeReading, deployment.PendingOperations[0].Type)
+	assert.Equal(t, apitype.OperationTypeReading, deployment.PendingOperations[0].Type)
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
 
@@ -981,10 +990,10 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, deployment.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeReading, deployment.PendingOperations[0].Type)
-	assert.Equal(t, resource.NewProperty("new"), deployment.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, apitype.OperationTypeReading, deployment.PendingOperations[0].Type)
+	assert.Equal(t, "new", deployment.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), deployment.Resources[0].Inputs["key"])
+	assert.Equal(t, "old", deployment.Resources[0].Inputs["key"])
 	err = mutation.End(step, false /* successful */)
 	require.NoError(t, err)
 
@@ -994,7 +1003,7 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
-	assert.Equal(t, resource.NewProperty("old"), deployment.Resources[0].Inputs["key"])
+	assert.Equal(t, "old", deployment.Resources[0].Inputs["key"])
 }
 
 func TestRegisterOutputs(t *testing.T) {

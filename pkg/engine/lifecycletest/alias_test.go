@@ -205,7 +205,8 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 						}
 
 						for _, entry := range entries {
-							if entry.Step.Type() == "pulumi:providers:pkgA" {
+							if entry.Step != nil &&
+								entry.Step.Type() == "pulumi:providers:pkgA" {
 								continue
 							}
 							switch entry.Kind {

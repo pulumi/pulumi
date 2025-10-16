@@ -49,6 +49,10 @@ var DisableIntegrityChecking bool
 // saving snapshots and invalidating already-persisted snapshots.
 type SnapshotPersister interface {
 	// Persists the given snapshot. Returns an error if the persistence failed.
+	//
+	// Note that we can't just take a `VersionedDeployment` here, as the patch snapshot
+	// updater for the cloud backend needs the deserialized snapshot object to perform
+	// its update.
 	Save(snapshot *apitype.DeploymentV3, version int, features []string) error
 }
 
