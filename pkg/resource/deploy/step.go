@@ -368,8 +368,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
-	s.new.Created = &now
-	s.new.Modified = &now
+	s.new.Created = now
+	s.new.Modified = now
 
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
@@ -860,7 +860,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// UpdateStep doesn't create, but does modify state.
 		// Change the Modified timestamp.
 		now := time.Now().UTC()
-		s.new.Modified = &now
+		s.new.Modified = now
 	}
 
 	// Finally, mark this operation as complete.
@@ -1147,7 +1147,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// from the old state.
 	if inputsChange || outputsChange {
 		now := time.Now().UTC()
-		s.new.Modified = &now
+		s.new.Modified = now
 	}
 
 	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
@@ -1374,7 +1374,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// The refresh has identified an incongruence between the provider and state
 			// updated the Modified timestamp to track this.
 			now := time.Now().UTC()
-			s.new.Modified = &now
+			s.new.Modified = now
 		}
 
 		if s.old.External {
@@ -1671,8 +1671,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		ImportID:                s.new.ImportID,
 		RetainOnDelete:          s.new.RetainOnDelete,
 		DeletedWith:             s.new.DeletedWith,
-		Created:                 nil,
-		Modified:                nil,
+		Created:                 time.Now().UTC(),
+		Modified:                time.Now().UTC(),
 		SourcePosition:          s.new.SourcePosition,
 		StackTrace:              s.new.StackTrace,
 		IgnoreChanges:           s.new.IgnoreChanges,
@@ -1682,12 +1682,6 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,
 	}.Make()
-
-	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
-	now := time.Now().UTC()
-	s.new.Modified = &now
-	// Set Created to now as the resource has been created in the state.
-	s.new.Created = &now
 
 	// If this is a component we don't need to do the rest of the input validation
 	if !s.new.Custom {

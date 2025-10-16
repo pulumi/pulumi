@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -139,8 +140,8 @@ func TestTaintedResourceDiff(t *testing.T) {
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
+		Created:                 time.Now().UTC(),
+		Modified:                time.Now().UTC(),
 		SourcePosition:          "",
 		StackTrace:              nil,
 		HideDiff:                nil,
@@ -369,8 +370,8 @@ func TestDiffWithTaintedResource(t *testing.T) {
 				ImportID:                "",
 				RetainOnDelete:          false,
 				DeletedWith:             "",
-				Created:                 nil,
-				Modified:                nil,
+				Created:                 time.Now().UTC(),
+				Modified:                time.Now().UTC(),
 				SourcePosition:          "",
 				StackTrace:              nil,
 				IgnoreChanges:           nil,

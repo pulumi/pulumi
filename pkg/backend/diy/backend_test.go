@@ -225,13 +225,13 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 }
 
 func makeUntypedDeployment(name string, phrase, state string) (*apitype.UntypedDeployment, error) {
-	return makeUntypedDeploymentTimestamp(name, phrase, state, nil, nil)
+	return makeUntypedDeploymentTimestamp(name, phrase, state, time.Now().UTC(), time.Now().UTC())
 }
 
 func makeUntypedDeploymentTimestamp(
 	name string,
 	phrase, state string,
-	created, modified *time.Time,
+	created, modified time.Time,
 ) (*apitype.UntypedDeployment, error) {
 	sm, err := passphrase.GetPassphraseSecretsManager(phrase, state)
 	if err != nil {
@@ -1496,7 +1496,7 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 	modified := created.Add(time.Hour)
 
 	deployment, err := makeUntypedDeploymentTimestamp("b", "123abc",
-		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==", &created, &modified)
+		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==", created, modified)
 	require.NoError(t, err)
 
 	createdStr := created.Format(time.RFC3339Nano)
