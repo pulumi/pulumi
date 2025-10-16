@@ -22,10 +22,9 @@ def my_invoke_scalar(value: Optional[_builtins.str] = None,
     __args__ = dict()
     __args__['value'] = value
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('simple-invoke-with-scalar-return:index:myInvokeScalar', __args__, opts=opts).value
+    __ret__ = pulumi.runtime.invoke_single('simple-invoke-with-scalar-return:index:myInvokeScalar', __args__, opts=opts).value
 
-    return bool(
-        list(__ret__.values())[0])
+    return __ret__
 def my_invoke_scalar_output(value: Optional[pulumi.Input[_builtins.str]] = None,
                             opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[bool]:
     """
@@ -34,6 +33,5 @@ def my_invoke_scalar_output(value: Optional[pulumi.Input[_builtins.str]] = None,
     __args__ = dict()
     __args__['value'] = value
     opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke_output('simple-invoke-with-scalar-return:index:myInvokeScalar', __args__, opts=opts)
-    return __ret__.apply(lambda __response__: bool(
-        list(__response__.values())[0]))
+    __ret__ = pulumi.runtime.invoke_output_single('simple-invoke-with-scalar-return:index:myInvokeScalar', __args__, opts=opts)
+    return __ret__

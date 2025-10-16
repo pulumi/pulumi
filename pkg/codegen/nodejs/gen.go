@@ -1176,10 +1176,6 @@ func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
 	// If the function has an object return type, it is a normal invoke function.
 	case *schema.ObjectType:
 		functionName = "invoke"
-	// If the function has an object return type, it is also a normal invoke function.
-	// because the deserialization can handle it
-	case *schema.MapType:
-		functionName = "invoke"
 	default:
 		// Anything else needs to be handled by InvokeSingle
 		// which expects an object with a single property to be returned

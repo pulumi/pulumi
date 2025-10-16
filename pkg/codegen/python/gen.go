@@ -1974,7 +1974,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 		runtimeFunction := "invoke"
 		if !plain {
-			runtimeFunction = "invoke_output"
+			runtimeFunction += "_output"
+		}
+		if returnType != nil && rets == nil {
+			runtimeFunction += "_single"
 		}
 
 		fmt.Fprintf(w, "    __ret__ = pulumi.runtime.%s('%s', __args__, opts=opts%s)",
@@ -1989,27 +1992,22 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fmt.Fprintf(w, "\n")
 
 		// And copy the results to an object, if there are indeed any expected returns.
+
 		if returnType != nil {
-			if plain {
-				fmt.Fprintf(w, "    return %s(", resultType)
-			} else {
-				fmt.Fprintf(w, "    return __ret__.apply(lambda __response__: %s(", resultType)
-			}
-
-			getter := "__ret__"
-			if !plain {
-				getter = "__response__"
-			}
-
 			if rets == nil {
-				// If this is a map type we can return it directly, else we need to fetch the single value out the
-				// returned map.
-				if _, ok := returnType.(*schema.MapType); ok {
-					fmt.Fprintf(w, "\n        %[1]s", getter)
-				} else {
-					fmt.Fprintf(w, "\n        list(%[1]s.values())[0]", getter)
-				}
+				fmt.Fprintf(w, "    return __ret__\n")
 			} else {
+				if plain {
+					fmt.Fprintf(w, "    return %s(", resultType)
+				} else {
+					fmt.Fprintf(w, "    return __ret__.apply(lambda __response__: %s(", resultType)
+				}
+
+				getter := "__ret__"
+				if !plain {
+					getter = "__response__"
+				}
+
 				for i, ret := range rets {
 					if i > 0 {
 						fmt.Fprintf(w, ",")
@@ -2019,12 +2017,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 					// fields and should be hidden from the user during Result instantiation.
 					fmt.Fprintf(w, "\n        %[1]s=pulumi.get(%[2]s, '%[1]s')", PyName(ret.Name), getter)
 				}
-			}
 
-			if plain {
-				fmt.Fprintf(w, ")\n")
-			} else {
-				fmt.Fprintf(w, "))\n")
+				if plain {
+					fmt.Fprintf(w, ")\n")
+				} else {
+					fmt.Fprintf(w, "))\n")
+				}
 			}
 		}
 
