@@ -12,14 +12,14 @@ import (
 
 func MyInvokeScalar(ctx *pulumi.Context, args *MyInvokeScalarArgs, opts ...pulumi.InvokeOption) (bool, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	var rv map[string]any
+	var rv map[string]bool
 	err := ctx.Invoke("simple-invoke-with-scalar-return:index:myInvokeScalar", args, &rv, opts...)
 	var result bool
 	if err != nil {
 		return result, err
 	}
 	for _, v := range rv {
-		result = v.(bool)
+		result = v
 		break
 	}
 	return result, nil
@@ -33,18 +33,15 @@ func MyInvokeScalarOutput(ctx *pulumi.Context, args MyInvokeScalarOutputArgs, op
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (pulumi.BoolOutput, error) {
 			args := v.(MyInvokeScalarArgs)
-			options := internal.PkgInvokeDefaultOpts(opts)
-			var rv map[string]any
-			err := ctx.Invoke("simple-invoke-with-scalar-return:index:myInvokeScalar", args, &rv, options...)
-			var result pulumi.Bool
-			if err != nil {
-				return result.ToBoolOutput(), nil
-			}
-			for _, v := range rv {
-				result = pulumi.Bool(v.(bool))
-				break
-			}
-			return result.ToBoolOutput(), nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			rv := ctx.InvokeOutput("simple-invoke-with-scalar-return:index:myInvokeScalar", args, pulumi.BoolMapOutput{}, options).(pulumi.BoolMapOutput)
+			return rv.ApplyT(func(rv map[string]bool) bool {
+				var result bool
+				for _, v := range rv {
+					result = v
+				}
+				return result
+			}).(pulumi.BoolOutput), nil
 		}).(pulumi.BoolOutput)
 }
 

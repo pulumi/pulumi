@@ -2912,7 +2912,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	if returnType == nil {
 		outputsType = "struct{}"
 	} else if objectReturnType == nil {
-		outputsType = "map[string]any"
+		outputsType = "map[string]" + pkg.typeString(returnType)
 	} else {
 		outputsType = name + "Result"
 	}
@@ -2955,7 +2955,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		fmt.Fprintf(w, "\t}\n")
 		// Loop and collect the result
 		fmt.Fprintf(w, "\tfor _, v := range rv {\n")
-		fmt.Fprintf(w, "\t\tresult = v.(%s)\n", typ)
+		fmt.Fprintf(w, "\t\tresult = v\n")
 		fmt.Fprintf(w, "\t\tbreak\n")
 		fmt.Fprintf(w, "\t}\n")
 		fmt.Fprintf(w, "\treturn result, nil\n")
@@ -3194,11 +3194,8 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprint(w, "	return pulumi.ToOutputWithContext(ctx.Context(), args).\n")
 		fmt.Fprintf(w, "		ApplyT(func(v interface{}) (%s, error) {\n", resultTypeName)
 		fmt.Fprintf(w, "			args := v.(%sArgs)\n", originalName)
-		if objectReturnType != nil {
-			fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
-		} else {
-			fmt.Fprintf(w, "			options := %s.PkgInvokeDefaultOpts(opts)\n", pkg.internalModuleName)
-		}
+		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+
 		if def.Parameterization != nil {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
@@ -3210,17 +3207,18 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
 				f.Token, inputsVar, resultTypeName, resultTypeName)
 		} else {
-			fmt.Fprintf(w, "			var rv map[string]any\n")
-			fmt.Fprintf(w, "			err := ctx.Invoke(\"%s\", %s, &rv, options...)\n", f.Token, inputsVar)
-			fmt.Fprintf(w, "			var result %s\n", pkg.argsTypeImpl(returnType))
-			fmt.Fprintf(w, "			if err != nil {\n")
-			fmt.Fprintf(w, "				return result.%s(), nil\n", pkg.toOutputMethod(returnType))
-			fmt.Fprintf(w, "			}\n")
-			fmt.Fprintf(w, "			for _, v := range rv {\n")
-			fmt.Fprintf(w, "				result = %s(v.(%s))\n", pkg.argsTypeImpl(returnType), pkg.typeString(returnType))
-			fmt.Fprintf(w, "				break\n")
-			fmt.Fprintf(w, "			}\n")
-			fmt.Fprintf(w, "			return result.%s(), nil\n", pkg.toOutputMethod(returnType))
+			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
+			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
+			typ := pkg.typeString(returnType)
+
+			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
+			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
+			fmt.Fprintf(w, "				var result %s\n", typ)
+			fmt.Fprintf(w, "				for _, v := range rv {\n")
+			fmt.Fprintf(w, "					result = v\n")
+			fmt.Fprintf(w, "				}\n")
+			fmt.Fprintf(w, "				return result\n")
+			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
 		}
 		fmt.Fprintf(w, "		}).(%s)\n", resultTypeName)
 		fmt.Fprint(w, "}\n")
@@ -3229,11 +3227,8 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprintf(w, "func %sOutput(ctx *pulumi.Context, opts ...pulumi.InvokeOption) %s {\n",
 			originalName, resultTypeName)
 		fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
-		if objectReturnType != nil {
-			fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
-		} else {
-			fmt.Fprintf(w, "			options := %s.PkgInvokeDefaultOpts(opts)\n", pkg.internalModuleName)
-		}
+		fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+
 		if def.Parameterization != nil {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
@@ -3246,17 +3241,18 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
 				f.Token, inputsVar, resultTypeName, resultTypeName)
 		} else {
-			fmt.Fprintf(w, "		var rv map[string]any\n")
-			fmt.Fprintf(w, "		err := ctx.Invoke(\"%s\", %s, &rv, options...)\n", f.Token, inputsVar)
-			fmt.Fprintf(w, "		var result %s\n", pkg.typeString(returnType))
-			fmt.Fprintf(w, "		if err != nil {\n")
-			fmt.Fprintf(w, "			return result.%s(), nil\n", pkg.toOutputMethod(returnType))
-			fmt.Fprintf(w, "		}\n")
-			fmt.Fprintf(w, "		for _, v := range rv {\n")
-			fmt.Fprintf(w, "			result = v.(%s)\n", pkg.typeString(returnType))
-			fmt.Fprintf(w, "			break\n")
-			fmt.Fprintf(w, "		}\n")
-			fmt.Fprintf(w, "		return result.%s(), nil\n", pkg.toOutputMethod(returnType))
+			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
+			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
+			typ := pkg.typeString(returnType)
+
+			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
+			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
+			fmt.Fprintf(w, "				var result %s\n", typ)
+			fmt.Fprintf(w, "				for _, v := range rv {\n")
+			fmt.Fprintf(w, "					result = v\n")
+			fmt.Fprintf(w, "				}\n")
+			fmt.Fprintf(w, "				return result\n")
+			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
 		}
 		fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
 		fmt.Fprint(w, "}\n")
