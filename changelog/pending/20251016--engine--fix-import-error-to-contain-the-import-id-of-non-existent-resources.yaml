@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix import error to contain the import ID of non-existent resources
