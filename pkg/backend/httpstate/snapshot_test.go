@@ -496,7 +496,6 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			URN:                 resource.URN("urn-1"),
 			RefreshBeforeUpdate: true,
 		},
-		{URN: resource.URN("urn-2")},
 	}, typedPersistedState().Resources)
 }
 

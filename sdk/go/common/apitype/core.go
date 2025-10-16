@@ -252,6 +252,10 @@ func (snap *DeploymentV3) NormalizeURNReferences() (*DeploymentV3, error) {
 
 		res.DeletedWith = fixURN(res.DeletedWith)
 		res.ViewOf = fixURN(res.ViewOf)
+		// Remove all "Aliases" from the state. Once URN normalisation is done we don't want to write aliases out.
+		if len(res.Aliases) > 0 {
+			snap.Resources[i].Aliases = nil
+		}
 	}
 
 	return snap, nil
