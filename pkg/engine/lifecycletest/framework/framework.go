@@ -236,6 +236,8 @@ func (op TestOp) runWithContext(
 	var persister *backend.ValidatingPersister
 	var journalPersister *backend.ValidatingPersister
 	var journaler *backend.SnapshotJournaler
+	secretsManager := b64.NewBase64SecretsManager()
+	secretsProvider := stack.Base64SecretsProvider{}
 	if !dryRun {
 		journal = engine.NewTestJournal()
 		persister = &backend.ValidatingPersister{
@@ -252,8 +254,6 @@ func (op TestOp) runWithContext(
 				}
 			},
 		}
-		secretsManager := b64.NewBase64SecretsManager()
-		secretsProvider := stack.Base64SecretsProvider{}
 
 		var err error
 		journaler, err = backend.NewSnapshotJournaler(
@@ -367,9 +367,16 @@ func (op TestOp) runWithContext(
 		}
 	}
 
-	serializedSnap, _, _, err := stack.SerializeDeploymentWithMetadata(context.TODO(), snap, true)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
+	var serializedSnap *apitype.DeploymentV3
+	if snap != nil {
+		// The test jounrnaler doesn't support secrets managers, so we need to add it to
+		// the snapshot here before serializing it.
+		snap.SecretsManager = secretsManager
+		serializedSnap, _, _, err = stack.SerializeDeploymentWithMetadata(
+			context.TODO(), snap, false)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
+		}
 	}
 
 	errs = append(errs, journaler.Errors()...)

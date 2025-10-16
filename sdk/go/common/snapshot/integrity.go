@@ -33,7 +33,6 @@ func VerifyIntegrity(snap *apitype.DeploymentV3) error {
 		return SnapshotIntegrityErrorf("magic cookie mismatch: possible tampering/corruption detected")
 	}
 
-	// First, build a map of all URNs for quick lookups.
 	urns := make(map[resource.URN][]apitype.ResourceV3)
 	provs := make(map[providers.Reference]struct{})
 	for i, res := range snap.Resources {
@@ -96,55 +95,53 @@ func VerifyIntegrity(snap *apitype.DeploymentV3) error {
 				// TODO: Change this to an error once we're sure users won't hit this in the wild.
 				// return fmt.Errorf("child resource %s has parent %s but its URN doesn't match", urn, dep.URN)
 			}
+		}
+		for _, dep := range res.Dependencies {
+			if _, has := urns[dep]; !has {
+				for _, other := range snap.Resources[i+1:] {
+					if other.URN == dep {
+						return SnapshotIntegrityErrorf("resource %s's dependency %s comes after it", urn, dep)
+					}
+				}
+				return SnapshotIntegrityErrorf("resource %s refers to missing dependency %s", urn, dep)
+			}
+		}
 
-			for _, dep := range res.Dependencies {
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
 				if _, has := urns[dep]; !has {
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == dep {
-							return SnapshotIntegrityErrorf("resource %s's dependency %s comes after it", urn, dep)
+							return SnapshotIntegrityErrorf(
+								"resource %s's property dependency %s comes after it",
+								urn, other.URN,
+							)
 						}
 					}
-					return SnapshotIntegrityErrorf("resource %s refers to missing dependency %s", urn, dep)
+					return SnapshotIntegrityErrorf(
+						"resource %s refers to missing property dependency %s",
+						urn, dep,
+					)
 				}
 			}
-
-			for _, deps := range res.PropertyDependencies {
-				for _, dep := range deps {
-					if _, has := urns[dep]; !has {
-						for _, other := range snap.Resources[i+1:] {
-							if other.URN == dep {
-								return SnapshotIntegrityErrorf(
-									"resource %s's property dependency %s comes after it",
-									urn, other.URN,
-								)
-							}
-						}
-						return SnapshotIntegrityErrorf(
-							"resource %s refers to missing property dependency %s",
-							urn, dep,
-						)
-					}
+		}
+		if _, has := urns[res.DeletedWith]; res.DeletedWith != "" && !has {
+			for _, other := range snap.Resources[i+1:] {
+				if other.URN == res.DeletedWith {
+					return SnapshotIntegrityErrorf(
+						"resource %s is specified as being deleted with %s, which comes after it",
+						urn, other.URN,
+					)
 				}
 			}
-			if _, has := urns[res.DeletedWith]; res.DeletedWith != "" && !has {
-				for _, other := range snap.Resources[i+1:] {
-					if other.URN == res.DeletedWith {
-						return SnapshotIntegrityErrorf(
-							"resource %s is specified as being deleted with %s, which comes after it",
-							urn, other.URN,
-						)
-					}
-				}
-				return SnapshotIntegrityErrorf(
-					"resource %s is specified as being deleted with %s, which is missing",
-					urn, res.DeletedWith,
-				)
-			}
+			return SnapshotIntegrityErrorf(
+				"resource %s is specified as being deleted with %s, which is missing",
+				urn, res.DeletedWith,
+			)
 		}
 
 		urns[urn] = append(urns[urn], res)
 	}
-
 	for urn, states := range urns {
 		if len(states) == 1 {
 			continue
