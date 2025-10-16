@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: "Revert #20345"

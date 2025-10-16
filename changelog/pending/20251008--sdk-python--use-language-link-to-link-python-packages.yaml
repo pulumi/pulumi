@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Use Language.Link to link python packages

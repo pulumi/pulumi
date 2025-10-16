@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Make sure errors from the journaler are not shown to the user

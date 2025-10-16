@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.203.0 (2025-10-15)
+
+
+### Features
+
+- [cli/display] Display policy severity for violations
+  [#20746](https://github.com/pulumi/pulumi/pull/20746)
+
+- [cli/package] Show functions in `package info`
+  [#20733](https://github.com/pulumi/pulumi/pull/20733)
+
+
+### Bug Fixes
+
+- [engine] Make sure errors from the journaler are not shown to the user
+  [#20740](https://github.com/pulumi/pulumi/pull/20740)
+
+- [backend/diy] Fix casing of stack/latest when importing stacks
+  [#20727](https://github.com/pulumi/pulumi/pull/20727)
+
+- [cli/package] Fix 'required' flag for resource inputs in `package info`
+  [#20731](https://github.com/pulumi/pulumi/pull/20731)
+
+- [programgen] Revert #20345
+  [#20714](https://github.com/pulumi/pulumi/pull/20714)
+
+- [programgen/{dotnet,nodejs}] Propagate local dependencies for parameterized packages during convert down to GenerateProject
+  [#20706](https://github.com/pulumi/pulumi/pull/20706)
+
+- [sdkgen/python] Fix python invokes for functions returning map types
+  [#20719](https://github.com/pulumi/pulumi/pull/20719)
+
+
+### Miscellaneous
+
+- [sdk/python] Use Language.Link to link python packages
+  [#20612](https://github.com/pulumi/pulumi/pull/20612)
+
 ## 3.202.0 (2025-10-10)
 
 
