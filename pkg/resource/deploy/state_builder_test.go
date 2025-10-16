@@ -16,7 +16,6 @@ package deploy
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -29,7 +28,6 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update parent, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -48,8 +46,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Parent is missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -57,25 +53,13 @@ func TestStateBuilder(t *testing.T) {
 			justParent,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
 	})
 
 	t.Run("Update parent, identity", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -95,8 +79,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Parent will not change since we are passing identity, and we don't target other dependency types, so this should
 		// be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
@@ -105,25 +87,13 @@ func TestStateBuilder(t *testing.T) {
 			justParent,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
 	})
 
 	t.Run("Update parent, modify", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -143,8 +113,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Parent will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -152,27 +120,17 @@ func TestStateBuilder(t *testing.T) {
 			justParent,
 		).build()
 
-		// Assert.
 		assert.NotSame(t, sBefore, sAfter)
 		assert.Equal(t, s0.Provider, sAfter.Provider)
 		assert.Equal(t, emphasize(s0.Parent), sAfter.Parent)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 		assert.Equal(t, s0.DeletedWith, sAfter.DeletedWith)
 	})
 
 	t.Run("Update provider, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:    "urn:pulumi:stack::project::type:name",
 			Parent: "urn:pulumi:stack::project::type:name::parent",
@@ -191,8 +149,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Provider is missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			panicWith, /*updateProviderRef*/
@@ -200,25 +156,16 @@ func TestStateBuilder(t *testing.T) {
 			justProvider,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update provider, identity", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -238,8 +185,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Provider will not change since we are passing identity, and we don't target other dependency types, so this
 		// should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
@@ -248,25 +193,14 @@ func TestStateBuilder(t *testing.T) {
 			justProvider,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
 	})
 
 	t.Run("Update provider, modify", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -286,8 +220,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Provider will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			emphasize, /*updateProviderRef*/
@@ -295,27 +227,17 @@ func TestStateBuilder(t *testing.T) {
 			justProvider,
 		).build()
 
-		// Assert.
 		assert.NotSame(t, sBefore, sAfter)
 		assert.Equal(t, emphasize(s0.Provider), sAfter.Provider)
 		assert.Equal(t, s0.Parent, sAfter.Parent)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 		assert.Equal(t, s0.DeletedWith, sAfter.DeletedWith)
 	})
 
 	t.Run("Update dependencies, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -331,8 +253,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Dependencies are missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -340,25 +260,15 @@ func TestStateBuilder(t *testing.T) {
 			justDependencies,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update dependencies, identity", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -378,8 +288,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Dependencies will not change since we are passing identity, and we don't target other dependency types, so this
 		// should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
@@ -388,25 +296,15 @@ func TestStateBuilder(t *testing.T) {
 			justDependencies,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update dependencies, modify", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -426,8 +324,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Dependencies will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -435,23 +331,17 @@ func TestStateBuilder(t *testing.T) {
 			justDependencies,
 		).build()
 
-		// Assert.
 		assert.NotSame(t, sBefore, sAfter)
 		assert.Equal(t, s0.Provider, sAfter.Provider)
 		assert.Equal(t, s0.Parent, sAfter.Parent)
 		assert.Equal(t, emphasize(s0.Dependencies[0]), sAfter.Dependencies[0])
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 		assert.Equal(t, s0.DeletedWith, sAfter.DeletedWith)
 	})
 
 	t.Run("Update property dependencies, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -465,8 +355,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Property dependencies are missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -474,25 +362,15 @@ func TestStateBuilder(t *testing.T) {
 			justPropertyDependencies,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update property dependencies, identity", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -512,8 +390,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Property dependencies will not change since we are passing identity, and we don't target other dependency types,
 		// so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
@@ -522,25 +398,15 @@ func TestStateBuilder(t *testing.T) {
 			justPropertyDependencies,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update property dependencies, modify", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -560,8 +426,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Property dependencies will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -569,15 +433,10 @@ func TestStateBuilder(t *testing.T) {
 			justPropertyDependencies,
 		).build()
 
-		// Assert.
 		assert.NotSame(t, sBefore, sAfter)
 		assert.Equal(t, s0.Provider, sAfter.Provider)
 		assert.Equal(t, s0.Parent, sAfter.Parent)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
 		assert.Equal(t, emphasize(s0.PropertyDependencies["propA"][0]), sAfter.PropertyDependencies["propA"][0])
 		assert.Equal(t, s0.DeletedWith, sAfter.DeletedWith)
 	})
@@ -585,7 +444,6 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update deleted with, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -604,8 +462,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Deleted with is missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -613,25 +469,15 @@ func TestStateBuilder(t *testing.T) {
 			justDeletedWith,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update deleted with, identity", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -651,8 +497,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Deleted with will not change since we are passing identity, and we don't target other dependency types, so this
 		// should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
@@ -661,25 +505,15 @@ func TestStateBuilder(t *testing.T) {
 			justDeletedWith,
 		).build()
 
-		// Assert.
 		assert.Same(t, sBefore, sAfter)
 		assert.Equal(t, s0, sAfter)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 	})
 
 	t.Run("Update deleted with, modify", func(t *testing.T) {
 		t.Parallel()
 
-		// Arrange.
 		s0 := &resource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
@@ -699,8 +533,6 @@ func TestStateBuilder(t *testing.T) {
 
 		sBefore := s0.Copy()
 
-		// Act.
-		//
 		// Deleted with will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
 			identity,  /*updateProviderRef*/
@@ -708,20 +540,11 @@ func TestStateBuilder(t *testing.T) {
 			justDeletedWith,
 		).build()
 
-		// Assert.
 		assert.NotSame(t, sBefore, sAfter)
 		assert.Equal(t, s0.Provider, sAfter.Provider)
 		assert.Equal(t, s0.Parent, sAfter.Parent)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.Dependencies).Pointer(),
-			reflect.ValueOf(sAfter.Dependencies).Pointer(),
-		)
-		assert.Equal(
-			t,
-			reflect.ValueOf(s0.PropertyDependencies).Pointer(),
-			reflect.ValueOf(sAfter.PropertyDependencies).Pointer(),
-		)
+		assert.Equal(t, s0.Dependencies, sAfter.Dependencies)
+		assert.Equal(t, s0.PropertyDependencies, sAfter.PropertyDependencies)
 		assert.Equal(t, emphasize(s0.DeletedWith), sAfter.DeletedWith)
 	})
 }
