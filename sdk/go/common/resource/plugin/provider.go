@@ -810,7 +810,7 @@ type ConstructOptions struct {
 	DeletedWith resource.URN
 
 	// ReplaceWith specifies that if any of the given resources are replaced,
-	// it will also replace this resource.
+	// this resource will also be replaced.
 	ReplaceWith []resource.URN
 
 	// DeleteBeforeReplace specifies that replacements of this resource

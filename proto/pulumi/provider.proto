@@ -1115,7 +1115,7 @@ message ConstructRequest {
     // The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
     string stack_trace_handle = 27;
 
-    // The URN of resources whose replaces will trigger this resource's replace.
+    // The URNs of resources whose replaces will trigger a replace on this resource.
     repeated string replaceWith = 28;
 }
 

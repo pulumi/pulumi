@@ -44,7 +44,7 @@ type Goal struct {
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith URN
-	// If set, the URNs of the resources whose replaces will also replace this resource.
+	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
 	ReplaceWith    []URN
 	SourcePosition string                // If set, the source location of the resource registration
 	StackTrace     []StackFrame          // If set, the stack trace at time of registration
@@ -113,7 +113,7 @@ type NewGoal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith URN // required
 
-	// If set, the URNs of the resources whose replaces will also replace this resource.
+	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
 	ReplaceWith []URN // required
 
 	// If set, the source location of the resource registration
