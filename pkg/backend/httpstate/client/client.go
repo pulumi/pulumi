@@ -1236,21 +1236,6 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
-// AppendUpdateJournalEntry appends a new entry to the journal for the given update.
-// TODO: this should be removed in favor of SaveJournalEntries.
-func (pc *Client) AppendUpdateJournalEntry(ctx context.Context, update UpdateIdentifier,
-	entry apitype.JournalEntry,
-	token UpdateTokenSource,
-) error {
-	req := apitype.AppendUpdateJournalEntryRequest{
-		Entry: entry,
-	}
-
-	// It is safe to retry because SequenceNumber serves as an idempotency key.
-	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
-}
-
 func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
 	entry apitype.JournalEntry, token UpdateTokenSource,
 ) error {

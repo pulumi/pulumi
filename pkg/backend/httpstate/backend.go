@@ -1658,6 +1658,10 @@ func (b *cloudBackend) runEngineAction(
 	var snapshotManager *backend.SnapshotManager
 	var validationErrs []error
 	if kind != apitype.PreviewUpdate && !dryRun {
+		// Note that we intentionally only accept version 1 of the journal here.  If we ever want to evolve the API,
+		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
+		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
+		// for older clients.
 		if journalVersion == 1 && env.EnableJournaling.Value() {
 			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
