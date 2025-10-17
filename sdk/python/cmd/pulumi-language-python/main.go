@@ -371,7 +371,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	} else {
 		// Fallback to pip+venv
 		logging.V(5).Infof("Creating virtual environment using pip+venv at %s", venv)
-		cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
+		cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv, "--copies")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
 		}
