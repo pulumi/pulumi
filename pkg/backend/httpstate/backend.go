@@ -947,22 +947,6 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(ctx, stack, b)
 }
 
-// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
-// if the CWD is not in a Pulumi project,
-//
-//	does not contradict
-//
-// if the project name in Pulumi.yaml is "foo".
-//
-//	a stack with a name of foo/bar/foo should not work.
-func currentProjectContradictsWorkspace(project *workspace.Project, stack client.StackIdentifier) bool {
-	if project == nil {
-		return false
-	}
-
-	return project.Name.String() != stack.Project
-}
-
 func (b *cloudBackend) CreateStack(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -976,13 +960,14 @@ func (b *cloudBackend) CreateStack(
 		opts = &backend.CreateStackOptions{}
 	}
 
-	stackID, err := b.getCloudStackIdentifier(stackRef)
+	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	if currentProjectContradictsWorkspace(b.currentProject, stackID) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO: This should load project config and pass it as the last parameter to GetEnvironmentTagsForCurrentStack.
@@ -1439,10 +1424,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
-	if currentProjectContradictsWorkspace(op.Proj, stackID) {
-		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf(
-			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
-	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
@@ -1529,6 +1510,11 @@ func (b *cloudBackend) apply(
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
+
+	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stack.Ref())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
