@@ -975,7 +975,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	require.Len(t, snap.Resources, 0)
 }
 
-func TestDestroyV2ProtectedWithProviderDependencys(t *testing.T) {
+func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	t.Parallel()
 
 	initialSnap := &deploy.Snapshot{
