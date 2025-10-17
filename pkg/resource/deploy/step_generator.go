@@ -1855,6 +1855,12 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					return nil, err
 				}
 
+				replacedWith, err := sg.findResourcesReplacedWith(urn)
+				if err != nil {
+					return nil, err
+				}
+				toReplace = append(toReplace, replacedWith...)
+
 				// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 				// order, so we iterate in reverse.
 				for i := len(toReplace) - 1; i >= 0; i-- {
@@ -2345,6 +2351,12 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		if err != nil {
 			return nil, err
 		}
+
+		replacedWith, err := sg.findResourcesReplacedWith(target)
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, replacedWith...)
 
 		for _, dep := range deps {
 			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
@@ -3011,6 +3023,31 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 	// Return the list of resources to replace.
 	return toReplace, nil
+}
+
+// If we want resource X to `replace_with` resource Y, then every time we want
+// to replace Y, we have to search for replace X to include it in the
+// replacement set.
+func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependentReplace, error) {
+	resources := []dependentReplace{}
+	seen := map[resource.URN]bool{}
+
+	sg.deployment.news.Range(func(check resource.URN, state *resource.State) bool {
+		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
+			seen[check] = true
+		}
+		return true
+	})
+
+	for check, state := range sg.deployment.olds {
+		if seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
+			seen[check] = true
+		}
+	}
+
+	return resources, nil
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {
