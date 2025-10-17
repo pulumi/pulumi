@@ -496,7 +496,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
-			ReplaceWith:             nil,
+			ReplaceWith:             []resource.URN{},
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
@@ -2513,8 +2513,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, replaceWith=%v, resourceHooks=%v, "+
 			"hideDiffs=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, replaceWith, resourceHooks,
-		hiddenDiffs)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, replaceWith,
+		resourceHooks, hiddenDiffs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult

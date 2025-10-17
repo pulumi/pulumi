@@ -104,6 +104,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",

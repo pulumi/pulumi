@@ -295,6 +295,7 @@ func FilterRefreshDeletes(
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
 		newDeletedWith := resource.URN("")
+		newReplaceWith := []resource.URN{}
 		newParent := resource.URN("")
 		filtered := false
 
@@ -333,6 +334,12 @@ func FilterRefreshDeletes(
 				} else {
 					filtered = true
 				}
+			case resource.ResourceReplaceWith:
+				if referenceable[dep.URN] {
+					newReplaceWith = append(newReplaceWith, dep.URN)
+				} else {
+					filtered = true
+				}
 			}
 		}
 
@@ -347,6 +354,7 @@ func FilterRefreshDeletes(
 		newRes.Dependencies = newDeps
 		newRes.PropertyDependencies = newPropDeps
 		newRes.DeletedWith = newDeletedWith
+		newRes.ReplaceWith = newReplaceWith
 		newRes.Parent = newParent
 		resources[i] = newRes
 	}

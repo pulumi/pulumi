@@ -72,7 +72,8 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 				if includeChildren && dependentSet[dep.URN] {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith, resource.ResourceReplaceWith:
+			case resource.ResourceDependency, resource.ResourcePropertyDependency,
+				resource.ResourceDeletedWith, resource.ResourceReplaceWith:
 				if dependentSet[dep.URN] {
 					return true
 				}
@@ -142,7 +143,8 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 				if len(dependentSet[dep.URN]) > 0 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith, resource.ResourceReplaceWith:
+			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith,
+				resource.ResourceReplaceWith:
 				if len(dependentSet[dep.URN]) == 1 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
