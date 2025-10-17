@@ -3057,6 +3057,7 @@ func TestReplaceWith(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
+	// Any old value that we can change later to trigger a replace.
 	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
