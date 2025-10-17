@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -283,7 +284,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			// the import step will issue an appropriate error or errors.
 			ref := string(imp.Provider)
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
-				r, err := providers.NewReference(imp.Provider, state.ID)
+				r, err := sdkproviders.NewReference(imp.Provider, state.ID)
 				contract.AssertNoErrorf(err,
 					"could not create provider reference with URN %q and ID %q", imp.Provider, state.ID)
 				ref = r.String()
@@ -302,10 +303,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		req := providers.NewProviderRequest(
 			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
-			ref, err := providers.NewReference(urn, state.ID)
+			ref, err := sdkproviders.NewReference(urn, state.ID)
 			contract.AssertNoErrorf(err,
 				"could not create provider reference with URN %q and ID %q", urn, state.ID)
 			urnToReference[urn] = ref.String()
@@ -331,7 +332,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
@@ -413,7 +414,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	// Update the URN to reference map.
 	for _, s := range steps {
 		res := s.Res()
-		ref, err := providers.NewReference(res.URN, res.ID)
+		ref, err := sdkproviders.NewReference(res.URN, res.ID)
 		contract.AssertNoErrorf(err, "could not create provider reference with URN %q and ID %q", res.URN, res.ID)
 		urnToReference[res.URN] = ref.String()
 	}
@@ -478,7 +479,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 			req := providers.NewProviderRequest(
 				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+			typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
 
