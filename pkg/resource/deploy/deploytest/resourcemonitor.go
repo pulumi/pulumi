@@ -295,6 +295,7 @@ type ResourceOptions struct {
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          *bool
 	DeletedWith             resource.URN
+	ReplaceWith             []resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
 	Providers               map[string]string
