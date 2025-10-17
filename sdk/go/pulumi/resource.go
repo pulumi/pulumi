@@ -497,7 +497,7 @@ type ResourceOptions struct {
 	DeletedWith Resource
 
 	// ReplaceWith holds a list of container resources that, if replaced,
-	// also replaces this resource.
+	// also trigger a replace of this resource.
 	ReplaceWith []Resource
 
 	// Hooks are the optional resource hooks to bind to this resource. The hooks
@@ -1104,7 +1104,7 @@ func DeletedWith(r Resource) ResourceOption {
 }
 
 // If set, the providers Replace method will not be called for this resource if
-// any of the specified resources are being deleted as well.
+// any of the specified resources is replaced.
 func ReplaceWith(r []Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.ReplaceWith = r

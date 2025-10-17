@@ -58,7 +58,7 @@ type State struct {
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
-	ReplaceWith             []URN                 // If set, the URNs of the resources whose replaces will also replace this resource.
+	ReplaceWith             []URN                 // If set, the URNs of the resources whose replaces will also trigger a replace of this resource.
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 	SourcePosition          string                // If set, the source location of the resource registration
@@ -316,8 +316,9 @@ const (
 	// one whose deletion subsumes the deletion of the dependent resource.
 	ResourceDeletedWith StateDependencyType = "deleted-with"
 	// ResourceReplaceWith is the type of dependency relationships where a
-	// resource will be "replaced with" another. The resource being depended on is
-	// one whose replacement triggers the replacement of the dependent resource.
+	// resource will be also be replaced any time one of the given resources is replaced.
+	// The resources being depended on are the ones whose replacement triggers the
+	// replacement of the dependent resource.
 	ResourceReplaceWith StateDependencyType = "replace-with"
 )
 
