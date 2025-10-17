@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -58,6 +59,26 @@ type StackReference interface {
 
 	// Fully qualified name of the stack, including any organization, project, or other information.
 	FullyQualifiedName() tokens.QName
+}
+
+// Confirm the specified stack's project doesn't contradict the name of the current project.
+func CurrentProjectContradictsWorkspace(proj *workspace.Project, stack StackReference) error {
+	contract.Requiref(stack != nil, "stack", "is nil")
+
+	if proj == nil {
+		return nil
+	}
+
+	project, has := stack.Project()
+	if !has {
+		return nil
+	}
+
+	if string(proj.Name) != string(project) {
+		return fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", project)
+	}
+
+	return nil
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
