@@ -285,6 +285,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          event.SourcePosition(),
@@ -705,6 +706,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		ImportID:                goal.ID,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             goal.DeletedWith,
+		ReplaceWith:             goal.ReplaceWith,
 		Created:                 createdAt,
 		Modified:                modifiedAt,
 		SourcePosition:          goal.SourcePosition,
@@ -993,6 +995,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					ImportID:                "",
 					RetainOnDelete:          new.RetainOnDelete,
 					DeletedWith:             goal.DeletedWith,
+					ReplaceWith:             goal.ReplaceWith,
 					Created:                 new.Created,
 					Modified:                new.Modified,
 					SourcePosition:          goal.SourcePosition,
@@ -1533,6 +1536,11 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 									"deleted with dependency %s of untargeted resource %s has no old state",
 									dep.URN, urn,
 								)
+							case resource.ResourceReplaceWith:
+								message = fmt.Sprintf(
+									"replace with dependency %s of untargeted resource %s has no old state",
+									dep.URN, urn,
+								)
 							}
 
 							//nolint:govet
@@ -1832,6 +1840,12 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				if err != nil {
 					return nil, err
 				}
+
+				replacedWith, err := sg.findResourcesReplacedWith(urn)
+				if err != nil {
+					return nil, err
+				}
+				toReplace = append(toReplace, replacedWith...)
 
 				// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 				// order, so we iterate in reverse.
@@ -2323,6 +2337,12 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		if err != nil {
 			return nil, err
 		}
+
+		replacedWith, err := sg.findResourcesReplacedWith(target)
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, replacedWith...)
 
 		for _, dep := range deps {
 			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
@@ -2989,6 +3009,31 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 	// Return the list of resources to replace.
 	return toReplace, nil
+}
+
+// If we want resource X to `replace_with` resource Y, then every time we want
+// to replace Y, we have to search for replace X to include it in the
+// replacement set.
+func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependentReplace, error) {
+	resources := []dependentReplace{}
+	seen := map[resource.URN]bool{}
+
+	sg.deployment.news.Range(func(check resource.URN, state *resource.State) bool {
+		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
+			seen[check] = true
+		}
+		return true
+	})
+
+	for check, state := range sg.deployment.olds {
+		if seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
+			seen[check] = true
+		}
+	}
+
+	return resources, nil
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {

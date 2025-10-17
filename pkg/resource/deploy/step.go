@@ -1675,6 +1675,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		ImportID:                s.new.ImportID,
 		RetainOnDelete:          s.new.RetainOnDelete,
 		DeletedWith:             s.new.DeletedWith,
+		ReplaceWith:             s.new.ReplaceWith,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          s.new.SourcePosition,
