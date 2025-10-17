@@ -420,13 +420,20 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 		}
 	}
 
-	if venvDir != "" {
+	ensureVenv := func() error {
+		if _, err := os.Stat(filepath.Join(venvDir, "bin", "activate")); err == nil {
+			printmsg("Found existing virtual environment...")
+		    return nil
+		}
+
 		printmsg("Creating virtual environment...")
 
-		// Create the virtual environment by running `python -m venv <venvDir>`.
+		// Create the virtual environment by running `python -m venv --copies <venvDir>`.
 		if !filepath.IsAbs(venvDir) {
 			return fmt.Errorf("virtual environment path must be absolute: %s", venvDir)
 		}
+
+		
 
 		cmd, err := Command(ctx, "-m", "venv", "--copies", venvDir)
 		if err != nil {
@@ -440,6 +447,13 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 		}
 
 		printmsg("Finished creating virtual environment")
+		return nil
+	}
+
+	if venvDir != "" {
+		if err := ensureVenv(); err != nil {
+			return err
+		}
 	}
 
 	runPipInstall := func(errorMsg string, arg ...string) error {
