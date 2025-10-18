@@ -423,7 +423,7 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	ensureVenv := func() error {
 		if _, err := os.Stat(filepath.Join(venvDir, "bin", "activate")); err == nil {
 			printmsg("Found existing virtual environment...")
-		    return nil
+			return nil
 		}
 
 		printmsg("Creating virtual environment...")
