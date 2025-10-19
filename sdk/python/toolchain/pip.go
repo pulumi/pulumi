@@ -433,8 +433,6 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 			return fmt.Errorf("virtual environment path must be absolute: %s", venvDir)
 		}
 
-		
-
 		cmd, err := Command(ctx, "-m", "venv", "--copies", venvDir)
 		if err != nil {
 			return err
