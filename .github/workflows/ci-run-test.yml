@@ -245,7 +245,7 @@ jobs:
           bun-version: 1.2.23
       - name: Install Python deps
         run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet build
+          python -m pip install --upgrade pip requests wheel urllib3 chardet build psutil
       - name: Install Poetry
         run: python -m pip install poetry
       - name: Setup git
