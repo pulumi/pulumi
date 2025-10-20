@@ -433,7 +433,7 @@ type RegisterResourceRequest struct {
 	RetainOnDelete             *bool                                                    `protobuf:"varint,25,opt,name=retainOnDelete,proto3,oneof" json:"retainOnDelete,omitempty"`                                                                               // if true the engine will not call the resource providers delete method for this resource.
 	Aliases                    []*Alias                                                 `protobuf:"bytes,26,rep,name=aliases,proto3" json:"aliases,omitempty"`                                                                                                    // a list of additional aliases that should be considered the same.
 	DeletedWith                string                                                   `protobuf:"bytes,27,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`                                                                                            // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
-	ReplaceWith                []string                                                 `protobuf:"bytes,38,rep,name=replaceWith,proto3" json:"replaceWith,omitempty"`                                                                                            // if set the engine will replace this resource when the specified resource is replaced.
+	ReplaceWith                []string                                                 `protobuf:"bytes,38,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`                                                                         // if set the engine will replace this resource when any of the specified resources are replaced.
 	// Indicates that alias specs are specified correctly according to the spec.
 	// Older versions of the Node.js SDK did not send alias specs correctly.
 	// If this is not set to true and the engine detects the request is from the
@@ -2368,7 +2368,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xb5\x13\n" +
+	"properties\"\xb6\x13\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2398,8 +2398,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0fpluginChecksums\x18\x1e \x03(\v27.pulumirpc.RegisterResourceRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12+\n" +
 	"\x0eretainOnDelete\x18\x19 \x01(\bH\x01R\x0eretainOnDelete\x88\x01\x01\x12*\n" +
 	"\aaliases\x18\x1a \x03(\v2\x10.pulumirpc.AliasR\aaliases\x12 \n" +
-	"\vdeletedWith\x18\x1b \x01(\tR\vdeletedWith\x12 \n" +
-	"\vreplaceWith\x18& \x03(\tR\vreplaceWith\x12\x1e\n" +
+	"\vdeletedWith\x18\x1b \x01(\tR\vdeletedWith\x12!\n" +
+	"\freplace_with\x18& \x03(\tR\vreplaceWith\x12\x1e\n" +
 	"\n" +
 	"aliasSpecs\x18\x1c \x01(\bR\n" +
 	"aliasSpecs\x12A\n" +

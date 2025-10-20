@@ -9696,7 +9696,7 @@ retainondelete: (f = jspb.Message.getBooleanField(msg, 24)) == null ? undefined 
 acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
 resourceHooks: (f = msg.getResourceHooks()) && proto.pulumirpc.ConstructRequest.ResourceHooksBinding.toObject(includeInstance, f),
 stackTraceHandle: jspb.Message.getFieldWithDefault(msg, 27, ""),
-replacewithList: (f = jspb.Message.getRepeatedField(msg, 28)) == null ? undefined : f
+replaceWithList: (f = jspb.Message.getRepeatedField(msg, 28)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -9852,7 +9852,7 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
       break;
     case 28:
       var value = /** @type {string} */ (reader.readString());
-      msg.addReplacewith(value);
+      msg.addReplaceWith(value);
       break;
     default:
       reader.skipField();
@@ -10066,7 +10066,7 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
       f
     );
   }
-  f = message.getReplacewithList();
+  f = message.getReplaceWithList();
   if (f.length > 0) {
     writer.writeRepeatedString(
       28,
@@ -11550,10 +11550,10 @@ proto.pulumirpc.ConstructRequest.prototype.setStackTraceHandle = function(value)
 
 
 /**
- * repeated string replaceWith = 28;
+ * repeated string replace_with = 28;
  * @return {!Array<string>}
  */
-proto.pulumirpc.ConstructRequest.prototype.getReplacewithList = function() {
+proto.pulumirpc.ConstructRequest.prototype.getReplaceWithList = function() {
   return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 28));
 };
 
@@ -11562,7 +11562,7 @@ proto.pulumirpc.ConstructRequest.prototype.getReplacewithList = function() {
  * @param {!Array<string>} value
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
-proto.pulumirpc.ConstructRequest.prototype.setReplacewithList = function(value) {
+proto.pulumirpc.ConstructRequest.prototype.setReplaceWithList = function(value) {
   return jspb.Message.setField(this, 28, value || []);
 };
 
@@ -11572,7 +11572,7 @@ proto.pulumirpc.ConstructRequest.prototype.setReplacewithList = function(value) 
  * @param {number=} opt_index
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
-proto.pulumirpc.ConstructRequest.prototype.addReplacewith = function(value, opt_index) {
+proto.pulumirpc.ConstructRequest.prototype.addReplaceWith = function(value, opt_index) {
   return jspb.Message.addToRepeatedField(this, 28, value, opt_index);
 };
 
@@ -11581,8 +11581,8 @@ proto.pulumirpc.ConstructRequest.prototype.addReplacewith = function(value, opt_
  * Clears the list making it empty but non-null.
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
-proto.pulumirpc.ConstructRequest.prototype.clearReplacewithList = function() {
-  return this.setReplacewithList([]);
+proto.pulumirpc.ConstructRequest.prototype.clearReplaceWithList = function() {
+  return this.setReplaceWithList([]);
 };
 
 

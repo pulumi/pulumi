@@ -1837,7 +1837,7 @@ retainondelete: (f = jspb.Message.getBooleanField(msg, 25)) == null ? undefined 
 aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
 deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
-replacewithList: (f = jspb.Message.getRepeatedField(msg, 38)) == null ? undefined : f,
+replaceWithList: (f = jspb.Message.getRepeatedField(msg, 38)) == null ? undefined : f,
 aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
@@ -2007,7 +2007,7 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       break;
     case 38:
       var value = /** @type {string} */ (reader.readString());
-      msg.addReplacewith(value);
+      msg.addReplaceWith(value);
       break;
     case 28:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -2268,7 +2268,7 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
-  f = message.getReplacewithList();
+  f = message.getReplaceWithList();
   if (f.length > 0) {
     writer.writeRepeatedString(
       38,
@@ -3801,10 +3801,10 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(valu
 
 
 /**
- * repeated string replaceWith = 38;
+ * repeated string replace_with = 38;
  * @return {!Array<string>}
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.getReplacewithList = function() {
+proto.pulumirpc.RegisterResourceRequest.prototype.getReplaceWithList = function() {
   return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 38));
 };
 
@@ -3813,7 +3813,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getReplacewithList = function(
  * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.setReplacewithList = function(value) {
+proto.pulumirpc.RegisterResourceRequest.prototype.setReplaceWithList = function(value) {
   return jspb.Message.setField(this, 38, value || []);
 };
 
@@ -3823,7 +3823,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setReplacewithList = function(
  * @param {number=} opt_index
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.addReplacewith = function(value, opt_index) {
+proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceWith = function(value, opt_index) {
   return jspb.Message.addToRepeatedField(this, 38, value, opt_index);
 };
 
@@ -3832,8 +3832,8 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addReplacewith = function(valu
  * Clears the list making it empty but non-null.
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.clearReplacewithList = function() {
-  return this.setReplacewithList([]);
+proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceWithList = function() {
+  return this.setReplaceWithList([]);
 };
 
 
