@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a potential snapshot integrity error when a resources dependency fails to be destroyed using `destroy --run-program`
