@@ -931,6 +931,12 @@ func (a *analyzer) convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagn
 			return nil, err
 		}
 
+		severity := convertSeverity(protoD.Severity)
+		if severity == apitype.PolicySeverityUnspecified {
+			// If the severity is not specified in the diagnostic, try to get it from the policy info.
+			severity = a.getPolicySeverity(protoD.PolicyName)
+		}
+
 		diagnostics[idx] = AnalyzeDiagnostic{
 			PolicyName:        protoD.PolicyName,
 			PolicyPackName:    protoD.PolicyPackName,
@@ -939,7 +945,7 @@ func (a *analyzer) convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagn
 			Message:           protoD.Message,
 			EnforcementLevel:  enforcementLevel,
 			URN:               resource.URN(protoD.Urn),
-			Severity:          a.getPolicySeverity(protoD.PolicyName),
+			Severity:          severity,
 		}
 	}
 

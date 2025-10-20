@@ -355,6 +355,7 @@ func marshalAnalyzeDiagnostics(diags []AnalyzeDiagnostic) []*pulumirpc.AnalyzeDi
 			Message:           d.Message,
 			EnforcementLevel:  marshalEnforcementLevel(d.EnforcementLevel),
 			Urn:               string(d.URN),
+			Severity:          marshalPolicySeverity(d.Severity),
 		}
 	})
 }
