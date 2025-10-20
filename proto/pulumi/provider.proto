@@ -1116,7 +1116,7 @@ message ConstructRequest {
     string stack_trace_handle = 27;
 
     // The URNs of resources whose replaces will trigger a replace on this resource.
-    repeated string replaceWith = 28;
+    repeated string replace_with = 28;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
