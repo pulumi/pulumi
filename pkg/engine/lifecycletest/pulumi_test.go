@@ -2914,6 +2914,105 @@ func TestProtect(t *testing.T) {
 	assert.Equal(t, 2, deleteCounter)
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/20486. Check that if a resource declares an import ID and
+// wants to replace we print a diff of why.
+func TestImportDiff(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					props := resource.NewPropertyMapFromMap(map[string]any{
+						"foo": "bar",
+					})
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  props,
+							Outputs: props,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						// If foo changes do a replace, we use this to check we don't delete on replace
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "bar",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:   ins,
+			ImportID: "imported-id",
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "imported-id", snap.Resources[1].ID.String())
+
+	expectedUrn := snap.Resources[1].URN
+	expectedMessage := ""
+
+	// Both updates below should give a diagnostic event
+	validate := func(project workspace.Project,
+		target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		for _, event := range events {
+			if event.Type == DiagEvent {
+				payload := event.Payload().(DiagEventPayload)
+				assert.Equal(t, expectedUrn, payload.URN)
+				assert.Equal(t, "<{%reset%}>"+expectedMessage+"<{%reset%}>\n", payload.Message)
+			}
+		}
+		return err
+	}
+
+	// Run a dry-run (preview) which will cause a replace, we should get a warning. However, the preview doesn't bail.
+	expectedMessage = "previously-imported resources that still specify an ID may not be replaced; " +
+		"please remove the `import` declaration from your program;\nfoo: {bar} => {baz}"
+	ins = resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "baz",
+	})
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
+	require.NoError(t, err)
+
+	// Run an update which will cause a replace, we should get an error. Contrary to the preview, the error is a bail.
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
+	require.ErrorContains(t, err, "BAIL: "+expectedMessage)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "imported-id", snap.Resources[1].ID.String())
+}
+
 func TestDeletedWith(t *testing.T) {
 	t.Parallel()
 
