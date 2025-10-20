@@ -2595,6 +2595,16 @@ func (sg *stepGenerator) diff(
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil, nil
 	}
 
+	// Check if this resource should be replaced because any resource in its ReplaceWith list is being replaced.
+	if new.ReplaceWith != nil {
+		for _, replaceWithURN := range new.ReplaceWith {
+			if sg.replaces[replaceWithURN] {
+				logging.V(7).Infof("Resource %v marked for replacement because %v (in its ReplaceWith list) is being replaced", urn, replaceWithURN)
+				return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"replaceWith"}}, nil, nil
+			}
+		}
+	}
+
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
 	providerChanged, err := sg.providerChanged(urn, old, new)
@@ -3041,7 +3051,7 @@ func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependen
 	})
 
 	for check, state := range sg.deployment.olds {
-		if seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
 			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
 			seen[check] = true
 		}
