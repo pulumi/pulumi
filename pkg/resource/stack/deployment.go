@@ -62,6 +62,7 @@ const (
 	viewsFeature               = "views"
 	hooksFeature               = "hooks"
 	taintFeature               = "taint"
+	replaceWithFeature         = "replaceWith"
 )
 
 var (
@@ -117,6 +118,7 @@ var supportedFeatures = map[string]bool{
 	viewsFeature:               true,
 	hooksFeature:               true,
 	taintFeature:               true,
+	replaceWithFeature:         true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -146,6 +148,9 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if res.Taint {
 		features[taintFeature] = true
+	}
+	if len(res.ReplaceWith) > 0 {
+		features[replaceWithFeature] = true
 	}
 }
 
