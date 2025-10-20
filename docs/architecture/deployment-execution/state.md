@@ -98,10 +98,7 @@ in different places in the resource list.
 
 There's various types of Journal entries, all with slightly different semantics.
 This section describes them. All journal entries are associated with increasing
-IDs. IDs start at 1 for regular journal entries. If a "write" journal entry is
-present it always has ID 0. These IDs are used for the following:
-- Correlating begin and end entries, so we can remove pending operations from
-  the list.
+sequence IDs. IDs start at 1. These sequence IDs are used for
 - Ordering the journal entries on the backend side. We could do this by
   timestamps, but since we have IDs, those are definitely unambiguous, and
   easier to deal with.
@@ -109,8 +106,12 @@ present it always has ID 0. These IDs are used for the following:
   in particular contains the ID of previous journal entries that are no longer
   relevant as they were superseeded.
 
-Journal entries also have a strictly increasing sequence ID, by which they can
-be ordered.
+Journal entries associated with Pulumi Operations additionally have an Operation
+ID assigned to them. This is used mainly for correlating begin and end entries,
+so we can remove pending operations from the list.
+
+All journal entries sent to the service also have a Version field embedded in them.
+This field allows for an evolution of the journal entry format in the future.
 
 Note that journal entries can arrive out of order at the backend. However the
 engine guarantees a partial order, as operations for dependents of a resource
@@ -140,19 +141,19 @@ index of the resource that should be marked for deletion.
 
 Whenever we successfully run a resource step, we emit a success journal
 entry. This Journal Entry contains the following information:
-- RemoveOld: If not nil, the index in the resource list in the old snapshot for an entry
+- `RemoveOld`: If not nil, the index in the resource list in the old snapshot for an entry
   that should be removed.
-- RemoveNew: If not nil, the operation ID of a resource that's to be deleted, e.g. if
+- `RemoveNew`: If not nil, the operation ID of a resource that's to be deleted, e.g. if
   a previous operation created a resource, but it's no longer needed/replaced.
-- PendingReplacement: If not nil, the index of a resource in the old snapshot that
+- `PendingReplacement`: If not nil, the index of a resource in the old snapshot that
   should be marked as pending replacement.
-- Delete: If not nil, the index of a resource in the old snapshot that should be
+- `Delete`: If not nil, the index of a resource in the old snapshot that should be
   marked as `Delete`.
-- State: The newly created resource state of the journal entry, if any.
-- ElideWrite: True if the write can be elided. This is only used in the local
+- `State`: The newly created resource state of the journal entry, if any.
+- `ElideWrite`: True if the write can be elided. This is only used in the local
   implementation. If true, we don't need to send a new snapshot. The journal
   entry still needs to be sent to the backend.
-- IsRefresh: True if the journal entry is part of a refresh operation. If there
+- `IsRefresh`: True if the journal entry is part of a refresh operation. If there
   are any refresh operations, we need to rebuild the base state. Refreshes can
   delete resources, without updating their dependants. So we need to rebuild the
   base state, removing no longer existing resources from dependency lists. This
@@ -302,10 +303,12 @@ the server), in order of their operation IDs.
 
 ### REST API
 
-The service will get a new api `createjournalentry`, that will get the serialized
-journal entry and persist it for later replay. The service is expected
-to reconstruct the snapshot itself after the operation finished, and the API for
-getting the snapshot stays the same as it is currently.
+The service will get a new api `journalentries`, that will get the serialized
+journal entries and persist them for later replay. The request can contain a list
+of one or more journal entries. Once the service responds with a success response,
+the entry is expected to be persisted and the engine allowed to continue. The
+service is expected to reconstruct the snapshot itself after the operation finished,
+and the API for getting the snapshot stays the same as it is currently.
 
 (snapshot-integrity)=
 ## Snapshot integrity
