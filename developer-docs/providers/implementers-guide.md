@@ -372,7 +372,7 @@ The current names for things are as follows:
 The `Check` method is responsible for validating the inputs to a resource. It may
 optionally apply default values for unspecified input properties that cannot reasonably
 be computed outside the provider (e.g. because they require access to the provider's
-internal data structures). The setting of default values _should_ be deterministic to
+internal data structures). The setting of default values _must_ be deterministic to
 work well with update plans. If you need randomness when setting defaults use the
 `randomSeed` parameter to seed the generation of those random values.
 
