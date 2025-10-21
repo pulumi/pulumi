@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // TupleType represents values that are a sequence of independently-typed elements.
@@ -195,6 +196,7 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 				var unifier tupleElementUnifier
 				unifier.unify(t)
 				unifier.unify(src)
+				contract.Assertf(unifier.conversionKind.Exists(), "cannot return nil diagnostics when there is no conversion")
 				return unifier.conversionKind, nil
 			}
 
