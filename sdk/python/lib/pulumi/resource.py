@@ -891,17 +891,14 @@ class Resource:
                 raise TypeError("Expected resource properties to be a mapping")
             typ = None
 
-        # Before anything else - if there are transformations registered, give them a chance to run to modify the user
-        # provided properties and options assigned to this resource.
-        parent = opts.parent
-        if parent is None:
-            # If the ambient parent context is set use that
-            parent = ambient_parent.get()
-            if parent is None:
-                parent = get_root_resource()
+
+        # If the ambient parent context is set use that, else use the root stack resource as the parent.
+        parent = opts.parent or ambient_parent.get() or get_root_resource()
         opts = opts._copy()
         opts.parent = parent
 
+        # Before anything else - if there are transformations registered, give them a chance to run to modify the user
+        # provided properties and options assigned to this resource.
         parent_transformations = (
             (parent._transformations or []) if parent is not None else []
         )
