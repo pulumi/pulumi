@@ -85,7 +85,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 			}, opts.Config)
 
 			return &deploytest.Analyzer{}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -134,6 +134,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 							Name:             "always-fails",
 							Description:      "a policy that always fails",
 							EnforcementLevel: apitype.Mandatory,
+							Severity:         apitype.PolicySeverityHigh,
 						},
 					},
 				},
@@ -153,11 +154,10 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 						Message:          "a policy failed",
 						EnforcementLevel: apitype.Mandatory,
 						URN:              r.URN,
-						Severity:         apitype.PolicySeverityHigh,
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -258,7 +258,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -379,7 +379,7 @@ func TestResourceRemediation(t *testing.T) {
 					}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -505,7 +505,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -549,7 +549,7 @@ func TestRemediateFailure(t *testing.T) {
 					return plugin.RemediateResponse{}, errors.New("this remediation failed")
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -596,7 +596,7 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -661,7 +661,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -719,7 +719,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 					return nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -849,7 +849,7 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 					return plugin.AnalyzeResponse{Diagnostics: diagnostics}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
