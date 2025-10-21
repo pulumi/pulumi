@@ -113,11 +113,7 @@ type AnalyzeDiagnostic struct {
 	Message           string
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
-	// Note: Severity isn't currently a field on the AnalyzeDiagnostic protobuf message.
-	// The analyzer plugin implementation that communicates with the analyzer over gRPC in
-	// analyzer_plugin.go currently fills this in with the severity of the policy returned
-	// from GetAnalyzerInfo.
-	Severity apitype.PolicySeverity
+	Severity          apitype.PolicySeverity
 }
 
 // AnalyzeResponse is the response from the Analyze method, containing violations.

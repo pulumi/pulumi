@@ -953,8 +953,9 @@ type AnalyzeDiagnostic struct {
 	PolicyPackVersion string                 `protobuf:"bytes,3,opt,name=policyPackVersion,proto3" json:"policyPackVersion,omitempty"`                                // Version of the policy pack.
 	Description       string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`                                            // Description of policy rule. e.g., "encryption enabled."
 	Message           string                 `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`                                                    // Message to display on policy violation, e.g., remediation steps.
-	EnforcementLevel  EnforcementLevel       `protobuf:"varint,7,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Severity of the policy violation.
+	EnforcementLevel  EnforcementLevel       `protobuf:"varint,7,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Enforcement level of the policy violation.
 	Urn               string                 `protobuf:"bytes,8,opt,name=urn,proto3" json:"urn,omitempty"`                                                            // URN of the resource that violates the policy.
+	Severity          PolicySeverity         `protobuf:"varint,9,opt,name=severity,proto3,enum=pulumirpc.PolicySeverity" json:"severity,omitempty"`                   // Severity of the policy violation.
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1036,6 +1037,13 @@ func (x *AnalyzeDiagnostic) GetUrn() string {
 		return x.Urn
 	}
 	return ""
+}
+
+func (x *AnalyzeDiagnostic) GetSeverity() PolicySeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return PolicySeverity_POLICY_SEVERITY_UNSPECIFIED
 }
 
 // Remediation is a single resource remediation result.
@@ -1845,7 +1853,7 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\tresources\x18\x01 \x03(\v2\x1b.pulumirpc.AnalyzerResourceR\tresources\"\x98\x01\n" +
 	"\x0fAnalyzeResponse\x12>\n" +
 	"\vdiagnostics\x18\x02 \x03(\v2\x1c.pulumirpc.AnalyzeDiagnosticR\vdiagnostics\x12E\n" +
-	"\x0enot_applicable\x18\x03 \x03(\v2\x1e.pulumirpc.PolicyNotApplicableR\rnotApplicable\"\xac\x02\n" +
+	"\x0enot_applicable\x18\x03 \x03(\v2\x1e.pulumirpc.PolicyNotApplicableR\rnotApplicable\"\xe3\x02\n" +
 	"\x11AnalyzeDiagnostic\x12\x1e\n" +
 	"\n" +
 	"policyName\x18\x01 \x01(\tR\n" +
@@ -1855,7 +1863,8 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x18\n" +
 	"\amessage\x18\x05 \x01(\tR\amessage\x12G\n" +
 	"\x10enforcementLevel\x18\a \x01(\x0e2\x1b.pulumirpc.EnforcementLevelR\x10enforcementLevel\x12\x10\n" +
-	"\x03urn\x18\b \x01(\tR\x03urnJ\x04\b\x06\x10\aR\x04tags\"\xfe\x01\n" +
+	"\x03urn\x18\b \x01(\tR\x03urn\x125\n" +
+	"\bseverity\x18\t \x01(\x0e2\x19.pulumirpc.PolicySeverityR\bseverityJ\x04\b\x06\x10\aR\x04tags\"\xfe\x01\n" +
 	"\vRemediation\x12\x1e\n" +
 	"\n" +
 	"policyName\x18\x01 \x01(\tR\n" +
@@ -2022,46 +2031,47 @@ var file_pulumi_analyzer_proto_depIdxs = []int32{
 	14, // 12: pulumirpc.AnalyzeResponse.diagnostics:type_name -> pulumirpc.AnalyzeDiagnostic
 	23, // 13: pulumirpc.AnalyzeResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
 	0,  // 14: pulumirpc.AnalyzeDiagnostic.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	30, // 15: pulumirpc.Remediation.properties:type_name -> google.protobuf.Struct
-	15, // 16: pulumirpc.RemediateResponse.remediations:type_name -> pulumirpc.Remediation
-	23, // 17: pulumirpc.RemediateResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
-	18, // 18: pulumirpc.AnalyzerInfo.policies:type_name -> pulumirpc.PolicyInfo
-	28, // 19: pulumirpc.AnalyzerInfo.initialConfig:type_name -> pulumirpc.AnalyzerInfo.InitialConfigEntry
-	0,  // 20: pulumirpc.PolicyInfo.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	19, // 21: pulumirpc.PolicyInfo.configSchema:type_name -> pulumirpc.PolicyConfigSchema
-	1,  // 22: pulumirpc.PolicyInfo.policy_type:type_name -> pulumirpc.PolicyType
-	2,  // 23: pulumirpc.PolicyInfo.severity:type_name -> pulumirpc.PolicySeverity
-	22, // 24: pulumirpc.PolicyInfo.framework:type_name -> pulumirpc.PolicyComplianceFramework
-	30, // 25: pulumirpc.PolicyConfigSchema.properties:type_name -> google.protobuf.Struct
-	0,  // 26: pulumirpc.PolicyConfig.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	30, // 27: pulumirpc.PolicyConfig.properties:type_name -> google.protobuf.Struct
-	29, // 28: pulumirpc.ConfigureAnalyzerRequest.policyConfig:type_name -> pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
-	11, // 29: pulumirpc.AnalyzerResource.PropertyDependenciesEntry.value:type_name -> pulumirpc.AnalyzerPropertyDependencies
-	20, // 30: pulumirpc.AnalyzerInfo.InitialConfigEntry.value:type_name -> pulumirpc.PolicyConfig
-	20, // 31: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry.value:type_name -> pulumirpc.PolicyConfig
-	7,  // 32: pulumirpc.Analyzer.Analyze:input_type -> pulumirpc.AnalyzeRequest
-	12, // 33: pulumirpc.Analyzer.AnalyzeStack:input_type -> pulumirpc.AnalyzeStackRequest
-	7,  // 34: pulumirpc.Analyzer.Remediate:input_type -> pulumirpc.AnalyzeRequest
-	31, // 35: pulumirpc.Analyzer.GetAnalyzerInfo:input_type -> google.protobuf.Empty
-	31, // 36: pulumirpc.Analyzer.GetPluginInfo:input_type -> google.protobuf.Empty
-	21, // 37: pulumirpc.Analyzer.Configure:input_type -> pulumirpc.ConfigureAnalyzerRequest
-	5,  // 38: pulumirpc.Analyzer.Handshake:input_type -> pulumirpc.AnalyzerHandshakeRequest
-	3,  // 39: pulumirpc.Analyzer.ConfigureStack:input_type -> pulumirpc.AnalyzerStackConfigureRequest
-	31, // 40: pulumirpc.Analyzer.Cancel:input_type -> google.protobuf.Empty
-	13, // 41: pulumirpc.Analyzer.Analyze:output_type -> pulumirpc.AnalyzeResponse
-	13, // 42: pulumirpc.Analyzer.AnalyzeStack:output_type -> pulumirpc.AnalyzeResponse
-	16, // 43: pulumirpc.Analyzer.Remediate:output_type -> pulumirpc.RemediateResponse
-	17, // 44: pulumirpc.Analyzer.GetAnalyzerInfo:output_type -> pulumirpc.AnalyzerInfo
-	32, // 45: pulumirpc.Analyzer.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	31, // 46: pulumirpc.Analyzer.Configure:output_type -> google.protobuf.Empty
-	6,  // 47: pulumirpc.Analyzer.Handshake:output_type -> pulumirpc.AnalyzerHandshakeResponse
-	4,  // 48: pulumirpc.Analyzer.ConfigureStack:output_type -> pulumirpc.AnalyzerStackConfigureResponse
-	31, // 49: pulumirpc.Analyzer.Cancel:output_type -> google.protobuf.Empty
-	41, // [41:50] is the sub-list for method output_type
-	32, // [32:41] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	2,  // 15: pulumirpc.AnalyzeDiagnostic.severity:type_name -> pulumirpc.PolicySeverity
+	30, // 16: pulumirpc.Remediation.properties:type_name -> google.protobuf.Struct
+	15, // 17: pulumirpc.RemediateResponse.remediations:type_name -> pulumirpc.Remediation
+	23, // 18: pulumirpc.RemediateResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
+	18, // 19: pulumirpc.AnalyzerInfo.policies:type_name -> pulumirpc.PolicyInfo
+	28, // 20: pulumirpc.AnalyzerInfo.initialConfig:type_name -> pulumirpc.AnalyzerInfo.InitialConfigEntry
+	0,  // 21: pulumirpc.PolicyInfo.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	19, // 22: pulumirpc.PolicyInfo.configSchema:type_name -> pulumirpc.PolicyConfigSchema
+	1,  // 23: pulumirpc.PolicyInfo.policy_type:type_name -> pulumirpc.PolicyType
+	2,  // 24: pulumirpc.PolicyInfo.severity:type_name -> pulumirpc.PolicySeverity
+	22, // 25: pulumirpc.PolicyInfo.framework:type_name -> pulumirpc.PolicyComplianceFramework
+	30, // 26: pulumirpc.PolicyConfigSchema.properties:type_name -> google.protobuf.Struct
+	0,  // 27: pulumirpc.PolicyConfig.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	30, // 28: pulumirpc.PolicyConfig.properties:type_name -> google.protobuf.Struct
+	29, // 29: pulumirpc.ConfigureAnalyzerRequest.policyConfig:type_name -> pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
+	11, // 30: pulumirpc.AnalyzerResource.PropertyDependenciesEntry.value:type_name -> pulumirpc.AnalyzerPropertyDependencies
+	20, // 31: pulumirpc.AnalyzerInfo.InitialConfigEntry.value:type_name -> pulumirpc.PolicyConfig
+	20, // 32: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry.value:type_name -> pulumirpc.PolicyConfig
+	7,  // 33: pulumirpc.Analyzer.Analyze:input_type -> pulumirpc.AnalyzeRequest
+	12, // 34: pulumirpc.Analyzer.AnalyzeStack:input_type -> pulumirpc.AnalyzeStackRequest
+	7,  // 35: pulumirpc.Analyzer.Remediate:input_type -> pulumirpc.AnalyzeRequest
+	31, // 36: pulumirpc.Analyzer.GetAnalyzerInfo:input_type -> google.protobuf.Empty
+	31, // 37: pulumirpc.Analyzer.GetPluginInfo:input_type -> google.protobuf.Empty
+	21, // 38: pulumirpc.Analyzer.Configure:input_type -> pulumirpc.ConfigureAnalyzerRequest
+	5,  // 39: pulumirpc.Analyzer.Handshake:input_type -> pulumirpc.AnalyzerHandshakeRequest
+	3,  // 40: pulumirpc.Analyzer.ConfigureStack:input_type -> pulumirpc.AnalyzerStackConfigureRequest
+	31, // 41: pulumirpc.Analyzer.Cancel:input_type -> google.protobuf.Empty
+	13, // 42: pulumirpc.Analyzer.Analyze:output_type -> pulumirpc.AnalyzeResponse
+	13, // 43: pulumirpc.Analyzer.AnalyzeStack:output_type -> pulumirpc.AnalyzeResponse
+	16, // 44: pulumirpc.Analyzer.Remediate:output_type -> pulumirpc.RemediateResponse
+	17, // 45: pulumirpc.Analyzer.GetAnalyzerInfo:output_type -> pulumirpc.AnalyzerInfo
+	32, // 46: pulumirpc.Analyzer.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	31, // 47: pulumirpc.Analyzer.Configure:output_type -> google.protobuf.Empty
+	6,  // 48: pulumirpc.Analyzer.Handshake:output_type -> pulumirpc.AnalyzerHandshakeResponse
+	4,  // 49: pulumirpc.Analyzer.ConfigureStack:output_type -> pulumirpc.AnalyzerStackConfigureResponse
+	31, // 50: pulumirpc.Analyzer.Cancel:output_type -> google.protobuf.Empty
+	42, // [42:51] is the sub-list for method output_type
+	33, // [33:42] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_analyzer_proto_init() }

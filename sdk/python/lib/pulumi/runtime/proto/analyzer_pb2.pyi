@@ -569,6 +569,7 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
     MESSAGE_FIELD_NUMBER: builtins.int
     ENFORCEMENTLEVEL_FIELD_NUMBER: builtins.int
     URN_FIELD_NUMBER: builtins.int
+    SEVERITY_FIELD_NUMBER: builtins.int
     policyName: builtins.str
     """Name of the violated policy."""
     policyPackName: builtins.str
@@ -580,9 +581,11 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
     message: builtins.str
     """Message to display on policy violation, e.g., remediation steps."""
     enforcementLevel: global___EnforcementLevel.ValueType
-    """Severity of the policy violation."""
+    """Enforcement level of the policy violation."""
     urn: builtins.str
     """URN of the resource that violates the policy."""
+    severity: global___PolicySeverity.ValueType
+    """Severity of the policy violation."""
     def __init__(
         self,
         *,
@@ -593,8 +596,9 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
         message: builtins.str = ...,
         enforcementLevel: global___EnforcementLevel.ValueType = ...,
         urn: builtins.str = ...,
+        severity: global___PolicySeverity.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["description", b"description", "enforcementLevel", b"enforcementLevel", "message", b"message", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["description", b"description", "enforcementLevel", b"enforcementLevel", "message", b"message", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "severity", b"severity", "urn", b"urn"]) -> None: ...
 
 global___AnalyzeDiagnostic = AnalyzeDiagnostic
 

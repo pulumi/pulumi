@@ -3515,7 +3515,8 @@ policypackversion: jspb.Message.getFieldWithDefault(msg, 3, ""),
 description: jspb.Message.getFieldWithDefault(msg, 4, ""),
 message: jspb.Message.getFieldWithDefault(msg, 5, ""),
 enforcementlevel: jspb.Message.getFieldWithDefault(msg, 7, 0),
-urn: jspb.Message.getFieldWithDefault(msg, 8, "")
+urn: jspb.Message.getFieldWithDefault(msg, 8, ""),
+severity: jspb.Message.getFieldWithDefault(msg, 9, 0)
   };
 
   if (includeInstance) {
@@ -3579,6 +3580,10 @@ proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader = function(msg, re
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setUrn(value);
+      break;
+    case 9:
+      var value = /** @type {!proto.pulumirpc.PolicySeverity} */ (reader.readEnum());
+      msg.setSeverity(value);
       break;
     default:
       reader.skipField();
@@ -3655,6 +3660,13 @@ proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter = function(message, wr
   if (f.length > 0) {
     writer.writeString(
       8,
+      f
+    );
+  }
+  f = message.getSeverity();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      9,
       f
     );
   }
@@ -3784,6 +3796,24 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.getUrn = function() {
  */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.setUrn = function(value) {
   return jspb.Message.setProto3StringField(this, 8, value);
+};
+
+
+/**
+ * optional PolicySeverity severity = 9;
+ * @return {!proto.pulumirpc.PolicySeverity}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getSeverity = function() {
+  return /** @type {!proto.pulumirpc.PolicySeverity} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
+};
+
+
+/**
+ * @param {!proto.pulumirpc.PolicySeverity} value
+ * @return {!proto.pulumirpc.AnalyzeDiagnostic} returns this
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setSeverity = function(value) {
+  return jspb.Message.setProto3EnumField(this, 9, value);
 };
 
 
