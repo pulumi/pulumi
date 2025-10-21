@@ -72,6 +72,9 @@ func (t *OpaqueType) conversionFromImpl(
 			if constType, ok := src.(*ConstType); ok {
 				return t.conversionFrom(constType.Type, unifying, seen)
 			}
+
+			noConversionDiag := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+
 			switch t {
 			case NumberType:
 				// src == NumberType is handled by t == src above
@@ -90,21 +93,21 @@ func (t *OpaqueType) conversionFromImpl(
 						}
 					}
 				}
-				return NoConversion, nil
+				return NoConversion, noConversionDiag
 			case IntType:
 				if checkUnsafe {
 					if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
 						return UnsafeConversion, nil
 					}
 				}
-				return NoConversion, nil
+				return NoConversion, noConversionDiag
 			case BoolType:
 				if checkUnsafe {
 					if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
 						return UnsafeConversion, nil
 					}
 				}
-				return NoConversion, nil
+				return NoConversion, noConversionDiag
 			case StringType:
 				ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
 				ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
@@ -114,9 +117,9 @@ func (t *OpaqueType) conversionFromImpl(
 				if ckb == UnsafeConversion || ckn == UnsafeConversion {
 					return UnsafeConversion, nil
 				}
-				return NoConversion, nil
+				return NoConversion, noConversionDiag
 			default:
-				return NoConversion, nil
+				return NoConversion, noConversionDiag
 			}
 		})
 }
