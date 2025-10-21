@@ -697,33 +697,6 @@ func (b *diyBackend) DoesProjectExist(ctx context.Context, _ string, projectName
 	return projStore.ProjectExists(ctx, projectName)
 }
 
-// Confirm the specified stack's project doesn't contradict the meta.yaml of the current project.
-// If the CWD is not in a Pulumi project, does not contradict.
-// If the project name in Pulumi.yaml is "foo", a stack with a name of bar/foo should not work.
-func currentProjectContradictsWorkspace(stack *diyBackendReference) bool {
-	contract.Requiref(stack != nil, "stack", "is nil")
-
-	if stack.project == "" {
-		return false
-	}
-
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		return false
-	}
-
-	if projPath == "" {
-		return false
-	}
-
-	proj, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return false
-	}
-
-	return proj.Name.String() != stack.project.String()
-}
-
 func (b *diyBackend) CreateStack(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -738,6 +711,10 @@ func (b *diyBackend) CreateStack(
 		return nil, backend.ErrConfigNotSupported
 	}
 
+	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
+		return nil, err
+	}
+
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {
 		return nil, err
@@ -748,10 +725,6 @@ func (b *diyBackend) CreateStack(
 		return nil, err
 	}
 	defer b.Unlock(ctx, stackRef)
-
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
-	}
 
 	stackName := diyStackRef.FullyQualifiedName()
 	if stackName == "" {
@@ -1149,8 +1122,8 @@ func (b *diyBackend) apply(
 		return nil, nil, err
 	}
 
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
+	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
+		return nil, nil, err
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
