@@ -1761,8 +1761,16 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
 			// therefore incompatible with the goal state.
 			if goal.ID != "" {
-				const message = "previously-imported resources that still specify an ID may not be replaced; " +
-					"please remove the `import` declaration from your program"
+				replaceDiff := strings.Join(
+					slice.Map(diff.ReplaceKeys, func(k resource.PropertyKey) string {
+						old := old.Inputs[k].String()
+						new := new.Inputs[k].String()
+						return fmt.Sprintf("%s: %s => %s", k, old, new)
+					}),
+					"\n")
+
+				message := "previously-imported resources that still specify an ID may not be replaced; " +
+					"please remove the `import` declaration from your program;\n" + replaceDiff
 				if sg.deployment.opts.DryRun {
 					sg.deployment.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
 				} else {
