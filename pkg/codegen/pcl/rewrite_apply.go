@@ -35,6 +35,11 @@ type applyRewriter struct {
 	nameInfo      NameInfo
 	applyPromises bool
 	skipToJSON    bool
+	// We may be expected to rewrite expressions that are not type-valid.
+	//
+	// We assert that we do not break type-correctness only for expressions that were
+	// originally type-correct.
+	expectTypeValid bool
 
 	activeContext applyRewriteContext
 	exprStack     []model.Expression
@@ -574,8 +579,11 @@ func (ctx *observeContext) PostVisit(expr model.Expression) (model.Expression, h
 	isRoot := expr == ctx.root
 
 	// TODO(pdg): arrays of outputs, for expressions, etc.
-	diagnostics := expr.Typecheck(false)
-	contract.Assertf(!diagnostics.HasErrors(), "error typechecking expression: %v", diagnostics)
+
+	if ctx.expectTypeValid {
+		diagnostics := expr.Typecheck(false)
+		contract.Assertf(!diagnostics.HasErrors(), "error typechecking expression: %v", diagnostics)
+	}
 
 	if isIteratorExpr, _ := ctx.isIteratorExpr(expr); isIteratorExpr {
 		return expr, nil
@@ -676,9 +684,10 @@ func RewriteAppliesWithSkipToJSON(
 	skipToJSON bool,
 ) (model.Expression, hcl.Diagnostics) {
 	applyRewriter := &applyRewriter{
-		nameInfo:      nameInfo,
-		applyPromises: applyPromises,
-		skipToJSON:    skipToJSON,
+		expectTypeValid: !expr.Typecheck(false).HasErrors(),
+		nameInfo:        nameInfo,
+		applyPromises:   applyPromises,
+		skipToJSON:      skipToJSON,
 	}
 	applyRewriter.activeContext = &inspectContext{
 		applyRewriter: applyRewriter,
