@@ -17,6 +17,7 @@
 import asyncio
 import copy
 import contextvars
+import threading
 import warnings
 from typing import (
     Optional,
@@ -892,10 +893,16 @@ class Resource:
             typ = None
 
 
-        # If the ambient parent context is set use that, else use the root stack resource as the parent.
-        parent = opts.parent or ambient_parent.get() or get_root_resource()
-        opts = opts._copy()
-        opts.parent = parent
+        # If the ambient parent context is set (and not ourselves, we set the context before calling super) use that, else use the root stack resource as the parent.
+        ambient = ambient_parent.get()
+        print("Ambient parent in Resource:", ambient)
+        if ambient is not None:
+            if ambient[0] is self:
+                ambient = ambient[1]
+            else:
+                ambient = ambient[0]
+        print("Ambient parent selected:", ambient)
+        parent = opts.parent or ambient or get_root_resource()
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
@@ -1202,32 +1209,38 @@ class ComponentResource(Resource):
         self._remote = remote
         self._registered = False
 
-        async def do_initialize():
-            async def do_initialize_inner():
-                ambient_parent.set(self)
-                try:
-                    awaitable = self.initialize(name, t, props, opts)
-                    if awaitable is not None:
-                        await awaitable
-                    # Register outputs to mark the component as finished, initialize may have already called this
-                    # directly but we check inside register_outputs to only run it once, so we won't overwrite existing
-                    # outputs. However we reflect over the resource to register useful outputs so most users shouldn't
-                    # need to call register_outputs directly.
-                    outputs = {}
-                    for k, v in self.__dict__.items():
-                        if k.startswith("_") or k == "urn":
-                            continue
-                        outputs[k] = v
-                    self.register_outputs(outputs)
-                except NotImplementedError:
-                    pass
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+
+        old_init = cls.__init__
+
+        # Hook the __init__ method to set the ambient parent context
+        def new_init(self, *args, **kwargs):
+            def do_init():
+                # Get the current ambient parent
+                ambient = ambient_parent.get()
+                print("Ambient parent in ComponentResource:", ambient)
+                if ambient is not None:
+                    ambient = ambient[0]
+                ambient_parent.set((self, ambient))
+
+                old_init(self, *args, **kwargs)
+
+                # Register outputs to mark the component as finished, __init__ may have already called this
+                # directly but we check inside register_outputs to only run it once, so we won't overwrite existing
+                # outputs. However we reflect over the resource to register useful outputs so most users shouldn't
+                # need to call register_outputs directly.
+                outputs = {}
+                for k, v in self.__dict__.items():
+                    if k.startswith("_") or k == "urn":
+                        continue
+                    outputs[k] = v
+                self.register_outputs(outputs)
 
             ctx = contextvars.copy_context()
-            return await ctx.run(do_initialize_inner)
+            return ctx.run(do_init)
 
-        asyncio.ensure_future(
-            _get_rpc_manager().do_rpc("initialize resource", do_initialize)()
-        )
+        cls.__init__ = new_init
 
     def register_outputs(self, outputs: "Inputs"):
         """
@@ -1240,21 +1253,6 @@ class ComponentResource(Resource):
             return
         self._registered = True
         register_resource_outputs(self, outputs)
-
-    def initialize(
-        self,
-        name: str,
-        type: str,
-        props: Optional["Inputs"],
-        opts: Optional[ResourceOptions],
-    ) -> Optional[Awaitable[None]]:
-        """
-        Initialize the component resource, this can be used instead of the constructor to set up child resources. It has
-        the advantage that it runs in an async context, the parent resource option will be automatically set to the
-        component resource for all resources created in this context, and register_outputs will always be called to mark
-        the component as done.
-        """
-        raise NotImplementedError()
 
 
 class ProviderResource(CustomResource):
