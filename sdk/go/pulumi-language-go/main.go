@@ -176,9 +176,15 @@ func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	p, err := parseRunParams(flag.CommandLine, os.Args[1:])
 	if err != nil {
 		cmdutil.Exit(err)
+	}
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
 	}
 
 	logging.InitLogging(false, 0, false)
