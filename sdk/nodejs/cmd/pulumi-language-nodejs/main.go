@@ -120,7 +120,13 @@ func main() {
 		"[obsolete] Path to tsconfig.json to use")
 	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
 	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
+	}
 
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
