@@ -110,7 +110,7 @@ Journal entries associated with Pulumi Operations additionally have an Operation
 ID assigned to them. This is used mainly for correlating begin and end entries,
 so we can remove pending operations from the list.
 
-All journal entries sent to the service also have a Version field embedded in them.
+All journal entries sent to the service also have a `Version` field embedded in them.
 This field allows for an evolution of the journal entry format in the future.
 
 Note that journal entries can arrive out of order at the backend. However the
