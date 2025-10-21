@@ -1,7 +1,7 @@
 import asyncio
 import binascii
 import os
-from pulumi import ComponentResource
+import pulumi
 from pulumi.dynamic import Resource, ResourceProvider, CreateResult
 
 
@@ -17,15 +17,17 @@ class Random(Resource):
     def __init__(self, name, opts=None):
         super().__init__(RandomResourceProvider(), name, {"val": ""}, opts)
 
-class RandomComponent(ComponentResource):
+class RandomComponent(pulumi.ComponentResource):
     def __init__(self, name, opts=None):
         super().__init__("component:RandomComponent", name, {}, opts)
 
-    async def initialize(self, name, t, props, opts):
-        # Simulate some async initialization work
-        await asyncio.sleep(1)
         # Don't explicitly set the parent resource, it will be set automatically
         self.r = Random(name + "-random")
         self.value = self.r.val
+        # It's safe to do nested components/resources
+        if name == "foo":
+            self.nested = RandomComponent(name + "-nested")
 
 r = RandomComponent("foo")
+
+pulumi.export("randomValue", r.nested.value)
