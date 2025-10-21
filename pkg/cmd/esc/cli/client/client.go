@@ -387,6 +387,23 @@ type Client interface {
 		grantExpirationSeconds int,
 		accessDurationSeconds int,
 	) (*CreateEnvironmentOpenRequestResponse, error)
+
+	// GetEnvironmentSettings returns settings for the given environment.
+	GetEnvironmentSettings(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+	) (*EnvironmentSettings, error)
+
+	// PatchEnvironmentSettings updates settings for the given environment.
+	PatchEnvironmentSettings(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		req PatchEnvironmentSettingsRequest,
+	) error
 }
 
 type client struct {
@@ -1301,6 +1318,32 @@ func (pc *client) CreateEnvironmentOpenRequest(
 	}
 
 	return &resp, nil
+}
+
+func (pc *client) GetEnvironmentSettings(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+) (*EnvironmentSettings, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/settings", orgName, projectName, envName)
+	var resp EnvironmentSettings
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) PatchEnvironmentSettings(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	req PatchEnvironmentSettingsRequest,
+) error {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/settings", orgName, projectName, envName)
+	return pc.restCall(ctx, http.MethodPatch, path, nil, req, nil)
 }
 
 type httpCallOptions struct {

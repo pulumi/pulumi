@@ -241,3 +241,11 @@ type GetDefaultOrganizationResponse struct {
 	// Can be an empty string, if the user is a member of no organizations
 	Organization string `json:"gitHubLogin"`
 }
+
+type EnvironmentSettings struct {
+	DeletionProtected bool `json:"deletionProtected"`
+}
+
+type PatchEnvironmentSettingsRequest struct {
+	DeletionProtected *bool `json:"deletionProtected,omitempty"`
+}

@@ -272,9 +272,10 @@ type testEnvironmentRevision struct {
 }
 
 type testEnvironment struct {
-	revisions    []*testEnvironmentRevision
-	revisionTags map[string]int
-	tags         map[string]string
+	revisions         []*testEnvironmentRevision
+	revisionTags      map[string]int
+	tags              map[string]string
+	deletionProtected bool
 }
 
 func (env *testEnvironment) latest() *testEnvironmentRevision {
@@ -737,8 +738,12 @@ func (c *testPulumiClient) SubmitChangeRequest(
 
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
 	name := path.Join(orgName, projectName, envName)
-	if _, ok := c.environments[name]; !ok {
+	env, ok := c.environments[name]
+	if !ok {
 		return errors.New("not found")
+	}
+	if env.deletionProtected {
+		return &apitype.ErrorResponse{Code: http.StatusConflict, Message: "environment is deletion protected"}
 	}
 	delete(c.environments, name)
 	return nil
@@ -1194,6 +1199,40 @@ func (c *testPulumiClient) CreateEnvironmentOpenRequest(
 			},
 		},
 	}, nil
+}
+
+func (c *testPulumiClient) GetEnvironmentSettings(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+) (*client.EnvironmentSettings, error) {
+	name := path.Join(orgName, projectName, envName)
+	env, ok := c.environments[name]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return &client.EnvironmentSettings{
+		DeletionProtected: env.deletionProtected,
+	}, nil
+}
+
+func (c *testPulumiClient) PatchEnvironmentSettings(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	req client.PatchEnvironmentSettingsRequest,
+) error {
+	name := path.Join(orgName, projectName, envName)
+	env, ok := c.environments[name]
+	if !ok {
+		return errors.New("not found")
+	}
+	if req.DeletionProtected != nil {
+		env.deletionProtected = *req.DeletionProtected
+	}
+	return nil
 }
 
 type testExec struct {

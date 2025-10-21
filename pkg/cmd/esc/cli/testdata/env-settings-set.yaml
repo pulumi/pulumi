@@ -1,0 +1,16 @@
+run: |
+  esc env settings set default/test deletion-protected true
+  esc env settings get default/test deletion-protected
+environments:
+  test-user/default/test:
+    values: {}
+
+---
+> esc env settings set default/test deletion-protected true
+true
+> esc env settings get default/test deletion-protected
+true
+
+---
+> esc env settings set default/test deletion-protected true
+> esc env settings get default/test deletion-protected
