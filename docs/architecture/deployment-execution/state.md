@@ -98,7 +98,7 @@ in different places in the resource list.
 
 There's various types of Journal entries, all with slightly different semantics.
 This section describes them. All journal entries are associated with increasing
-sequence IDs. IDs start at 1. These sequence IDs are used for
+sequence IDs. IDs start at 1. These sequence IDs are used for:
 - Ordering the journal entries on the backend side. We could do this by
   timestamps, but since we have IDs, those are definitely unambiguous, and
   easier to deal with.
