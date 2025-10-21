@@ -2606,20 +2606,32 @@ func TestComponentInitializationPython(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Find the Random resource
 			var randomResource *apitype.ResourceV3
+			var randomNestedResource *apitype.ResourceV3
 			var randomComponentResource *apitype.ResourceV3
+			var randomNestedComponentResource *apitype.ResourceV3
 			for _, res := range stackInfo.Deployment.Resources {
 				if res.URN.Name() == "foo-random" {
 					randomResource = &res
 				}
+				if res.URN.Name() == "foo-nested-random" {
+					randomNestedResource = &res
+				}
 				if res.URN.Name() == "foo" {
 					randomComponentResource = &res
 				}
+				if res.URN.Name() == "foo-nested" {
+					randomNestedComponentResource = &res
+				}
 			}
 			require.NotNil(t, randomResource)
+			require.NotNil(t, randomNestedResource)
 			require.NotNil(t, randomComponentResource)
+			require.NotNil(t, randomNestedComponentResource)
 
-			// Check it's parent is the component resource
+			// Check the parents are the component resource
 			assert.Equal(t, randomComponentResource.URN, randomResource.Parent)
+			assert.Equal(t, randomComponentResource.URN, randomNestedComponentResource.Parent)
+			assert.Equal(t, randomNestedComponentResource.URN, randomNestedResource.Parent)
 			// Check the component outputs are as expected
 			assert.Equal(t, map[string]any{
 				"value": randomResource.Outputs["val"],
@@ -2629,7 +2641,25 @@ func TestComponentInitializationPython(t *testing.T) {
 					"packageVersion":                   "",
 					"urn":                              string(randomResource.URN),
 				},
+				"nested": map[string]any{
+					"4dabf18193072939515e22adb298388d": "5cf8f73096256a8f31e491e813e4eb8e",
+					"packageVersion":                   "",
+					"urn":                              string(randomNestedComponentResource.URN),
+				},
 			}, randomComponentResource.Outputs)
+			assert.Equal(t, map[string]any{
+				"value": randomNestedResource.Outputs["val"],
+				"r": map[string]any{
+					"4dabf18193072939515e22adb298388d": "5cf8f73096256a8f31e491e813e4eb8e",
+					"id":                               string(randomNestedResource.ID),
+					"packageVersion":                   "",
+					"urn":                              string(randomNestedResource.URN),
+				},
+			}, randomNestedComponentResource.Outputs)
+			// Check the stack outputs are as expected
+			assert.Equal(t, map[string]any{
+				"randomValue": randomNestedResource.Outputs["val"],
+			}, stackInfo.Outputs)
 		},
 	})
 }

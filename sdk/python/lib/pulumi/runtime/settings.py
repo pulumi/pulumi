@@ -23,7 +23,7 @@ import os
 import threading
 from collections import deque
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union, Tuple
 
 import grpc
 
@@ -45,7 +45,7 @@ _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SI
 excessive_debug_output = False
 
 # current ambient parent resource, this is set for component resource initialization methods.
-ambient_parent: ContextVar[Optional[Resource]] = ContextVar(
+ambient_parent: ContextVar[Optional[Tuple[Resource, Optional[Resource]]]] = ContextVar(
     "ambient_parent", default=None
 )
 
