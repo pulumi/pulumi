@@ -189,6 +189,35 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	return wrapped, wrapper, nil
 }
 
+func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer, error) {
+	wrapper := &grpcWrapper{stop: make(chan bool)}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: wrapper.stop,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterAnalyzerServer(srv, plugin.NewAnalyzerServer(analyzer))
+			return nil
+		},
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not start policy analyzer service: %w", err)
+	}
+	wrapper.handle = handle
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("127.0.0.1:%v", handle.Port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		contract.IgnoreClose(wrapper)
+		return nil, nil, fmt.Errorf("could not connect to policy analyzer service: %w", err)
+	}
+	wrapped := plugin.NewAnalyzerWithClient(nil, analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
+	return wrapped, wrapper, nil
+}
+
 type hostEngine struct {
 	pulumirpc.UnsafeEngineServer // opt out of forward compat
 
@@ -345,9 +374,19 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 
 	closer := nopCloser
 	if best.useGRPC {
-		plug, closer, err = wrapProviderWithGrpc(plug.(plugin.Provider))
-		if err != nil {
-			return nil, err
+		switch kind {
+		case apitype.AnalyzerPlugin:
+			plug, closer, err = wrapAnalyzerWithGrpc(plug.(plugin.Analyzer))
+			if err != nil {
+				return nil, err
+			}
+		case apitype.ResourcePlugin:
+			plug, closer, err = wrapProviderWithGrpc(plug.(plugin.Provider))
+			if err != nil {
+				return nil, err
+			}
+		case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
+			// We don't support gRPC wrapping for these plugin types yet.
 		}
 	}
 
