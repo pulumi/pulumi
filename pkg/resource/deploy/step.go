@@ -1265,12 +1265,18 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
+		if s.cts != nil {
+			s.cts.MustFulfill(nil)
+		}
 		return resource.StatusOK, nil, nil
 	}
 
 	// For a custom resource, fetch the resource's provider and read the resource's current state.
 	prov, err := getProvider(s, s.provider)
 	if err != nil {
+		if s.cts != nil {
+			s.cts.MustReject(err)
+		}
 		return resource.StatusOK, nil, err
 	}
 
@@ -1278,6 +1284,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
 		s.URN(), true /*refresh*/, s.Persisted() /* persisted */)
 	if err != nil {
+		if s.cts != nil {
+			s.cts.MustReject(err)
+		}
 		return resource.StatusOK, nil, err
 	}
 
@@ -1295,6 +1304,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	})
 	if err != nil {
 		if refreshed.Status != resource.StatusPartialFailure {
+			if s.cts != nil {
+				s.cts.MustReject(err)
+			}
 			return refreshed.Status, nil, err
 		}
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
@@ -1407,6 +1419,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
 			)
 			if err != nil {
+				if s.cts != nil {
+					s.cts.MustReject(err)
+				}
 				return refreshed.Status, nil, err
 			}
 
