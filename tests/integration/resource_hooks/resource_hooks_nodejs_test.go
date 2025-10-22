@@ -82,3 +82,20 @@ func TestNodejsResourceHooksTransform(t *testing.T) {
 		},
 	})
 }
+
+// Test that hooks receives secrets as secret outputs
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsResourceHooksSecrets(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "nodejs_secret",
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			requirePrinted(t, stack, "info", "hook called")
+		},
+	})
+}
