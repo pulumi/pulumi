@@ -1236,12 +1236,16 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
+// SaveJournalEntry sends a single journal entry to the service. When we get a success response,
+// the journal entry is guaranteed to be stored safely.
 func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
 	entry apitype.JournalEntry, token UpdateTokenSource,
 ) error {
 	return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
 }
 
+// SaveJournalEntries sends a single journal entry to the service. When we get a success response,
+// all journal entries are guaranteed to be stored safely.
 func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifier,
 	entries []apitype.JournalEntry, token UpdateTokenSource,
 ) error {

@@ -19,12 +19,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 var _ engine.Journal = (*cloudJournaler)(nil)
@@ -38,68 +36,10 @@ type cloudJournaler struct {
 	wg          sync.WaitGroup          // Wait group to ensure all operations are completed before closing.
 }
 
-func SerializeJournalEntry(
-	ctx context.Context, je engine.JournalEntry, enc config.Encrypter,
-) (apitype.JournalEntry, error) {
-	var state *apitype.ResourceV3
-
-	if je.State != nil {
-		s, err := stack.SerializeResource(ctx, je.State, enc, false)
-		if err != nil {
-			return apitype.JournalEntry{}, fmt.Errorf("serializing resource state: %w", err)
-		}
-		state = &s
-	}
-
-	var operation *apitype.OperationV2
-	if je.Operation != nil {
-		op, err := stack.SerializeOperation(ctx, *je.Operation, enc, false)
-		if err != nil {
-			return apitype.JournalEntry{}, fmt.Errorf("serializing operation: %w", err)
-		}
-		operation = &op
-	}
-	var secretsManager *apitype.SecretsProvidersV1
-	if je.SecretsManager != nil {
-		secretsManager = &apitype.SecretsProvidersV1{
-			Type:  je.SecretsManager.Type(),
-			State: je.SecretsManager.State(),
-		}
-	}
-
-	var snapshot *apitype.DeploymentV3
-	if je.NewSnapshot != nil {
-		var err error
-		snapshot, err = stack.SerializeDeployment(ctx, je.NewSnapshot, true)
-		if err != nil {
-			return apitype.JournalEntry{}, fmt.Errorf("serializing new snapshot: %w", err)
-		}
-	}
-
-	serializedEntry := apitype.JournalEntry{
-		Kind:                  apitype.JournalEntryKind(je.Kind),
-		SequenceID:            je.SequenceID,
-		OperationID:           je.OperationID,
-		RemoveOld:             je.RemoveOld,
-		RemoveNew:             je.RemoveNew,
-		State:                 state,
-		Operation:             operation,
-		SecretsProvider:       secretsManager,
-		PendingReplacementOld: je.PendingReplacementOld,
-		PendingReplacementNew: je.PendingReplacementNew,
-		DeleteOld:             je.DeleteOld,
-		DeleteNew:             je.DeleteNew,
-		IsRefresh:             je.IsRefresh,
-		NewSnapshot:           snapshot,
-	}
-
-	return serializedEntry, nil
-}
-
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	j.wg.Add(1)
 	defer j.wg.Done()
-	serialized, err := SerializeJournalEntry(j.context, entry, j.sm.Encrypter())
+	serialized, err := backend.SerializeJournalEntry(j.context, entry, j.sm.Encrypter())
 	if err != nil {
 		return fmt.Errorf("serializing journal entry: %w", err)
 	}
