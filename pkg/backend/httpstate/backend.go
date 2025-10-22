@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -1408,9 +1409,10 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 }
 
 type updateMetadata struct {
-	version    int
-	leaseToken string
-	messages   []apitype.Message
+	version        int
+	leaseToken     string
+	messages       []apitype.Message
+	journalVersion int64
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -1458,7 +1460,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, journalVersion, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1496,9 +1498,10 @@ func (b *cloudBackend) createAndStartUpdate(
 		stackID.Owner, copilotEnabledValueString, userName, continuationString)
 
 	return update, updateMetadata{
-		version:    version,
-		leaseToken: token,
-		messages:   updateDetails.Messages,
+		version:        version,
+		leaseToken:     token,
+		messages:       updateDetails.Messages,
+		journalVersion: journalVersion,
 	}, nil
 }
 
@@ -1586,7 +1589,9 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(
+		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
+		permalink, events, opts.DryRun, updateMeta.journalVersion)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1601,7 +1606,7 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1639,11 +1644,28 @@ func (b *cloudBackend) runEngineAction(
 	var snapshotManager *backend.SnapshotManager
 	var validationErrs []error
 	if kind != apitype.PreviewUpdate && !dryRun {
-		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
-		combinedManager = &engine.CombinedManager{
-			Managers:          []engine.SnapshotManager{snapshotManager},
-			CollectErrorsOnly: []bool{false, true},
+		// Note that we intentionally only accept version 1 of the journal here.  If we ever want to evolve the API,
+		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
+		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
+		// for older clients.
+		if journalVersion == 1 && env.EnableJournaling.Value() {
+			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+			if err != nil {
+				validationErrs = append(validationErrs, err)
+			}
+			noopPersister := backend.ValidatingPersister{}
+			snapshotManager = backend.NewSnapshotManager(&noopPersister, op.SecretsManager, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+			}
+		} else {
+			persister := b.newSnapshotPersister(ctx, update, tokenSource)
+			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers:          []engine.SnapshotManager{snapshotManager},
+				CollectErrorsOnly: []bool{false, true},
+			}
 		}
 	}
 

@@ -666,7 +666,7 @@ func (s *benchmarkServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}}}
 		err = json.NewEncoder(w).Encode(resp)
 		require.NoError(s.t, err)
-	case "checkpointverbatim", "checkpointdelta", "checkpoint", "journal":
+	case "checkpointverbatim", "checkpointdelta", "checkpoint", "journalentries":
 		s.persist(req)
 		_, err := w.Write([]byte("{}"))
 		require.NoError(s.t, err)
@@ -680,7 +680,7 @@ func (s *benchmarkServer) Save(snapshot *deploy.Snapshot) error {
 }
 
 func (s *benchmarkServer) Append(ctx context.Context, entry apitype.JournalEntry) error {
-	return s.p.Append(ctx, entry)
+	return s.p.backend.client.SaveJournalEntry(ctx, s.p.update, entry, s.p.tokenSource)
 }
 
 func BenchmarkSnapshot(b *testing.B) {
