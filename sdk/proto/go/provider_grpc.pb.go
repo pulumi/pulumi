@@ -218,11 +218,14 @@ type ResourceProviderClient interface {
 	//     propagate to resources it registers against the supplied resource monitor.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+	// Called by the engine in two scenarios:
+	// 1. User cancellation (e.g., Ctrl+C during an update)
+	// 2. Normal shutdown (after all operations complete, before closing connection)
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
 	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 	// to the host to decide how long to wait after Cancel is called before (e.g.)
 	// hard-closing any gRPC connection.
-	Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// Attach sends the engine address to an already running plugin.
@@ -415,7 +418,7 @@ func (c *resourceProviderClient) Construct(ctx context.Context, in *ConstructReq
 	return out, nil
 }
 
-func (c *resourceProviderClient) Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *resourceProviderClient) Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ResourceProvider_Cancel_FullMethodName, in, out, cOpts...)
@@ -627,11 +630,14 @@ type ResourceProviderServer interface {
 	//     propagate to resources it registers against the supplied resource monitor.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+	// Called by the engine in two scenarios:
+	// 1. User cancellation (e.g., Ctrl+C during an update)
+	// 2. Normal shutdown (after all operations complete, before closing connection)
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
 	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 	// to the host to decide how long to wait after Cancel is called before (e.g.)
 	// hard-closing any gRPC connection.
-	Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	Cancel(context.Context, *CancelRequest) (*emptypb.Empty, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// Attach sends the engine address to an already running plugin.
@@ -719,7 +725,7 @@ func (UnimplementedResourceProviderServer) Delete(context.Context, *DeleteReques
 func (UnimplementedResourceProviderServer) Construct(context.Context, *ConstructRequest) (*ConstructResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Construct not implemented")
 }
-func (UnimplementedResourceProviderServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (UnimplementedResourceProviderServer) Cancel(context.Context, *CancelRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedResourceProviderServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error) {
@@ -1026,7 +1032,7 @@ func _ResourceProvider_Construct_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _ResourceProvider_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(CancelRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1038,7 +1044,7 @@ func _ResourceProvider_Cancel_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: ResourceProvider_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceProviderServer).Cancel(ctx, req.(*emptypb.Empty))
+		return srv.(ResourceProviderServer).Cancel(ctx, req.(*CancelRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

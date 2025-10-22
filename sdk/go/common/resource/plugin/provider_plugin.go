@@ -2185,14 +2185,20 @@ func (p *provider) Attach(address string) error {
 }
 
 func (p *provider) SignalCancellation(ctx context.Context) error {
-	_, err := p.clientRaw.Cancel(p.requestContext(), &emptypb.Empty{})
+	req := &pulumirpc.CancelRequest{}
+	_, err := p.clientRaw.Cancel(ctx, req)
 	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
-			rpcError.Message())
-		if rpcError.Code() == codes.Unimplemented {
-			// For backwards compatibility, do nothing if it's not implemented.
-			return nil
+		// Check if this is an RPC error (gRPC status error) or a context error
+		if s, ok := status.FromError(err); ok {
+			logging.V(8).Infof("provider received rpc error `%s`: `%s`", s.Code(),
+				s.Message())
+			if s.Code() == codes.Unimplemented {
+				// For backwards compatibility, do nothing if it's not implemented.
+				return nil
+			}
+		} else {
+			// For non-RPC errors (like context cancellation), log at V(8) but don't convert
+			logging.V(8).Infof("provider signal cancellation failed: %v", err)
 		}
 	}
 

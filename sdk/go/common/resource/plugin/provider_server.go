@@ -235,7 +235,7 @@ func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach
 	return nil, status.Error(codes.Unimplemented, "Attach is not yet implemented")
 }
 
-func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (p *providerServer) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
 	if err := p.provider.SignalCancellation(ctx); err != nil {
 		return nil, err
 	}
