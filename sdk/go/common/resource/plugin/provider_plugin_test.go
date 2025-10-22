@@ -679,6 +679,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 					nilIfEmpty(&req.ConfigSecretKeys)
 					nilIfEmpty(&req.Dependencies)
 					nilIfEmpty(&req.InputDependencies)
+					nilIfEmpty(&req.ReplaceWith)
 
 					got = req
 					return &pulumirpc.ConstructResponse{

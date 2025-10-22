@@ -2593,7 +2593,11 @@ func (sg *stepGenerator) diff(
 	if new.ReplaceWith != nil {
 		for _, replaceWithURN := range new.ReplaceWith {
 			if sg.replaces[replaceWithURN] {
-				logging.V(7).Infof("Resource %v marked for replacement because %v (in its ReplaceWith list) is being replaced", urn, replaceWithURN)
+				logging.V(7).Infof(
+					"Resource %v marked for replacement because %v (in its ReplaceWith list) is being replaced",
+					urn,
+					replaceWithURN,
+				)
 				return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"replaceWith"}}, nil, nil
 			}
 		}
