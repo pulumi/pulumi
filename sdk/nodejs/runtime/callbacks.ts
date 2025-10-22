@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import { randomUUID } from "crypto";
 import * as jspb from "google-protobuf";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as log from "../log";
-import { output } from "../output";
+import { output, Inputs, secret } from "../output";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
@@ -41,7 +41,7 @@ import {
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
 import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
-import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
+import { deserializeProperties, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { rpcKeepAlive } from "./settings";
 import { Http2Server, Http2Session } from "http2";
@@ -566,10 +566,18 @@ export class CallbackServer implements ICallbackServer {
                     id: request.getId(),
                     name: request.getName(),
                     type: request.getType(),
-                    newInputs: newInputs ? deserializeProperties(newInputs, true /*keepUnknowns */) : undefined,
-                    oldInputs: oldInputs ? deserializeProperties(oldInputs, true /*keepUnknowns */) : undefined,
-                    newOutputs: newOutputs ? deserializeProperties(newOutputs, true /*keepUnknowns */) : undefined,
-                    oldOutputs: oldOutputs ? deserializeProperties(oldOutputs, true /*keepUnknowns */) : undefined,
+                    newInputs: newInputs
+                        ? outputtifySecrets(deserializeProperties(newInputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldInputs: oldInputs
+                        ? outputtifySecrets(deserializeProperties(oldInputs, true /*keepUnknowns */))
+                        : undefined,
+                    newOutputs: newOutputs
+                        ? outputtifySecrets(deserializeProperties(newOutputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldOutputs: oldOutputs
+                        ? outputtifySecrets(deserializeProperties(oldOutputs, true /*keepUnknowns */))
+                        : undefined,
                 });
             } catch (error) {
                 const response = new resproto.ResourceHookResponse();
@@ -607,4 +615,16 @@ export class CallbackServer implements ICallbackServer {
             `resourceHook:${hook.name}`,
         );
     }
+}
+
+function outputtifySecrets(props: Inputs): Inputs {
+    const outputs: Inputs = {};
+    for (const [key, value] of Object.entries(props)) {
+        if (isRpcSecret(value)) {
+            outputs[key] = secret(unwrapRpcSecret(value));
+        } else {
+            outputs[key] = value;
+        }
+    }
+    return outputs;
 }
