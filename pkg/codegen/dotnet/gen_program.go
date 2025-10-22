@@ -286,7 +286,7 @@ func generateProjectFile(program *pcl.Program, localDependencies map[string]stri
 
 		excludedPath := strings.Join(paths, ";")
 		csproj.WriteString(fmt.Sprintf(`
-        <DefaultItemExcludes>$(DefaultItemExcludes);%s</DefaultItemExcludes>`, excludedPath))
+		<DefaultItemExcludes>$(DefaultItemExcludes);%s</DefaultItemExcludes>`, excludedPath))
 	}
 
 	csproj.WriteString(`
