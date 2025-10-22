@@ -496,7 +496,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
-			ReplaceWith:             []resource.URN{},
+			ReplaceWith:             nil,
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
