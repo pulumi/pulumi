@@ -280,7 +280,7 @@ func generateProjectFile(program *pcl.Program, localDependencies map[string]stri
 		for _, path := range localDependencies {
 			if !strings.HasSuffix(localDependencies[path], ".nupkg") {
 				// non-nuget project path reference (just the directory, not the .csproj file)
-				paths = append(paths, fmt.Sprintf("%s/**/*.cs", path))
+				paths = append(paths, path+"/**/*.cs")
 			}
 		}
 
