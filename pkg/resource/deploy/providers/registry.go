@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
+	"github.com/hashicorp/go-multierror"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -435,7 +437,21 @@ func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
 // The rest of the methods below are the implementation of the plugin.Provider interface methods.
 
 func (r *Registry) Close() error {
-	return nil
+	// Signal cancellation to all providers before closing
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var errs error
+	for ref, provider := range r.providers {
+		logging.V(7).Infof("Registry.Close: signaling cancellation to provider %s", ref)
+		if err := provider.SignalCancellation(ctx); err != nil {
+			logging.V(7).Infof("Registry.Close: provider %s returned error on cancellation: %v", ref, err)
+			// Continue to shutdown other providers even if one fails
+			errs = multierror.Append(errs, fmt.Errorf("provider %s cancellation failed: %w", ref, err))
+		}
+	}
+
+	return errs
 }
 
 func (r *Registry) Pkg() tokens.Package {

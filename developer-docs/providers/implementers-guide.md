@@ -266,9 +266,13 @@ None.
 
 Once a client has finished using a resource provider, it must shut the provider down.
 A client requests that a provider shut down gracefully by calling its `SignalCancellation`
-method. In response to this method, a provider should cancel all outstanding resource
-operations and function calls. After calling `SignalCancellation`, the client calls
-`Close` to inform the provider that it should release any resources it holds.
+method. The engine calls `SignalCancellation` in two scenarios:
+1. User cancellation (e.g., Ctrl+C during an update)
+2. Normal shutdown (after all operations complete, before closing the connection)
+
+In response to this method, a provider should cancel all outstanding resource operations
+and function calls. After calling `SignalCancellation`, the client calls `Close` to inform
+the provider that it should release any resources it holds.
 
 `SignalCancellation` is advisory and non-blocking; it is up to the client to decide how
 long to wait after calling `SignalCancellation` to call `Close`. Typically, a provider should
