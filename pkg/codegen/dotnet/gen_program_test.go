@@ -102,6 +102,8 @@ func TestGenerateProjectFileWhenUsingLocalNugetPackages(t *testing.T) {
 	csprojText := string(csproj)
 	require.Contains(t, csprojText, `<RestoreSources>sdk/tfe;$(RestoreSources)</RestoreSources>`)
 	require.Contains(t, csprojText, `<PackageReference Include="Pulumi.Tfe" Version="0.68.2" />`)
+	// local dependencies contain only nuget packages, so there should be no DefaultItemExcludes
+	require.NotContains(t, csprojText, "<DefaultItemExcludes>")
 }
 
 // Tests the generated .csproj file when using local dependencies
@@ -118,4 +120,5 @@ func TestGenerateProjectFileWhenUsingLocalSourcePackages(t *testing.T) {
 	require.NoError(t, err)
 	csprojText := string(csproj)
 	require.Contains(t, csprojText, `<ProjectReference Include="sdk/tfe/Pulumi.Tfe.csproj" />`)
+	require.Contains(t, csprojText, `<DefaultItemExcludes>$(DefaultItemExcludes);sdk/tfe/**/*.cs</DefaultItemExcludes>`)
 }

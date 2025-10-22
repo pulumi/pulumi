@@ -428,10 +428,6 @@ func linkDotnetPackage(ctx *LinkPackageContext) error {
 		namespace = ctx.Pkg.Namespace
 	}
 
-	fmt.Fprintf(ctx.Writer, "You also need to add the following to your .csproj file of the program:\n")
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>\n")
-	fmt.Fprintf(ctx.Writer, "\n")
 	fmt.Fprintf(ctx.Writer, "You can then use the SDK in your .NET code with:\n")
 	fmt.Fprintf(ctx.Writer, "\n")
 	fmt.Fprintf(ctx.Writer, "  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(ctx.Pkg.Name))
