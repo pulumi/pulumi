@@ -167,7 +167,10 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 		cache.Store(src, cacheEntry{kind, diags})
 	}
 
-	contract.Assertf(kind.Exists() || diags != nil, "%T:%v => %T:%v returns no explanation for %#v", dest, dest, src, src, kind)
+	contract.Assertf(
+		kind.Exists() || diags != nil,
+		"%T:%v => %T:%v returns no explanation for %#v", dest, dest, src, src, kind,
+	)
 	return kind, diags
 }
 
