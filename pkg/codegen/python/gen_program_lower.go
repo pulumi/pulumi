@@ -19,7 +19,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func isParameterReference(parameters codegen.Set, x model.Expression) bool {
@@ -71,8 +70,6 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 		return nil, false
 	}
 
-	diags := arg.Typecheck(false)
-	contract.Assertf(!diags.HasErrors(), "unexpected error diagnostics: %v", diags)
 	return arg, true
 }
 
