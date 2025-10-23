@@ -1522,6 +1522,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 					nilIfEmpty(&req.Options.Dependencies)
 					nilIfEmpty(&req.Options.PropertyDependencies)
 					nilIfEmpty(&req.Options.Providers)
+					nilIfEmpty(&req.Options.ReplaceWith)
 
 					got = req.Options
 					return plugin.ConstructResponse{
