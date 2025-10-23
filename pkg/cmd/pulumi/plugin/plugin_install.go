@@ -51,11 +51,17 @@ func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *co
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"This command is used to manually install plugins required by your program. It\n" +
-			"may be run with a specific KIND, NAME, and optionally, VERSION, or by omitting\n" +
-			"these arguments and letting Pulumi compute the set of plugins required by the\n" +
-			"current project. When Pulumi computes the download set automatically, it may\n" +
-			"download more plugins than are strictly necessary.\n" +
+			"The Pulumi CLI automatically downloads and installs plugins as needed during\n" +
+			"normal operations. This command is provided for scenarios where manual plugin\n" +
+			"installation is necessary, such as pre-downloading plugins or working in\n" +
+			"air-gapped environments.\n" +
+			"\n" +
+			"This command may be run with a specific KIND, NAME, and optionally, VERSION, or\n" +
+			"by omitting these arguments and letting Pulumi compute the set of plugins\n" +
+			"required by the current project. When Pulumi computes the download set\n" +
+			"automatically, it may download more plugins than are strictly necessary.\n" +
+			"\n" +
+			"Valid values for KIND are: resource, language, analyzer, converter, and tool.\n" +
 			"\n" +
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
 			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
