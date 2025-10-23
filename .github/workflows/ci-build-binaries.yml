@@ -119,7 +119,7 @@ jobs:
         env:
           GORELEASER_CURRENT_TAG: v${{ inputs.version }}
           PULUMI_VERSION: ${{ inputs.dev-version || inputs.version }}
-          PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && 'coverage' || 'normal' }}
+          PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && runner.os == 'Linux' && 'coverage' || 'normal' }}
           PULUMI_ENABLE_RACE_DETECTION: ${{ inputs.enable-race-detection && 'true' || 'false' }}
         run: |
           set -euxo pipefail
