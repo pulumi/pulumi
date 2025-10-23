@@ -1,0 +1,14 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkg-uIE2 res-bBb4 <{%bold%}><{%reset%}><{%reset%}> [diff: <{%fg 3%}>~protect<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkg-uIE2:mod-h2P2:type-uMz9 stuck <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pkg-uIE2:mod-h2P2:type-uMz9 stuck <{%fg 3%}>updated<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkg-uIE2:mod-h2P2:type-uMz9 stuck <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

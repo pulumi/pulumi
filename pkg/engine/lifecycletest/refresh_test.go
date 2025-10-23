@@ -2630,3 +2630,72 @@ func TestRefreshDeleteParent(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 }
+
+func TestRefreshV2PendingReplacement(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	// Set up the initial snapshot.
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov0 := &resource.State{
+			Type:   "pulumi:providers:pkg-uIE2",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-uIE2::res-bBb4",
+			Custom: true,
+			ID:     "id-a7183fY4ConD",
+		}
+		s.Resources = append(s.Resources, prov0)
+
+		provRef0, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		res1 := &resource.State{
+			Type:               "pkg-uIE2:mod-h2P2:type-uMz9",
+			URN:                "urn:pulumi:test-stack::test-project::pkg-uIE2:mod-h2P2:type-uMz9::stuck",
+			PendingReplacement: true,
+			Provider:           provRef0.String(),
+		}
+		s.Resources = append(s.Resources, res1)
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg-uIE2", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov0, err := monitor.RegisterResource("pulumi:providers:pkg-uIE2", "res-bBb4", true, deploytest.ResourceOptions{
+			Protect: ptr(true),
+		})
+		require.NoError(t, err)
+
+		provRef0, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkg-uIE2:mod-h2P2:type-uMz9", "stuck", true, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			Provider:       provRef0.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+	}
+
+	_, err := lt.TestOp(RefreshV2).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
