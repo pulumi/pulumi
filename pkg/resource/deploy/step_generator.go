@@ -745,13 +745,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				sg.refreshStates[old] = state
 				sg.refreshAliasLock.Unlock()
 			}
-			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
 				RegisterResourceEvent: event,
 				urn:                   urn,
 				old:                   state,
 				new:                   new,
 				invalid:               invalid,
+				err:                   err,
 			}
 		}()
 
@@ -822,6 +822,10 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	urn := event.URN()
 	old := event.Old()
 	new := event.New()
+	err := event.Error()
+	if err != nil {
+		return nil, false, err
+	}
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
 	// custom non-provider resources. We also need to skip refreshes for custom provider resources if they
