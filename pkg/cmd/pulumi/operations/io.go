@@ -115,6 +115,11 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 		return true, nil
 	}
 
+	// check if the environment variable is set
+	if env.Refresh.Value() {
+		return true, nil
+	}
+
 	// the default functionality right now is to always skip a refresh
 	return false, nil
 }

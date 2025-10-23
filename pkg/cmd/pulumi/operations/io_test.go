@@ -17,34 +17,38 @@ package operations
 import (
 	"testing"
 
+	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+//nolint:paralleltest // This test modifies utilenv.Global and cannot run in parallel
 func TestGetRefreshOption(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name                 string
 		refresh              string
 		project              workspace.Project
+		envVars              map[string]string
 		expectedRefreshState bool
 	}{
 		{
 			"No options specified means no refresh",
 			"",
 			workspace.Project{},
+			nil,
 			false,
 		},
 		{
 			"Passing --refresh=true causes a refresh",
 			"true",
 			workspace.Project{},
+			nil,
 			true,
 		},
 		{
 			"Passing --refresh=false causes no refresh",
 			"false",
 			workspace.Project{},
+			nil,
 			false,
 		},
 		{
@@ -57,6 +61,7 @@ func TestGetRefreshOption(t *testing.T) {
 					Refresh: "always",
 				},
 			},
+			nil,
 			true,
 		},
 		{
@@ -69,12 +74,67 @@ func TestGetRefreshOption(t *testing.T) {
 					Refresh: "always",
 				},
 			},
+			nil,
 			false,
+		},
+		{
+			"Environment variable PULUMI_REFRESH=true causes a refresh",
+			"",
+			workspace.Project{},
+			map[string]string{"PULUMI_REFRESH": "true"},
+			true,
+		},
+		{
+			"Environment variable PULUMI_REFRESH=1 causes a refresh",
+			"",
+			workspace.Project{},
+			map[string]string{"PULUMI_REFRESH": "1"},
+			true,
+		},
+		{
+			"Environment variable PULUMI_REFRESH=false causes no refresh",
+			"",
+			workspace.Project{},
+			map[string]string{"PULUMI_REFRESH": "false"},
+			false,
+		},
+		{
+			"CLI flag --refresh=false overrides PULUMI_REFRESH=true",
+			"false",
+			workspace.Project{},
+			map[string]string{"PULUMI_REFRESH": "true"},
+			false,
+		},
+		{
+			"CLI flag --refresh=true overrides PULUMI_REFRESH=false",
+			"true",
+			workspace.Project{},
+			map[string]string{"PULUMI_REFRESH": "false"},
+			true,
+		},
+		{
+			"Project config overrides environment variable",
+			"",
+			workspace.Project{
+				Name:    "auto-refresh",
+				Runtime: workspace.ProjectRuntimeInfo{},
+				Options: &workspace.ProjectOptions{
+					Refresh: "always",
+				},
+			},
+			map[string]string{"PULUMI_REFRESH": "false"},
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// Set up environment variables if specified
+			if tt.envVars != nil {
+				// Save and restore the global environment
+				oldGlobal := utilenv.Global
+				utilenv.Global = utilenv.MapStore(tt.envVars)
+				defer func() { utilenv.Global = oldGlobal }()
+			}
 
 			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh)
 			if err != nil {
