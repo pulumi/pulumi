@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Send journal entries to the backend if it's supported
