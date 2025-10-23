@@ -40,7 +40,7 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 		Summary: summary,
 	}, nil, opts, "http://foo.bar/baz")
 
-	expectedCopilotSummary := fmt.Sprintf(`Copilot Diagnostics%s
+	expectedCopilotSummary := fmt.Sprintf(`Neo Diagnostics%s
   This is a test summary
 
   Would you like additional help with this update?
@@ -61,7 +61,7 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 
 	RenderCopilotErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithError := fmt.Sprintf(`Copilot Diagnostics%s
+	expectedCopilotSummaryWithError := fmt.Sprintf(`Neo Diagnostics%s
   error summarizing update output: test error
 
 `, copilotDelimiterEmoji())
@@ -97,7 +97,7 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 		Summary: summary,
 	}, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Copilot Diagnostics%s
+	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Neo Diagnostics%s
   error summarizing update output: test error
 
 `, copilotDelimiterEmoji())
