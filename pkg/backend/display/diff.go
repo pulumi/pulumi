@@ -215,11 +215,11 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 
 	var severity string
 	if payload.Severity != apitype.PolicySeverityUnspecified {
-		severity = fmt.Sprintf(": %s", payload.Severity)
+		severity = fmt.Sprintf(" [severity: %s]", payload.Severity)
 	}
 
 	// Print the individual policy's name and target resource type/name.
-	policyLine := fmt.Sprintf("%s[%s%s]  %s%s  (%s: %s)",
+	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
 		payload.ResourceURN.Type(), payload.ResourceURN.Name())
 
