@@ -1763,21 +1763,24 @@ func (host *pythonLanguageHost) Link(
 		if err != nil {
 			return nil, err
 		}
-
-		info, err := pkgRef.Language("python")
+		pkg, err := pkgRef.Definition()
 		if err != nil {
 			return nil, err
 		}
-		pyInfo, ok := info.(python.PackageInfo)
+		if err := pkg.ImportLanguages(map[string]schema.Language{"python": codegen.Importer}); err != nil {
+			return nil, err
+		}
 		var importName string
 		var packageName string
-		if ok && pyInfo.PackageName != "" {
-			importName = pyInfo.PackageName
-			packageName = pyInfo.PackageName
-		} else {
+		if info, ok := pkg.Language["go"]; ok {
+			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
+				importName = info.PackageName
+				packageName = info.PackageName
+			}
+		}
+		if importName == "" {
 			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
 		}
-
 		if packageName == "" {
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}

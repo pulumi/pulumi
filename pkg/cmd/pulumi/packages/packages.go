@@ -21,10 +21,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -32,7 +30,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -44,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"golang.org/x/mod/modfile"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
@@ -240,8 +236,6 @@ type LinkPackageContext struct {
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackage(ctx *LinkPackageContext) error {
 	switch ctx.Language {
-	case "go":
-		return linkGoPackage(ctx)
 	case "dotnet":
 		return linkDotnetPackage(ctx)
 	case "java":
@@ -308,89 +302,6 @@ func linkPackage(ctx *LinkPackageContext) error {
 	}
 
 	fmt.Fprintln(ctx.Writer, instructions)
-	return nil
-}
-
-// linkGoPackage links a locally generated SDK to an existing Go project.
-func linkGoPackage(ctx *LinkPackageContext) error {
-	fmt.Fprintf(ctx.Writer, "Successfully generated a Go SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-
-	// All go code is placed under a relative package root so it is nested one
-	// more directory deep equal to the package name.  This extra path is equal
-	// to the paramaterization name if it is parameterized, else it is the same
-	// as the base package name.
-	//
-	// (see pulumi-language-go  GeneratePackage for the pathPrefix).
-	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
-	if err != nil {
-		return err
-	}
-	if ctx.Pkg.Parameterization == nil {
-		// Go SDK Gen replaces all "-" in the name.  See pkg/codegen/gen.go:goPackage
-		name := strings.ReplaceAll(ctx.Pkg.Name, "-", "")
-		relOut = filepath.Join(relOut, name)
-	}
-	if runtime.GOOS == "windows" {
-		relOut = ".\\" + relOut
-	} else {
-		relOut = "./" + relOut
-	}
-	if _, err := os.Stat(relOut); err != nil {
-		return fmt.Errorf("could not find sdk path %s: %w", relOut, err)
-	}
-
-	if err := ctx.Pkg.ImportLanguages(map[string]schema.Language{"go": go_gen.Importer}); err != nil {
-		return err
-	}
-	goInfo, ok := ctx.Pkg.Language["go"].(go_gen.GoPackageInfo)
-	if !ok {
-		return errors.New("failed to import go language info")
-	}
-
-	gomodFilepath := filepath.Join(ctx.Root, "go.mod")
-	gomodFileContent, err := os.ReadFile(gomodFilepath)
-	if err != nil {
-		return fmt.Errorf("cannot read mod file: %w", err)
-	}
-
-	gomod, err := modfile.Parse("go.mod", gomodFileContent, nil)
-	if err != nil {
-		return fmt.Errorf("mod parse: %w", err)
-	}
-
-	modulePath := goInfo.ModulePath
-	if modulePath == "" {
-		if goInfo.ImportBasePath != "" {
-			modulePath = path.Dir(goInfo.ImportBasePath)
-		}
-
-		if modulePath == "" {
-			modulePath = extractModulePath(ctx.Pkg.Reference())
-		}
-	}
-
-	err = gomod.AddReplace(modulePath, "", relOut, "")
-	if err != nil {
-		return fmt.Errorf("could not add replace statement: %w", err)
-	}
-
-	b, err := gomod.Format()
-	if err != nil {
-		return fmt.Errorf("error formatting gomod: %w", err)
-	}
-
-	err = os.WriteFile(gomodFilepath, b, 0o600)
-	if err != nil {
-		return fmt.Errorf("error writing go.mod: %w", err)
-	}
-
-	fmt.Fprintf(ctx.Writer, "Go mod file updated to use local sdk for %s\n", ctx.Pkg.Name)
-	// TODO: Also generate instructions using the default import path in cases where ImportBasePath is empty.
-	// See https://github.com/pulumi/pulumi/issues/18410
-	if goInfo.ImportBasePath != "" {
-		fmt.Fprintf(ctx.Writer, "To use this package, import %s\n", goInfo.ImportBasePath)
-	}
-
 	return nil
 }
 
@@ -504,38 +415,6 @@ func CopyAll(dst string, src string) error {
 	}
 
 	return nil
-}
-
-func extractModulePath(pkgRef schema.PackageReference) string {
-	var vPath string
-	version := pkgRef.Version()
-	name := pkgRef.Name()
-	if version != nil && version.Major > 1 {
-		vPath = fmt.Sprintf("/v%d", version.Major)
-	}
-
-	// Default to example.com/pulumi-pkg if we have no other information.
-	root := "example.com/pulumi-" + name
-	// But if we have a publisher use that instead, assuming it's from github
-	if pkgRef.Publisher() != "" {
-		root = fmt.Sprintf("github.com/%s/pulumi-%s", pkgRef.Publisher(), name)
-	}
-	// And if we have a repository, use that instead of the publisher
-	if pkgRef.Repository() != "" {
-		url, err := url.Parse(pkgRef.Repository())
-		if err == nil {
-			// If there's any errors parsing the URL ignore it. Else use the host and path as go doesn't expect http://
-			root = url.Host + url.Path
-		}
-	}
-
-	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
-	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
-	if pkgRef.SupportPack() {
-		return fmt.Sprintf("%s/sdk/go%s", root, vPath)
-	}
-
-	return fmt.Sprintf("%s/sdk%s", root, vPath)
 }
 
 func NewPluginContext(cwd string) (*plugin.Context, error) {
