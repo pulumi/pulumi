@@ -707,7 +707,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 
 	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
 	viewStep, isViewStep := step.(*deploy.ViewStep)
-	if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) && successful {
+	if ((isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted())) && successful {
 		// We're treating persisted refreshes and slightly different than non-persisted ones.
 		// Persisted refreshes are just a delete and create of the resource, and the new resource
 		// can be appended at the end of the base snapshot.  Meanwhile for "non-persisted" refreshes
