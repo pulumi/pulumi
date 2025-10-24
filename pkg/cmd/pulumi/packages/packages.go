@@ -428,7 +428,7 @@ func linkDotnetPackage(ctx *LinkPackageContext) error {
 		namespace = ctx.Pkg.Namespace
 	}
 
-	fmt.Fprintf(ctx.Writer, "You also need to add the following to your .csproj file of the program:\n")
+	fmt.Fprintf(ctx.Writer, "You also need to add the following to your .csproj file of the program under section PropertyGroup:\n")
 	fmt.Fprintf(ctx.Writer, "\n")
 	fmt.Fprintf(ctx.Writer, "  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>\n")
 	fmt.Fprintf(ctx.Writer, "\n")
