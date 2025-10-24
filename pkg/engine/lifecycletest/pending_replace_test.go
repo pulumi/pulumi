@@ -349,6 +349,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
 	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
+	removeOptions.Refresh = true
+	removeOptions.RefreshProgram = true
+
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
