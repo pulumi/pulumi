@@ -2063,16 +2063,9 @@ func TestPythonComponentProviderRun(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
-					installPythonProviderDependencies(t, providerPath)
+					replaceCoreSDK(t, filepath.Join(providerPath, "requirements.txt"))
 					if runtime == "python" {
-						// Link the current version of the SDK into the project
-						coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-						require.NoError(t, err)
-						f, err := os.OpenFile(filepath.Join(info.Root, "requirements.txt"), os.O_WRONLY|os.O_APPEND, 0o644)
-						require.NoError(t, err)
-						_, err = fmt.Fprintln(f, coreSDK)
-						require.NoError(t, err)
-						f.Close()
+						replaceCoreSDK(t, filepath.Join(info.Root, "requirements.txt"))
 					}
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
@@ -2215,13 +2208,12 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	e.ImportDirectory(filepath.Join("component_provider", "python", "component-provider-host", "provider"))
 	defer e.DeleteIfNotFailed()
-	installPythonProviderDependencies(t, e.RootPath)
+	replaceCoreSDK(t, filepath.Join(e.RootPath, "requirements.txt"))
 
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
-	require.Empty(t, stderr)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "provider", schema["name"].(string))
@@ -2565,6 +2557,18 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	require.NoError(t, err)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
+}
+
+// replaceCoreSDK replaces the string PULUMI_CORE_SDK in the target file with the path to the SDK
+func replaceCoreSDK(t *testing.T, target string) {
+	t.Helper()
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+	content, err := os.ReadFile(target)
+	require.NoError(t, err)
+	newContent := strings.ReplaceAll(string(content), "PULUMI_CORE_SDK", coreSDK)
+	err = os.WriteFile(target, []byte(newContent), 0o600)
+	require.NoError(t, err)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/18768

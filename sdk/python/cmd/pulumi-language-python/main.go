@@ -1399,6 +1399,20 @@ func (host *pythonLanguageHost) RunPlugin(
 		return err
 	}
 
+	venvStdout, venvStderr, err := host.createEngineWriters(server.Context())
+	if err != nil {
+		return err
+	}
+	if err := tc.EnsureVenv(server.Context(),
+		filepath.Join(opts.Root),
+		false, /* useLanguageVersionTools */
+		true,  /* showOutput */
+		venvStdout,
+		venvStderr,
+	); err != nil {
+		return err
+	}
+
 	var cmd *exec.Cmd
 
 	hasMainPy := true
