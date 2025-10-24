@@ -2778,7 +2778,8 @@ func TestRefreshV2FailedRead(t *testing.T) {
 		HostF: reproHostF,
 	}
 
-	snap, err := lt.TestOp(engine.RefreshV2).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	snap, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err,
 		"BAIL: read failure for urn:pulumi:test-stack::test-project::pkg-agSW:mod-bZU3:type-v3R0::res-a900")
 	require.NotNil(t, snap)
