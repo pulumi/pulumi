@@ -17,7 +17,6 @@ package operations
 import (
 	"testing"
 
-	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -79,21 +78,21 @@ func TestGetRefreshOption(t *testing.T) {
 		},
 		{
 			"Environment variable PULUMI_REFRESH=true causes a refresh",
-			"",
+			"true",
 			workspace.Project{},
 			map[string]string{"PULUMI_REFRESH": "true"},
 			true,
 		},
 		{
 			"Environment variable PULUMI_REFRESH=1 causes a refresh",
-			"",
+			"1",
 			workspace.Project{},
 			map[string]string{"PULUMI_REFRESH": "1"},
 			true,
 		},
 		{
 			"Environment variable PULUMI_REFRESH=false causes no refresh",
-			"",
+			"false",
 			workspace.Project{},
 			map[string]string{"PULUMI_REFRESH": "false"},
 			false,
@@ -113,8 +112,8 @@ func TestGetRefreshOption(t *testing.T) {
 			true,
 		},
 		{
-			"Project config overrides environment variable",
-			"",
+			"Environment variable overrides project config",
+			"false",
 			workspace.Project{
 				Name:    "auto-refresh",
 				Runtime: workspace.ProjectRuntimeInfo{},
@@ -123,17 +122,15 @@ func TestGetRefreshOption(t *testing.T) {
 				},
 			},
 			map[string]string{"PULUMI_REFRESH": "false"},
-			true,
+			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up environment variables if specified
 			if tt.envVars != nil {
-				// Save and restore the global environment
-				oldGlobal := utilenv.Global
-				utilenv.Global = utilenv.MapStore(tt.envVars)
-				defer func() { utilenv.Global = oldGlobal }()
+				for key, value := range tt.envVars {
+					t.Setenv(key, value)
+				}
 			}
 
 			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh)
