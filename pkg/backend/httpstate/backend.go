@@ -1168,13 +1168,21 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 // IsExplainPreviewEnabled implements the "explainer" interface.
-// Checks that the backend supports the CopilotExplainPreview capability and that the user has enabled
-// the Copilot features.
+// Checks that the backend supports the CopilotExplainPreview capability and that Copilot is enabled
+// for the organization. This feature is available by default without requiring the --copilot flag.
 func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
-	if !b.isCopilotFeaturesEnabled(opts) {
+	// Check if Copilot is enabled for this project in Pulumi Cloud
+	if b.copilotEnabledForCurrentProject == nil {
+		logging.V(7).Info(
+			"copilotEnabledForCurrentProject has not been set. only available after an update has been started.")
 		return false
 	}
 
+	if !*b.copilotEnabledForCurrentProject {
+		return false
+	}
+
+	// Check if the backend supports the CopilotExplainPreviewV1 capability
 	if !b.Capabilities(ctx).CopilotExplainPreviewV1 {
 		logging.V(7).Infof("CopilotExplainPreviewV1 is not supported by the backend")
 		return false
