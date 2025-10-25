@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
@@ -189,8 +190,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 					old.Outputs = expected.Outputs
 
 					// Discard timestamps for refresh test.
-					new.Modified = nil
-					old.Modified = nil
+					new.Modified = time.Time{}
+					old.Modified = time.Time{}
 
 					assert.Equal(t, old, new)
 				}

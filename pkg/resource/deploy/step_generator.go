@@ -285,8 +285,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
+		Created:                 time.Now().UTC(),
+		Modified:                time.Now().UTC(),
 		SourcePosition:          event.SourcePosition(),
 		StackTrace:              event.StackTrace(),
 		IgnoreChanges:           nil,
@@ -659,8 +659,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// lookup providers for calculating replacement of resources that use the provider.
 	sg.deployment.goals.Store(urn, goal)
 
-	var createdAt *time.Time
-	var modifiedAt *time.Time
+	var createdAt time.Time
+	var modifiedAt time.Time
 	if old != nil {
 		createdAt = old.Created
 		modifiedAt = old.Modified

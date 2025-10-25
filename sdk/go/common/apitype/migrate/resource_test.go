@@ -16,6 +16,7 @@ package migrate
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -119,6 +120,6 @@ func TestV2ToV3(t *testing.T) {
 	}, v3.Dependencies)
 	assert.Equal(t, "provider", v3.Provider)
 	assert.Equal(t, []string{"error"}, v3.InitErrors)
-	assert.Nil(t, v3.Created)
-	assert.Nil(t, v3.Modified)
+	assert.Equal(t, time.Time{}, v3.Created)
+	assert.Equal(t, time.Time{}, v3.Modified)
 }
