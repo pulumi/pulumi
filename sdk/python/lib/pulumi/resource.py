@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 import asyncio
 import copy
+import contextvars
+import threading
 import warnings
 from typing import (
     Optional,
@@ -38,7 +40,7 @@ from .runtime.resource import (
     collapse_alias_to_urn,
     create_urn as create_urn_internal,
 )
-from .runtime.settings import get_root_resource
+from .runtime.settings import get_root_resource, _get_rpc_manager, ambient_parent
 from .output import _is_prompt, _map_input, _map2_input, Output
 from . import urn as urn_util
 from . import log
@@ -890,11 +892,18 @@ class Resource:
                 raise TypeError("Expected resource properties to be a mapping")
             typ = None
 
+
+        # If the ambient parent context is set (and not ourselves, we set the context before calling super) use that, else use the root stack resource as the parent.
+        ambient = ambient_parent.get()
+        if ambient is not None:
+            if ambient[0] is self:
+                ambient = ambient[1]
+            else:
+                ambient = ambient[0]
+        parent = opts.parent or ambient or get_root_resource()
+
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
-        parent = opts.parent
-        if parent is None:
-            parent = get_root_resource()
         parent_transformations = (
             (parent._transformations or []) if parent is not None else []
         )
@@ -968,7 +977,7 @@ class Resource:
         self._plugin_download_url = opts.plugin_download_url
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
-            get_resource(self, props, custom, opts.urn, typ)
+            get_resource(self, props, custom, opts.urn, typ, parent)
         elif opts.id is not None:
             # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
@@ -976,7 +985,7 @@ class Resource:
                     "Cannot read an existing resource unless it has a custom provider"
                 )
             read_resource(
-                cast("CustomResource", self), t, name, props, opts, typ, package_ref
+                cast("CustomResource", self), t, name, props, opts, typ, package_ref, parent,
             )
         else:
             register_resource(
@@ -990,6 +999,7 @@ class Resource:
                 opts,
                 typ,
                 package_ref,
+                parent,
             )
 
     def _get_providers(
@@ -1196,6 +1206,39 @@ class ComponentResource(Resource):
         if not remote:
             self.__dict__["id"] = None
         self._remote = remote
+        self._registered = False
+
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+
+        old_init = cls.__init__
+
+        # Hook the __init__ method to set the ambient parent context
+        def new_init(self, *args, **kwargs):
+            def do_init():
+                # Get the current ambient parent
+                ambient = ambient_parent.get()
+                if ambient is not None:
+                    ambient = ambient[0]
+                ambient_parent.set((self, ambient))
+
+                old_init(self, *args, **kwargs)
+
+                # Register outputs to mark the component as finished, __init__ may have already called this
+                # directly but we check inside register_outputs to only run it once, so we won't overwrite existing
+                # outputs. However we reflect over the resource to register useful outputs so most users shouldn't
+                # need to call register_outputs directly.
+                outputs = {}
+                for k, v in self.__dict__.items():
+                    if k.startswith("_") or k == "urn":
+                        continue
+                    outputs[k] = v
+                self.register_outputs(outputs)
+
+            ctx = contextvars.copy_context()
+            return ctx.run(do_init)
+
+        cls.__init__ = new_init
 
     def register_outputs(self, outputs: "Inputs"):
         """
@@ -1204,6 +1247,9 @@ class ComponentResource(Resource):
 
         :param dict output: A dictionary of outputs to associate with this resource.
         """
+        if self._registered:
+            return
+        self._registered = True
         register_resource_outputs(self, outputs)
 
 
