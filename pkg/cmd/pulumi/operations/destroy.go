@@ -81,6 +81,7 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeDependents bool
 	var excludeProtected bool
 	var continueOnError bool
+	var preserveConfig bool
 
 	// Flags for Copilot.
 	var copilotEnabled bool
@@ -340,6 +341,11 @@ func NewDestroyCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
+
+					if preserveConfig {
+						fmt.Printf("The resources in the stack have been deleted, and history is removed.\n")
+						return nil
+					}
 					// Remove also the stack config file.
 					if _, path, detectErr := workspace.DetectProjectStackPath(s.Ref().Name().Q()); detectErr == nil {
 						if detectErr = os.Remove(path); detectErr != nil && !os.IsNotExist(detectErr) {
@@ -367,6 +373,8 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&remove, "remove", false,
 		"Remove the stack and its config file after all resources in the stack have been deleted")
+	cmd.PersistentFlags().BoolVar(&preserveConfig, "preserve-config", false,
+		"preserves the stack config file")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
