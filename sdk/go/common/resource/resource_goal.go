@@ -43,7 +43,9 @@ type Goal struct {
 	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
-	DeletedWith    URN
+	DeletedWith URN
+	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
+	ReplaceWith    []URN
 	SourcePosition string                // If set, the source location of the resource registration
 	StackTrace     []StackFrame          // If set, the stack trace at time of registration
 	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
@@ -111,6 +113,9 @@ type NewGoal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith URN // required
 
+	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
+	ReplaceWith []URN // required
+
 	// If set, the source location of the resource registration
 	SourcePosition string // required
 
@@ -151,6 +156,7 @@ func (g NewGoal) Make() *Goal {
 		ReplaceOnChanges:        g.ReplaceOnChanges,
 		RetainOnDelete:          g.RetainOnDelete,
 		DeletedWith:             g.DeletedWith,
+		ReplaceWith:             g.ReplaceWith,
 		SourcePosition:          g.SourcePosition,
 		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,

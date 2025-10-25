@@ -518,6 +518,7 @@ const (
 	dependency dependencyType = iota
 	propertyDependency
 	deletedWith
+	replaceWith
 )
 
 type brokenDependency struct {
@@ -533,6 +534,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 	var preservedDeps []urn.URN
 	preservedPropDeps := map[resource.PropertyKey][]urn.URN{}
 	preservedDeletedWith := urn.URN("")
+	preservedReplaceWith := []urn.URN{}
 
 	// Providers are always moved, so we don't need to break the dependency and can ignore them here.
 	_, allDeps := res.GetAllDependencies()
@@ -572,12 +574,23 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedDeletedWith = dep.URN
 			}
+		case resource.ResourceReplaceWith:
+			if _, ok := resourcesToMove[string(dep.URN)]; ok {
+				brokenDeps = append(brokenDeps, brokenDependency{
+					dependencyURN:  dep.URN,
+					dependencyType: replaceWith,
+					resourceURN:    res.URN,
+				})
+			} else {
+				preservedReplaceWith = append(preservedReplaceWith, dep.URN)
+			}
 		}
 	}
 
 	res.Dependencies = preservedDeps
 	res.PropertyDependencies = preservedPropDeps
 	res.DeletedWith = preservedDeletedWith
+	res.ReplaceWith = preservedReplaceWith
 
 	return brokenDeps
 }
@@ -631,6 +644,8 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 			rewrittenPropDeps[dep.Key] = append(rewrittenPropDeps[dep.Key], rewrittenURN)
 		case resource.ResourceDeletedWith:
 			res.DeletedWith = rewrittenURN
+		case resource.ResourceReplaceWith:
+			res.ReplaceWith = append(res.ReplaceWith, rewrittenURN)
 		}
 	}
 
@@ -650,6 +665,8 @@ func (cmd *stateMoveCmd) printBrokenDependencyRelationships(brokenDeps []brokenD
 				res.resourceURN, res.propdepKey, res.dependencyURN)
 		case deletedWith:
 			fmt.Fprintf(cmd.Stdout, "  - %s is marked as deleted with %s\n", res.resourceURN, res.dependencyURN)
+		case replaceWith:
+			fmt.Fprintf(cmd.Stdout, "  - %s is marked as replace with %s\n", res.resourceURN, res.dependencyURN)
 		}
 	}
 }

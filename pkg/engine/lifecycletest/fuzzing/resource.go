@@ -47,6 +47,7 @@ type ResourceSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 	Aliases              []resource.URN
 
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging
