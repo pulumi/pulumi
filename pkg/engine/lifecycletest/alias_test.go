@@ -30,7 +30,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -205,7 +205,8 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 						}
 
 						for _, entry := range entries {
-							if entry.Step.Type() == "pulumi:providers:pkgA" {
+							if entry.Step != nil &&
+								entry.Step.Type() == "pulumi:providers:pkgA" {
 								continue
 							}
 							switch entry.Kind {

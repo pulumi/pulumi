@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -374,12 +375,12 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 	}
 	for _, res := range target.Snapshot.Resources {
 		urn := res.URN
-		if !providers.IsProviderType(urn.Type()) {
+		if !sdkproviders.IsProviderType(urn.Type()) {
 			logging.V(preparePluginVerboseLog).Infof(
 				"gatherPackagesFromSnapshot(): skipping %q, not a provider", urn)
 			continue
 		}
-		pkg := providers.GetProviderPackage(urn.Type())
+		pkg := sdkproviders.GetProviderPackage(urn.Type())
 
 		name, err := providers.GetProviderName(pkg, res.Inputs)
 		if err != nil {
