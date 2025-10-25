@@ -116,6 +116,9 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				viewStep, isViewStep := e.Step.(*deploy.ViewStep)
 				if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
 					isRefresh = true
+					if e.Step.Old().PendingReplacement {
+						continue
+					}
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
 					}
