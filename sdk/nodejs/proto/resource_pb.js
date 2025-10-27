@@ -1837,6 +1837,7 @@ retainondelete: (f = jspb.Message.getBooleanField(msg, 25)) == null ? undefined 
 aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
 deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
+replacementTrigger: jspb.Message.getFieldWithDefault(msg, 39, ""),
 aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
@@ -2003,6 +2004,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 27:
       var value = /** @type {string} */ (reader.readString());
       msg.setDeletedwith(value);
+      break;
+    case 39:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setReplacementTrigger(value);
       break;
     case 28:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -2260,6 +2265,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       27,
+      f
+    );
+  }
+  f = message.getReplacementTrigger();
+  if (f.length > 0) {
+    writer.writeString(
+      39,
       f
     );
   }
@@ -3785,6 +3797,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getDeletedwith = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(value) {
   return jspb.Message.setProto3StringField(this, 27, value);
+};
+
+
+/**
+ * optional string replacement_trigger = 39;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getReplacementTrigger = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 39, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setReplacementTrigger = function(value) {
+  return jspb.Message.setProto3StringField(this, 39, value);
 };
 
 
@@ -5955,7 +5985,8 @@ providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefine
 pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 pb_import: jspb.Message.getFieldWithDefault(msg, 17, ""),
-hideDiffList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f
+hideDiffList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f,
+replacementTrigger: jspb.Message.getFieldWithDefault(msg, 20, "")
   };
 
   if (includeInstance) {
@@ -6070,6 +6101,10 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
     case 18:
       var value = /** @type {string} */ (reader.readString());
       msg.addHideDiff(value);
+      break;
+    case 20:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setReplacementTrigger(value);
       break;
     default:
       reader.skipField();
@@ -6220,6 +6255,13 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
   if (f.length > 0) {
     writer.writeRepeatedString(
       18,
+      f
+    );
+  }
+  f = message.getReplacementTrigger();
+  if (f.length > 0) {
+    writer.writeString(
+      20,
       f
     );
   }
@@ -6764,6 +6806,24 @@ proto.pulumirpc.TransformResourceOptions.prototype.addHideDiff = function(value,
  */
 proto.pulumirpc.TransformResourceOptions.prototype.clearHideDiffList = function() {
   return this.setHideDiffList([]);
+};
+
+
+/**
+ * optional string replacement_trigger = 20;
+ * @return {string}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getReplacementTrigger = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 20, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setReplacementTrigger = function(value) {
+  return jspb.Message.setProto3StringField(this, 20, value);
 };
 
 

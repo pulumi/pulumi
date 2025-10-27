@@ -271,6 +271,7 @@ export class CallbackServer implements ICallbackServer {
             ropts.protect = opts.getProtect();
             ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
             ropts.replaceOnChanges = opts.getReplaceOnChangesList();
+            ropts.replacementTrigger = opts.getReplacementTrigger() !== "" ? opts.getReplacementTrigger() : undefined;
             ropts.retainOnDelete = opts.getRetainOnDelete();
             ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
 
@@ -355,6 +356,9 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.replaceOnChanges !== undefined) {
                         opts.setReplaceOnChangesList(result.opts.replaceOnChanges);
+                    }
+                    if (result.opts.replacementTrigger !== undefined) {
+                        opts.setReplacementTrigger(await output(result.opts.replacementTrigger).promise());
                     }
                     if (result.opts.retainOnDelete !== undefined) {
                         opts.setRetainOnDelete(result.opts.retainOnDelete);

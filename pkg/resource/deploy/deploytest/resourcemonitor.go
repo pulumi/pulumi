@@ -289,6 +289,7 @@ type ResourceOptions struct {
 	PluginChecksums         map[string][]byte
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
+	ReplacementTrigger      string
 	AliasURNs               []resource.URN
 	Aliases                 []*pulumirpc.Alias
 	ImportID                resource.ID
@@ -437,6 +438,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
+		ReplacementTrigger:         opts.ReplacementTrigger,
 		Providers:                  opts.Providers,
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		PluginChecksums:            opts.PluginChecksums,

@@ -64,6 +64,7 @@ type State struct {
 	StackTrace              []StackFrame          // If set, the stack trace at time of registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
+	ReplacementTrigger      string                // If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	HideDiff                []PropertyPath        // If set, the list of property paths to compact the diff for.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
@@ -112,6 +113,7 @@ func (s *State) Copy() *State {
 		StackTrace:              slices.Clone(s.StackTrace),
 		IgnoreChanges:           slices.Clone(s.IgnoreChanges),
 		ReplaceOnChanges:        slices.Clone(s.ReplaceOnChanges),
+		ReplacementTrigger:      s.ReplacementTrigger,
 		HideDiff:                slices.Clone(s.HideDiff),
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
@@ -220,6 +222,9 @@ type NewState struct {
 	// If set, the list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string // required
 
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger string // required
+
 	// If set, the list of properties that should have their diff suppressed.
 	HideDiff []PropertyPath // required
 
@@ -272,6 +277,7 @@ func (s NewState) Make() *State {
 		StackTrace:              s.StackTrace,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
+		ReplacementTrigger:      s.ReplacementTrigger,
 		HideDiff:                s.HideDiff,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,

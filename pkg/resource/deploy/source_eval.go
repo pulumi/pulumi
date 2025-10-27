@@ -499,6 +499,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
+			ReplacementTrigger:      "",
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
@@ -1051,6 +1052,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "outputValues":
 		hasSupport = !rm.opts.DisableOutputValues
 	case "aliasSpecs":
+		hasSupport = true
+	case "replacementTrigger":
 		hasSupport = true
 	case "deletedWith":
 		hasSupport = true
@@ -2173,6 +2176,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Protect:                 req.Protect,
 		IgnoreChanges:           req.GetIgnoreChanges(),
 		ReplaceOnChanges:        req.GetReplaceOnChanges(),
+		ReplacementTrigger:      req.GetReplacementTrigger(),
 		Version:                 req.GetVersion(),
 		Aliases:                 aliases,
 		Provider:                provider,
@@ -2448,6 +2452,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		hiddenDiffs = append(hiddenDiffs, path)
 	}
 	replaceOnChanges := opts.ReplaceOnChanges
+	replacementTrigger := opts.GetReplacementTrigger()
 	retainOnDelete := opts.RetainOnDelete
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
 	if err != nil {
@@ -2507,10 +2512,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
+			"providers=%v, replaceOnChanges=%v, replacementTrigger=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
 			"hideDiffs=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks,
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, replacementTrigger, retainOnDelete, deletedWith, resourceHooks,
 		hiddenDiffs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
@@ -2540,6 +2545,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			DeletedWith:             deletedWith,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
+			ReplacementTrigger:      replacementTrigger,
 			RetainOnDelete:          retainOnDelete,
 			ResourceHooks:           resourceHooks,
 		}
@@ -2667,6 +2673,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			ID:                      id,
 			CustomTimeouts:          &timeouts,
 			ReplaceOnChanges:        replaceOnChanges,
+			ReplacementTrigger:      replacementTrigger,
 			RetainOnDelete:          retainOnDelete,
 			DeletedWith:             deletedWith,
 			HideDiff:                hiddenDiffs,
