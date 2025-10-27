@@ -27,4 +27,5 @@ type debugInterceptorLogEntry struct {
 	Response json.RawMessage `json:"response,omitempty"`
 	Errors   []string        `json:"errors,omitempty"`
 	Metadata any             `json:"metadata,omitempty"`
+	Progress string          `json:"progress,omitempty"`
 }

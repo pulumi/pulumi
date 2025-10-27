@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Log gRPC requests before invoking them in gRPC debug interceptor

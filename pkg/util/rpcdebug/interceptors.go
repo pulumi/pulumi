@@ -100,8 +100,12 @@ func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnarySer
 			Metadata: opts.Metadata,
 		}
 		i.trackRequest(&log, req)
+		if err := i.record(log); err != nil {
+			return nil, fmt.Errorf("failed to record GRPC debug log request: %w", err)
+		}
 		resp, err := handler(ctx, req)
 		i.trackResponse(&log, resp)
+		i.trackResponseCompleted(&log)
 		if e := i.record(log); e != nil {
 			return resp, e
 		}
@@ -138,12 +142,17 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 			Metadata: opts.Metadata,
 		}
 		i.trackRequest(&log, req)
+		if err := i.record(log); err != nil {
+			return fmt.Errorf("failed to record GRPC debug log request: %w", err)
+		}
 		err := invoker(ctx, method, req, reply, cc, gopts...)
 		if err != nil {
 			i.track(&log, err)
 		} else {
 			i.trackResponse(&log, reply)
 		}
+
+		i.trackResponseCompleted(&log)
 		if e := i.record(log); e != nil {
 			return e
 		}
@@ -175,12 +184,12 @@ func (i *DebugInterceptor) record(log debugInterceptorLogEntry) error {
 
 	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
-		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %w", i.logFile, err)
+		return fmt.Errorf("failed to append GRPC debug logs to file %s: %w", i.logFile, err)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(log); err != nil {
-		return fmt.Errorf("Failed to encode GRPC debug logs: %w", err)
+		return fmt.Errorf("failed to encode GRPC debug logs: %w", err)
 	}
 	return nil
 }
@@ -195,6 +204,7 @@ func (i *DebugInterceptor) trackRequest(log *debugInterceptorLogEntry, req any) 
 		i.track(log, err)
 	} else {
 		log.Request = j
+		log.Progress = "request_started"
 	}
 }
 
@@ -205,6 +215,10 @@ func (i *DebugInterceptor) trackResponse(log *debugInterceptorLogEntry, resp any
 	} else {
 		log.Response = j
 	}
+}
+
+func (i *DebugInterceptor) trackResponseCompleted(log *debugInterceptorLogEntry) {
+	log.Progress = "response_completed"
 }
 
 func (*DebugInterceptor) transcode(obj any) (json.RawMessage, error) {

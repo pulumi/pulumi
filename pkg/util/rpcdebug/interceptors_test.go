@@ -19,6 +19,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,9 +67,20 @@ func TestClientInterceptorCatchesErrors(t *testing.T) {
 	log, err := os.ReadFile(logFile)
 	require.NoError(t, err)
 
+	logContents := string(log)
+
+	entries := strings.Split(logContents, "\n")
+
 	assert.JSONEq(t, `{
 		"method": "/pulumirpc.ResourceProvider/Configure",
 		"request": {"variables": {"x": "y"}},
-		"errors": ["oops"]
-	}`, string(log))
+		"progress": "request_started"
+	}`, entries[0])
+
+	assert.JSONEq(t, `{
+		"method": "/pulumirpc.ResourceProvider/Configure",
+		"request": {"variables": {"x": "y"}},
+		"errors": ["oops"],
+		"progress": "response_completed"
+	}`, entries[1])
 }
