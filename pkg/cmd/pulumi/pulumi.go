@@ -74,12 +74,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	resourcePlugin "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -780,14 +782,42 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 func checkForOutdatedProviders(ctx context.Context) string {
 	logging.V(1).Infof("checkForOutdatedProviders: starting provider version check")
 
-	// Get the list of installed plugins
-	plugins, err := workspace.GetPluginsWithMetadata()
+	// Get the list of project-specific plugins (only those used by the current stack)
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
-		logging.V(3).Infof("error getting installed plugins: %s", err)
+		logging.V(3).Infof("error reading project: %s", err)
 		return ""
 	}
 
-	logging.V(3).Infof("checkForOutdatedProviders: checking %d plugins", len(plugins))
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, main, pluginCtx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	if err != nil {
+		logging.V(3).Infof("error getting project context: %s", err)
+		return ""
+	}
+	defer pluginCtx.Close()
+
+	runtimeOptions := proj.Runtime.Options()
+	programInfo := resourcePlugin.NewProgramInfo(root, pwd, main, runtimeOptions)
+
+	// Get the required plugins for this project
+	pluginSpecs, err := engine.GetRequiredPlugins(
+		pluginCtx.Host,
+		proj.Runtime.Name(),
+		programInfo)
+	if err != nil {
+		logging.V(3).Infof("error getting required plugins: %s", err)
+		return ""
+	}
+
+	// Resolve the plugin specs to get plugin info
+	plugins, err := plugin.ResolvePlugins(pluginSpecs)
+	if err != nil {
+		logging.V(3).Infof("error resolving plugins: %s", err)
+		return ""
+	}
+
+	logging.V(3).Infof("checkForOutdatedProviders: checking %d project plugins", len(plugins))
 
 	var outdatedProviders []string
 	for _, plugin := range plugins {

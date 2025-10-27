@@ -89,7 +89,7 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	return plugins, nil
 }
 
-func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
+func ResolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
