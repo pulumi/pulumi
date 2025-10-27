@@ -861,11 +861,164 @@ func checkForOutdatedProviders(ctx context.Context) string {
 		return ""
 	}
 
+	// Detect the stack language
+	language := proj.Runtime.Name()
+
 	msg := "\n" + colors.SpecAttention + "Some of your providers are outdated:" + colors.Reset + "\n"
 	for _, provider := range outdatedProviders {
 		msg += "  • " + provider + "\n"
 	}
-	msg += "\nTo update your providers, run:\n"
+
+	// Add language-specific upgrade instructions
+	msg += getLanguageSpecificUpgradeInstructions(language, outdatedProviders)
+
+	return msg
+}
+
+// getLanguageSpecificUpgradeInstructions returns language-specific upgrade instructions
+func getLanguageSpecificUpgradeInstructions(language string, outdatedProviders []string) string {
+	switch language {
+	case "nodejs":
+		return getNodeJSUpgradeInstructions(outdatedProviders)
+	case "go":
+		return getGoUpgradeInstructions(outdatedProviders)
+	case "python":
+		return getPythonUpgradeInstructions(outdatedProviders)
+	case "dotnet":
+		return getDotNetUpgradeInstructions(outdatedProviders)
+	case "java":
+		return getJavaUpgradeInstructions(outdatedProviders)
+	case "yaml":
+		return getYAMLUpgradeInstructions(outdatedProviders)
+	default:
+		return getGenericUpgradeInstructions()
+	}
+}
+
+// getNodeJSUpgradeInstructions provides detailed Node.js upgrade instructions
+func getNodeJSUpgradeInstructions(outdatedProviders []string) string {
+	msg := "\n" + colors.SpecAttention + "Node.js Upgrade Instructions:" + colors.Reset + "\n"
+	msg += "Since you're using Node.js with version pinning, you need to update your package.json:\n\n"
+
+	// Extract provider names and suggest package.json updates
+	for _, provider := range outdatedProviders {
+		// Parse provider name from the format "provider-name (current: x.y.z, latest: a.b.c)"
+		parts := strings.Split(provider, " (")
+		if len(parts) > 0 {
+			providerName := parts[0]
+			// Convert provider name to package name format
+			packageName := "@pulumi/" + providerName
+			msg += "  • Update " + colors.SpecPrompt + packageName + colors.Reset + " in your package.json\n"
+		}
+	}
+
+	msg += "\n" + colors.SpecPrompt + "Example:" + colors.Reset + "\n"
+	msg += "  {\n"
+	msg += "    \"dependencies\": {\n"
+	msg += "      \"@pulumi/aws\": \"^6.0.0\",  // Update to latest version\n"
+	msg += "      \"@pulumi/random\": \"^4.0.0\"  // Update to latest version\n"
+	msg += "    }\n"
+	msg += "  }\n\n"
+	msg += "Then run: " + colors.SpecPrompt + "npm install" + colors.Reset + " or " + colors.SpecPrompt + "yarn install" + colors.Reset + "\n"
+	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in package.json"
+
+	return msg
+}
+
+// getGoUpgradeInstructions provides Go upgrade instructions (placeholder)
+func getGoUpgradeInstructions(outdatedProviders []string) string {
+	msg := "\n" + colors.SpecAttention + "Go Upgrade Instructions:" + colors.Reset + "\n"
+	msg += "Update your go.mod file with the latest provider versions:\n\n"
+
+	for _, provider := range outdatedProviders {
+		parts := strings.Split(provider, " (")
+		if len(parts) > 0 {
+			providerName := parts[0]
+			packageName := "github.com/pulumi/pulumi-" + providerName + "/sdk/v3/go/" + providerName
+			msg += "  • Update " + colors.SpecPrompt + packageName + colors.Reset + " in go.mod\n"
+		}
+	}
+
+	msg += "\nThen run: " + colors.SpecPrompt + "go mod tidy" + colors.Reset + "\n"
+	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in go.mod"
+
+	return msg
+}
+
+// getPythonUpgradeInstructions provides Python upgrade instructions (placeholder)
+func getPythonUpgradeInstructions(outdatedProviders []string) string {
+	msg := "\n" + colors.SpecAttention + "Python Upgrade Instructions:" + colors.Reset + "\n"
+	msg += "Update your requirements.txt with the latest provider versions:\n\n"
+
+	for _, provider := range outdatedProviders {
+		parts := strings.Split(provider, " (")
+		if len(parts) > 0 {
+			providerName := parts[0]
+			packageName := "pulumi-" + providerName
+			msg += "  • Update " + colors.SpecPrompt + packageName + colors.Reset + " in requirements.txt\n"
+		}
+	}
+
+	msg += "\nThen run: " + colors.SpecPrompt + "pip install -r requirements.txt" + colors.Reset + "\n"
+	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in requirements.txt"
+
+	return msg
+}
+
+// getDotNetUpgradeInstructions provides .NET upgrade instructions (placeholder)
+func getDotNetUpgradeInstructions(outdatedProviders []string) string {
+	msg := "\n" + colors.SpecAttention + ".NET Upgrade Instructions:" + colors.Reset + "\n"
+	msg += "Update your .csproj file with the latest provider versions:\n\n"
+
+	for _, provider := range outdatedProviders {
+		parts := strings.Split(provider, " (")
+		if len(parts) > 0 {
+			providerName := parts[0]
+			packageName := "Pulumi." + strings.Title(providerName)
+			msg += "  • Update " + colors.SpecPrompt + packageName + colors.Reset + " in .csproj\n"
+		}
+	}
+
+	msg += "\nThen run: " + colors.SpecPrompt + "dotnet restore" + colors.Reset + "\n"
+	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in .csproj"
+
+	return msg
+}
+
+// getJavaUpgradeInstructions provides Java upgrade instructions (placeholder)
+func getJavaUpgradeInstructions(outdatedProviders []string) string {
+	msg := "\n" + colors.SpecAttention + "Java Upgrade Instructions:" + colors.Reset + "\n"
+	msg += "Update your build.gradle or pom.xml with the latest provider versions:\n\n"
+
+	for _, provider := range outdatedProviders {
+		parts := strings.Split(provider, " (")
+		if len(parts) > 0 {
+			providerName := parts[0]
+			packageName := "com.pulumi:" + providerName
+			msg += "  • Update " + colors.SpecPrompt + packageName + colors.Reset + " in build file\n"
+		}
+	}
+
+	msg += "\nThen run: " + colors.SpecPrompt + "gradle build" + colors.Reset + " or " + colors.SpecPrompt + "mvn install" + colors.Reset + "\n"
+	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in build files"
+
+	return msg
+}
+
+// getYAMLUpgradeInstructions provides YAML upgrade instructions (placeholder)
+func getYAMLUpgradeInstructions(outdatedProviders []string) string {
+	msg := "\n" + colors.SpecAttention + "YAML Upgrade Instructions:" + colors.Reset + "\n"
+	msg += "YAML programs don't have dependency files, so you can use:\n\n"
+	msg += "  " + colors.SpecPrompt + "pulumi plugin install --all" + colors.Reset + "\n"
+	msg += "or update individual providers with:\n"
+	msg += "  " + colors.SpecPrompt + "pulumi plugin install <provider-name> <version>" + colors.Reset
+
+	return msg
+}
+
+// getGenericUpgradeInstructions provides generic upgrade instructions
+func getGenericUpgradeInstructions() string {
+	msg := "\nTo update your providers, run:\n"
 	msg += "  " + colors.SpecPrompt + "pulumi plugin install --all" + colors.Reset + "\n"
 	msg += "or update individual providers with:\n"
 	msg += "  " + colors.SpecPrompt + "pulumi plugin install <provider-name> <version>" + colors.Reset
