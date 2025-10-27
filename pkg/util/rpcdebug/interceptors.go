@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -138,8 +139,9 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 		}
 
 		log := debugInterceptorLogEntry{
-			Method:   method,
-			Metadata: opts.Metadata,
+			Method:    method,
+			Metadata:  opts.Metadata,
+			Timestamp: time.Now(),
 		}
 		i.trackRequest(&log, req)
 		if err := i.record(log); err != nil {
@@ -218,7 +220,11 @@ func (i *DebugInterceptor) trackResponse(log *debugInterceptorLogEntry, resp any
 }
 
 func (i *DebugInterceptor) trackResponseCompleted(log *debugInterceptorLogEntry) {
+	now := time.Now()
+	duration := now.Sub(log.Timestamp)
 	log.Progress = "response_completed"
+	log.Duration = duration
+	log.Timestamp = now
 }
 
 func (*DebugInterceptor) transcode(obj any) (json.RawMessage, error) {
@@ -250,9 +256,10 @@ type debugServerStream struct {
 
 func (dss *debugServerStream) errorEntry(err error) debugInterceptorLogEntry {
 	return debugInterceptorLogEntry{
-		Metadata: dss.metadata,
-		Method:   dss.method,
-		Errors:   []string{err.Error()},
+		Metadata:  dss.metadata,
+		Method:    dss.method,
+		Errors:    []string{err.Error()},
+		Timestamp: time.Now(),
 	}
 }
 
@@ -286,9 +293,10 @@ func (dss *debugServerStream) SendMsg(m any) error {
 			}
 		} else {
 			if e := dss.interceptor.record(debugInterceptorLogEntry{
-				Metadata: dss.metadata,
-				Method:   dss.method,
-				Request:  req,
+				Metadata:  dss.metadata,
+				Method:    dss.method,
+				Request:   req,
+				Timestamp: time.Now(),
 			}); e != nil {
 				return e
 			}
@@ -313,9 +321,10 @@ func (dss *debugServerStream) RecvMsg(m any) error {
 			}
 		} else {
 			if e := dss.interceptor.record(debugInterceptorLogEntry{
-				Method:   dss.method,
-				Metadata: dss.metadata,
-				Response: resp,
+				Method:    dss.method,
+				Metadata:  dss.metadata,
+				Response:  resp,
+				Timestamp: time.Now(),
 			}); e != nil {
 				return e
 			}
@@ -336,9 +345,10 @@ type debugClientStream struct {
 
 func (d *debugClientStream) errorEntry(err error) debugInterceptorLogEntry {
 	return debugInterceptorLogEntry{
-		Method:   d.method,
-		Metadata: d.metadata,
-		Errors:   []string{err.Error()},
+		Method:    d.method,
+		Metadata:  d.metadata,
+		Timestamp: time.Now(),
+		Errors:    []string{err.Error()},
 	}
 }
 
