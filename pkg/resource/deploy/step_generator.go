@@ -3175,12 +3175,18 @@ func NewConstraintError(err error) *ConstraintError {
 	return &ConstraintError{inner: err}
 }
 
+var _ error = &ConstraintError{}
+
 type ConstraintError struct {
 	inner error
 }
 
 func (e *ConstraintError) Error() string {
 	return e.inner.Error()
+}
+
+func (e *ConstraintError) Unwrap() error {
+	return e.inner
 }
 
 func IsConstraintError(err error) bool {
