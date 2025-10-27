@@ -175,6 +175,11 @@ interface ResourceResolverOperation {
      * resource if the URN specified is being deleted as well.
      */
     deletedWithURN: URN | undefined;
+
+    /**
+     * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+     */
+    replacementTrigger: string | undefined;
 }
 
 /**
@@ -611,6 +616,7 @@ export function registerResource(
                 req.setSupportspartialvalues(true);
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
+                req.setReplacementTrigger(resop.replacementTrigger || "");
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
@@ -991,6 +997,7 @@ export async function prepareResource(
         }
     }
 
+    const replacementTrigger = opts?.replacementTrigger ? await output(opts.replacementTrigger).promise() : undefined;
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
 
     return {
@@ -1007,6 +1014,7 @@ export async function prepareResource(
         import: importID,
         monitorSupportsStructuredAliases,
         deletedWithURN,
+        replacementTrigger,
     };
 }
 

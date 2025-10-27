@@ -424,6 +424,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 			}
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
+			opts.ReplacementTrigger = rpcReq.Options.ReplacementTrigger
 			opts.RetainOnDelete = flatten(rpcReq.Options.RetainOnDelete)
 			opts.Version = rpcReq.Options.Version
 

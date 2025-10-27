@@ -712,6 +712,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		IgnoreChanges:           goal.IgnoreChanges,
 		HideDiff:                goal.HideDiff,
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
+		ReplacementTrigger:      goal.ReplacementTrigger,
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
@@ -2580,6 +2581,11 @@ func (sg *stepGenerator) diff(
 		return plugin.DiffResult{}, nil, err
 	} else if providerChanged {
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil, nil
+	}
+
+	if old != nil && old.ReplacementTrigger != new.ReplacementTrigger {
+		logging.V(7).Infof("ReplacementTrigger changed for '%v': old=%q, new=%q", urn, old.ReplacementTrigger, new.ReplacementTrigger)
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"__replacementTriggered"}}, nil, nil
 	}
 
 	// Apply legacy diffing behavior if requested. In this mode, if the provider-calculated inputs for a resource did

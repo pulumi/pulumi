@@ -469,6 +469,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if replace_on_changes:
             ropts.replace_on_changes = replace_on_changes
 
+        if opts.replacement_trigger:
+            ropts.replacement_trigger = opts.replacement_trigger
+
         if opts.retain_on_delete:
             ropts.retain_on_delete = opts.retain_on_delete
 
@@ -576,6 +579,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result.protect = opts.protect
         if opts.retain_on_delete:
             result.retain_on_delete = opts.retain_on_delete
+        if opts.replacement_trigger:
+            result.replacement_trigger = await Output.from_input(opts.replacement_trigger).future()
         if opts.version:
             result.version = opts.version
         if opts.provider is not None:

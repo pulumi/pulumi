@@ -816,6 +816,10 @@ type ConstructOptions struct {
 	// the resource to be replaced.
 	ReplaceOnChanges []string
 
+	// ReplacementTrigger specifies that if set, the engine will diff this with
+	// the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger string
+
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
 	RetainOnDelete *bool
