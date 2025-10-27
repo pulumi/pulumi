@@ -76,6 +76,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -316,6 +317,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
+				logging.V(1).Infof("starting version check")
 				go func() {
 					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
@@ -521,15 +523,15 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
 func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
+	logging.V(1).Infof("checkForUpdate: starting CLI version check")
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
 	}
 
 	// We don't care about warning about updates if this is a locally-compiled version
-	if isLocalVersion(curVer) {
-		return nil
-	}
+	// But we still want to check for outdated providers
+	isLocal := isLocalVersion(curVer)
 
 	isCurVerDev := isDevVersion(curVer)
 	canPrompt, lastPromptTimestampMS := checkVersionPrompt(isCurVerDev)
@@ -540,23 +542,30 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
 	}
 
-	willPrompt := canPrompt &&
-		((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
-			(!isCurVerDev && oldestAllowedVer.GT(curVer)))
+	// Only check CLI version if it's not a local version
+	var willPrompt bool
+	if !isLocal {
+		willPrompt = canPrompt &&
+			((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
+				(!isCurVerDev && oldestAllowedVer.GT(curVer)))
 
-	if willPrompt {
-		lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
+		if willPrompt {
+			lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
+		}
+
+		err = cacheVersionInfo(cachedVersionInfo{
+			LatestVersion:         latestVer.String(),
+			OldestWithoutWarning:  oldestAllowedVer.String(),
+			LatestDevVersion:      devVer.String(),
+			LastPromptTimeStampMS: lastPromptTimestampMS,
+		})
+		if err != nil {
+			logging.V(3).Infof("failed to cache version info: %s", err)
+		}
 	}
 
-	err = cacheVersionInfo(cachedVersionInfo{
-		LatestVersion:         latestVer.String(),
-		OldestWithoutWarning:  oldestAllowedVer.String(),
-		LatestDevVersion:      devVer.String(),
-		LastPromptTimeStampMS: lastPromptTimestampMS,
-	})
-	if err != nil {
-		logging.V(3).Infof("failed to cache version info: %s", err)
-	}
+	// Check for outdated providers regardless of CLI version status
+	providerMsg := checkForOutdatedProviders(ctx)
 
 	if willPrompt {
 		if isCurVerDev {
@@ -564,7 +573,18 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		}
 
 		msg := getUpgradeMessage(latestVer, curVer, isCurVerDev)
+
+		// Also check for outdated providers
+		if providerMsg != "" {
+			msg += providerMsg
+		}
+
 		return diag.RawMessage("", msg)
+	}
+
+	// If CLI is up to date (or local), just show provider messages
+	if providerMsg != "" {
+		return diag.RawMessage("", providerMsg)
 	}
 
 	return nil
@@ -753,6 +773,73 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 	}
 
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
+	return msg
+}
+
+// checkForOutdatedProviders checks for outdated providers and returns a message if any are found.
+func checkForOutdatedProviders(ctx context.Context) string {
+	logging.V(1).Infof("checkForOutdatedProviders: starting provider version check")
+
+	// Get the list of installed plugins
+	plugins, err := workspace.GetPluginsWithMetadata()
+	if err != nil {
+		logging.V(3).Infof("error getting installed plugins: %s", err)
+		return ""
+	}
+
+	logging.V(3).Infof("checkForOutdatedProviders: checking %d plugins", len(plugins))
+
+	var outdatedProviders []string
+	for _, plugin := range plugins {
+		// Only check resource plugins (providers)
+		if plugin.Kind != apitype.ResourcePlugin {
+			continue
+		}
+
+		// Skip if no version is available
+		if plugin.Version == nil {
+			continue
+		}
+
+		logging.V(3).Infof("checking provider %s version %s", plugin.Name, plugin.Version.String())
+
+		// Create a plugin spec to check for latest version
+		spec := workspace.PluginSpec{
+			Name:    plugin.Name,
+			Kind:    plugin.Kind,
+			Version: plugin.Version,
+		}
+
+		// Get the latest version
+		latestVersion, err := spec.GetLatestVersion(ctx)
+		if err != nil {
+			logging.V(3).Infof("error getting latest version for provider %s: %s", plugin.Name, err)
+			continue
+		}
+
+		logging.V(3).Infof("provider %s: current=%s, latest=%s", plugin.Name, plugin.Version.String(), latestVersion.String())
+
+		// Check if current version is outdated
+		if latestVersion.GT(*plugin.Version) {
+			logging.V(3).Infof("provider %s is outdated!", plugin.Name)
+			outdatedProviders = append(outdatedProviders, fmt.Sprintf("%s (current: %s, latest: %s)",
+				plugin.Name, plugin.Version.String(), latestVersion.String()))
+		}
+	}
+
+	if len(outdatedProviders) == 0 {
+		return ""
+	}
+
+	msg := "\n" + colors.SpecAttention + "Some of your providers are outdated:" + colors.Reset + "\n"
+	for _, provider := range outdatedProviders {
+		msg += "  • " + provider + "\n"
+	}
+	msg += "\nTo update your providers, run:\n"
+	msg += "  " + colors.SpecPrompt + "pulumi plugin install --all" + colors.Reset + "\n"
+	msg += "or update individual providers with:\n"
+	msg += "  " + colors.SpecPrompt + "pulumi plugin install <provider-name> <version>" + colors.Reset
+
 	return msg
 }
 
