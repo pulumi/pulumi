@@ -23,5 +23,1710 @@
             "Extra": null,
             "Path": "values.invalidInput[\"fn::concat\"]"
         }
-    ]
+    ],
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "expected array, got string",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 3,
+                    "Column": 17,
+                    "Byte": 40
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 29,
+                    "Byte": 52
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidInput[\"fn::concat\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 5,
+                    "Column": 18,
+                    "Byte": 89
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 19,
+                    "Byte": 90
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidNested[\"fn::concat\"][0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 5,
+                    "Column": 21,
+                    "Byte": 92
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 22,
+                    "Byte": 93
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidNested[\"fn::concat\"][1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 5,
+                    "Column": 24,
+                    "Byte": 95
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 25,
+                    "Byte": 96
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidNested[\"fn::concat\"][2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got string",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 7,
+                    "Column": 26,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 33,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.mixedInvalid[\"fn::concat\"][1]"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "invalidInput": {
+                "range": {
+                    "environment": "builtin-concat-errors",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 28
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 29,
+                        "byte": 52
+                    }
+                },
+                "schema": {
+                    "items": true,
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::concat",
+                    "nameRange": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 38
+                        }
+                    },
+                    "argSchema": {
+                        "items": {
+                            "items": true,
+                            "type": "array"
+                        },
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 3,
+                                "column": 17,
+                                "byte": 40
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 29,
+                                "byte": 52
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "not an array"
+                        },
+                        "literal": "not an array"
+                    }
+                }
+            },
+            "invalidNested": {
+                "range": {
+                    "environment": "builtin-concat-errors",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 76
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 25,
+                        "byte": 96
+                    }
+                },
+                "schema": {
+                    "items": true,
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::concat",
+                    "nameRange": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 76
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 15,
+                            "byte": 86
+                        }
+                    },
+                    "argSchema": {
+                        "items": {
+                            "items": true,
+                            "type": "array"
+                        },
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 5,
+                                "column": 17,
+                                "byte": 88
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 25,
+                                "byte": 96
+                            }
+                        },
+                        "schema": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 1
+                                },
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "number",
+                                    "const": 3
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 18,
+                                        "byte": 89
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 19,
+                                        "byte": 90
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 1
+                                },
+                                "literal": 1
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 21,
+                                        "byte": 92
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 22,
+                                        "byte": 93
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                "literal": 2
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 24,
+                                        "byte": 95
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 25,
+                                        "byte": 96
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 3
+                                },
+                                "literal": 3
+                            }
+                        ]
+                    }
+                }
+            },
+            "mixedInvalid": {
+                "range": {
+                    "environment": "builtin-concat-errors",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 0
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 42,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "items": true,
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::concat",
+                    "nameRange": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 15,
+                            "byte": 0
+                        }
+                    },
+                    "argSchema": {
+                        "items": {
+                            "items": true,
+                            "type": "array"
+                        },
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 7,
+                                "column": 17,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 42,
+                                "byte": 0
+                            }
+                        },
+                        "schema": {
+                            "prefixItems": [
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 1
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "invalid"
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 3
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 4
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 18,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 23,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 1
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 20,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 1
+                                        },
+                                        "literal": 1
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 22,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 23,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        "literal": 2
+                                    }
+                                ]
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 26,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 33,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "invalid"
+                                },
+                                "literal": "invalid"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 37,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 42,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 3
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 4
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 38,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 39,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 3
+                                        },
+                                        "literal": 3
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 41,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 42,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 4
+                                        },
+                                        "literal": 4
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "invalidInput": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 29,
+                            "byte": 52
+                        }
+                    }
+                }
+            },
+            "invalidNested": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 76
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 25,
+                            "byte": 96
+                        }
+                    }
+                }
+            },
+            "mixedInvalid": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 42,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "invalidInput": {
+                    "items": true,
+                    "type": "array"
+                },
+                "invalidNested": {
+                    "items": true,
+                    "type": "array"
+                },
+                "mixedInvalid": {
+                    "items": true,
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "invalidInput",
+                "invalidNested",
+                "mixedInvalid"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-concat-errors",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-concat-errors",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-concat-errors"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-concat-errors"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "invalidInput": "[unknown]",
+        "invalidNested": "[unknown]",
+        "mixedInvalid": "[unknown]"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "expected array, got string",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 3,
+                    "Column": 17,
+                    "Byte": 40
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 29,
+                    "Byte": 52
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidInput[\"fn::concat\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 5,
+                    "Column": 18,
+                    "Byte": 89
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 19,
+                    "Byte": 90
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidNested[\"fn::concat\"][0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 5,
+                    "Column": 21,
+                    "Byte": 92
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 22,
+                    "Byte": 93
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidNested[\"fn::concat\"][1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 5,
+                    "Column": 24,
+                    "Byte": 95
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 25,
+                    "Byte": 96
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalidNested[\"fn::concat\"][2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected array, got string",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-concat-errors",
+                "Start": {
+                    "Line": 7,
+                    "Column": 26,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 33,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.mixedInvalid[\"fn::concat\"][1]"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "invalidInput": {
+                "range": {
+                    "environment": "builtin-concat-errors",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 28
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 29,
+                        "byte": 52
+                    }
+                },
+                "schema": {
+                    "items": true,
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::concat",
+                    "nameRange": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 38
+                        }
+                    },
+                    "argSchema": {
+                        "items": {
+                            "items": true,
+                            "type": "array"
+                        },
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 3,
+                                "column": 17,
+                                "byte": 40
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 29,
+                                "byte": 52
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "not an array"
+                        },
+                        "literal": "not an array"
+                    }
+                }
+            },
+            "invalidNested": {
+                "range": {
+                    "environment": "builtin-concat-errors",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 76
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 25,
+                        "byte": 96
+                    }
+                },
+                "schema": {
+                    "items": true,
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::concat",
+                    "nameRange": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 76
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 15,
+                            "byte": 86
+                        }
+                    },
+                    "argSchema": {
+                        "items": {
+                            "items": true,
+                            "type": "array"
+                        },
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 5,
+                                "column": 17,
+                                "byte": 88
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 25,
+                                "byte": 96
+                            }
+                        },
+                        "schema": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 1
+                                },
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "number",
+                                    "const": 3
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 18,
+                                        "byte": 89
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 19,
+                                        "byte": 90
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 1
+                                },
+                                "literal": 1
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 21,
+                                        "byte": 92
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 22,
+                                        "byte": 93
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                "literal": 2
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 24,
+                                        "byte": 95
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 25,
+                                        "byte": 96
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 3
+                                },
+                                "literal": 3
+                            }
+                        ]
+                    }
+                }
+            },
+            "mixedInvalid": {
+                "range": {
+                    "environment": "builtin-concat-errors",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 0
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 42,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "items": true,
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::concat",
+                    "nameRange": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 15,
+                            "byte": 0
+                        }
+                    },
+                    "argSchema": {
+                        "items": {
+                            "items": true,
+                            "type": "array"
+                        },
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 7,
+                                "column": 17,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 42,
+                                "byte": 0
+                            }
+                        },
+                        "schema": {
+                            "prefixItems": [
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 1
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "invalid"
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 3
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 4
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 18,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 23,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 1
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 20,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 1
+                                        },
+                                        "literal": 1
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 22,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 23,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        "literal": 2
+                                    }
+                                ]
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 26,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 33,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "invalid"
+                                },
+                                "literal": "invalid"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 37,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 42,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 3
+                                        },
+                                        {
+                                            "type": "number",
+                                            "const": 4
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 38,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 39,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 3
+                                        },
+                                        "literal": 3
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 41,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 42,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 4
+                                        },
+                                        "literal": 4
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "invalidInput": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 29,
+                            "byte": 52
+                        }
+                    }
+                }
+            },
+            "invalidNested": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 76
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 25,
+                            "byte": 96
+                        }
+                    }
+                }
+            },
+            "mixedInvalid": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-concat-errors",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 42,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "invalidInput": {
+                    "items": true,
+                    "type": "array"
+                },
+                "invalidNested": {
+                    "items": true,
+                    "type": "array"
+                },
+                "mixedInvalid": {
+                    "items": true,
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "invalidInput",
+                "invalidNested",
+                "mixedInvalid"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-concat-errors",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-concat-errors",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-concat-errors",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-concat-errors",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-concat-errors",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-concat-errors"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-concat-errors"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "invalidInput": "[unknown]",
+        "invalidNested": "[unknown]",
+        "mixedInvalid": "[unknown]"
+    },
+    "evalJSONRevealed": {
+        "invalidInput": "[unknown]",
+        "invalidNested": "[unknown]",
+        "mixedInvalid": "[unknown]"
+    }
 }

@@ -300,7 +300,9 @@ func (x *expr) export(environment string) esc.Expr {
 	case *objectExpr:
 		ex.KeyRanges = make(map[string]esc.Range, len(repr.node.Entries))
 		for _, kvp := range repr.node.Entries {
-			ex.KeyRanges[kvp.Key.Value] = convertRange(kvp.Key.Syntax().Syntax().Range(), environment)
+			if kvp.Key != nil {
+				ex.KeyRanges[kvp.Key.Value] = convertRange(kvp.Key.Syntax().Syntax().Range(), environment)
+			}
 		}
 
 		ex.Object = make(map[string]esc.Expr, len(repr.properties))

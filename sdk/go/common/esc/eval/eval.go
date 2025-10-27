@@ -70,10 +70,6 @@ func LoadYAMLBytes(filename string, source []byte) (*ast.EnvironmentDecl, syntax
 
 	t, tdiags := ast.ParseEnvironment(source, syn)
 	diags.Extend(tdiags...)
-	if tdiags.HasErrors() {
-		return nil, diags, nil
-	}
-
 	return t, diags, nil
 }
 
@@ -391,11 +387,14 @@ func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *e
 	case *ast.ObjectExpr:
 		properties := make(map[string]*expr, len(x.Entries))
 		for _, entry := range x.Entries {
-			k := entry.Key.Value
-			if _, ok := properties[k]; ok {
-				e.errorf(entry.Key, "duplicate key %q", k)
-			} else {
-				properties[k] = declare(e, util.JoinKey(path, k), entry.Value, base.property(entry.Key, k))
+			// Possible during parse errors. We elide properties with nil keys.
+			if entry.Key != nil {
+				k := entry.Key.Value
+				if _, ok := properties[k]; ok {
+					e.errorf(entry.Key, "duplicate key %q", k)
+				} else {
+					properties[k] = declare(e, util.JoinKey(path, k), entry.Value, base.property(entry.Key, k))
+				}
 			}
 		}
 		repr := &objectExpr{node: x, properties: properties}

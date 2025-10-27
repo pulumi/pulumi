@@ -892,7 +892,7 @@ func parseFromBase64(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr
 func parseSecret(node *syntax.ObjectNode, name *StringExpr, value Expr) (Expr, syntax.Diagnostics) {
 	if arg, ok := value.(*ObjectExpr); ok && len(arg.Entries) == 1 {
 		kvp := arg.Entries[0]
-		if kvp.Key.Value == "ciphertext" {
+		if kvp.Key.GetValue() == "ciphertext" {
 			if str, ok := kvp.Value.(*StringExpr); ok {
 				return CiphertextSyntax(node, name, arg, str), nil
 			}

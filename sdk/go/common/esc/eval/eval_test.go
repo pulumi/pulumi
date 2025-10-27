@@ -252,6 +252,10 @@ type testEnvironments struct {
 }
 
 func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error) {
+	if e.root == "" {
+		return nil, nil, os.ErrNotExist
+	}
+
 	bytes, err := os.ReadFile(filepath.Join(e.root, name+".yaml"))
 	if err != nil {
 		return nil, nil, err
@@ -599,4 +603,38 @@ func BenchmarkEvalEnvLoad(b *testing.B) {
 
 func BenchmarkEvalAll(b *testing.B) {
 	benchmarkEval(b, 10*time.Millisecond, 10*time.Millisecond)
+}
+
+// TestSyntaxErrorCheck provides additional insurance that we are able to parse and analyze environments that contain
+// syntax errors. It is important that we are able to provide as much information about an environment as we can so
+// that tools that depend on an environment's typed AST or implied schema needs this fix can operate properly, even on
+// environment definitions that contain syntax errors. Most notably we need this for autocomplete, but other
+// type/schema-based features also benefit (signature help, go-to-def, et cetera).
+//
+// This is also covered by tests under TestEval, but it can be easy to miss the magnitude of changes to those tests.
+func TestSyntaxErrorCheck(t *testing.T) {
+	environmentName := "syntax-error"
+	envBytes := []byte(`values:
+  foo:
+    bar: ${foo.}
+`)
+
+	env, loadDiags, err := LoadYAMLBytes(environmentName, envBytes)
+	require.NoError(t, err)
+	sortEnvironmentDiagnostics(loadDiags)
+
+	execContext, err := esc.NewExecContext(map[string]esc.Value{
+		"pulumi": esc.NewValue(map[string]esc.Value{
+			"user": esc.NewValue(map[string]esc.Value{
+				"id": esc.NewValue("USER_123"),
+			}),
+		}),
+	})
+	assert.NoError(t, err)
+
+	check, checkDiags := CheckEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+		&testEnvironments{}, execContext, false)
+
+	assert.True(t, checkDiags.HasErrors())
+	assert.NotNil(t, check)
 }

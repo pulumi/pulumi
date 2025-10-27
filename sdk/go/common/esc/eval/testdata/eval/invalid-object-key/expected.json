@@ -23,5 +23,585 @@
             "Extra": null,
             "Path": "values.b[\"${a}\"]"
         }
-    ]
+    ],
+    "check": {
+        "exprs": {
+            "a": {
+                "range": {
+                    "environment": "invalid-object-key",
+                    "begin": {
+                        "line": 2,
+                        "column": 6,
+                        "byte": 13
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "value"
+                },
+                "literal": "value"
+            },
+            "b": {
+                "range": {
+                    "environment": "invalid-object-key",
+                    "begin": {
+                        "line": 3,
+                        "column": 6,
+                        "byte": 24
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 21,
+                        "byte": 39
+                    }
+                },
+                "schema": {
+                    "type": "object"
+                }
+            }
+        },
+        "properties": {
+            "a": {
+                "value": "value",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-object-key",
+                        "begin": {
+                            "line": 2,
+                            "column": 6,
+                            "byte": 13
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "b": {
+                "value": {},
+                "trace": {
+                    "def": {
+                        "environment": "invalid-object-key",
+                        "begin": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 24
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 21,
+                            "byte": 39
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "a": {
+                    "type": "string",
+                    "const": "value"
+                },
+                "b": {
+                    "type": "object"
+                }
+            },
+            "type": "object",
+            "required": [
+                "a",
+                "b"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-object-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-object-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-object-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-object-key",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-object-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-object-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-object-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-object-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-object-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-object-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-object-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "a": "value",
+        "b": {}
+    },
+    "eval": {
+        "exprs": {
+            "a": {
+                "range": {
+                    "environment": "invalid-object-key",
+                    "begin": {
+                        "line": 2,
+                        "column": 6,
+                        "byte": 13
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "value"
+                },
+                "literal": "value"
+            },
+            "b": {
+                "range": {
+                    "environment": "invalid-object-key",
+                    "begin": {
+                        "line": 3,
+                        "column": 6,
+                        "byte": 24
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 21,
+                        "byte": 39
+                    }
+                },
+                "schema": {
+                    "type": "object"
+                }
+            }
+        },
+        "properties": {
+            "a": {
+                "value": "value",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-object-key",
+                        "begin": {
+                            "line": 2,
+                            "column": 6,
+                            "byte": 13
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "b": {
+                "value": {},
+                "trace": {
+                    "def": {
+                        "environment": "invalid-object-key",
+                        "begin": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 24
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 21,
+                            "byte": 39
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "a": {
+                    "type": "string",
+                    "const": "value"
+                },
+                "b": {
+                    "type": "object"
+                }
+            },
+            "type": "object",
+            "required": [
+                "a",
+                "b"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-object-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-object-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-object-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-object-key",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-object-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-object-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-object-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-object-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-object-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-object-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-object-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "a": "value",
+        "b": {}
+    },
+    "evalJSONRevealed": {
+        "a": "value",
+        "b": {}
+    }
 }
