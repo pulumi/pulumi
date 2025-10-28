@@ -677,6 +677,32 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		retainOnDelete = *goal.RetainOnDelete
 	}
 
+	var dependencies []resource.URN
+	var propertyDependencies map[resource.PropertyKey][]resource.URN
+	// Filter the dependencies and property dependencies to only include non-ephemeral resources.
+	filter := func(deps []resource.URN) []resource.URN {
+		if deps == nil {
+			return nil
+		}
+		result := make([]resource.URN, 0, len(deps))
+		for _, d := range deps {
+			goal, ok := sg.deployment.goals.Load(d)
+			if !ok || goal.Ephemeral {
+				continue
+			}
+			result = append(result, d)
+		}
+		return result
+	}
+	if goal.Dependencies != nil {
+		dependencies = filter(goal.Dependencies)
+	}
+	if goal.PropertyDependencies != nil {
+		propertyDependencies = make(map[resource.PropertyKey][]resource.URN)
+		for k, deps := range goal.PropertyDependencies {
+			propertyDependencies[k] = filter(deps)
+		}
+	}
 	// Carry the refreshBeforeUpdate flag forward if present in the old state.
 	var refreshBeforeUpdate bool
 	if old != nil {
@@ -694,10 +720,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		Protect:                 protectState,
 		Taint:                   false,
 		External:                false,
-		Dependencies:            goal.Dependencies,
+		Dependencies:            dependencies,
 		InitErrors:              goal.InitErrors,
 		Provider:                goal.Provider,
-		PropertyDependencies:    goal.PropertyDependencies,
+		PropertyDependencies:    propertyDependencies,
 		PendingReplacement:      false,
 		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
 		Aliases:                 aliasUrns,
