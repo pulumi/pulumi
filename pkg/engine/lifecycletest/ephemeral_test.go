@@ -83,8 +83,6 @@ func TestSingleEphemeralResource(t *testing.T) {
 	options := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
-		// TODO: THIS SHOULD TEST DISPLAY
-		SkipDisplayTests: true,
 	}
 	p := &lt.TestPlan{}
 
