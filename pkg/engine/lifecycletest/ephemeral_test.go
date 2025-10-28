@@ -173,3 +173,102 @@ func TestSingleEphemeralDependencies(t *testing.T) {
 	// Should have the non-ephemeral resource and the provider resource left
 	require.Len(t, snap.Resources, 2)
 }
+
+// Test ephemeral resources delete in the expected dependency order.
+func TestEphemeralDependencyDeletionOrder(t *testing.T) {
+	t.Parallel()
+
+	resources := map[string]resource.PropertyMap{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if _, has := resources[string(req.ID)]; !has {
+						return plugin.DeleteResponse{}, fmt.Errorf("unknown resource ID: %s", req.ID)
+					}
+
+					// Check if any resource still depends on this resource.
+					for id, props := range resources {
+						prop := props["A"]
+						str := prop.StringValue()
+						if str == string(req.ID) {
+							return plugin.DeleteResponse{}, fmt.Errorf("resource %s still depended on by resource %s", req.ID, id)
+						}
+					}
+
+					delete(resources, string(req.ID))
+
+					return plugin.DeleteResponse{
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					resources[id.String()] = req.Properties
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(id.String()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		props := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+		resp, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
+			Inputs:    props,
+			Ephemeral: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, props, resp.Outputs)
+
+		respB, err := monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				"A": resp.ID,
+			}),
+			Dependencies: []resource.URN{resp.URN},
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"A": {resp.URN},
+			},
+			Ephemeral: true,
+		})
+		require.NoError(t, err)
+
+		respC, err := monitor.RegisterResource("pkgA:index:typ", "resC", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				"A": resp.Outputs["A"],
+			}),
+			Dependencies: []resource.URN{respB.URN},
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"A": {respB.URN},
+			},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, props, respC.Outputs)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := lt.TestUpdateOptions{
+		T:                t,
+		SkipDisplayTests: true,
+		HostF:            hostF,
+	}
+	p := &lt.TestPlan{}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	// Should have the non-ephemeral resource and the provider resource left
+	require.Len(t, snap.Resources, 2)
+}
