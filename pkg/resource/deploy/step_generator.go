@@ -681,8 +681,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	var propertyDependencies map[resource.PropertyKey][]resource.URN
 	// Filter the dependencies and property dependencies to only include non-ephemeral resources.
 	filter := func(deps []resource.URN) []resource.URN {
-		if deps == nil {
-			return nil
+		if deps == nil || goal.Ephemeral {
+			return deps
 		}
 		result := make([]resource.URN, 0, len(deps))
 		for _, d := range deps {
