@@ -336,12 +336,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
 
-	t, err := tailLogs("preview", eventChannels)
+	t, err := tailLogs("preview", eventChannels, s.Workspace().PulumiCommand().Version())
 	if err != nil {
 		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
 	defer t.Close()
-	args = append(args, "--event-log", t.Filename)
+	args = append(args, "--event-log", t.Filename())
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
@@ -471,12 +471,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 	if len(upOpts.EventStreams) > 0 {
 		eventChannels := upOpts.EventStreams
-		t, err := tailLogs("up", eventChannels)
+		t, err := tailLogs("up", eventChannels, s.Workspace().PulumiCommand().Version())
 		if err != nil {
 			return res, fmt.Errorf("failed to tail logs: %w", err)
 		}
 		defer t.Close()
-		args = append(args, "--event-log", t.Filename)
+		args = append(args, "--event-log", t.Filename())
 	}
 
 	args = append(args, sharedArgs...)
@@ -668,12 +668,12 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, refreshOpts.EventStreams...)
 
-	t, err := tailLogs("refresh", eventChannels)
+	t, err := tailLogs("refresh", eventChannels, s.Workspace().PulumiCommand().Version())
 	if err != nil {
 		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
 	defer t.Close()
-	args = append(args, "--event-log", t.Filename)
+	args = append(args, "--event-log", t.Filename())
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
@@ -725,12 +725,12 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 
 	if len(refreshOpts.EventStreams) > 0 {
 		eventChannels := refreshOpts.EventStreams
-		t, err := tailLogs("refresh", eventChannels)
+		t, err := tailLogs("refresh", eventChannels, s.Workspace().PulumiCommand().Version())
 		if err != nil {
 			return res, fmt.Errorf("failed to tail logs: %w", err)
 		}
 		defer t.Close()
-		args = append(args, "--event-log", t.Filename)
+		args = append(args, "--event-log", t.Filename())
 	}
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
@@ -894,12 +894,12 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, destroyOpts.EventStreams...)
-	t, err := tailLogs("destroy", eventChannels)
+	t, err := tailLogs("destroy", eventChannels, s.Workspace().PulumiCommand().Version())
 	if err != nil {
 		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
 	defer t.Close()
-	args = append(args, "--event-log", t.Filename)
+	args = append(args, "--event-log", t.Filename())
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
@@ -1005,12 +1005,12 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 	if len(destroyOpts.EventStreams) > 0 {
 		eventChannels := destroyOpts.EventStreams
-		t, err := tailLogs("destroy", eventChannels)
+		t, err := tailLogs("destroy", eventChannels, s.Workspace().PulumiCommand().Version())
 		if err != nil {
 			return res, fmt.Errorf("failed to tail logs: %w", err)
 		}
 		defer t.Close()
-		args = append(args, "--event-log", t.Filename)
+		args = append(args, "--event-log", t.Filename())
 	}
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
@@ -1811,14 +1811,19 @@ func (s *languageRuntimeServer) InstallDependencies(
 	return nil
 }
 
+type Watcher interface {
+	Filename() string
+	Close()
+}
+
 type fileWatcher struct {
-	Filename  string
+	filename  string
 	tail      *tail.Tail
 	receivers []chan<- events.EngineEvent
 	done      chan bool
 }
 
-func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
+func watchFile(path string, receivers []chan<- events.EngineEvent) (Watcher, error) {
 	t, err := tail.File(path, tail.Config{
 		Follow:        true,
 		Poll:          runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
@@ -1855,26 +1860,15 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 		close(done)
 	}(t)
 	return &fileWatcher{
-		Filename:  t.Filename,
+		filename:  t.Filename,
 		tail:      t,
 		receivers: receivers,
 		done:      done,
 	}, nil
 }
 
-func tailLogs(command string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
-	logDir, err := os.MkdirTemp("", fmt.Sprintf("automation-logs-%s-", command))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create logdir: %w", err)
-	}
-	logFile := filepath.Join(logDir, "eventlog.txt")
-
-	t, err := watchFile(logFile, receivers)
-	if err != nil {
-		return nil, fmt.Errorf("failed to watch file: %w", err)
-	}
-
-	return t, nil
+func (fw *fileWatcher) Filename() string {
+	return fw.filename
 }
 
 func (fw *fileWatcher) Close() {
@@ -1892,4 +1886,90 @@ func (fw *fileWatcher) Close() {
 
 	// set to nil so we can safely close again in defer
 	fw.tail = nil
+}
+
+func tailLogs(command string, receivers []chan<- events.EngineEvent, version semver.Version) (Watcher, error) {
+	if version.LTE(semver.Version{Major: 3, Minor: 205}) {
+		logDir, err := os.MkdirTemp("", fmt.Sprintf("automation-logs-%s-", command))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create logdir: %w", err)
+		}
+		logFile := filepath.Join(logDir, "eventlog.txt")
+
+		t, err := watchFile(logFile, receivers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to watch file: %w", err)
+		}
+
+		return t, nil
+	} else {
+		host := newEventsServer(receivers)
+		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+			Init: func(srv *grpc.Server) error {
+				pulumirpc.RegisterEventsServer(srv, host)
+				return nil
+			},
+			Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &eventsWatcher{
+			port: handle.Port,
+		}, nil
+	}
+}
+
+type eventsWatcher struct {
+	port int
+}
+
+func (ew *eventsWatcher) Filename() string {
+	return fmt.Sprintf("tcp://localhost:%d", ew.port)
+}
+
+func (ew *eventsWatcher) Close() {
+	// We don't need to do anything for the gRPC server here.
+}
+
+type eventsServer struct {
+	pulumirpc.UnimplementedEventsServer
+	receivers []chan<- events.EngineEvent
+}
+
+func newEventsServer(receivers []chan<- events.EngineEvent) *eventsServer {
+	return &eventsServer{
+		receivers: receivers,
+	}
+}
+
+func (e *eventsServer) StreamEvents(stream pulumirpc.Events_StreamEventsServer) error {
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			for _, r := range e.receivers {
+				close(r)
+			}
+			return stream.SendAndClose(&emptypb.Empty{})
+		}
+		if err != nil {
+			for _, r := range e.receivers {
+				r <- events.EngineEvent{Error: err}
+				close(r)
+			}
+			return err
+		}
+
+		var ev apitype.EngineEvent
+		err = json.Unmarshal([]byte(req.GetEvent()), &ev)
+		if err != nil {
+			for _, r := range e.receivers {
+				r <- events.EngineEvent{Error: err}
+			}
+			continue
+		}
+		for _, r := range e.receivers {
+			r <- events.EngineEvent{EngineEvent: ev}
+		}
+	}
 }
