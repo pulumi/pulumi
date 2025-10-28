@@ -15,6 +15,7 @@
 package display
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,6 +35,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `.
@@ -173,6 +179,58 @@ func logJSONEvent(encoder *json.Encoder, event engine.StampedEvent, opts Options
 func startEventLogger(
 	events <-chan engine.StampedEvent, done chan<- bool, opts Options,
 ) (<-chan engine.StampedEvent, chan<- bool) {
+	if strings.HasPrefix(opts.EventLogPath, "tcp://") {
+		addr := strings.TrimPrefix(opts.EventLogPath, "tcp://")
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			logging.V(7).Infof("could not connect to event log server: %v", err)
+			return events, done
+		}
+
+		client := pulumirpc.NewEventsClient(conn)
+
+		outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
+		go func() {
+			defer close(done)
+
+			for e := range events {
+				apiEvent, err := ConvertEngineEvent(e.Event, false)
+				if err != nil {
+					logging.V(7).Infof("failed to convert event: %v", err)
+				} else {
+					apiEvent.Sequence = e.Sequence
+					apiEvent.Timestamp = e.Timestamp
+
+					marshaledEvent, err := json.Marshal(apiEvent)
+					if err != nil {
+						logging.V(7).Infof("failed to marshal event: %v", err)
+						continue
+					}
+					_, err = client.Event(context.TODO(), &pulumirpc.EventRequest{
+						Event: string(marshaledEvent),
+					})
+					if err != nil {
+						logging.V(7).Infof("failed to send event: %v", err)
+					}
+				}
+
+				outEvents <- e
+
+				if e.Type == engine.CancelEvent {
+					break
+				}
+			}
+
+			_, err = client.Done(context.TODO(), &emptypb.Empty{})
+			if err != nil {
+				logging.V(7).Infof("failed to send done signal: %v", err)
+			}
+
+			<-outDone
+		}()
+
+		return outEvents, outDone
+	}
 	// Before moving further, attempt to open the log file.
 	//
 	// Try setting O_APPEND to see if that helps with the malformed reads we've been seeing in automation api:
