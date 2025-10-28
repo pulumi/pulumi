@@ -32,6 +32,9 @@ import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
+import { Empty } from "google-protobuf/google/protobuf/empty_pb";
+import * as eventsrpc from "../proto/events_grpc_pb";
+import * as events from "../proto/events_pb";
 import * as langrpc from "../proto/language_grpc_pb";
 
 /**
@@ -124,6 +127,37 @@ export class Stack {
                 return this;
             default:
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
+        }
+    }
+
+    private async setupEventLog(
+        command: string,
+        onEvent: (event: EngineEvent) => void,
+        pulumiVersion: string,
+    ): Promise<{ logFile: string; logPromise: Promise<ReadlineResult> | undefined }> {
+        let file = "";
+        //	if (semver.gte(pulumiVersion, "3.204.0")) {
+        if (true) {
+            const eventsServer = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const eventsService = new EventsServer(onEvent);
+            eventsServer.addService(eventsrpc.EventsService, eventsService);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                eventsServer!.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            file = "tcp://127.0.0.1:" + port;
+            return { logFile: file, logPromise: undefined };
+        } else {
+            file = createLogFile(command);
+            const logPromise = this.readLines(file, onEvent);
+            return { logFile: file, logPromise: logPromise };
         }
     }
 
@@ -274,13 +308,10 @@ Event: ${line}\n${e.toString()}`);
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("up");
-            args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
+            const res = await this.setupEventLog("up", opts.onEvent, this.workspace.pulumiVersion);
+            logFile = res.logFile;
+            logPromise = res.logPromise;
+            args.push("--event-log", res.logFile);
         }
 
         let upResult: CommandResult;
@@ -424,19 +455,20 @@ Event: ${line}\n${e.toString()}`);
 
         args.push("--exec-kind", kind);
 
-        // Set up event log tailing
-        const logFile = createLogFile("preview");
-        args.push("--event-log", logFile);
+        const useEventsServer = semver.gte(this.workspace.pulumiVersion, "3.203.0");
+
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                opts.onEvent(event);
             }
-        });
+        };
+
+        const { logFile, logPromise } = await this.setupEventLog("preview", onEvent, this.workspace.pulumiVersion);
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
@@ -538,13 +570,10 @@ Event: ${line}\n${e.toString()}`);
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("refresh");
-            args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
+            const res = await this.setupEventLog("refresh", opts.onEvent, this.workspace.pulumiVersion);
+            logFile = res.logFile;
+            logPromise = res.logPromise;
+            args.push("--event-log", res.logFile);
         }
 
         let onExit = (hasError: boolean) => {
@@ -654,19 +683,23 @@ Event: ${line}\n${e.toString()}`);
 
         args.push("--exec-kind", execKind.local);
 
-        const logFile = createLogFile("refresh");
-        args.push("--event-log", logFile);
-
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                const on = opts.onEvent;
+                on(event);
             }
-        });
+        };
+
+        const { logFile, logPromise } = await this.setupEventLog(
+            "preview-refresh",
+            onEvent,
+            this.workspace.pulumiVersion,
+        );
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
@@ -758,13 +791,10 @@ Event: ${line}\n${e.toString()}`);
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("destroy");
-            args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
+            const res = await this.setupEventLog("destroy", opts.onEvent, this.workspace.pulumiVersion);
+            logFile = res.logFile;
+            logPromise = res.logPromise;
+            args.push("--event-log", res.logFile);
         }
 
         let onExit = (hasError: boolean) => {
@@ -916,19 +946,23 @@ Event: ${line}\n${e.toString()}`);
         }
         args.push("--exec-kind", kind);
 
-        const logFile = createLogFile("destroy");
-        args.push("--event-log", logFile);
-
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                const on = opts.onEvent;
+                on(event);
             }
-        });
+        };
+
+        const { logFile, logPromise } = await this.setupEventLog(
+            "preview-destroy",
+            onEvent,
+            this.workspace.pulumiVersion,
+        );
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
@@ -2193,6 +2227,33 @@ export interface ImportOptions extends GlobalOpts {
      */
     showSecrets?: boolean;
     onOutput?: (out: string) => void;
+}
+
+class EventsServer implements eventsrpc.IEventsServer {
+    [method: string]: grpc.UntypedHandleCall;
+
+    constructor(private onEvent: any) {
+        this.onEvent = onEvent;
+    }
+
+    async event(
+        call: grpc.ServerUnaryCall<events.EventRequest, Empty>,
+        callback: grpc.sendUnaryData<Empty>,
+    ): Promise<void> {
+        const req = call.request;
+        const eventStr = req.getEvent();
+        try {
+            const event: EngineEvent = JSON.parse(eventStr);
+            this.onEvent(event);
+        } catch (e) {
+            log.warn(`Failed to parse engine event\n${e.toString()}`);
+        }
+        callback(null, new Empty());
+    }
+
+    async done(call: grpc.ServerUnaryCall<Empty, Empty>, callback: grpc.sendUnaryData<Empty>): Promise<void> {
+        callback(null, new Empty());
+    }
 }
 
 const execKind = {
