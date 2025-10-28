@@ -1173,8 +1173,6 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
 	// Check if Copilot is enabled for this project in Pulumi Cloud
 	if b.copilotEnabledForCurrentProject == nil {
-		logging.V(7).Info(
-			"copilotEnabledForCurrentProject has not been set. only available after an update has been started.")
 		return false
 	}
 
