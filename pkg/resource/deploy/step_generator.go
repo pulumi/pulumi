@@ -1603,7 +1603,15 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
-	return []Step{NewCreateStep(sg.deployment, event, new)}, false, nil
+	steps := []Step{NewCreateStep(sg.deployment, event, new)}
+
+	if event.Goal().Ephemeral {
+		// If we're creating an ephemeral resource, we also need to flag the resource as to be deleted
+		// at the end of the deployment.
+		sg.toDelete = append(sg.toDelete, new)
+	}
+
+	return steps, false, nil
 }
 
 func (sg *stepGenerator) generateStepsFromDiff(
@@ -2396,7 +2404,10 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 // step. This includes the new resource states to be deleted (if running in destroy mode), and all the old resource
 // states from the previous snapshot. It also handles filling in aliases for all refreshed resources.
 func (sg *stepGenerator) getDepgraphForScheduling() *graph.DependencyGraph {
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	allResources := sg.toDelete
+	if sg.deployment.prev != nil {
+		allResources = append(allResources, sg.deployment.prev.Resources...)
+	}
 	dg := graph.NewDependencyGraph(allResources)
 	for old, new := range sg.refreshStates {
 		dg.Alias(new, old)
