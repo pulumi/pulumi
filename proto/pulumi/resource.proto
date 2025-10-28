@@ -179,6 +179,9 @@ message RegisterResourceRequest {
     // The resource hooks that should run at certain points in the resource's lifecycle.
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
+
+    // If true this resource will be deleted at the end of the deployment.
+    bool ephemeral = 38;
 }
 
 enum Result {

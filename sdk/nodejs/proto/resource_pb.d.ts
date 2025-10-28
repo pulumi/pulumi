@@ -276,6 +276,8 @@ export class RegisterResourceRequest extends jspb.Message {
     getHidediffsList(): Array<string>;
     setHidediffsList(value: Array<string>): RegisterResourceRequest;
     addHidediffs(value: string, index?: number): string;
+    getEphemeral(): boolean;
+    setEphemeral(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -329,6 +331,7 @@ export namespace RegisterResourceRequest {
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         hidediffsList: Array<string>,
+        ephemeral: boolean,
     }
 
 
