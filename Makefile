@@ -19,7 +19,7 @@ TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python cmd/pulumi-test-language
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python cmd/pulumi-test-language cmd/pulumi-provider-mcp-server
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -78,6 +78,10 @@ generate::
 bin/pulumi: build_proto .make/ensure/go .make/ensure/phony
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
+.PHONY: bin/pulumi-provider-mcp-server
+bin/pulumi-provider-mcp-server: .make/ensure/go .make/ensure/phony
+	go build -C cmd/pulumi-provider-mcp-server -o ../../$@
+
 .PHONY: bin/pulumi-display.wasm
 bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display/wasm/gold-size.txt
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
@@ -85,7 +89,7 @@ bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display
 
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
-build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm
+build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm bin/pulumi-provider-mcp-server
 
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
@@ -284,6 +288,7 @@ changelog:
 work:
 	rm -f go.work go.work.sum
 	go work init \
+		cmd/pulumi-provider-mcp-server \
 		cmd/pulumi-test-language \
 		pkg \
 		sdk \
