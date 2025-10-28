@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
+// A basic test that an ephemeral resource is created and then deleted as part of the same update.
 func TestSingleEphemeralResource(t *testing.T) {
 	t.Parallel()
 
@@ -92,4 +93,83 @@ func TestSingleEphemeralResource(t *testing.T) {
 	require.NoError(t, err)
 	// Should just have the provider resource left
 	require.Len(t, snap.Resources, 1)
+}
+
+// Check that when a resource is ephemeral other resources that depend on it don't save that dependency to the state
+// file (and cause integrity errors).
+func TestSingleEphemeralDependencies(t *testing.T) {
+	t.Parallel()
+
+	resources := map[string]resource.PropertyMap{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if _, has := resources[string(req.ID)]; !has {
+						return plugin.DeleteResponse{}, fmt.Errorf("unknown resource ID: %s", req.ID)
+					}
+
+					delete(resources, string(req.ID))
+
+					return plugin.DeleteResponse{
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					resources[id.String()] = req.Properties
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(id.String()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		props := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+		resp, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
+			Inputs:    props,
+			Ephemeral: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, props, resp.Outputs)
+
+		respB, err := monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				"A": props["A"],
+			}),
+			Dependencies: []resource.URN{resp.URN},
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"A": {resp.URN},
+			},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, props, respB.Outputs)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := lt.TestUpdateOptions{
+		T:                t,
+		SkipDisplayTests: true,
+		HostF:            hostF,
+	}
+	p := &lt.TestPlan{}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	// Should have the non-ephemeral resource and the provider resource left
+	require.Len(t, snap.Resources, 2)
 }
