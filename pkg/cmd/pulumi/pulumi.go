@@ -43,8 +43,10 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
@@ -69,7 +71,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	cmdState "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
@@ -376,7 +378,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				console.NewConsoleCmd(pkgWorkspace.Instance),
 				operations.NewImportCmd(),
 				operations.NewRefreshCmd(),
-				state.NewStateCmd(),
+				cmdState.NewStateCmd(),
 				install.NewInstallCmd(pkgWorkspace.Instance),
 			},
 		},
@@ -789,6 +791,15 @@ func checkForOutdatedProviders(ctx context.Context) string {
 		return ""
 	}
 
+	// Get current stack reference for Neo link
+	var stackRef string
+	if b, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()}); err == nil {
+		if s, err := state.CurrentStack(ctx, b); err == nil && s != nil {
+			// Get project/stack format (e.g., "test-program-v3/dev")
+			stackRef = string(proj.Name) + "/" + s.Ref().Name().String()
+		}
+	}
+
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	pwd, main, pluginCtx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 	if err != nil {
@@ -871,6 +882,14 @@ func checkForOutdatedProviders(ctx context.Context) string {
 
 	// Add language-specific upgrade instructions
 	msg += getLanguageSpecificUpgradeInstructions(language, outdatedProviders)
+
+	// Add Neo link for additional help
+	msg += "\n" + colors.SpecAttention + "Need help with provider upgrades?" + colors.Reset + "\n"
+	neoURL := "https://app-guins-review-stack.review-stacks.pulumi-dev.io/pulumi_local/neo/tasks?prompt=upgrade%20provider"
+	if stackRef != "" {
+		neoURL += "%20for%20stack%20" + url.QueryEscape(stackRef)
+	}
+	msg += "  " + colors.Underline + colors.BrightBlue + neoURL + colors.Reset + "\n"
 
 	return msg
 }
