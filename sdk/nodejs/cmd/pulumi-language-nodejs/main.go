@@ -808,6 +808,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.CommandContext(ctx, nodeBin, nodeargs...)
+
+	logging.V(9).Infof("Constructed NodeJS command to run: %s", cmd)
+
 	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
 	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
 	// `runWithOutput` for more details.
