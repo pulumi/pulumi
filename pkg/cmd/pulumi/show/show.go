@@ -69,6 +69,7 @@ func printResourceState(rs *resource.State) {
 	for k, v := range rs.Outputs {
 		fmt.Println("	", k, ": ", v)
 	}
+	fmt.Println()
 }
 
 func resourcePassesFilters(rs *resource.State, rf *resourceFilters) (bool, error) {
