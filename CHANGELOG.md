@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.205.0 (2025-10-28)
+
+
+### Bug Fixes
+
+- [cli/display] Improve how the severity is displayed for policy violations
+  [#20805](https://github.com/pulumi/pulumi/pull/20805)
+
+- [engine] Fix an issue where `refresh --run-program` could potentially run forever
+  [#20781](https://github.com/pulumi/pulumi/pull/20781)
+
 ## 3.204.0 (2025-10-23)
 
 
