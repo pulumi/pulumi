@@ -882,8 +882,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
-		Tok:  tokens.ModuleMember(req.GetTok()),
-		Args: args,
+		Tok:    tokens.ModuleMember(req.GetTok()),
+		Args:   args,
+		DryRun: req.GetDryRun(),
 	})
 	if err != nil {
 		return nil, err

@@ -197,6 +197,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithDryRun:            true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -1992,8 +1993,9 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:  string(req.Tok),
-		Args: margs,
+		Tok:    string(req.Tok),
+		Args:   margs,
+		DryRun: req.DryRun,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
