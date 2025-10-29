@@ -780,7 +780,7 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 	return msg
 }
 
-// checkForOutdatedProviders checks for outdated providers and returns a message if any are found.
+// checkForOutdatedProviders checks for providers a major version behind latest, and returns a message if any are found.
 func checkForOutdatedProviders(ctx context.Context) string {
 	logging.V(1).Infof("checkForOutdatedProviders: starting provider version check")
 
@@ -851,8 +851,8 @@ func checkForOutdatedProviders(ctx context.Context) string {
 
 		logging.V(3).Infof("provider %s: current=%s, latest=%s", plugin.Name, plugin.Version.String(), latestVersion.String())
 
-		// Check if current version is outdated
-		if latestVersion.GT(*plugin.Version) {
+		// Check if current major version is outdated
+		if latestVersion.Major > plugin.Version.Major {
 			logging.V(3).Infof("provider %s is outdated!", plugin.Name)
 			outdatedProviders = append(outdatedProviders, fmt.Sprintf("%s (current: %s, latest: %s)",
 				plugin.Name, plugin.Version.String(), latestVersion.String()))
@@ -866,14 +866,14 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	// Detect the stack language
 	language := proj.Runtime.Name()
 
-	msg := "\n" + colors.SpecAttention + "Some of your providers are outdated:" + colors.Reset + "\n"
+	msg := "\n" + colors.SpecAttention + "Some of your providers are outdated by at least one major version:" + colors.Reset + "\n"
 	for _, provider := range outdatedProviders {
 		msg += "  • " + provider + "\n"
 	}
 
 	// Add language-specific upgrade instructions
 	msg += getLanguageSpecificUpgradeInstructions(language, outdatedProviders)
-
+	msg += "Please ensure to follow any release notes or upgrade guides to update your program.\n"
 	// Add Neo link for additional help
 	msg += linkToNeoTasks(ctx, proj)
 
@@ -923,7 +923,7 @@ func getLanguageSpecificUpgradeInstructions(language string, outdatedProviders [
 // getNodeJSUpgradeInstructions provides detailed Node.js upgrade instructions
 func getNodeJSUpgradeInstructions(outdatedProviders []string) string {
 	msg := "\n" + colors.SpecAttention + "Node.js Upgrade Instructions:" + colors.Reset + "\n"
-	msg += "Since you're using Node.js with version pinning, you need to update your package.json:\n\n"
+	msg += "If you're using Node.js with version pinning, you need to update your package.json:\n\n"
 
 	// Extract provider names and suggest package.json updates
 	for _, provider := range outdatedProviders {
