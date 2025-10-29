@@ -83,3 +83,7 @@ func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op apitype.TemplatePubl
 func (r *cloudRegistry) DownloadTemplate(ctx ctx.Context, downloadURL string) (io.ReadCloser, error) {
 	return r.cl.DownloadTemplate(ctx, downloadURL)
 }
+
+func (r *cloudRegistry) PublishSkill(ctx ctx.Context, op apitype.SkillPublishOp) error {
+	return r.cl.PublishSkill(ctx, op)
+}

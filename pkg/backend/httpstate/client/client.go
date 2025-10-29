@@ -85,6 +85,39 @@ type PublishTemplateVersionCompleteRequest struct {
 // PublishTemplateVersionCompleteResponse is the response from completing a template publish operation.
 type PublishTemplateVersionCompleteResponse struct{}
 
+// SkillPublishOperationID uniquely identifies a skill publish operation.
+type SkillPublishOperationID string
+
+// StartSkillPublishRequest is the request body for starting a skill publish operation.
+type StartSkillPublishRequest struct {
+	// Version is the semantic version of the skill.
+	Version semver.Version `json:"version"`
+}
+
+// StartSkillPublishResponse is the response from initiating a skill publish.
+// It returns a presigned URL to upload the skill archive.
+type StartSkillPublishResponse struct {
+	// OperationID uniquely identifies the publishing operation.
+	OperationID SkillPublishOperationID `json:"operationID"`
+	// UploadURLs contains the presigned URLs for uploading skill artifacts.
+	UploadURLs SkillUploadURLs `json:"uploadURLs"`
+}
+
+// SkillUploadURLs contains the presigned URLs for uploading skill artifacts.
+type SkillUploadURLs struct {
+	// Archive is the URL for uploading the skill archive.
+	Archive string `json:"archive"`
+}
+
+// PublishSkillVersionCompleteRequest is the request body for completing a skill publish operation.
+type PublishSkillVersionCompleteRequest struct {
+	// OpID is the operation ID from the StartSkillPublishResponse.
+	OpID SkillPublishOperationID `json:"operationID"`
+}
+
+// PublishSkillVersionCompleteResponse is the response from completing a skill publish operation.
+type PublishSkillVersionCompleteResponse struct{}
+
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
@@ -275,6 +308,14 @@ func publishTemplatePath(source, publisher, name string) string {
 
 func completeTemplatePublishPath(source, publisher, name string, version semver.Version) string {
 	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+}
+
+func publishSkillPath(source, publisher, name string) string {
+	return fmt.Sprintf("/api/registry/skills/%s/%s/%s/versions", source, publisher, name)
+}
+
+func completeSkillPublishPath(source, publisher, name string, version semver.Version) string {
+	return fmt.Sprintf("/api/registry/skills/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
@@ -1711,6 +1752,76 @@ func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePub
 	err = pc.CompleteTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version, resp.OperationID)
 	if err != nil {
 		return fmt.Errorf("failed to complete template publish: %w", err)
+	}
+
+	return nil
+}
+
+func (pc *Client) StartSkillPublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+) (*StartSkillPublishResponse, error) {
+	req := StartSkillPublishRequest{
+		Version: version,
+	}
+	var resp StartSkillPublishResponse
+	err := pc.restCall(ctx, "POST", publishSkillPath(source, publisher, name), nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("start skill publish failed: %w", err)
+	}
+	return &resp, nil
+}
+
+// CompleteSkillPublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) CompleteSkillPublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+	operationID SkillPublishOperationID,
+) error {
+	completeReq := PublishSkillVersionCompleteRequest{
+		OpID: operationID,
+	}
+
+	requestPath := completeSkillPublishPath(source, publisher, name, version)
+	err := pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
+	if err != nil {
+		return fmt.Errorf("failed to complete skill publishing operation %q: %w", operationID, err)
+	}
+
+	return nil
+}
+
+// PublishSkill is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) PublishSkill(ctx context.Context, input apitype.SkillPublishOp) error {
+	resp, err := pc.StartSkillPublish(ctx, input.Source, input.Publisher, input.Name, input.Version)
+	if err != nil {
+		return fmt.Errorf("failed to start skill publish: %w", err)
+	}
+
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURLs.Archive, input.Archive)
+	if err != nil {
+		return fmt.Errorf("failed to create upload request: %w", err)
+	}
+	putReq.Header.Set("Content-Type", "application/gzip")
+
+	uploadResp, err := pc.do(ctx, putReq)
+	if err != nil {
+		return fmt.Errorf("failed to upload archive: %w", err)
+	} else if uploadResp.StatusCode != http.StatusOK {
+		body, bodyErr := readBody(uploadResp)
+		if bodyErr != nil {
+			return fmt.Errorf("failed to upload archive: %s", uploadResp.Status)
+		}
+		return fmt.Errorf("failed to upload archive: %s - %s", uploadResp.Status, string(body))
+	}
+
+	err = pc.CompleteSkillPublish(ctx, input.Source, input.Publisher, input.Name, input.Version, resp.OperationID)
+	if err != nil {
+		return fmt.Errorf("failed to complete skill publish: %w", err)
 	}
 
 	return nil

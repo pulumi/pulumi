@@ -12,21 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package skillcmd
 
 import (
-	"context"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/spf13/cobra"
 )
 
-type CloudRegistry interface {
-	registry.Registry
-	// PublishPackage publishes a package to the registry.
-	PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error
-	// PublishTemplate publishes a template to the registry.
-	PublishTemplate(ctx context.Context, op apitype.TemplatePublishOp) error
-	// PublishSkill publishes a Pulumi Neo skill to the registry.
-	PublishSkill(ctx context.Context, op apitype.SkillPublishOp) error
+func NewSkillCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "skill",
+		Short: "Work with Pulumi Neo skills",
+		Long: `Work with Pulumi Neo skills
+
+Publish and manage Pulumi Neo skills.`,
+		Args: cmdutil.NoArgs,
+	}
+	cmd.AddCommand(
+		newSkillPublishCmd(),
+	)
+	return cmd
 }
