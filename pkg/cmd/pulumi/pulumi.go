@@ -939,8 +939,6 @@ func getNodeJSUpgradeInstructions(outdatedProviders []string) string {
 	msg += "    }\n"
 	msg += "  }\n\n"
 	msg += "Then run: " + colors.SpecPrompt + "npm install" + colors.Reset + " or " + colors.SpecPrompt + "yarn install" + colors.Reset + "\n"
-	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in package.json"
-
 	return msg
 }
 
@@ -959,8 +957,6 @@ func getGoUpgradeInstructions(outdatedProviders []string) string {
 	}
 
 	msg += "\nThen run: " + colors.SpecPrompt + "go mod tidy" + colors.Reset + "\n"
-	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in go.mod"
-
 	return msg
 }
 
@@ -979,8 +975,6 @@ func getPythonUpgradeInstructions(outdatedProviders []string) string {
 	}
 
 	msg += "\nThen run: " + colors.SpecPrompt + "pip install -r requirements.txt" + colors.Reset + "\n"
-	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in requirements.txt"
-
 	return msg
 }
 
@@ -999,8 +993,6 @@ func getDotNetUpgradeInstructions(outdatedProviders []string) string {
 	}
 
 	msg += "\nThen run: " + colors.SpecPrompt + "dotnet restore" + colors.Reset + "\n"
-	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in .csproj"
-
 	return msg
 }
 
@@ -1019,8 +1011,6 @@ func getJavaUpgradeInstructions(outdatedProviders []string) string {
 	}
 
 	msg += "\nThen run: " + colors.SpecPrompt + "gradle build" + colors.Reset + " or " + colors.SpecPrompt + "mvn install" + colors.Reset + "\n"
-	msg += "\nNote: " + colors.SpecAttention + "pulumi plugin install" + colors.Reset + " won't work with version pinning in build files"
-
 	return msg
 }
 
