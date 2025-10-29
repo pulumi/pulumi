@@ -39,6 +39,9 @@ from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ..runtime.proto import language_pb2_grpc
+from ..runtime.proto import events_pb2_grpc
+from ..runtime.proto import events_pb2
+from google.protobuf import empty_pb2
 from ._representable import _Representable
 from ._tag import TagMap
 
@@ -267,6 +270,54 @@ class Stack:
     def __str__(self):
         return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r})"
 
+    def _setup_event_log(
+        self,
+        command: str,
+        on_event: OnEvent,
+        pulumi_version: str,
+    ) -> tuple[
+        str,
+        Optional[threading.Thread],
+        Optional[threading.Event],
+        Optional[tempfile.TemporaryDirectory],
+    ]:
+        """
+        Set up event logging, either via gRPC or file-based depending on Pulumi version.
+
+        Returns:
+            A tuple of (log_file_path, thread, stop_event, temp_dir)
+        """
+        # TODO: Check version when gRPC events are available in a released version
+        # For now, always use gRPC (matching TypeScript's implementation)
+        use_grpc = True
+
+        if use_grpc:
+            # Create gRPC server for events
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+
+            # Add the events service
+            servicer = _EventsServicer(on_event)
+            events_pb2_grpc.add_EventsServicer_to_server(servicer, server)
+
+            # Bind to a dynamic port
+            port = server.add_insecure_port("127.0.0.1:0")
+            server.start()
+
+            log_file = f"tcp://127.0.0.1:{port}"
+            return (log_file, None, None, None)
+        else:
+            # Use file-based event log
+            log_file, temp_dir = _create_log_file(command)
+            stop_event = threading.Event()
+            log_watcher_thread = threading.Thread(
+                target=_watch_logs, args=(log_file, on_event, stop_event)
+            )
+            log_watcher_thread.start()
+            return (log_file, log_watcher_thread, stop_event, temp_dir)
+
     def up(
         self,
         parallel: Optional[int] = None,
@@ -383,13 +434,10 @@ class Stack:
         temp_dir = None
         stop_event = None
         if on_event:
-            log_file, temp_dir = _create_log_file("up")
-            args.extend(["--event-log", log_file])
-            stop_event = threading.Event()
-            log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event, stop_event)
+            log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+                "up", on_event, self.workspace.pulumi_version
             )
-            log_watcher_thread.start()
+            args.extend(["--event-log", log_file])
 
         try:
             up_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
@@ -523,8 +571,6 @@ class Stack:
             args.append(f"--client=127.0.0.1:{port}")
         args.extend(["--exec-kind", kind])
 
-        log_file, temp_dir = _create_log_file("preview")
-        args.extend(["--event-log", log_file])
         summary_events: list[SummaryEvent] = []
 
         if json:
@@ -536,12 +582,10 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        # Start watching logs in a thread
-        stop_event = threading.Event()
-        log_watcher_thread = threading.Thread(
-            target=_watch_logs, args=(log_file, on_event_callback, stop_event)
+        log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+            "preview", on_event_callback, self.workspace.pulumi_version
         )
-        log_watcher_thread.start()
+        args.extend(["--event-log", log_file])
 
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
@@ -681,13 +725,10 @@ class Stack:
         stop_event = None
         temp_dir = None
         if on_event:
-            log_file, temp_dir = _create_log_file("refresh")
-            args.extend(["--event-log", log_file])
-            stop_event = threading.Event()
-            log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event, stop_event)
+            log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+                "refresh", on_event, self.workspace.pulumi_version
             )
-            log_watcher_thread.start()
+            args.extend(["--event-log", log_file])
 
         try:
             refresh_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
@@ -770,8 +811,6 @@ class Stack:
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
         args.extend(["--exec-kind", kind])
 
-        log_file, temp_dir = _create_log_file("refresh")
-        args.extend(["--event-log", log_file])
         summary_events: list[SummaryEvent] = []
 
         def on_event_callback(event: EngineEvent) -> None:
@@ -780,12 +819,10 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        # Start watching logs in a thread
-        stop_event = threading.Event()
-        log_watcher_thread = threading.Thread(
-            target=_watch_logs, args=(log_file, on_event_callback, stop_event)
+        log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+            "preview-refresh", on_event_callback, self.workspace.pulumi_version
         )
-        log_watcher_thread.start()
+        args.extend(["--event-log", log_file])
 
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
@@ -946,13 +983,10 @@ class Stack:
         stop_event = None
         temp_dir = None
         if on_event:
-            log_file, temp_dir = _create_log_file("destroy")
-            args.extend(["--event-log", log_file])
-            stop_event = threading.Event()
-            log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event, stop_event)
+            log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+                "destroy", on_event, self.workspace.pulumi_version
             )
-            log_watcher_thread.start()
+            args.extend(["--event-log", log_file])
 
         try:
             destroy_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
@@ -1043,8 +1077,6 @@ class Stack:
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
         args.extend(["--exec-kind", kind])
 
-        log_file, temp_dir = _create_log_file("destroy")
-        args.extend(["--event-log", log_file])
         summary_events: list[SummaryEvent] = []
 
         def on_event_callback(event: EngineEvent) -> None:
@@ -1053,12 +1085,10 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        # Start watching logs in a thread
-        stop_event = threading.Event()
-        log_watcher_thread = threading.Thread(
-            target=_watch_logs, args=(log_file, on_event_callback, stop_event)
+        log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+            "preview-destroy", on_event_callback, self.workspace.pulumi_version
         )
-        log_watcher_thread.start()
+        args.extend(["--event-log", log_file])
 
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
@@ -1521,6 +1551,30 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
     :returns: The fully qualified stack name.
     """
     return f"{org}/{project}/{stack}"
+
+
+class _EventsServicer(events_pb2_grpc.EventsServicer):
+    """gRPC servicer for handling events sent over gRPC."""
+
+    def __init__(self, on_event: OnEvent):
+        self._on_event = on_event
+
+    def Event(self, request: events_pb2.EventRequest, context):
+        """Handle an event from the engine."""
+        try:
+            event_json = json.loads(request.event)
+            event = EngineEvent.from_json(event_json)
+            self._on_event(event)
+        except Exception as e:  # noqa
+            # Log warning but don't fail the RPC call
+            import warnings
+
+            warnings.warn(f"Failed to parse engine event: {e}")
+        return empty_pb2.Empty()
+
+    def Done(self, request: empty_pb2.Empty, context):
+        """Handle done signal from the engine."""
+        return empty_pb2.Empty()
 
 
 def _create_log_file(command: str) -> tuple[str, tempfile.TemporaryDirectory]:
