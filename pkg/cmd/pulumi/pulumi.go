@@ -791,15 +791,6 @@ func checkForOutdatedProviders(ctx context.Context) string {
 		return ""
 	}
 
-	// Get current stack reference for Neo link
-	var stackRef string
-	if b, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()}); err == nil {
-		if s, err := state.CurrentStack(ctx, b); err == nil && s != nil {
-			// Get project/stack format (e.g., "test-program-v3/dev")
-			stackRef = string(proj.Name) + "/" + s.Ref().Name().String()
-		}
-	}
-
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	pwd, main, pluginCtx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 	if err != nil {
@@ -884,14 +875,29 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	msg += getLanguageSpecificUpgradeInstructions(language, outdatedProviders)
 
 	// Add Neo link for additional help
-	msg += "\n" + colors.SpecAttention + "Need help with provider upgrades?" + colors.Reset + "\n"
+	msg += linkToNeoTasks(ctx, proj)
+
+	return msg
+}
+
+func linkToNeoTasks(ctx context.Context, project *workspace.Project) string {
+	var msg string
+	// Get current stack reference for Neo link
+	var stackRef string
+	if currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project, display.Options{Color: cmdutil.GetGlobalColorization()}); err == nil {
+		if s, err := backendState.CurrentStack(ctx, currentBackend); err == nil && s != nil {
+			// Get project/stack format (e.g., "test-program-v3/dev")
+			stackRef = string(project.Name) + "/" + s.Ref().Name().String()
+		}
+	}
+	msg = "\n" + colors.SpecAttention + "Need help with provider upgrades?" + colors.Reset + "\n"
 	neoURL := "https://app-guins-review-stack.review-stacks.pulumi-dev.io/pulumi_local/neo/tasks?prompt=upgrade%20provider"
 	if stackRef != "" {
 		neoURL += "%20for%20stack%20" + url.QueryEscape(stackRef)
 	}
 	msg += "  " + colors.Underline + colors.BrightBlue + neoURL + colors.Reset + "\n"
-
 	return msg
+
 }
 
 // getLanguageSpecificUpgradeInstructions returns language-specific upgrade instructions
