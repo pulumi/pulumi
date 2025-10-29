@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -919,4 +920,20 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	handleLastRequest()
 	assert.Equal(t, 4, lastUntypedDeployment.Version)
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
+}
+
+func TestIsExplainPreviewEnabled(t *testing.T) {
+	t.Parallel()
+
+	enabled := true
+	b := &cloudBackend{
+		copilotEnabledForCurrentProject: &enabled,
+		capabilities: promise.Run(func() (apitype.Capabilities, error) {
+			return apitype.Capabilities{CopilotExplainPreviewV1: true}, nil
+		}),
+		d: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	}
+
+	result := b.IsExplainPreviewEnabled(context.Background(), display.Options{})
+	assert.True(t, result)
 }

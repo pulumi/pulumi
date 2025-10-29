@@ -1168,10 +1168,10 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 // IsExplainPreviewEnabled implements the "explainer" interface.
-// Checks that the backend supports the CopilotExplainPreview capability and that the user has enabled
-// the Copilot features.
+// Checks that the backend supports the CopilotExplainPreview capability and that Copilot is enabled
+// for the organization.
 func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
-	if !b.isCopilotFeaturesEnabled(opts) {
+	if b.copilotEnabledForCurrentProject == nil || !*b.copilotEnabledForCurrentProject {
 		return false
 	}
 
