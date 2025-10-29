@@ -104,8 +104,6 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		}, nil
 	}
 
-	// Act.
-
 	// Operation 1 -- initialise the state with two resources, one with a
 	// dependency on the other.
 	upLoaders := []*deploytest.ProviderLoader{
@@ -346,6 +344,8 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		}),
 	}
 
+	fmt.Println("Resuming pending replace with same goals")
+
 	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
 	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
@@ -356,7 +356,6 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 
-	// Assert.
 	require.Len(t, removeSnap.Resources, 2)
 	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")

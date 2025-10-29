@@ -374,46 +374,44 @@ func (op TestOp) runWithContext(
 	journalErr := journalPersister.Snap.AssertEqual(snap)
 	errs = append(errs, journalErr)
 
-	if journalErr != nil {
-		opts.T.Log("original base snapshot:")
-		if originalBase != nil {
-			for i, r := range originalBase.Resources {
-				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
-			}
+	opts.T.Log("original base snapshot:")
+	if originalBase != nil {
+		for i, r := range originalBase.Resources {
+			opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
 		}
+	}
 
-		opts.T.Log()
-		opts.T.Log("base snapshot:")
-		if target.Snapshot != nil {
-			for i, r := range target.Snapshot.Resources {
-				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
-			}
+	opts.T.Log()
+	opts.T.Log("base snapshot:")
+	if target.Snapshot != nil {
+		for i, r := range target.Snapshot.Resources {
+			opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
 		}
-		opts.T.Log()
-		opts.T.Log("test journal snapshot:")
-		if snap != nil {
-			for i, r := range snap.Resources {
-				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
-			}
+	}
+	opts.T.Log()
+	opts.T.Log("test journal snapshot:")
+	if snap != nil {
+		for i, r := range snap.Resources {
+			opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
 		}
-		opts.T.Log()
-		opts.T.Log("journal snapshot:")
-		if journalPersister.Snap != nil {
-			for i, r := range journalPersister.Snap.Resources {
-				opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
-			}
+	}
+	opts.T.Log()
+	opts.T.Log("journal snapshot:")
+	if journalPersister.Snap != nil {
+		for i, r := range journalPersister.Snap.Resources {
+			opts.T.Logf("%v: %v(%v, %v)\n", i, r.URN, r.ID, r.Delete)
 		}
+	}
 
-		opts.T.Log()
-		opts.T.Log("test journal:")
-		for i, e := range entries {
-			opts.T.Logf("%v: %v %v %v\n", i, e.Kind, e.Step.Op(), e.Step.URN())
-		}
-		opts.T.Log()
-		opts.T.Log("journal:")
-		for _, entry := range journaler.Entries() {
-			opts.T.Logf("%v\n", entry)
-		}
+	opts.T.Log()
+	opts.T.Log("test journal:")
+	for i, e := range entries {
+		opts.T.Logf("%v: %v %v %v\n", i, e.Kind, e.Step.Op(), e.Step.URN())
+	}
+	opts.T.Log()
+	opts.T.Log("journal:")
+	for _, entry := range journaler.Entries() {
+		opts.T.Logf("%v\n", entry, entry.State)
 	}
 
 	return nil, snap, errors.Join(errs...)
