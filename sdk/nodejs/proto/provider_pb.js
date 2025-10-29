@@ -1036,7 +1036,8 @@ rootDirectory: (f = jspb.Message.getField(msg, 2)) == null ? undefined : f,
 programDirectory: (f = jspb.Message.getField(msg, 3)) == null ? undefined : f,
 configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 supportsViews: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-supportsRefreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
+supportsRefreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
+invokeWithDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
   };
 
   if (includeInstance) {
@@ -1096,6 +1097,10 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
     case 6:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSupportsRefreshBeforeUpdate(value);
+      break;
+    case 7:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setInvokeWithDryRun(value);
       break;
     default:
       reader.skipField();
@@ -1165,6 +1170,13 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
   if (f) {
     writer.writeBool(
       6,
+      f
+    );
+  }
+  f = message.getInvokeWithDryRun();
+  if (f) {
+    writer.writeBool(
+      7,
       f
     );
   }
@@ -1312,6 +1324,24 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.getSupportsRefreshBeforeUpdat
  */
 proto.pulumirpc.ProviderHandshakeRequest.prototype.setSupportsRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 6, value);
+};
+
+
+/**
+ * optional bool invoke_with_dry_run = 7;
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getInvokeWithDryRun = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 7, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setInvokeWithDryRun = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 7, value);
 };
 
 
@@ -3713,7 +3743,8 @@ proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance)
 proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+dryRun: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
   };
 
   if (includeInstance) {
@@ -3759,6 +3790,10 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setArgs(value);
       break;
+    case 7:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDryRun(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3801,6 +3836,13 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getDryRun();
+  if (f) {
+    writer.writeBool(
+      7,
+      f
     );
   }
 };
@@ -3858,6 +3900,24 @@ proto.pulumirpc.InvokeRequest.prototype.clearArgs = function() {
  */
 proto.pulumirpc.InvokeRequest.prototype.hasArgs = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional bool dry_run = 7;
+ * @return {boolean}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getDryRun = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 7, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.InvokeRequest} returns this
+ */
+proto.pulumirpc.InvokeRequest.prototype.setDryRun = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 7, value);
 };
 
 

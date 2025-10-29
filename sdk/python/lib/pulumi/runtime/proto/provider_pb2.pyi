@@ -45,6 +45,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     CONFIGURE_WITH_URN_FIELD_NUMBER: builtins.int
     SUPPORTS_VIEWS_FIELD_NUMBER: builtins.int
     SUPPORTS_REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    INVOKE_WITH_DRY_RUN_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -68,6 +69,8 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     """
     supports_refresh_before_update: builtins.bool
     """If true the engine supports letting the provider mark resource states as requiring refresh before update."""
+    invoke_with_dry_run: builtins.bool
+    """If true the engine will send `dry_run` to `Invoke` methods to let them know if the current operation is a preview or up."""
     def __init__(
         self,
         *,
@@ -77,9 +80,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         configure_with_urn: builtins.bool = ...,
         supports_views: builtins.bool = ...,
         supports_refresh_before_update: builtins.bool = ...,
+        invoke_with_dry_run: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_dry_run", b"invoke_with_dry_run", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
     @typing.overload
@@ -522,8 +526,13 @@ class InvokeRequest(google.protobuf.message.Message):
 
     TOK_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
+    DRY_RUN_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
+    dry_run: builtins.bool
+    """This is only set if `HandshakeRequest.invoke_with_dryrun` was true. If this is true then the engine is currently
+    running a preview deployment.
+    """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
         """the arguments for the function invocation."""
@@ -533,9 +542,10 @@ class InvokeRequest(google.protobuf.message.Message):
         *,
         tok: builtins.str = ...,
         args: google.protobuf.struct_pb2.Struct | None = ...,
+        dry_run: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "tok", b"tok"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "dry_run", b"dry_run", "tok", b"tok"]) -> None: ...
 
 global___InvokeRequest = InvokeRequest
 
