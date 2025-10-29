@@ -666,6 +666,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		modifiedAt = old.Modified
 	}
 
+	// If our parent is ephemeral, then we must be too.
+	if goal.Parent != "" {
+		parentGoal, ok := sg.deployment.goals.Load(goal.Parent)
+		if !ok {
+			contract.Failf("could not find parent goal for %v", goal.Parent)
+		}
+		if parentGoal.Ephemeral {
+			goal.Ephemeral = true
+		}
+	}
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	var protectState bool
