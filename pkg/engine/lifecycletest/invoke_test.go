@@ -36,7 +36,9 @@ func TestDryRunInvoke(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				HandshakeF: func(ctx context.Context, req plugin.ProviderHandshakeRequest) (*plugin.ProviderHandshakeResponse, error) {
+				HandshakeF: func(
+					ctx context.Context, req plugin.ProviderHandshakeRequest,
+				) (*plugin.ProviderHandshakeResponse, error) {
 					assert.True(t, req.InvokeWithDryRun, "expected engine to advertise invoke_with_dry_run support")
 					return &plugin.ProviderHandshakeResponse{}, nil
 				},
@@ -44,7 +46,7 @@ func TestDryRunInvoke(t *testing.T) {
 					assert.Equal(t, expectDryRun, req.DryRun)
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{
-							"result": resource.NewStringProperty("invoked"),
+							"result": resource.NewProperty("invoked"),
 						},
 					}, nil
 				},
@@ -53,8 +55,9 @@ func TestDryRunInvoke(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.Invoke("pkgA:index:myFunc", nil, "", "", "")
+		resp, _, err := monitor.Invoke("pkgA:index:myFunc", nil, "", "", "")
 		require.NoError(t, err)
+		assert.Equal(t, resource.NewProperty("invoked"), resp["result"])
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)

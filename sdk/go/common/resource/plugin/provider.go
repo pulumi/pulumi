@@ -63,7 +63,8 @@ type ProviderHandshakeRequest struct {
 	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
 	SupportsRefreshBeforeUpdate bool
 
-	// If true the engine will send `DryRun` to `Invoke` methods to let them know if the current operation is a preview or up.
+	// If true the engine will send `DryRun` to `Invoke` methods to let them know if the current operation is a preview
+	// or up.
 	InvokeWithDryRun bool
 }
 
