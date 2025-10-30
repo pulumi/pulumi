@@ -792,26 +792,10 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	}
 
 	// Get outdated providers from stack state instead of dependency files
-	outdatedProviders, providersFound, err := getOutdatedProvidersFromStackState(ctx, proj)
+	outdatedProviders, err := getMajorVersionOutdatedProviders(ctx, proj)
 	if err != nil {
-		// Surface snapshot/state errors to the user so they know why the check didn't run
-		logging.Infof("provider-check: %v", err)
-		msg := "\nProvider version check could not run: " + err.Error() + "\n"
-		msg += linkToNeoTasks(ctx, proj)
-		return msg
-	}
-	if len(outdatedProviders) == 0 {
-		// Provide user-facing messaging to aid debugging
-		if providersFound == 0 {
-			logging.Infof("provider-check: no provider resources found in stack state")
-			msg := "\nNo providers found in stack state.\n"
-			msg += linkToNeoTasks(ctx, proj)
-			return msg
-		}
-		logging.Infof("provider-check: %d provider resources scanned; none outdated", providersFound)
-		msg := "\nAll providers appear up to date.\n"
-		msg += linkToNeoTasks(ctx, proj)
-		return msg
+		logging.Infof("outdatedprovider version check: %v", err)
+		return ""
 	}
 
 	// Detect the stack language
@@ -825,6 +809,7 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	// Add language-specific upgrade instructions
 	msg += getLanguageSpecificUpgradeInstructions(language, outdatedProviders)
 	msg += "Please ensure to follow any release notes or upgrade guides to update your program.\n"
+
 	// Add Neo link for additional help
 	msg += linkToNeoTasks(ctx, proj)
 
@@ -833,25 +818,25 @@ func checkForOutdatedProviders(ctx context.Context) string {
 
 // getOutdatedProvidersFromStackState inspects the current stack snapshot and returns a list of
 // providers that are outdated by at least one major version.
-func getOutdatedProvidersFromStackState(ctx context.Context, proj *workspace.Project) ([]string, int, error) {
+func getMajorVersionOutdatedProviders(ctx context.Context, proj *workspace.Project) ([]string, error) {
 	currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
-		logging.Infof("provider-check: failed to get backend: %v", err)
-		return nil, 0, err
+		logging.Infof("failed to get backend: %v", err)
+		return nil, err
 	}
 
 	s, err := backendState.CurrentStack(ctx, currentBackend)
 	if err != nil || s == nil {
-		logging.Infof("provider-check: failed to get current stack: %v", err)
-		return nil, 0, err
+		logging.Infof("failed to get current stack: %v", err)
+		return nil, err
 	}
 
 	// Load current snapshot with a secrets Provider that can construct the right manager from deployment state
 	secretsProv := backendSecrets.NamedStackProvider{StackName: s.Ref().Name().String()}
 	snapshot, err := s.Snapshot(ctx, secretsProv)
 	if err != nil || snapshot == nil {
-		logging.Infof("provider-check: failed to get snapshot: %v", err)
-		return nil, 0, err
+		logging.Infof("failed to get snapshot: %v", err)
+		return nil, err
 	}
 
 	// Collect provider name -> version from provider resources in state
@@ -863,12 +848,12 @@ func getOutdatedProvidersFromStackState(ctx context.Context, proj *workspace.Pro
 			pkg := providers.GetProviderPackage(res.URN.Type())
 			name, err := providers.GetProviderName(pkg, res.Inputs)
 			if err != nil {
-				logging.Infof("provider-check: could not read provider name for %s: %v", res.URN, err)
+				logging.Infof("could not read provider name for %s: %v", res.URN, err)
 				continue
 			}
 			version, err := providers.GetProviderVersion(res.Inputs)
 			if err != nil {
-				logging.Infof("provider-check: could not read provider version for %s: %v", res.URN, err)
+				logging.Infof("could not read provider version for %s: %v", res.URN, err)
 				continue
 			}
 
@@ -902,7 +887,7 @@ func getOutdatedProvidersFromStackState(ctx context.Context, proj *workspace.Pro
 	}
 
 	logging.Infof("provider-check: scanned %d provider resources; %d outdated", providerCount, len(outdated))
-	return outdated, providerCount, nil
+	return outdated, nil
 }
 
 func linkToNeoTasks(ctx context.Context, project *workspace.Project) string {
