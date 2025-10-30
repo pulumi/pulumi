@@ -280,12 +280,13 @@ class Stack:
         Optional[threading.Thread],
         Optional[threading.Event],
         Optional[tempfile.TemporaryDirectory],
+        Optional[grpc.Server],
     ]:
         """
         Set up event logging, either via gRPC or file-based depending on Pulumi version.
 
         Returns:
-            A tuple of (log_file_path, thread, stop_event, temp_dir)
+            A tuple of (log_file_path, thread, stop_event, temp_dir, grpc_server)
         """
         # TODO: Check version when gRPC events are available in a released version
         # For now, always use gRPC (matching TypeScript's implementation)
@@ -307,7 +308,7 @@ class Stack:
             server.start()
 
             log_file = f"tcp://127.0.0.1:{port}"
-            return (log_file, None, None, None)
+            return (log_file, None, None, None, server)
         else:
             # Use file-based event log
             log_file, temp_dir = _create_log_file(command)
@@ -316,7 +317,7 @@ class Stack:
                 target=_watch_logs, args=(log_file, on_event, stop_event)
             )
             log_watcher_thread.start()
-            return (log_file, log_watcher_thread, stop_event, temp_dir)
+            return (log_file, log_watcher_thread, stop_event, temp_dir, None)
 
     def up(
         self,
@@ -433,8 +434,9 @@ class Stack:
         log_watcher_thread = None
         temp_dir = None
         stop_event = None
+        grpc_server = None
         if on_event:
-            log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
                 "up", on_event, self.workspace.pulumi_version
             )
             args.extend(["--event-log", log_file])
@@ -447,7 +449,7 @@ class Stack:
             summary = self.info(show_secrets and not self._remote)
             assert summary is not None
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         return UpResult(
             stdout=up_result.stdout,
@@ -582,7 +584,7 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
             "preview", on_event_callback, self.workspace.pulumi_version
         )
         args.extend(["--event-log", log_file])
@@ -590,7 +592,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -724,8 +726,9 @@ class Stack:
         log_watcher_thread = None
         stop_event = None
         temp_dir = None
+        grpc_server = None
         if on_event:
-            log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
                 "refresh", on_event, self.workspace.pulumi_version
             )
             args.extend(["--event-log", log_file])
@@ -733,7 +736,7 @@ class Stack:
         try:
             refresh_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
         # load the project file.
@@ -819,7 +822,7 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
             "preview-refresh", on_event_callback, self.workspace.pulumi_version
         )
         args.extend(["--event-log", log_file])
@@ -827,7 +830,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, None, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -982,8 +985,9 @@ class Stack:
         log_watcher_thread = None
         stop_event = None
         temp_dir = None
+        grpc_server = None
         if on_event:
-            log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
                 "destroy", on_event, self.workspace.pulumi_version
             )
             args.extend(["--event-log", log_file])
@@ -991,7 +995,7 @@ class Stack:
         try:
             destroy_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
         # load the project file.
@@ -1085,7 +1089,7 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        log_file, log_watcher_thread, stop_event, temp_dir = self._setup_event_log(
+        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
             "preview-destroy", on_event_callback, self.workspace.pulumi_version
         )
         args.extend(["--event-log", log_file])
@@ -1093,7 +1097,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, None, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -1626,10 +1630,13 @@ def _cleanup(
     thread: Optional[threading.Thread],
     stop_event: Optional[threading.Event],
     on_exit_fn: Optional[Callable[[], None]] = None,
+    grpc_server: Optional[grpc.Server] = None,
 ) -> None:
     # If there's an on_exit function, execute it (used in preview/up to shut down server)
     if on_exit_fn:
         on_exit_fn()
+    if grpc_server:
+        grpc_server.stop(grace=5)
     # If we started a thread to watch logs, wait for it to terminate. The wait times out
     # after 5 seconds. This gives the thread some time to read the events log.
     if thread:
