@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>Resource has delete hooks registered, but the program is not running. Hooks: myHook<{%reset%}>

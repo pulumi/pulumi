@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>Duplicate resource URN 'urn:pulumi:test::test::pkgA:m:typA::resA' conflicting with alias on resource with URN 'urn:pulumi:test::test::pkgA:m:typA::resB'<{%reset%}>

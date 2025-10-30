@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::component$pkgA:m:typA::child' depends on 'urn:pulumi:test::test::component::parent' which was was not specified in --target list.<{%reset%}>

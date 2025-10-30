@@ -1,4 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test::test::pkgA:m:typA::resA" cannot be deleted
-because it is protected. To unprotect the resource, either remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
-`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

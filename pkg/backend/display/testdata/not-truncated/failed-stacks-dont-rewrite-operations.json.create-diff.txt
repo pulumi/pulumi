@@ -1,9 +1,0 @@
-Configuration:
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:dev::test::pulumi:pulumi:Stack::test-dev]
-    ~ pulumi-python:dynamic:Resource: (update)
-        [id=quux2]
-        [urn=urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-x]
-    --pulumi-python:dynamic:Resource: (delete-replaced)
-        [id=foo]
-        [urn=urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-r]

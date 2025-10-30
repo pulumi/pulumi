@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>provider urn:pulumi:test::test::pulumi:providers:pkgB::explicit::b819a53d-5608-4547-9365-5431bca9ce6a for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet, this is due to a change of providers mixed with --target. Change your program back to the original providers<{%reset%}>

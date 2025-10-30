@@ -1,26 +1,0 @@
-<{%fg 13%}><{%bold%}>View in Browser (Ctrl+O): <{%underline%}><{%fg 12%}>link<{%reset%}>
-
-<%hide-cursor%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  project-stack  <{%bold%}><{%reset%}><{%reset%}>           <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  urlencodedoutput-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  urlencodedoutput-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  urlencodedoutput-dev  <{%reset%}><{%reset%}>           1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  urlencodedoutput-dev  <{%reset%}><{%reset%}>           1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
-<%clear-to-end%>
-<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
-  <{%fg 12%}>pulumi:pulumi:Stack (urlencodedoutput-dev):<{%reset%}>
-    <{%reset%}>Configuration:<{%reset%}>
-
-<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
-<{%fg 3%}>  ~ path: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>%2<{%reset%}><{%fg 1%}>F<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>%2<{%reset%}><{%fg 2%}>f<{%reset%}><{%fg 3%}>"
-<{%reset%}>
-<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    1 unchanged
-
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-
-<%show-cursor%>

@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>
