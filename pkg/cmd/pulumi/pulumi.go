@@ -782,7 +782,6 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 
 // checkForOutdatedProviders checks for providers a major version behind latest, and returns a message if any are found.
 func checkForOutdatedProviders(ctx context.Context) string {
-	logging.V(1).Infof("checkForOutdatedProviders: starting provider version check")
 
 	// Get the list of project-specific plugins (only those used by the current stack)
 	proj, _, err := pkgWorkspace.Instance.ReadProject()
@@ -794,14 +793,14 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	// Get current backend
 	currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
-		logging.Infof("failed to get backend: %v", err)
+		logging.V(3).Infof("failed to get backend: %v", err)
 		return ""
 	}
 
 	// Get outdated providers from stack state instead of dependency files
 	outdatedProviders, err := getMajorVersionOutdatedProviders(ctx, currentBackend)
 	if err != nil {
-		logging.Infof("outdated provider version check: %v", err)
+		logging.V(3).Infof("outdated provider version check: %v", err)
 		return ""
 	}
 
@@ -823,13 +822,12 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	return msg
 }
 
-// getOutdatedProvidersFromStackState inspects the current stack snapshot and returns a list of
+// getMajorVersionOutdatedProviders inspects the current stack snapshot and returns a list of
 // providers that are outdated by at least one major version.
 func getMajorVersionOutdatedProviders(ctx context.Context, currentBackend backend.Backend) ([]string, error) {
-
 	s, err := backendState.CurrentStack(ctx, currentBackend)
 	if err != nil || s == nil {
-		logging.Infof("failed to get current stack: %v", err)
+		logging.V(3).Infof("failed to get current stack: %v", err)
 		return nil, err
 	}
 
@@ -837,7 +835,7 @@ func getMajorVersionOutdatedProviders(ctx context.Context, currentBackend backen
 	secretsProv := backendSecrets.NamedStackProvider{StackName: s.Ref().Name().String()}
 	snapshot, err := s.Snapshot(ctx, secretsProv)
 	if err != nil || snapshot == nil {
-		logging.Infof("failed to get snapshot: %v", err)
+		logging.V(3).Infof("failed to get snapshot: %v", err)
 		return nil, err
 	}
 
@@ -850,12 +848,12 @@ func getMajorVersionOutdatedProviders(ctx context.Context, currentBackend backen
 			pkg := providers.GetProviderPackage(res.URN.Type())
 			name, err := providers.GetProviderName(pkg, res.Inputs)
 			if err != nil {
-				logging.Infof("could not read provider name for %s: %v", res.URN, err)
+				logging.V(3).Infof("could not read provider name for %s: %v", res.URN, err)
 				continue
 			}
 			version, err := providers.GetProviderVersion(res.Inputs)
 			if err != nil {
-				logging.Infof("could not read provider version for %s: %v", res.URN, err)
+				logging.V(3).Infof("could not read provider version for %s: %v", res.URN, err)
 				continue
 			}
 
@@ -880,7 +878,7 @@ func getMajorVersionOutdatedProviders(ctx context.Context, currentBackend backen
 		}
 		latest, err := spec.GetLatestVersion(ctx)
 		if err != nil {
-			logging.Infof("provider-check: failed to fetch latest for %s: %v", info.Name, err)
+			logging.V(3).Infof("failed to fetch latest for %s: %v", info.Name, err)
 			continue
 		}
 		if latest.Major > info.Version.Major {
@@ -888,18 +886,25 @@ func getMajorVersionOutdatedProviders(ctx context.Context, currentBackend backen
 		}
 	}
 
-	logging.Infof("provider-check: scanned %d provider resources; %d outdated", providerCount, len(outdated))
 	return outdated, nil
 }
 
 func linkToNeoTasks(ctx context.Context, currentBackend backend.Backend) string {
 	var msg string
-	// Get current stack reference for Neo link
-	var stackRef string
-	if s, err := backendState.CurrentStack(ctx, currentBackend); err == nil && s != nil {
-		// Get project/stack format (e.g., "test-program-v3/dev")
-		stackRef = currentBackend.Name() + "/" + s.Ref().Name().String()
+
+	stack, err := backendState.CurrentStack(ctx, currentBackend)
+	if err != nil {
+		logging.V(3).Infof("Could not get current stack: ", err)
 	}
+	if stack == nil {
+		logging.V(3).Infof("No stack found")
+	}
+	var stackRef string
+	if projectName, has := stack.Ref().Project(); has && projectName != "" {
+		// Get project/stack format (e.g., "test-program-v3/dev")
+		stackRef = projectName.String() + "/" + stack.Ref().Name().String()
+	}
+
 	msg = "\n" + colors.SpecAttention + "Need help with provider upgrades?" + colors.Reset + "\n"
 	neoURL := "https://app-guins-review-stack.review-stacks.pulumi-dev.io/pulumi_local/neo/tasks?prompt=upgrade%20provider"
 	if stackRef != "" {
