@@ -60,6 +60,7 @@ func ShowCmd() *cobra.Command {
 }
 
 func printResourceState(rs *resource.State) {
+	fmt.Println()
 	// print resource name
 	fmt.Printf("ResourceName: %s\n", rs.URN.Name())
 	// print URN
