@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	backendState "github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
@@ -76,14 +77,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	resourcePlugin "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -785,82 +785,33 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	logging.V(1).Infof("checkForOutdatedProviders: starting provider version check")
 
 	// Get the list of project-specific plugins (only those used by the current stack)
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		logging.V(3).Infof("error reading project: %s", err)
 		return ""
 	}
 
-	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, pluginCtx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	// Get outdated providers from stack state instead of dependency files
+	outdatedProviders, providersFound, err := getOutdatedProvidersFromStackState(ctx, proj)
 	if err != nil {
-		logging.V(3).Infof("error getting project context: %s", err)
-		return ""
+		// Surface snapshot/state errors to the user so they know why the check didn't run
+		logging.Infof("provider-check: %v", err)
+		msg := "\nProvider version check could not run: " + err.Error() + "\n"
+		msg += linkToNeoTasks(ctx, proj)
+		return msg
 	}
-	defer pluginCtx.Close()
-
-	runtimeOptions := proj.Runtime.Options()
-	programInfo := resourcePlugin.NewProgramInfo(root, pwd, main, runtimeOptions)
-
-	// Get the required plugins for this project
-	pluginSpecs, err := engine.GetRequiredPlugins(
-		pluginCtx.Host,
-		proj.Runtime.Name(),
-		programInfo)
-	if err != nil {
-		logging.V(3).Infof("error getting required plugins: %s", err)
-		return ""
-	}
-
-	// Resolve the plugin specs to get plugin info
-	plugins, err := plugin.ResolvePlugins(pluginSpecs)
-	if err != nil {
-		logging.V(3).Infof("error resolving plugins: %s", err)
-		return ""
-	}
-
-	logging.V(3).Infof("checkForOutdatedProviders: checking %d project plugins", len(plugins))
-
-	var outdatedProviders []string
-	for _, plugin := range plugins {
-		// Only check resource plugins (providers)
-		if plugin.Kind != apitype.ResourcePlugin {
-			continue
-		}
-
-		// Skip if no version is available
-		if plugin.Version == nil {
-			continue
-		}
-
-		logging.V(3).Infof("checking provider %s version %s", plugin.Name, plugin.Version.String())
-
-		// Create a plugin spec to check for latest version
-		spec := workspace.PluginSpec{
-			Name:    plugin.Name,
-			Kind:    plugin.Kind,
-			Version: plugin.Version,
-		}
-
-		// Get the latest version
-		latestVersion, err := spec.GetLatestVersion(ctx)
-		if err != nil {
-			logging.V(3).Infof("error getting latest version for provider %s: %s", plugin.Name, err)
-			continue
-		}
-
-		logging.V(3).Infof("provider %s: current=%s, latest=%s", plugin.Name, plugin.Version.String(), latestVersion.String())
-
-		// Check if current major version is outdated
-		if latestVersion.Major > plugin.Version.Major {
-			logging.V(3).Infof("provider %s is outdated!", plugin.Name)
-			outdatedProviders = append(outdatedProviders, fmt.Sprintf("%s (current: %s, latest: %s)",
-				plugin.Name, plugin.Version.String(), latestVersion.String()))
-		}
-	}
-
 	if len(outdatedProviders) == 0 {
-		return ""
+		// Provide user-facing messaging to aid debugging
+		if providersFound == 0 {
+			logging.Infof("provider-check: no provider resources found in stack state")
+			msg := "\nNo providers found in stack state.\n"
+			msg += linkToNeoTasks(ctx, proj)
+			return msg
+		}
+		logging.Infof("provider-check: %d provider resources scanned; none outdated", providersFound)
+		msg := "\nAll providers appear up to date.\n"
+		msg += linkToNeoTasks(ctx, proj)
+		return msg
 	}
 
 	// Detect the stack language
@@ -880,6 +831,80 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	return msg
 }
 
+// getOutdatedProvidersFromStackState inspects the current stack snapshot and returns a list of
+// providers that are outdated by at least one major version.
+func getOutdatedProvidersFromStackState(ctx context.Context, proj *workspace.Project) ([]string, int, error) {
+	currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()})
+	if err != nil {
+		logging.Infof("provider-check: failed to get backend: %v", err)
+		return nil, 0, err
+	}
+
+	s, err := backendState.CurrentStack(ctx, currentBackend)
+	if err != nil || s == nil {
+		logging.Infof("provider-check: failed to get current stack: %v", err)
+		return nil, 0, err
+	}
+
+	// Load current snapshot with a secrets Provider that can construct the right manager from deployment state
+	secretsProv := backendSecrets.NamedStackProvider{StackName: s.Ref().Name().String()}
+	snapshot, err := s.Snapshot(ctx, secretsProv)
+	if err != nil || snapshot == nil {
+		logging.Infof("provider-check: failed to get snapshot: %v", err)
+		return nil, 0, err
+	}
+
+	// Collect provider name -> version from provider resources in state
+	providerMap := make(map[string]workspace.PluginInfo)
+	providerCount := 0
+	for _, res := range snapshot.Resources {
+		if providers.IsProviderType(res.URN.Type()) {
+			providerCount++
+			pkg := providers.GetProviderPackage(res.URN.Type())
+			name, err := providers.GetProviderName(pkg, res.Inputs)
+			if err != nil {
+				logging.Infof("provider-check: could not read provider name for %s: %v", res.URN, err)
+				continue
+			}
+			version, err := providers.GetProviderVersion(res.Inputs)
+			if err != nil {
+				logging.Infof("provider-check: could not read provider version for %s: %v", res.URN, err)
+				continue
+			}
+
+			providerMap[name.String()] = workspace.PluginInfo{
+				Name:    name.String(),
+				Kind:    apitype.ResourcePlugin,
+				Version: version,
+			}
+		}
+	}
+
+	// Compare against latest available versions
+	var outdated []string
+	for _, info := range providerMap {
+		if info.Version == nil {
+			continue
+		}
+		spec := workspace.PluginSpec{
+			Name:    info.Name,
+			Kind:    info.Kind,
+			Version: info.Version,
+		}
+		latest, err := spec.GetLatestVersion(ctx)
+		if err != nil {
+			logging.Infof("provider-check: failed to fetch latest for %s: %v", info.Name, err)
+			continue
+		}
+		if latest.Major > info.Version.Major {
+			outdated = append(outdated, fmt.Sprintf("%s (current: %s, latest: %s)", info.Name, info.Version.String(), latest.String()))
+		}
+	}
+
+	logging.Infof("provider-check: scanned %d provider resources; %d outdated", providerCount, len(outdated))
+	return outdated, providerCount, nil
+}
+
 func linkToNeoTasks(ctx context.Context, project *workspace.Project) string {
 	var msg string
 	// Get current stack reference for Neo link
@@ -897,7 +922,6 @@ func linkToNeoTasks(ctx context.Context, project *workspace.Project) string {
 	}
 	msg += "  " + colors.Underline + colors.BrightBlue + neoURL + colors.Reset + "\n"
 	return msg
-
 }
 
 // getLanguageSpecificUpgradeInstructions returns language-specific upgrade instructions
